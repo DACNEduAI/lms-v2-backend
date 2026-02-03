@@ -1,6 +1,8 @@
 package edu.ai.lms.core.auth.app.port.out;
 
-import org.springframework.security.core.Authentication;
+import edu.ai.lms.core.auth.app.domain.Student;
+import edu.ai.lms.core.auth.app.domain.Teacher;
+import edu.ai.lms.core.auth.exception.InvalidCredentialsException;
 
 /**
  * Port for authenticating users.
@@ -9,12 +11,22 @@ import org.springframework.security.core.Authentication;
 public interface AuthenticationPort {
     
     /**
-     * Authenticates a user with the provided credentials.
+     * Authenticates a student with the provided credentials.
      *
-     * @param email    the user's email
-     * @param password the user's password
-     * @return the Authentication object containing the authenticated user's details
-     * @throws org.springframework.security.core.AuthenticationException if authentication fails
+     * @param email    the student's email
+     * @param password the student's password
+     * @return the authenticated Student domain object
+     * @throws InvalidCredentialsException if authentication fails
      */
-    Authentication authenticate(String email, String password);
+    Student authenticateStudent(String email, String password);
+
+    /**
+     * Authenticates a teacher with the provided credentials.
+     *
+     * @param email    the teacher's email
+     * @param password the teacher's password
+     * @return the authenticated Teacher domain object
+     * @throws InvalidCredentialsException if authentication fails
+     */
+    Teacher authenticateTeacher(String email, String password);
 }

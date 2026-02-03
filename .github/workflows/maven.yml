@@ -19,6 +19,23 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    # Add this services section to provide the database
+    services:
+      postgres:
+        image: postgres:18-alpine # Or the version you are using locally
+        env:
+          POSTGRES_DB: lms_db # Replace with your actual DB name
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        # Ensure postgres is ready before starting the build
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v5
 
