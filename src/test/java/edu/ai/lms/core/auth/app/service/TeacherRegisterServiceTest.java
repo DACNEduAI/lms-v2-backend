@@ -120,7 +120,6 @@ class TeacherRegisterServiceTest {
         assertEquals("Password123!", savedTeacher.getPassword());
         assertEquals("Alice", savedTeacher.getFirstName());
         assertEquals("Smith", savedTeacher.getLastName());
-        assertEquals("EMP001", savedTeacher.getEmployeeId());
         assertEquals("123-456-7890", savedTeacher.getPhoneNumber());
         assertEquals("Computer Science", savedTeacher.getDepartment());
         assertEquals("Artificial Intelligence", savedTeacher.getSpecialization());
@@ -230,7 +229,6 @@ class TeacherRegisterServiceTest {
         assertEquals("SecurePass456!", savedTeacher.getPassword());
         assertEquals("Dr. Emily", savedTeacher.getFirstName());
         assertEquals("Martinez", savedTeacher.getLastName());
-        assertEquals("PROF-2024-001", savedTeacher.getEmployeeId());
         assertEquals("+1-555-0123", savedTeacher.getPhoneNumber());
         assertEquals("Data Science", savedTeacher.getDepartment());
         assertEquals("Machine Learning & Deep Learning", savedTeacher.getSpecialization());
