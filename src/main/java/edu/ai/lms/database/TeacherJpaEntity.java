@@ -20,13 +20,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-public class TeacherJpaEntity extends UserJpaEntity implements UserDetails {
-    
-    @Column(nullable = false)
-    private String firstName;
-    
-    @Column(nullable = false)
-    private String lastName;
+public class TeacherJpaEntity extends UserJpaEntity {
     
     private String employeeId;
     
@@ -40,10 +34,6 @@ public class TeacherJpaEntity extends UserJpaEntity implements UserDetails {
     @Builder.Default
     @JsonIgnore
     private List<CourseJpaEntity> courses = new ArrayList<>();
-    
-    @Column(nullable = false)
-    @Builder.Default
-    private Boolean active = true;
     
     @Column(nullable = false, updatable = false)
     @Builder.Default
@@ -59,18 +49,4 @@ public class TeacherJpaEntity extends UserJpaEntity implements UserDetails {
     }
 
     // UserDetails implementation
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_TEACHER"));
-    }
-
-    @Override
-    public String getUsername() {
-        return email;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return active;
-    }
 }

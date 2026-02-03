@@ -18,39 +18,9 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-public class StudentJpaEntity extends UserJpaEntity implements UserDetails {
-    
-    @Column(nullable = false)
-    private String firstName;
-    
-    @Column(nullable = false)
-    private String lastName;
-    
-    private String studentId;
-    
-    private String phoneNumber;
-    
+public class StudentJpaEntity extends UserJpaEntity {
     @Column(nullable = false)
     private Long enrollmentYear;
-    
-    @Column(nullable = false, updatable = false)
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
-    
-    @Column(nullable = false)
-    @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now();
-    
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    // UserDetails implementation
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_STUDENT"));
-    }
 
     @OneToMany(mappedBy = "student")
     private List<AttemptJpaEntity> attempts;
@@ -65,9 +35,4 @@ public class StudentJpaEntity extends UserJpaEntity implements UserDetails {
         inverseJoinColumns = @JoinColumn(name = "learning_outcome_id")
     )
     private List<LearningOutcomeJpaEntity> masteredLearningOutcomes;
-
-    @Override
-    public String getUsername() {
-        return email;
-    }
 }

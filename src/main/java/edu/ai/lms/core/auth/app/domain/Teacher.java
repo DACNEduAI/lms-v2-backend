@@ -1,4 +1,4 @@
-package edu.ai.lms.core.auth.domain;
+package edu.ai.lms.core.auth.app.domain;
 
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -14,14 +14,17 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Student implements UserDetails {
+public class Teacher implements UserDetails {
     private UUID id;
     private String email;
     private String password;
     private String firstName;
     private String lastName;
     private String avatarUrl;
-    private Long enrollmentYear;
+    private String employeeId;
+    private String phoneNumber;
+    private String department;
+    private String specialization;
     private Roles role;
 
     /**
@@ -33,12 +36,16 @@ public class Student implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Updated to use the actual role assigned to the user
         return List.of(new SimpleGrantedAuthority("ROLE_" + getRoleAsString()));
     }
 
     @Override
     public String getUsername() {
         return this.email;
+    }
+
+    @Override
+    public String getPassword() {
+        return this.password;
     }
 }

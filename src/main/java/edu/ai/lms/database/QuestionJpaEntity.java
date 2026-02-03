@@ -42,7 +42,7 @@ public class QuestionJpaEntity {
     private QuizJpaEntity quiz;
 
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<AnswerJpaEntity> answers = new ArrayList<>();
+    private List<AnswerJpaEntity> answers;
 
     @ManyToMany
     @JoinTable(
@@ -50,7 +50,7 @@ public class QuestionJpaEntity {
         joinColumns = @JoinColumn(name = "question_id"),
         inverseJoinColumns = @JoinColumn(name = "learning_outcome_id")
     )
-    private List<LearningOutcomeJpaEntity> learningOutcomes = new ArrayList<>();
+    private List<LearningOutcomeJpaEntity> learningOutcomes;
 
     @CreationTimestamp
     @Column(updatable = false)

@@ -1,6 +1,6 @@
 package edu.ai.lms.core.auth.adapter.in.response;
 
-import edu.ai.lms.core.auth.domain.Student;
+import edu.ai.lms.core.auth.app.domain.Student;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 

@@ -1,9 +1,11 @@
 package edu.ai.lms.core.auth.adapter.in.request;
 
 
-import lombok.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.*;
 
 @Getter
 @Setter
@@ -21,6 +23,10 @@ public class StudentRegisterRequest {
     @Email(message = "Email should be valid")
     private String email;
 
-    @NotBlank(message = "Enrollment year is required")
+    @NotBlank(message = "Password is required")
+    @Size(min = 8, message = "Password must be at least 8 characters")
+    private String password;
+
+    @NotNull(message = "Enrollment year is required")
     private Long enrollmentYear;
 }
