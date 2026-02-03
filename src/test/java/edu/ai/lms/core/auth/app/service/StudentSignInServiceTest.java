@@ -18,9 +18,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 
 import edu.ai.lms.core.auth.adapter.in.request.StudentSignInRequest;
 import edu.ai.lms.core.auth.adapter.in.response.StudentSignInResponse;
@@ -67,11 +64,8 @@ class StudentSignInServiceTest {
     @DisplayName("Should successfully sign in with valid credentials")
     void testSignIn_WithValidCredentials_ShouldSucceed() {
         // Arrange
-        Authentication mockAuthentication = new UsernamePasswordAuthenticationToken(
-                validStudent, null, validStudent.getAuthorities());
-        
-        when(authenticationPort.authenticate(validRequest.getEmail(), validRequest.getPassword()))
-                .thenReturn(mockAuthentication);
+        when(authenticationPort.authenticateStudent(validRequest.getEmail(), validRequest.getPassword()))
+                .thenReturn(validStudent);
         when(tokenGenerationPort.generateStudentToken(validStudent)).thenReturn("mock-jwt-token");
 
         // Act
@@ -85,7 +79,7 @@ class StudentSignInServiceTest {
         assertEquals("Doe", response.getLastName());
         assertEquals("STUDENT", response.getRole());
         
-        verify(authenticationPort, times(1)).authenticate("student@example.com", "Password123!");
+        verify(authenticationPort, times(1)).authenticateStudent("student@example.com", "Password123!");
         verify(tokenGenerationPort, times(1)).generateStudentToken(validStudent);
     }
 
@@ -93,8 +87,8 @@ class StudentSignInServiceTest {
     @DisplayName("Should throw InvalidCredentialsException when authentication fails")
     void testSignIn_WithInvalidCredentials_ShouldThrowException() {
         // Arrange
-        when(authenticationPort.authenticate(validRequest.getEmail(), validRequest.getPassword()))
-                .thenThrow(new BadCredentialsException("Invalid credentials"));
+        when(authenticationPort.authenticateStudent(validRequest.getEmail(), validRequest.getPassword()))
+                .thenThrow(new InvalidCredentialsException("Invalid email or password"));
 
         // Act & Assert
         InvalidCredentialsException exception = assertThrows(InvalidCredentialsException.class,
@@ -102,7 +96,7 @@ class StudentSignInServiceTest {
         
         assertEquals("Invalid email or password", exception.getMessage());
         
-        verify(authenticationPort, times(1)).authenticate("student@example.com", "Password123!");
+        verify(authenticationPort, times(1)).authenticateStudent("student@example.com", "Password123!");
         verify(tokenGenerationPort, never()).generateStudentToken(any(Student.class));
     }
 
@@ -115,8 +109,8 @@ class StudentSignInServiceTest {
                 .password("Password123!")
                 .build();
 
-        when(authenticationPort.authenticate(invalidRequest.getEmail(), invalidRequest.getPassword()))
-                .thenThrow(new BadCredentialsException("User not found"));
+        when(authenticationPort.authenticateStudent(invalidRequest.getEmail(), invalidRequest.getPassword()))
+                .thenThrow(new InvalidCredentialsException("Invalid email or password"));
 
         // Act & Assert
         InvalidCredentialsException exception = assertThrows(InvalidCredentialsException.class,
@@ -130,11 +124,8 @@ class StudentSignInServiceTest {
     @DisplayName("Should generate token with authenticated student details")
     void testSignIn_ShouldGenerateTokenWithCorrectStudent() {
         // Arrange
-        Authentication mockAuthentication = new UsernamePasswordAuthenticationToken(
-                validStudent, null, validStudent.getAuthorities());
-        
-        when(authenticationPort.authenticate(validRequest.getEmail(), validRequest.getPassword()))
-                .thenReturn(mockAuthentication);
+        when(authenticationPort.authenticateStudent(validRequest.getEmail(), validRequest.getPassword()))
+                .thenReturn(validStudent);
         when(tokenGenerationPort.generateStudentToken(validStudent)).thenReturn("specific-token-for-student");
 
         // Act
@@ -170,11 +161,8 @@ class StudentSignInServiceTest {
                 .password("Password123!")
                 .build();
 
-        Authentication mockAuthentication = new UsernamePasswordAuthenticationToken(
-                detailedStudent, null, detailedStudent.getAuthorities());
-        
-        when(authenticationPort.authenticate(detailedRequest.getEmail(), detailedRequest.getPassword()))
-                .thenReturn(mockAuthentication);
+        when(authenticationPort.authenticateStudent(detailedRequest.getEmail(), detailedRequest.getPassword()))
+                .thenReturn(detailedStudent);
         when(tokenGenerationPort.generateStudentToken(detailedStudent)).thenReturn("detailed-token");
 
         // Act

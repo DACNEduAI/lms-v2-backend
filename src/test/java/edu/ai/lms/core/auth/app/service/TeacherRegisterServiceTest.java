@@ -53,7 +53,6 @@ class TeacherRegisterServiceTest {
                 .password("Password123!")
                 .firstName("Alice")
                 .lastName("Smith")
-                .employeeId("EMP001")
                 .phoneNumber("123-456-7890")
                 .department("Computer Science")
                 .specialization("Artificial Intelligence")
@@ -121,7 +120,6 @@ class TeacherRegisterServiceTest {
         assertEquals("Password123!", savedTeacher.getPassword());
         assertEquals("Alice", savedTeacher.getFirstName());
         assertEquals("Smith", savedTeacher.getLastName());
-        assertEquals("EMP001", savedTeacher.getEmployeeId());
         assertEquals("123-456-7890", savedTeacher.getPhoneNumber());
         assertEquals("Computer Science", savedTeacher.getDepartment());
         assertEquals("Artificial Intelligence", savedTeacher.getSpecialization());
@@ -181,7 +179,6 @@ class TeacherRegisterServiceTest {
                 .password("Password123!")
                 .firstName("Charlie")
                 .lastName("Brown")
-                .employeeId(null)
                 .phoneNumber(null)
                 .department(null)
                 .specialization(null)
@@ -212,7 +209,6 @@ class TeacherRegisterServiceTest {
                 .password("SecurePass456!")
                 .firstName("Dr. Emily")
                 .lastName("Martinez")
-                .employeeId("PROF-2024-001")
                 .phoneNumber("+1-555-0123")
                 .department("Data Science")
                 .specialization("Machine Learning & Deep Learning")
@@ -233,7 +229,6 @@ class TeacherRegisterServiceTest {
         assertEquals("SecurePass456!", savedTeacher.getPassword());
         assertEquals("Dr. Emily", savedTeacher.getFirstName());
         assertEquals("Martinez", savedTeacher.getLastName());
-        assertEquals("PROF-2024-001", savedTeacher.getEmployeeId());
         assertEquals("+1-555-0123", savedTeacher.getPhoneNumber());
         assertEquals("Data Science", savedTeacher.getDepartment());
         assertEquals("Machine Learning & Deep Learning", savedTeacher.getSpecialization());

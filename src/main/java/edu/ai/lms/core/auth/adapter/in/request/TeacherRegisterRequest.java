@@ -22,8 +22,6 @@ public class TeacherRegisterRequest {
 
     @NotBlank(message = "Password is required")
     private String password;
-
-    private String employeeId;
     
     private String phoneNumber;
     

@@ -36,7 +36,6 @@ public class TeacherRegisterService implements TeacherRegisterUseCase {
                 .password(request.getPassword())
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
-                .employeeId(request.getEmployeeId())
                 .phoneNumber(request.getPhoneNumber())
                 .department(request.getDepartment())
                 .specialization(request.getSpecialization())

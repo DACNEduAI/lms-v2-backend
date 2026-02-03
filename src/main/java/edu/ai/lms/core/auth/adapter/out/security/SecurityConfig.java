@@ -4,15 +4,12 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
@@ -24,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import edu.ai.lms.core.auth.app.port.out.LoadStudentPort;
+import edu.ai.lms.core.auth.app.port.out.LoadTeacherPort;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -34,6 +32,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final LoadStudentPort loadStudentPort;
+    private final LoadTeacherPort loadTeacherPort;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -41,34 +40,24 @@ public class SecurityConfig {
     }
 
     /**
-     * UserDetailsService implementation using LoadStudentPort.
-     * This is needed for AuthenticationProvider to work with our domain.
+     * UserDetailsService implementation that loads both Students and Teachers.
+     * This is used by the JwtAuthenticationFilter to load user details during token validation.
+     * It first tries to load a student, and if not found, tries to load a teacher.
      */
     @Bean
     public UserDetailsService userDetailsService() {
-        return email -> loadStudentPort.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
-    }
+        return email -> {
+            // Try to find student first
+            UserDetails student = loadStudentPort.findByEmail(email).orElse(null);
+            if (student != null) {
+                return student;
+            }
 
-    /**
-     * AuthenticationProvider for username/password authentication.
-     * Used by login endpoints.
-     */
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService());
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
-    }
-
-    /**
-     * AuthenticationManager for coordinating authentication.
-     * Used by login endpoints to authenticate user credentials.
-     */
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+            // If not found as student, try to find as teacher
+            return loadTeacherPort.findByEmail(email)
+                    .map(teacher -> (UserDetails) teacher)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+        };
     }
 
     @Bean
@@ -100,7 +89,6 @@ public class SecurityConfig {
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )
-                .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
