@@ -19,9 +19,9 @@ jobs:
         env:
           # 2. MATCH THE DB NAME: Your DATA_SOURCE var uses 'edu-ai', so we must create that DB
           POSTGRES_DB: edu-ai
-          POSTGRES_USER: postgres
+          POSTGRES_USER: ${{ vars.DB_USERNAME }}
           # You can use the variable here too to keep them in sync
-          POSTGRES_PASSWORD: ${{ vars.DB_TEST_PASS }}
+          POSTGRES_PASSWORD: ${{ vars.DB_PASS }}
         ports:
           - 5432:5432
         options: >-
@@ -47,7 +47,7 @@ jobs:
           DATA_SOURCE: ${{ vars.DATA_SOURCE }}
           DB_USERNAME: ${{ vars.DB_USERNAME }}
           # Mapping DB_TEST_PASS (Github) -> DB_PASSWORD (Spring Boot)
-          DB_PASSWORD: ${{ vars.DB_TEST_PASS }}
+          DB_PASSWORD: ${{ vars.DB_PASS }}
           JWT_KEY: ${{ vars.JWT_KEY }}
           JWT_EXPIRATION: ${{ vars.JWT_EXPIRATION }}
         run: mvn -B package --file pom.xml
