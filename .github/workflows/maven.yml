@@ -87,5 +87,5 @@ jobs:
         with:
           name: Integration Test Results
           # Note the different path: 'failsafe-reports'
-          path: target/failsafe-reports/*.xml
+          path: target/failsafe-reports/TEST-*.xml
           reporter: java-junit
