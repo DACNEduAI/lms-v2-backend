@@ -47,6 +47,4 @@ public class TeacherJpaEntity extends UserJpaEntity {
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
-    // UserDetails implementation
 }
