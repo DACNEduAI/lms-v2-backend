@@ -28,7 +28,7 @@ import edu.ai.lms.core.auth.app.port.out.TokenGenerationPort;
 import edu.ai.lms.core.auth.exception.InvalidCredentialsException;
 
 @ExtendWith(MockitoExtension.class)
-class StudentSignInServiceTest {
+class StudentSignInServiceUT {
 
     @Mock
     private AuthenticationPort authenticationPort;

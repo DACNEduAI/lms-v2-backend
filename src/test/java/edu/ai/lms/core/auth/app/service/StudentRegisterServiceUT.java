@@ -31,7 +31,7 @@ import edu.ai.lms.core.auth.app.port.out.TokenGenerationPort;
 import edu.ai.lms.core.auth.exception.EmailAlreadyExistsException;
 
 @ExtendWith(MockitoExtension.class)
-class StudentRegisterServiceTest {
+class StudentRegisterServiceUT {
 
     @Mock
     private SaveStudentPort saveStudentPort;

@@ -209,13 +209,11 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<excludes>
-						<!-- Exclude integration tests from unit test phase -->
-						<exclude>**/adapter/in/**/*Test.java</exclude>
-						<exclude>**/adapter/in/**/*Tests.java</exclude>
-						<exclude>**/adapter/in/**/*IT.java</exclude>
-						<exclude>**/adapter/in/**/IT*.java</exclude>
-					</excludes>
+				<includes>
+					<!-- Include unit tests with UT prefix or postfix in app/service directory -->
+					<include>**/app/service/**/UT*.java</include>
+					<include>**/app/service/**/*UT.java</include>
+				</includes>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -237,8 +235,6 @@
 				<configuration>
 					<includes>
 						<!-- Include all test classes in adapter/in directories across all modules -->
-						<include>**/adapter/in/**/*Test.java</include>
-						<include>**/adapter/in/**/*Tests.java</include>
 						<include>**/adapter/in/**/*IT.java</include>
 						<include>**/adapter/in/**/IT*.java</include>
 					</includes>
