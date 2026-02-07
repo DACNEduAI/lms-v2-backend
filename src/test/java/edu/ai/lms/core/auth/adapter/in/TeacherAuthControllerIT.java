@@ -18,7 +18,7 @@ import io.restassured.http.ContentType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Teacher Auth Controller Integration Tests")
-class TeacherAuthControllerIntegrationTest extends BaseIntegrationTest {
+class TeacherAuthControllerIT extends BaseIntegrationTest {
 
     // The HTTP response code in all of these tests are not entirely correct
     // will clean this soon, it's not a big problem now.

@@ -18,7 +18,7 @@ import io.restassured.http.ContentType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Student Auth Controller Integration Tests")
-class StudentAuthControllerIntegrationTest extends BaseIntegrationTest {
+class StudentAuthControllerIT extends BaseIntegrationTest {
 
     @Test
     @Order(1)
