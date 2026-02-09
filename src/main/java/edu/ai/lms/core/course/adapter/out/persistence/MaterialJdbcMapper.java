@@ -2,50 +2,47 @@ package edu.ai.lms.core.course.adapter.out.persistence;
 
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Material;
-import edu.ai.lms.database.ChapterJpaEntity;
-import edu.ai.lms.database.MaterialJpaEntity;
+import edu.ai.lms.database.MaterialJdbcEntity;
 
 @Component
-public class MaterialJpaMapper {
+public class MaterialJdbcMapper {
 
-    public MaterialJpaEntity mapToMaterialJpaEntity(Material material, ChapterJpaEntity chapterEntity) {
-        return MaterialJpaEntity.builder()
+    public MaterialJdbcEntity mapToMaterialJdbcEntity(Material material) {
+        return MaterialJdbcEntity.builder()
                 .id(material.getId())
                 .title(material.getTitle())
-                .type(mapToJpaMaterialType(material.getType()))
+                .type(mapToJdbcMaterialType(material.getType()))
                 .sourceUrl(material.getSourceUrl())
                 .isDownloadable(material.isDownloadable())
-                .chapter(chapterEntity)
+                .chapterId(material.getChapter() != null ? material.getChapter().getId() : null)
                 .build();
     }
 
-    public Material mapToMaterial(MaterialJpaEntity entity, Chapter chapter) {
+    public Material mapToMaterial(MaterialJdbcEntity entity) {
         return Material.builder()
                 .id(entity.getId())
                 .title(entity.getTitle())
                 .type(mapToDomainMaterialType(entity.getType()))
                 .sourceUrl(entity.getSourceUrl())
                 .downloadable(entity.isDownloadable())
-                .chapter(chapter)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
     }
 
-    private MaterialJpaEntity.MaterialType mapToJpaMaterialType(Material.MaterialType type) {
+    private MaterialJdbcEntity.MaterialType mapToJdbcMaterialType(Material.MaterialType type) {
         if (type == null) {
             return null;
         }
         return switch (type) {
-            case PDF -> MaterialJpaEntity.MaterialType.PDF;
-            case VIDEO -> MaterialJpaEntity.MaterialType.VIDEO;
-            case LINK -> MaterialJpaEntity.MaterialType.LINK;
+            case PDF -> MaterialJdbcEntity.MaterialType.PDF;
+            case VIDEO -> MaterialJdbcEntity.MaterialType.VIDEO;
+            case LINK -> MaterialJdbcEntity.MaterialType.LINK;
         };
     }
 
-    private Material.MaterialType mapToDomainMaterialType(MaterialJpaEntity.MaterialType type) {
+    private Material.MaterialType mapToDomainMaterialType(MaterialJdbcEntity.MaterialType type) {
         if (type == null) {
             return null;
         }

@@ -2,13 +2,15 @@ package edu.ai.lms.core.course.adapter.out.persistence;
 
 import java.util.UUID;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.CrudRepository;
 
-import edu.ai.lms.database.TeacherJpaEntity;
+import edu.ai.lms.database.TeacherJdbcEntity;
+import org.springframework.stereotype.Repository;
 
 /**
- * Package-private repository interface.
+ * Package-private repository interface for teachers.
  * Only classes within the persistence package can access this repository.
  */
-interface TeacherRepository extends JpaRepository<TeacherJpaEntity, UUID> {
+@Repository
+interface TeacherRepository extends CrudRepository<TeacherJdbcEntity, UUID> {
 }

@@ -5,15 +5,14 @@ import org.springframework.stereotype.Component;
 import edu.ai.lms.core.auth.app.domain.Roles;
 import edu.ai.lms.core.auth.app.domain.Student;
 import edu.ai.lms.core.auth.app.domain.Teacher;
-import edu.ai.lms.database.StudentJpaEntity;
-import edu.ai.lms.database.TeacherJpaEntity;
-import edu.ai.lms.database.UserJpaEntity;
+import edu.ai.lms.database.StudentJdbcEntity;
+import edu.ai.lms.database.TeacherJdbcEntity;
 
 @Component
-class UserJpaMapper {
+class UserJdbcMapper {
 
-    public StudentJpaEntity mapToStudentJpaEntity(Student student) {
-        return StudentJpaEntity.builder()
+    public StudentJdbcEntity mapToStudentJdbcEntity(Student student) {
+        return StudentJdbcEntity.builder()
                 .id(student.getId())
                 .email(student.getEmail())
                 .password(student.getPassword())
@@ -21,11 +20,11 @@ class UserJpaMapper {
                 .lastName(student.getLastName())
                 .avatarUrl(student.getAvatarUrl())
                 .enrollmentYear(student.getEnrollmentYear())
-                .role(mapToJpaRole(student.getRole()))
+                .role(mapToJdbcRole(student.getRole()))
                 .build();
     }
 
-    public Student mapToStudent(StudentJpaEntity entity) {
+    public Student mapToStudent(StudentJdbcEntity entity) {
         return Student.builder()
                 .id(entity.getId())
                 .email(entity.getEmail())
@@ -38,30 +37,8 @@ class UserJpaMapper {
                 .build();
     }
 
-    private UserJpaEntity.Roles mapToJpaRole(Roles role) {
-        if (role == null) {
-            return UserJpaEntity.Roles.STUDENT;
-        }
-        return switch (role) {
-            case ADMIN -> UserJpaEntity.Roles.ADMIN;
-            case TEACHER -> UserJpaEntity.Roles.TEACHER;
-            case STUDENT -> UserJpaEntity.Roles.STUDENT;
-        };
-    }
-
-    private Roles mapToDomainRole(UserJpaEntity.Roles role) {
-        if (role == null) {
-            return Roles.STUDENT;
-        }
-        return switch (role) {
-            case ADMIN -> Roles.ADMIN;
-            case TEACHER -> Roles.TEACHER;
-            case STUDENT -> Roles.STUDENT;
-        };
-    }
-
-    public TeacherJpaEntity mapToTeacherJpaEntity(Teacher teacher) {
-        return TeacherJpaEntity.builder()
+    public TeacherJdbcEntity mapToTeacherJdbcEntity(Teacher teacher) {
+        return TeacherJdbcEntity.builder()
                 .id(teacher.getId())
                 .email(teacher.getEmail())
                 .password(teacher.getPassword())
@@ -72,11 +49,11 @@ class UserJpaMapper {
                 .phoneNumber(teacher.getPhoneNumber())
                 .department(teacher.getDepartment())
                 .specialization(teacher.getSpecialization())
-                .role(mapToJpaRole(teacher.getRole()))
+                .role(mapToTeacherJdbcRole(teacher.getRole()))
                 .build();
     }
 
-    public Teacher mapToTeacher(TeacherJpaEntity entity) {
+    public Teacher mapToTeacher(TeacherJdbcEntity entity) {
         return Teacher.builder()
                 .id(entity.getId())
                 .email(entity.getEmail())
@@ -90,5 +67,49 @@ class UserJpaMapper {
                 .specialization(entity.getSpecialization())
                 .role(mapToDomainRole(entity.getRole()))
                 .build();
+    }
+
+    private StudentJdbcEntity.Roles mapToJdbcRole(Roles role) {
+        if (role == null) {
+            return StudentJdbcEntity.Roles.STUDENT;
+        }
+        return switch (role) {
+            case ADMIN -> StudentJdbcEntity.Roles.ADMIN;
+            case TEACHER -> StudentJdbcEntity.Roles.TEACHER;
+            case STUDENT -> StudentJdbcEntity.Roles.STUDENT;
+        };
+    }
+
+    private TeacherJdbcEntity.Roles mapToTeacherJdbcRole(Roles role) {
+        if (role == null) {
+            return TeacherJdbcEntity.Roles.TEACHER;
+        }
+        return switch (role) {
+            case ADMIN -> TeacherJdbcEntity.Roles.ADMIN;
+            case TEACHER -> TeacherJdbcEntity.Roles.TEACHER;
+            case STUDENT -> TeacherJdbcEntity.Roles.STUDENT;
+        };
+    }
+
+    private Roles mapToDomainRole(StudentJdbcEntity.Roles role) {
+        if (role == null) {
+            return Roles.STUDENT;
+        }
+        return switch (role) {
+            case ADMIN -> Roles.ADMIN;
+            case TEACHER -> Roles.TEACHER;
+            case STUDENT -> Roles.STUDENT;
+        };
+    }
+
+    private Roles mapToDomainRole(TeacherJdbcEntity.Roles role) {
+        if (role == null) {
+            return Roles.STUDENT;
+        }
+        return switch (role) {
+            case ADMIN -> Roles.ADMIN;
+            case TEACHER -> Roles.TEACHER;
+            case STUDENT -> Roles.STUDENT;
+        };
     }
 }

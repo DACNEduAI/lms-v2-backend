@@ -14,11 +14,11 @@ import lombok.RequiredArgsConstructor;
 class TeacherPersistenceAdapter implements LoadTeacherPort {
 
     private final TeacherRepository teacherRepository;
-    private final TeacherJpaMapper teacherJpaMapper;
+    private final TeacherJdbcMapper teacherJdbcMapper;
 
     @Override
     public Optional<Teacher> findById(UUID teacherId) {
         return teacherRepository.findById(teacherId)
-                .map(teacherJpaMapper::mapToTeacher);
+                .map(teacherJdbcMapper::mapToTeacher);
     }
 }
