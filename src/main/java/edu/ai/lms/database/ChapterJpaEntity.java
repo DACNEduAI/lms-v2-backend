@@ -32,9 +32,11 @@ public class ChapterJpaEntity {
     private CourseJpaEntity course;
 
     @ManyToMany(mappedBy = "chapters")
+    @Builder.Default
     private List<QuizJpaEntity> quizzes = new ArrayList<>();
 
     @OneToMany(mappedBy = "chapter", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<MaterialJpaEntity> materials = new ArrayList<>();
 
     @CreationTimestamp

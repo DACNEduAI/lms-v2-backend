@@ -18,7 +18,7 @@ import java.util.UUID;
 @Builder
 public class MaterialJpaEntity {
 
-    enum MaterialType {
+    public enum MaterialType {
         PDF,
         VIDEO,
         LINK

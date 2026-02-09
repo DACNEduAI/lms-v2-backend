@@ -31,12 +31,15 @@ public class LearningOutcomeJpaEntity {
     private CourseJpaEntity course;
 
     @ManyToMany(mappedBy = "learningOutcomes")
+    @Builder.Default
     private List<QuizJpaEntity> quizzes = new ArrayList<>();
 
     @ManyToMany(mappedBy = "learningOutcomes")
+    @Builder.Default
     private List<QuestionJpaEntity> questions = new ArrayList<>();
 
     @ManyToMany(mappedBy = "masteredLearningOutcomes")
+    @Builder.Default
     private List<StudentJpaEntity> students = new ArrayList<>();
 
     @CreationTimestamp

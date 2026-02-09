@@ -2,6 +2,7 @@ package edu.ai.lms.database;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -29,7 +30,7 @@ public class CourseJpaEntity {
     @Column(length = 1000)
     private String description;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String courseCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -54,6 +55,12 @@ public class CourseJpaEntity {
     @Builder.Default
     @JsonIgnore
     private List<LearningOutcomeJpaEntity> learningOutcomes = new ArrayList<>();
+
+    @Column(nullable = false)
+    private LocalDateTime startDate;
+
+    @Column(nullable = false)
+    private LocalDateTime endDate;
 
     // Existing timestamps
     @Column(nullable = false, updatable = false)
