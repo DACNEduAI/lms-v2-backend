@@ -2,7 +2,7 @@ package edu.ai.lms.core.auth.adapter.out.persistence;
 
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.auth.app.domain.Roles;
+import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.Student;
 import edu.ai.lms.core.auth.app.domain.Teacher;
 import edu.ai.lms.database.StudentJdbcEntity;

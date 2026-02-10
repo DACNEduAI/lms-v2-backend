@@ -25,8 +25,8 @@ public class CreateCourseRequest {
     @NotBlank(message = "Course code cannot be blank")
     private String courseCode;
 
-    @NotBlank(message = "Teacher ID cannot be blank")
-    private UUID teacherId;
+//    @NotBlank(message = "Teacher ID cannot be blank")
+//    private UUID teacherId;
 
     @Builder.Default
     private Boolean active = true;
@@ -39,8 +39,9 @@ public class CreateCourseRequest {
     @NotBlank(message = "End date cannot be blank")
     private LocalDateTime endDate;
 
-    @Builder.Default
-    private List<Chapter> chapters = new ArrayList<>();
+    // Create course doesn't need to create chapter
+//    @Builder.Default
+//    private List<CreateChapterRequest> chapters = new ArrayList<>();
 
     @Builder.Default
     private List<CreateLearningOutcomeRequest> learningOutcomes = new ArrayList<>();

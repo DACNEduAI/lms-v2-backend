@@ -23,7 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.core.auth.adapter.in.request.StudentRegisterRequest;
 import edu.ai.lms.core.auth.adapter.in.response.StudentRegisterResponse;
-import edu.ai.lms.core.auth.app.domain.Roles;
+import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.Student;
 import edu.ai.lms.core.auth.app.port.out.LoadStudentPort;
 import edu.ai.lms.core.auth.app.port.out.SaveStudentPort;

@@ -2,6 +2,7 @@ package edu.ai.lms.core.auth.adapter.in;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,6 +37,7 @@ public class StudentAuthController {
             @ApiResponse(responseCode = "201", description = "Student registered successfully",
                     content = @Content(schema = @Schema(implementation = StudentRegisterResponse.class))),
     })
+
     @PostMapping("/register")
     public ResponseEntity<StudentRegisterResponse> registerStudent(@Valid @RequestBody StudentRegisterRequest request) {
         StudentRegisterResponse response = studentRegisterUseCase.studentRegister(request);

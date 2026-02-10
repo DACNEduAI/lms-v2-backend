@@ -21,7 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.core.auth.adapter.in.request.StudentSignInRequest;
 import edu.ai.lms.core.auth.adapter.in.response.StudentSignInResponse;
-import edu.ai.lms.core.auth.app.domain.Roles;
+import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.Student;
 import edu.ai.lms.core.auth.app.port.out.AuthenticationPort;
 import edu.ai.lms.core.auth.app.port.out.TokenGenerationPort;

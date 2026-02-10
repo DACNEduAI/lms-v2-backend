@@ -17,7 +17,7 @@ import io.restassured.RestAssured;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-public abstract class BaseIntegrationTest {
+public abstract class IntegrationTestConfiguration {
 
     @LocalServerPort
     protected Integer port;
@@ -29,8 +29,7 @@ public abstract class BaseIntegrationTest {
         postgres = new PostgreSQLContainer<>("postgres:18-alpine")
                 .withDatabaseName("testdb")
                 .withUsername("testuser")
-                .withPassword("testpass")
-                .withReuse(true);
+                .withPassword("testpass");
         postgres.start();
     }
 

@@ -1,4 +1,4 @@
-package edu.ai.lms.core.auth.app.domain;
+package edu.ai.lms.common;
 
 public enum Roles {
     ADMIN,

@@ -5,7 +5,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.core.auth.adapter.in.request.TeacherRegisterRequest;
 import edu.ai.lms.core.auth.adapter.in.response.TeacherRegisterResponse;
-import edu.ai.lms.core.auth.app.domain.Roles;
 import edu.ai.lms.core.auth.app.domain.Teacher;
 import edu.ai.lms.core.auth.app.port.in.usecase.TeacherRegisterUseCase;
 import edu.ai.lms.core.auth.app.port.out.LoadTeacherPort;
@@ -39,7 +38,6 @@ public class TeacherRegisterService implements TeacherRegisterUseCase {
                 .phoneNumber(request.getPhoneNumber())
                 .department(request.getDepartment())
                 .specialization(request.getSpecialization())
-                .role(Roles.TEACHER)
                 .build();
 
         // Save the teacher

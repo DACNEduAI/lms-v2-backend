@@ -7,9 +7,10 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.Chapter;
+import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
+import edu.ai.lms.core.course.app.port.out.DeleteCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
 import edu.ai.lms.database.ChapterJdbcEntity;
@@ -20,7 +21,7 @@ import edu.ai.lms.database.TeacherJdbcEntity;
 import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
-class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort {
+class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, DeleteCoursePort {
 
     private final CourseRepository courseRepository;
     private final TeacherRepository teacherRepository;
@@ -83,6 +84,26 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort {
     public Optional<Course> findByCourseCode(String courseCode) {
         return courseRepository.findByCourseCode(courseCode)
                 .map(this::loadFullCourse);
+    }
+
+    @Override
+    public void deleteById(UUID courseId) {
+        // Delete related entities first due to foreign key constraints
+        List<ChapterJdbcEntity> chapters = chapterRepository.findByCourseId(courseId);
+        
+        // Delete materials for each chapter
+        for (ChapterJdbcEntity chapter : chapters) {
+            materialRepository.deleteByChapterId(chapter.getId());
+        }
+        
+        // Delete chapters
+        chapterRepository.deleteByCourseId(courseId);
+        
+        // Delete learning outcomes
+        learningOutcomeRepository.deleteByCourseId(courseId);
+        
+        // Finally delete the course
+        courseRepository.deleteById(courseId);
     }
 
     /**
