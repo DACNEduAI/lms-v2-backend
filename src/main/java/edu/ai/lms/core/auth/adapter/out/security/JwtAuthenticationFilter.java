@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import edu.ai.lms.core.auth.app.port.out.LoadStudentPort;
+import edu.ai.lms.core.auth.app.port.out.LoadTeacherPort;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +25,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final LoadStudentPort loadStudentPort;
+    private final LoadTeacherPort loadTeacherPort;
 
     @Override
     protected void doFilterInternal(
@@ -34,6 +36,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String userEmail;
+        final String userRole;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -42,9 +45,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         jwt = authHeader.substring(7);
         userEmail = jwtUtil.extractEmail(jwt);
+        userRole = jwtUtil.extractRole(jwt);
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = loadUserByEmail(userEmail);
+            UserDetails userDetails = loadUserByEmailAndRole(userEmail, userRole);
 
             if (jwtUtil.validateToken(jwt, userDetails)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -60,16 +64,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Loads a user by email from the database using LoadStudentPort.
-     * The Student domain implements UserDetails, so it can be used directly.
+     * Loads a user by email based on the role specified in the JWT token.
+     * This ensures that students and teachers are loaded from their respective tables,
+     * preventing cross-authentication between user types.
      *
      * @param email the user's email
-     * @return UserDetails (Student) for Spring Security authentication
+     * @param role the user's role from JWT ("STUDENT" or "TEACHER")
+     * @return UserDetails for Spring Security authentication
      * @throws UsernameNotFoundException if the user is not found
      */
-    private UserDetails loadUserByEmail(String email) {
-        return loadStudentPort.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+    private UserDetails loadUserByEmailAndRole(String email, String role) {
+        if ("TEACHER".equals(role)) {
+            return loadTeacherPort.findByEmail(email)
+                    .orElseThrow(() -> new UsernameNotFoundException("Teacher not found with email: " + email));
+        } else {
+            return loadStudentPort.findByEmail(email)
+                    .orElseThrow(() -> new UsernameNotFoundException("Student not found with email: " + email));
+        }
     }
 }
 

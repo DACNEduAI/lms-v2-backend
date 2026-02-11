@@ -22,7 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.core.auth.adapter.in.request.TeacherRegisterRequest;
 import edu.ai.lms.core.auth.adapter.in.response.TeacherRegisterResponse;
-import edu.ai.lms.core.auth.app.domain.Roles;
+import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.Teacher;
 import edu.ai.lms.core.auth.app.port.out.LoadTeacherPort;
 import edu.ai.lms.core.auth.app.port.out.SaveTeacherPort;

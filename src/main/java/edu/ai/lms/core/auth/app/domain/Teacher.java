@@ -1,6 +1,9 @@
 package edu.ai.lms.core.auth.app.domain;
 
+import edu.ai.lms.common.Roles;
+import edu.ai.lms.common.User;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -13,11 +16,9 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class Teacher implements UserDetails {
+@SuperBuilder
+public class Teacher extends User {
     private UUID id;
-    private String email;
-    private String password;
     private String firstName;
     private String lastName;
     private String avatarUrl;
@@ -25,27 +26,8 @@ public class Teacher implements UserDetails {
     private String phoneNumber;
     private String department;
     private String specialization;
-    private Roles role;
 
-    /**
-     * Converts the current role enum to a String.
-     */
-    public String getRoleAsString() {
-        return this.role != null ? this.role.name() : null;
-    }
-
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + getRoleAsString()));
-    }
-
-    @Override
-    public String getUsername() {
-        return this.email;
-    }
-
-    @Override
-    public String getPassword() {
-        return this.password;
+    {
+        this.setRole(Roles.TEACHER);
     }
 }

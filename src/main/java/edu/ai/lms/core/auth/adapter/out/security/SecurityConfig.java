@@ -80,12 +80,6 @@ public class SecurityConfig {
                         ).permitAll()
                         // Actuator endpoints
                         .requestMatchers("/actuator/**").permitAll()
-                        // Role-based access control
-                        .requestMatchers("/api/students/**").hasAnyRole("STUDENT", "TEACHER")
-                        .requestMatchers("/api/teachers/**").hasRole("TEACHER")
-                        .requestMatchers("/api/courses/**").hasRole("TEACHER")
-                        .requestMatchers("/api/quiz-collections/**").hasRole("TEACHER")
-                        .requestMatchers("/api/quizzes/**").hasRole("TEACHER")
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )

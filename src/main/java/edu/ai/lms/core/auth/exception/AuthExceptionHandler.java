@@ -3,6 +3,7 @@ package edu.ai.lms.core.auth.exception;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import edu.ai.lms.common.ErrorResponse;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -83,19 +84,5 @@ public class AuthExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
-    }
-
-    /**
-     * Error response structure for consistent API error responses.
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ErrorResponse {
-        private int status;
-        private String error;
-        private String message;
-        private List<String> details;
     }
 }

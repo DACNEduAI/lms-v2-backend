@@ -12,13 +12,13 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
-import edu.ai.lms.config.BaseIntegrationTest;
+import edu.ai.lms.config.IntegrationTestConfiguration;
 import static io.restassured.RestAssured.given;
 import io.restassured.http.ContentType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Student Auth Controller Integration Tests")
-class StudentAuthControllerIT extends BaseIntegrationTest {
+class StudentAuthControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(1)

@@ -2,33 +2,31 @@ package edu.ai.lms.core.auth.adapter.out.persistence;
 
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import edu.ai.lms.core.auth.app.domain.Student;
 import edu.ai.lms.core.auth.app.port.out.LoadStudentPort;
 import edu.ai.lms.core.auth.app.port.out.SaveStudentPort;
-import edu.ai.lms.core.auth.app.domain.Student;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 
 @Component
-@AllArgsConstructor
+@RequiredArgsConstructor
 class StudentPersistenceAdapter implements
         SaveStudentPort,
         LoadStudentPort
 {
-    @Autowired
-    private final UserRepository userRepository;
-    private final UserJpaMapper userJpaMapper;
+    private final StudentRepository studentRepository;
+    private final UserJdbcMapper userJdbcMapper;
 
     @Override
     public boolean save(Student student) {
-        userRepository.save(userJpaMapper.mapToStudentJpaEntity(student));
+        studentRepository.save(userJdbcMapper.mapToStudentJdbcEntity(student));
         return true;
     }
 
     @Override
     public Optional<Student> findByEmail(String email) {
-        return userRepository.findStudentByEmail(email)
-                .map(userJpaMapper::mapToStudent);
+        return studentRepository.findByEmail(email)
+                .map(userJdbcMapper::mapToStudent);
     }
 }

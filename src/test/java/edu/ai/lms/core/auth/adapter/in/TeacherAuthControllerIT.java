@@ -12,13 +12,13 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
-import edu.ai.lms.config.BaseIntegrationTest;
+import edu.ai.lms.config.IntegrationTestConfiguration;
 import static io.restassured.RestAssured.given;
 import io.restassured.http.ContentType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Teacher Auth Controller Integration Tests")
-class TeacherAuthControllerIT extends BaseIntegrationTest {
+class TeacherAuthControllerIT extends IntegrationTestConfiguration {
 
     // The HTTP response code in all of these tests are not entirely correct
     // will clean this soon, it's not a big problem now.
@@ -45,6 +45,7 @@ class TeacherAuthControllerIT extends BaseIntegrationTest {
         .when()
                 .post("/api/auth/teacher/register")
         .then()
+                .log().all()
                 .statusCode(201)
                 .body("token", notNullValue())
                 .body("token", not(emptyString()))
