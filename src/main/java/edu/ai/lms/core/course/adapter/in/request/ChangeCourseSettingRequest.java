@@ -1,10 +1,9 @@
 package edu.ai.lms.core.course.adapter.in.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Getter
@@ -24,7 +23,7 @@ public class ChangeCourseSettingRequest {
 
     private String coverImage;
 
-    private LocalDateTime startDate;
+    private LocalDate startDate;
 
-    private LocalDateTime endDate;
+    private LocalDate endDate;
 }

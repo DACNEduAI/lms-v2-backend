@@ -87,6 +87,13 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     }
 
     @Override
+    public List<Course> findAllByTeacherId(UUID teacherId) {
+        return courseRepository.findAllByTeacherId(teacherId).stream()
+                .map(this::loadFullCourse)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
     public void deleteById(UUID courseId) {
         // Delete related entities first due to foreign key constraints
         List<ChapterJdbcEntity> chapters = chapterRepository.findByCourseId(courseId);

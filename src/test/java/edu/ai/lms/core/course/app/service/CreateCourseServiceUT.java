@@ -19,7 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -73,8 +73,8 @@ class CreateCourseServiceUT {
                 .courseCode("CS101")
                 .active(true)
                 .coverImage("https://example.com/image.jpg")
-                .startDate(LocalDateTime.now())
-                .endDate(LocalDateTime.now().plusMonths(3))
+                .startDate(LocalDate.now())
+                .endDate(LocalDate.now().plusMonths(3))
                 .learningOutcomes(learningOutcomes)
                 .build();
     }
@@ -210,8 +210,8 @@ class CreateCourseServiceUT {
     @DisplayName("Should return correct response with all fields populated")
     void testCreateCourse_ShouldReturnCorrectResponse() {
         // Arrange
-        LocalDateTime startDate = LocalDateTime.now();
-        LocalDateTime endDate = LocalDateTime.now().plusMonths(3);
+        LocalDate startDate = LocalDate.now();
+        LocalDate endDate = LocalDate.now().plusMonths(3);
         validRequest.setStartDate(startDate);
         validRequest.setEndDate(endDate);
         

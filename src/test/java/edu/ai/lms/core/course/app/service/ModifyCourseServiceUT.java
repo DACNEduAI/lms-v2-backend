@@ -1,6 +1,6 @@
 package edu.ai.lms.core.course.app.service;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -89,8 +89,8 @@ class ModifyCourseServiceUT {
                 .courseCode("CS101")
                 .active(true)
                 .coverImage("https://example.com/new-image.jpg")
-                .startDate(LocalDateTime.now())
-                .endDate(LocalDateTime.now().plusMonths(3))
+                .startDate(LocalDate.now())
+                .endDate(LocalDate.now().plusMonths(3))
                 .learningOutcomes(learningOutcomes)
                 .build();
     }

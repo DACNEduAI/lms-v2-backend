@@ -2,7 +2,7 @@ package edu.ai.lms.core.course.adapter.in.response;
 
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Getter
@@ -17,6 +17,6 @@ public class ChangeCourseSettingResponse {
     private String description;
     private Boolean active;
     private String coverImage;
-    private LocalDateTime startDate;
-    private LocalDateTime endDate;
+    private LocalDate startDate;
+    private LocalDate endDate;
 }

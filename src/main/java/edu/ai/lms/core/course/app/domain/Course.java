@@ -3,7 +3,7 @@ package edu.ai.lms.core.course.app.domain;
 import jakarta.validation.constraints.AssertTrue;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -25,9 +25,9 @@ public class Course {
 
     private Teacher teacher;
 
-    private LocalDateTime startDate;
+    private LocalDate startDate;
 
-    private LocalDateTime endDate;
+    private LocalDate endDate;
 
     @AssertTrue(message = "End date must be after start date")
     private boolean isValidDateRange() {

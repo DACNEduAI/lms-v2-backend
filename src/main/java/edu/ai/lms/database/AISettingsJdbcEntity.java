@@ -33,7 +33,7 @@ public class AISettingsJdbcEntity {
     private String settingType;
 
     // Student-specific fields
-    private Boolean alignToCLO;
+    private Boolean alignToClo;
     private Boolean includeAnswerKey;
     private String mode;
 

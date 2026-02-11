@@ -104,7 +104,7 @@ class UserJdbcMapper {
 
     private Roles mapToDomainRole(TeacherJdbcEntity.Roles role) {
         if (role == null) {
-            return Roles.STUDENT;
+            return Roles.TEACHER;
         }
         return switch (role) {
             case ADMIN -> Roles.ADMIN;

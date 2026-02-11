@@ -1,5 +1,6 @@
 package edu.ai.lms.core.course.app.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -69,8 +70,8 @@ class ChangeCourseSettingServiceUT {
                 .teacher(mockTeacher)
                 .active(true)
                 .coverImage("https://example.com/old-image.jpg")
-                .startDate(LocalDateTime.now())
-                .endDate(LocalDateTime.now().plusMonths(3))
+                .startDate(LocalDate.now())
+                .endDate(LocalDate.now().plusMonths(3))
                 .build();
 
         validRequest = ChangeCourseSettingRequest.builder()
@@ -79,8 +80,8 @@ class ChangeCourseSettingServiceUT {
                 .description("Updated description")
                 .active(false)
                 .coverImage("https://example.com/new-image.jpg")
-                .startDate(LocalDateTime.now().plusDays(1))
-                .endDate(LocalDateTime.now().plusMonths(6))
+                .startDate(LocalDate.now().plusDays(1))
+                .endDate(LocalDate.now().plusMonths(6))
                 .build();
     }
 
@@ -227,8 +228,8 @@ class ChangeCourseSettingServiceUT {
     @DisplayName("Should update dates when provided")
     void testChangeCourseSetting_ShouldUpdateDates() {
         // Arrange
-        LocalDateTime newStartDate = LocalDateTime.now().plusDays(1);
-        LocalDateTime newEndDate = LocalDateTime.now().plusMonths(6);
+        LocalDate newStartDate = LocalDate.now().plusDays(1);
+        LocalDate newEndDate = LocalDate.now().plusMonths(6);
         validRequest.setStartDate(newStartDate);
         validRequest.setEndDate(newEndDate);
         

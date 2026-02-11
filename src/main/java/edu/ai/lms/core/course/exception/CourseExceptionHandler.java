@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -20,7 +21,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
  * Handles validation errors and custom course exceptions.
  */
 @RestControllerAdvice(basePackages = "edu.ai.lms.core.course.adapter.in")
-public class AuthExceptionHandler {
+public class CourseExceptionHandler {
 
     /**
      * Handles validation errors from @Valid annotations.
@@ -96,5 +97,39 @@ public class AuthExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Handles HttpMessageNotReadableException.
+     * This occurs when the request body is malformed or cannot be read.
+     */
+    @ApiResponse(responseCode = "400", description = "Malformed JSON request",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Malformed Request")
+                .message("Request body is malformed or cannot be read. Please check your JSON format.")
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    /**
+     * Handles IllegalArgumentException.
+     * This occurs when a teacher tries to access/modify/delete a course they don't own.
+     */
+    @ApiResponse(responseCode = "403", description = "Not authorized",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.FORBIDDEN.value())
+                .error("Access Denied")
+                .message(ex.getMessage())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
     }
 }
