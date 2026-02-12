@@ -11,6 +11,18 @@ import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
+
+// public, private, protected
+    // package
+
+    // thu muc 1
+    // persistence code
+    // repository code
+    // spring modulith
+    // mapper
+    // -- thu muc 2 (persistence) persistence khong xai duoc repository
+    // -- thu muc 2 (repository)
+
 class StudentPersistenceAdapter implements
         SaveStudentPort,
         LoadStudentPort

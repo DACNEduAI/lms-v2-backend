@@ -4,6 +4,6 @@ import java.util.UUID;
 
 import edu.ai.lms.core.course.adapter.in.response.DeleteCourseResponse;
 
-public interface TeacherDeleteCourse {
+public interface TeacherDeleteCourseUseCase {
     DeleteCourseResponse deleteCourse(UUID courseId);
 }

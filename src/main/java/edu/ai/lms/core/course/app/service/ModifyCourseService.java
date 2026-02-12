@@ -12,7 +12,7 @@ import edu.ai.lms.core.course.adapter.in.response.ModifyCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.domain.Teacher;
-import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifyCourse;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifyCourseUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class ModifyCourseService implements TeacherModifyCourse {
+public class ModifyCourseService implements TeacherModifyCourseUseCase {
 
     private final SaveCoursePort saveCoursePort;
     private final LoadCoursePort loadCoursePort;
