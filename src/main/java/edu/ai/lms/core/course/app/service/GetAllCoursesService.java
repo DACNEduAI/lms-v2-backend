@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import edu.ai.lms.core.course.adapter.in.response.GetAllCoursesResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.Teacher;
-import edu.ai.lms.core.course.app.port.in.usecase.TeacherGetAllCourses;
+import edu.ai.lms.core.course.app.port.in.usecase.GetAllCoursesUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
 import edu.ai.lms.core.course.exception.TeacherNotFoundException;
@@ -18,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class GetAllCoursesService implements TeacherGetAllCourses {
+public class GetAllCoursesService implements GetAllCoursesUseCase {
 
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInTeacherPort loadSignedInTeacherPort;

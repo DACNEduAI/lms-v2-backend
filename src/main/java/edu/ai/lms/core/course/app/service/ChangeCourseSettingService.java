@@ -6,7 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import edu.ai.lms.core.course.adapter.in.request.ChangeCourseSettingRequest;
 import edu.ai.lms.core.course.adapter.in.response.ChangeCourseSettingResponse;
 import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.port.in.usecase.TeacherChangeCourseSetting;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherChangeCourseSettingUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
 import edu.ai.lms.core.course.exception.CourseNotFoundException;
@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class ChangeCourseSettingService implements TeacherChangeCourseSetting {
+public class ChangeCourseSettingService implements TeacherChangeCourseSettingUseCase {
 
     private final SaveCoursePort saveCoursePort;
     private final LoadCoursePort loadCoursePort;

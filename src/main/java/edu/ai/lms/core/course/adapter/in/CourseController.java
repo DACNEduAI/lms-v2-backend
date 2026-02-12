@@ -23,11 +23,11 @@ import edu.ai.lms.core.course.adapter.in.response.DeleteCourseResponse;
 import edu.ai.lms.core.course.adapter.in.response.GetAllCoursesResponse;
 import edu.ai.lms.core.course.adapter.in.response.GetCourseResponse;
 import edu.ai.lms.core.course.adapter.in.response.ModifyCourseResponse;
-import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateCourse;
-import edu.ai.lms.core.course.app.port.in.usecase.TeacherDeleteCourse;
-import edu.ai.lms.core.course.app.port.in.usecase.TeacherGetAllCourses;
-import edu.ai.lms.core.course.app.port.in.usecase.TeacherGetCourse;
-import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifyCourse;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateCourseUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherDeleteCourseUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.GetAllCoursesUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.GetCourseUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifyCourseUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -43,11 +43,11 @@ import lombok.RequiredArgsConstructor;
 public class CourseController {
 
     @Autowired
-    private final TeacherCreateCourse teacherCreateCourse;
-    private final TeacherModifyCourse teacherModifyCourse;
-    private final TeacherDeleteCourse teacherDeleteCourse;
-    private final TeacherGetCourse teacherGetCourse;
-    private final TeacherGetAllCourses teacherGetAllCourses;
+    private final TeacherCreateCourseUseCase teacherCreateCourseUseCase;
+    private final TeacherModifyCourseUseCase teacherModifyCourseUseCase;
+    private final TeacherDeleteCourseUseCase teacherDeleteCourseUseCase;
+    private final GetCourseUseCase getCourseUseCase;
+    private final GetAllCoursesUseCase getAllCoursesUseCase;
 
     @Operation(summary = "Get a specific course", description = "Get a course by its ID. The course must belong to the authenticated teacher.")
     @ApiResponses(value = {
@@ -59,7 +59,7 @@ public class CourseController {
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
     @GetMapping("/{courseId}")
     public ResponseEntity<GetCourseResponse> getCourse(@PathVariable UUID courseId) {
-        GetCourseResponse response = teacherGetCourse.getCourse(courseId);
+        GetCourseResponse response = getCourseUseCase.getCourse(courseId);
         return ResponseEntity.ok(response);
     }
 
@@ -75,7 +75,7 @@ public class CourseController {
             @RequestParam(defaultValue = "5") int pageSize,
             @Parameter(description = "Sort direction by course name (asc or desc)", example = "asc")
             @RequestParam(defaultValue = "asc") String sortDirection) {
-        GetAllCoursesResponse response = teacherGetAllCourses.getAllCourses(pageSize, sortDirection);
+        GetAllCoursesResponse response = getAllCoursesUseCase.getAllCourses(pageSize, sortDirection);
         return ResponseEntity.ok(response);
     }
 
@@ -88,7 +88,7 @@ public class CourseController {
     @PreAuthorize("hasRole('TEACHER')")
     @PostMapping()
     public ResponseEntity<CreateCourseResponse> registerCourse(@Valid @RequestBody CreateCourseRequest request) {
-        CreateCourseResponse response = teacherCreateCourse.createCourse(request);
+        CreateCourseResponse response = teacherCreateCourseUseCase.createCourse(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -103,7 +103,7 @@ public class CourseController {
     @PreAuthorize("hasRole('TEACHER')")
     @PutMapping()
     public ResponseEntity<ModifyCourseResponse> modifyCourse(@Valid @RequestBody ModifyCourseRequest request) {
-        ModifyCourseResponse response = teacherModifyCourse.modifyCourse(request);
+        ModifyCourseResponse response = teacherModifyCourseUseCase.modifyCourse(request);
         return ResponseEntity.ok(response);
     }
 
@@ -118,7 +118,7 @@ public class CourseController {
     @PreAuthorize("hasRole('TEACHER')")
     @DeleteMapping("/{courseId}")
     public ResponseEntity<DeleteCourseResponse> deleteCourse(@PathVariable UUID courseId) {
-        DeleteCourseResponse response = teacherDeleteCourse.deleteCourse(courseId);
+        DeleteCourseResponse response = teacherDeleteCourseUseCase.deleteCourse(courseId);
         return ResponseEntity.ok(response);
     }
 

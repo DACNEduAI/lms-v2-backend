@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import edu.ai.lms.core.course.adapter.in.response.DeleteCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.Teacher;
-import edu.ai.lms.core.course.app.port.in.usecase.TeacherDeleteCourse;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherDeleteCourseUseCase;
 import edu.ai.lms.core.course.app.port.out.DeleteCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
@@ -18,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class DeleteCourseService implements TeacherDeleteCourse {
+public class DeleteCourseService implements TeacherDeleteCourseUseCase {
 
     private final DeleteCoursePort deleteCoursePort;
     private final LoadCoursePort loadCoursePort;

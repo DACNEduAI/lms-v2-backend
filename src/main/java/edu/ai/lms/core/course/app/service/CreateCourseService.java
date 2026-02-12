@@ -13,7 +13,7 @@ import edu.ai.lms.core.course.adapter.in.response.CreateCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.domain.Teacher;
-import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateCourse;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateCourseUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class CreateCourseService implements TeacherCreateCourse {
+public class CreateCourseService implements TeacherCreateCourseUseCase {
 
     @Autowired
     private final SaveCoursePort saveCoursePort;
