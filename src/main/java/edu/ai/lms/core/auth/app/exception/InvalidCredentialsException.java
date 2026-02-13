@@ -1,4 +1,4 @@
-package edu.ai.lms.core.auth.exception;
+package edu.ai.lms.core.auth.app.exception;
 
 /**
  * Exception thrown when authentication fails due to invalid credentials.

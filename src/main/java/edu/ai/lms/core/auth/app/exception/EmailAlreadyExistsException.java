@@ -1,4 +1,4 @@
-package edu.ai.lms.core.auth.exception;
+package edu.ai.lms.core.auth.app.exception;
 
 /**
  * Exception thrown when attempting to register with an email that already exists.

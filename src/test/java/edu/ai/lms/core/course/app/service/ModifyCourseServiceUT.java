@@ -31,8 +31,8 @@ import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
-import edu.ai.lms.core.course.exception.CourseNotFoundException;
-import edu.ai.lms.core.course.exception.TeacherNotFoundException;
+import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
+import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class ModifyCourseServiceUT {

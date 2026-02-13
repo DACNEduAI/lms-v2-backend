@@ -8,7 +8,7 @@ import edu.ai.lms.core.auth.app.domain.Teacher;
 import edu.ai.lms.core.auth.app.port.out.AuthenticationPort;
 import edu.ai.lms.core.auth.app.port.out.LoadStudentPort;
 import edu.ai.lms.core.auth.app.port.out.LoadTeacherPort;
-import edu.ai.lms.core.auth.exception.InvalidCredentialsException;
+import edu.ai.lms.core.auth.app.exception.InvalidCredentialsException;
 import lombok.RequiredArgsConstructor;
 
 /**

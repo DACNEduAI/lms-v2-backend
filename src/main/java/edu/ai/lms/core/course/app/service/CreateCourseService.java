@@ -3,7 +3,7 @@ package edu.ai.lms.core.course.app.service;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import edu.ai.lms.core.course.exception.TeacherNotFoundException;
+import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +17,7 @@ import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateCourseUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
-import edu.ai.lms.core.course.exception.CourseCodeAlreadyExistsException;
+import edu.ai.lms.core.course.app.exception.CourseCodeAlreadyExistsException;
 import lombok.RequiredArgsConstructor;
 
 @Service

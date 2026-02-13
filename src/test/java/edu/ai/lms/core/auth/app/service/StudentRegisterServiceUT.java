@@ -28,7 +28,7 @@ import edu.ai.lms.core.auth.app.domain.Student;
 import edu.ai.lms.core.auth.app.port.out.LoadStudentPort;
 import edu.ai.lms.core.auth.app.port.out.SaveStudentPort;
 import edu.ai.lms.core.auth.app.port.out.TokenGenerationPort;
-import edu.ai.lms.core.auth.exception.EmailAlreadyExistsException;
+import edu.ai.lms.core.auth.app.exception.EmailAlreadyExistsException;
 
 @ExtendWith(MockitoExtension.class)
 class StudentRegisterServiceUT {

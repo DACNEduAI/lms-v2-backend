@@ -9,7 +9,7 @@ import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherChangeCourseSettingUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
-import edu.ai.lms.core.course.exception.CourseNotFoundException;
+import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Service

@@ -2,7 +2,7 @@ package edu.ai.lms.core.auth.app.port.out;
 
 import edu.ai.lms.core.auth.app.domain.Student;
 import edu.ai.lms.core.auth.app.domain.Teacher;
-import edu.ai.lms.core.auth.exception.InvalidCredentialsException;
+import edu.ai.lms.core.auth.app.exception.InvalidCredentialsException;
 
 /**
  * Port for authenticating users.

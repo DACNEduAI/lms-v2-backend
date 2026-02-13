@@ -25,7 +25,7 @@ import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.Teacher;
 import edu.ai.lms.core.auth.app.port.out.AuthenticationPort;
 import edu.ai.lms.core.auth.app.port.out.TokenGenerationPort;
-import edu.ai.lms.core.auth.exception.InvalidCredentialsException;
+import edu.ai.lms.core.auth.app.exception.InvalidCredentialsException;
 
 @ExtendWith(MockitoExtension.class)
 class TeacherSignInServiceUT {

@@ -1,7 +1,6 @@
 package edu.ai.lms.core.course.app.service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,7 +29,7 @@ import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
-import edu.ai.lms.core.course.exception.CourseNotFoundException;
+import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class ChangeCourseSettingServiceUT {

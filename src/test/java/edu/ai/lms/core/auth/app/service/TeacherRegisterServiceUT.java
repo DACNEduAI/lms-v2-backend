@@ -27,7 +27,7 @@ import edu.ai.lms.core.auth.app.domain.Teacher;
 import edu.ai.lms.core.auth.app.port.out.LoadTeacherPort;
 import edu.ai.lms.core.auth.app.port.out.SaveTeacherPort;
 import edu.ai.lms.core.auth.app.port.out.TokenGenerationPort;
-import edu.ai.lms.core.auth.exception.EmailAlreadyExistsException;
+import edu.ai.lms.core.auth.app.exception.EmailAlreadyExistsException;
 
 @ExtendWith(MockitoExtension.class)
 class TeacherRegisterServiceUT {

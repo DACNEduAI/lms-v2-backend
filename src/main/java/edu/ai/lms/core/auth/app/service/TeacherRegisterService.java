@@ -10,7 +10,7 @@ import edu.ai.lms.core.auth.app.port.in.usecase.TeacherRegisterUseCase;
 import edu.ai.lms.core.auth.app.port.out.LoadTeacherPort;
 import edu.ai.lms.core.auth.app.port.out.SaveTeacherPort;
 import edu.ai.lms.core.auth.app.port.out.TokenGenerationPort;
-import edu.ai.lms.core.auth.exception.EmailAlreadyExistsException;
+import edu.ai.lms.core.auth.app.exception.EmailAlreadyExistsException;
 import lombok.RequiredArgsConstructor;
 
 @Service
