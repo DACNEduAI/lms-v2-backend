@@ -3,13 +3,13 @@ package edu.ai.lms.core.course.app.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.course.adapter.in.request.ChangeCourseSettingRequest;
 import edu.ai.lms.core.course.adapter.in.response.ChangeCourseSettingResponse;
 import edu.ai.lms.core.course.app.domain.Course;
+import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
+import edu.ai.lms.core.course.app.port.in.command.ChangeCourseSettingCommand;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherChangeCourseSettingUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
-import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -21,29 +21,29 @@ public class ChangeCourseSettingService implements TeacherChangeCourseSettingUse
 
     @Override
     @Transactional
-    public ChangeCourseSettingResponse changeCourseSetting(ChangeCourseSettingRequest request) {
+    public ChangeCourseSettingResponse changeCourseSetting(ChangeCourseSettingCommand command) {
         // Load existing course
-        Course course = loadCoursePort.findById(request.getCourseId())
-                .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + request.getCourseId()));
+        Course course = loadCoursePort.findById(command.courseId())
+                .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + command.courseId()));
 
         // Update course settings (only non-null fields)
-        if (request.getCourseName() != null) {
-            course.setCourseName(request.getCourseName());
+        if (command.courseName() != null) {
+            course.setCourseName(command.courseName());
         }
-        if (request.getDescription() != null) {
-            course.setDescription(request.getDescription());
+        if (command.description() != null) {
+            course.setDescription(command.description());
         }
-        if (request.getActive() != null) {
-            course.setActive(request.getActive());
+        if (command.active() != null) {
+            course.setActive(command.active());
         }
-        if (request.getCoverImage() != null) {
-            course.setCoverImage(request.getCoverImage());
+        if (command.coverImage() != null) {
+            course.setCoverImage(command.coverImage());
         }
-        if (request.getStartDate() != null) {
-            course.setStartDate(request.getStartDate());
+        if (command.startDate() != null) {
+            course.setStartDate(command.startDate());
         }
-        if (request.getEndDate() != null) {
-            course.setEndDate(request.getEndDate());
+        if (command.endDate() != null) {
+            course.setEndDate(command.endDate());
         }
 
         // Save the updated course

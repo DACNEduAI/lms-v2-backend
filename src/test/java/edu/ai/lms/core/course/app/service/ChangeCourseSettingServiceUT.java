@@ -23,10 +23,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.core.course.adapter.in.request.ChangeCourseSettingRequest;
 import edu.ai.lms.core.course.adapter.in.response.ChangeCourseSettingResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.Teacher;
+import edu.ai.lms.core.course.app.port.in.command.ChangeCourseSettingCommand;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -43,7 +43,7 @@ class ChangeCourseSettingServiceUT {
     @InjectMocks
     private ChangeCourseSettingService changeCourseSettingService;
 
-    private ChangeCourseSettingRequest validRequest;
+    private ChangeCourseSettingCommand validCommand;
     private Teacher mockTeacher;
     private Course existingCourse;
     private UUID teacherId;
@@ -73,7 +73,7 @@ class ChangeCourseSettingServiceUT {
                 .endDate(LocalDate.now().plusMonths(3))
                 .build();
 
-        validRequest = ChangeCourseSettingRequest.builder()
+        validCommand = ChangeCourseSettingCommand.builder()
                 .courseId(courseId)
                 .courseName("Updated Course Name")
                 .description("Updated description")
@@ -92,19 +92,19 @@ class ChangeCourseSettingServiceUT {
         
         Course savedCourse = Course.builder()
                 .id(courseId)
-                .courseName(validRequest.getCourseName())
+                .courseName(validCommand.courseName())
                 .courseCode(existingCourse.getCourseCode())
-                .description(validRequest.getDescription())
+                .description(validCommand.description())
                 .teacher(mockTeacher)
-                .active(validRequest.getActive())
-                .coverImage(validRequest.getCoverImage())
-                .startDate(validRequest.getStartDate())
-                .endDate(validRequest.getEndDate())
+                .active(validCommand.active())
+                .coverImage(validCommand.coverImage())
+                .startDate(validCommand.startDate())
+                .endDate(validCommand.endDate())
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 
         // Act
-        ChangeCourseSettingResponse response = changeCourseSettingService.changeCourseSetting(validRequest);
+        ChangeCourseSettingResponse response = changeCourseSettingService.changeCourseSetting(validCommand);
 
         // Assert
         assertNotNull(response);
@@ -125,7 +125,7 @@ class ChangeCourseSettingServiceUT {
 
         // Act & Assert
         CourseNotFoundException exception = assertThrows(CourseNotFoundException.class,
-                () -> changeCourseSettingService.changeCourseSetting(validRequest));
+                () -> changeCourseSettingService.changeCourseSetting(validCommand));
 
         assertEquals("Course not found with id: " + courseId, exception.getMessage());
         
@@ -137,7 +137,7 @@ class ChangeCourseSettingServiceUT {
     @DisplayName("Should only update provided non-null fields")
     void testChangeCourseSetting_ShouldOnlyUpdateNonNullFields() {
         // Arrange
-        ChangeCourseSettingRequest partialRequest = ChangeCourseSettingRequest.builder()
+        ChangeCourseSettingCommand partialCommand = ChangeCourseSettingCommand.builder()
                 .courseId(courseId)
                 .courseName("Only Name Updated")
                 .build();
@@ -147,7 +147,7 @@ class ChangeCourseSettingServiceUT {
         when(saveCoursePort.save(any(Course.class))).thenReturn(existingCourse);
 
         // Act
-        changeCourseSettingService.changeCourseSetting(partialRequest);
+        changeCourseSettingService.changeCourseSetting(partialCommand);
 
         // Assert
         verify(saveCoursePort, times(1)).save(courseCaptor.capture());
@@ -168,7 +168,7 @@ class ChangeCourseSettingServiceUT {
         when(saveCoursePort.save(any(Course.class))).thenReturn(existingCourse);
 
         // Act
-        changeCourseSettingService.changeCourseSetting(validRequest);
+        changeCourseSettingService.changeCourseSetting(validCommand);
 
         // Assert
         verify(saveCoursePort).save(courseCaptor.capture());
@@ -184,7 +184,7 @@ class ChangeCourseSettingServiceUT {
         when(saveCoursePort.save(any(Course.class))).thenReturn(existingCourse);
 
         // Act
-        changeCourseSettingService.changeCourseSetting(validRequest);
+        changeCourseSettingService.changeCourseSetting(validCommand);
 
         // Assert
         verify(saveCoursePort).save(courseCaptor.capture());
@@ -200,7 +200,7 @@ class ChangeCourseSettingServiceUT {
         when(saveCoursePort.save(any(Course.class))).thenReturn(existingCourse);
 
         // Act
-        changeCourseSettingService.changeCourseSetting(validRequest);
+        changeCourseSettingService.changeCourseSetting(validCommand);
 
         // Assert
         verify(saveCoursePort).save(courseCaptor.capture());
@@ -216,7 +216,7 @@ class ChangeCourseSettingServiceUT {
         when(saveCoursePort.save(any(Course.class))).thenReturn(existingCourse);
 
         // Act
-        changeCourseSettingService.changeCourseSetting(validRequest);
+        changeCourseSettingService.changeCourseSetting(validCommand);
 
         // Assert
         verify(saveCoursePort).save(courseCaptor.capture());
@@ -229,15 +229,22 @@ class ChangeCourseSettingServiceUT {
         // Arrange
         LocalDate newStartDate = LocalDate.now().plusDays(1);
         LocalDate newEndDate = LocalDate.now().plusMonths(6);
-        validRequest.setStartDate(newStartDate);
-        validRequest.setEndDate(newEndDate);
+        ChangeCourseSettingCommand dateCommand = ChangeCourseSettingCommand.builder()
+                .courseId(courseId)
+                .courseName(validCommand.courseName())
+                .description(validCommand.description())
+                .active(validCommand.active())
+                .coverImage(validCommand.coverImage())
+                .startDate(newStartDate)
+                .endDate(newEndDate)
+                .build();
         
         ArgumentCaptor<Course> courseCaptor = ArgumentCaptor.forClass(Course.class);
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
         when(saveCoursePort.save(any(Course.class))).thenReturn(existingCourse);
 
         // Act
-        changeCourseSettingService.changeCourseSetting(validRequest);
+        changeCourseSettingService.changeCourseSetting(dateCommand);
 
         // Assert
         verify(saveCoursePort).save(courseCaptor.capture());
@@ -257,15 +264,15 @@ class ChangeCourseSettingServiceUT {
                 .teacher(mockTeacher)
                 .active(false)
                 .coverImage("https://example.com/new-image.jpg")
-                .startDate(validRequest.getStartDate())
-                .endDate(validRequest.getEndDate())
+                .startDate(validCommand.startDate())
+                .endDate(validCommand.endDate())
                 .build();
         
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 
         // Act
-        ChangeCourseSettingResponse response = changeCourseSettingService.changeCourseSetting(validRequest);
+        ChangeCourseSettingResponse response = changeCourseSettingService.changeCourseSetting(validCommand);
 
         // Assert
         assertEquals(courseId, response.getCourseId());
@@ -284,14 +291,14 @@ class ChangeCourseSettingServiceUT {
         
         Course savedCourse = Course.builder()
                 .id(courseId)
-                .courseName(validRequest.getCourseName())
+                .courseName(validCommand.courseName())
                 .courseCode("CS101")
                 .teacher(mockTeacher)
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 
         // Act
-        ChangeCourseSettingResponse response = changeCourseSettingService.changeCourseSetting(validRequest);
+        ChangeCourseSettingResponse response = changeCourseSettingService.changeCourseSetting(validCommand);
 
         // Assert
         assertEquals("CS101", response.getCourseCode());

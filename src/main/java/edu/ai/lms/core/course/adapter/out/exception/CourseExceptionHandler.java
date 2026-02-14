@@ -1,4 +1,4 @@
-package edu.ai.lms.core.course.adapter.out.persistence.exception;
+package edu.ai.lms.core.course.adapter.out.exception;
 
 import java.util.List;
 import java.util.stream.Collectors;

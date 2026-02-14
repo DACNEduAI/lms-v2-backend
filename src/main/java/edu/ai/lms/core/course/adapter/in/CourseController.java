@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import edu.ai.lms.core.course.adapter.in.mapper.CreateCourseCommandMapper;
+import edu.ai.lms.core.course.adapter.in.mapper.ModifyCourseCommandMapper;
 import edu.ai.lms.core.course.adapter.in.request.CreateCourseRequest;
 import edu.ai.lms.core.course.adapter.in.request.ModifyCourseRequest;
 import edu.ai.lms.core.course.adapter.in.response.CreateCourseResponse;
@@ -23,10 +25,12 @@ import edu.ai.lms.core.course.adapter.in.response.DeleteCourseResponse;
 import edu.ai.lms.core.course.adapter.in.response.GetAllCoursesResponse;
 import edu.ai.lms.core.course.adapter.in.response.GetCourseResponse;
 import edu.ai.lms.core.course.adapter.in.response.ModifyCourseResponse;
-import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateCourseUseCase;
-import edu.ai.lms.core.course.app.port.in.usecase.TeacherDeleteCourseUseCase;
+import edu.ai.lms.core.course.app.port.in.command.CreateCourseCommand;
+import edu.ai.lms.core.course.app.port.in.command.ModifyCourseCommand;
 import edu.ai.lms.core.course.app.port.in.usecase.GetAllCoursesUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.GetCourseUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateCourseUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherDeleteCourseUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifyCourseUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -48,6 +52,8 @@ public class CourseController {
     private final TeacherDeleteCourseUseCase teacherDeleteCourseUseCase;
     private final GetCourseUseCase getCourseUseCase;
     private final GetAllCoursesUseCase getAllCoursesUseCase;
+    private final CreateCourseCommandMapper createCourseCommandMapper;
+    private final ModifyCourseCommandMapper modifyCourseCommandMapper;
 
     @Operation(summary = "Get a specific course", description = "Get a course by its ID. The course must belong to the authenticated teacher.")
     @ApiResponses(value = {
@@ -88,7 +94,8 @@ public class CourseController {
     @PreAuthorize("hasRole('TEACHER')")
     @PostMapping()
     public ResponseEntity<CreateCourseResponse> registerCourse(@Valid @RequestBody CreateCourseRequest request) {
-        CreateCourseResponse response = teacherCreateCourseUseCase.createCourse(request);
+        CreateCourseCommand command = createCourseCommandMapper.toCommand(request);
+        CreateCourseResponse response = teacherCreateCourseUseCase.createCourse(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -103,7 +110,8 @@ public class CourseController {
     @PreAuthorize("hasRole('TEACHER')")
     @PutMapping()
     public ResponseEntity<ModifyCourseResponse> modifyCourse(@Valid @RequestBody ModifyCourseRequest request) {
-        ModifyCourseResponse response = teacherModifyCourseUseCase.modifyCourse(request);
+        ModifyCourseCommand command = modifyCourseCommandMapper.toCommand(request);
+        ModifyCourseResponse response = teacherModifyCourseUseCase.modifyCourse(command);
         return ResponseEntity.ok(response);
     }
 

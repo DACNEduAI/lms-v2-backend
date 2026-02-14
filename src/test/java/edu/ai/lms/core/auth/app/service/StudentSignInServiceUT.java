@@ -19,8 +19,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.core.auth.adapter.in.request.StudentSignInRequest;
 import edu.ai.lms.core.auth.adapter.in.response.StudentSignInResponse;
+import edu.ai.lms.core.auth.app.port.in.command.StudentSignInCommand;
 import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.Student;
 import edu.ai.lms.core.auth.app.port.out.AuthenticationPort;
@@ -39,12 +39,12 @@ class StudentSignInServiceUT {
     @InjectMocks
     private StudentSignInService studentSignInService;
 
-    private StudentSignInRequest validRequest;
+    private StudentSignInCommand validCommand;
     private Student validStudent;
 
     @BeforeEach
     void setUp() {
-        validRequest = StudentSignInRequest.builder()
+        validCommand = StudentSignInCommand.builder()
                 .email("student@example.com")
                 .password("Password123!")
                 .build();
@@ -64,12 +64,12 @@ class StudentSignInServiceUT {
     @DisplayName("Should successfully sign in with valid credentials")
     void testSignIn_WithValidCredentials_ShouldSucceed() {
         // Arrange
-        when(authenticationPort.authenticateStudent(validRequest.getEmail(), validRequest.getPassword()))
+        when(authenticationPort.authenticateStudent(validCommand.email(), validCommand.password()))
                 .thenReturn(validStudent);
         when(tokenGenerationPort.generateStudentToken(validStudent)).thenReturn("mock-jwt-token");
 
         // Act
-        StudentSignInResponse response = studentSignInService.signIn(validRequest);
+        StudentSignInResponse response = studentSignInService.signIn(validCommand);
 
         // Assert
         assertNotNull(response);
@@ -87,12 +87,12 @@ class StudentSignInServiceUT {
     @DisplayName("Should throw InvalidCredentialsException when authentication fails")
     void testSignIn_WithInvalidCredentials_ShouldThrowException() {
         // Arrange
-        when(authenticationPort.authenticateStudent(validRequest.getEmail(), validRequest.getPassword()))
+        when(authenticationPort.authenticateStudent(validCommand.email(), validCommand.password()))
                 .thenThrow(new InvalidCredentialsException("Invalid email or password"));
 
         // Act & Assert
         InvalidCredentialsException exception = assertThrows(InvalidCredentialsException.class,
-                () -> studentSignInService.signIn(validRequest));
+                () -> studentSignInService.signIn(validCommand));
         
         assertEquals("Invalid email or password", exception.getMessage());
         
@@ -104,17 +104,17 @@ class StudentSignInServiceUT {
     @DisplayName("Should throw InvalidCredentialsException when email does not exist")
     void testSignIn_WithNonExistentEmail_ShouldThrowException() {
         // Arrange
-        StudentSignInRequest invalidRequest = StudentSignInRequest.builder()
+        StudentSignInCommand invalidCommand = StudentSignInCommand.builder()
                 .email("nonexistent@example.com")
                 .password("Password123!")
                 .build();
 
-        when(authenticationPort.authenticateStudent(invalidRequest.getEmail(), invalidRequest.getPassword()))
+        when(authenticationPort.authenticateStudent(invalidCommand.email(), invalidCommand.password()))
                 .thenThrow(new InvalidCredentialsException("Invalid email or password"));
 
         // Act & Assert
         InvalidCredentialsException exception = assertThrows(InvalidCredentialsException.class,
-                () -> studentSignInService.signIn(invalidRequest));
+                () -> studentSignInService.signIn(invalidCommand));
         
         assertEquals("Invalid email or password", exception.getMessage());
         verify(tokenGenerationPort, never()).generateStudentToken(any(Student.class));
@@ -124,12 +124,12 @@ class StudentSignInServiceUT {
     @DisplayName("Should generate token with authenticated student details")
     void testSignIn_ShouldGenerateTokenWithCorrectStudent() {
         // Arrange
-        when(authenticationPort.authenticateStudent(validRequest.getEmail(), validRequest.getPassword()))
+        when(authenticationPort.authenticateStudent(validCommand.email(), validCommand.password()))
                 .thenReturn(validStudent);
         when(tokenGenerationPort.generateStudentToken(validStudent)).thenReturn("specific-token-for-student");
 
         // Act
-        StudentSignInResponse response = studentSignInService.signIn(validRequest);
+        StudentSignInResponse response = studentSignInService.signIn(validCommand);
 
         // Assert
         assertEquals("specific-token-for-student", response.getToken());
@@ -156,17 +156,17 @@ class StudentSignInServiceUT {
                 .role(Roles.STUDENT)
                 .build();
 
-        StudentSignInRequest detailedRequest = StudentSignInRequest.builder()
+        StudentSignInCommand detailedCommand = StudentSignInCommand.builder()
                 .email("detailed@example.com")
                 .password("Password123!")
                 .build();
 
-        when(authenticationPort.authenticateStudent(detailedRequest.getEmail(), detailedRequest.getPassword()))
+        when(authenticationPort.authenticateStudent(detailedCommand.email(), detailedCommand.password()))
                 .thenReturn(detailedStudent);
         when(tokenGenerationPort.generateStudentToken(detailedStudent)).thenReturn("detailed-token");
 
         // Act
-        StudentSignInResponse response = studentSignInService.signIn(detailedRequest);
+        StudentSignInResponse response = studentSignInService.signIn(detailedCommand);
 
         // Assert
         assertNotNull(response);

@@ -1,4 +1,4 @@
-package edu.ai.lms.core.course.adapter.out.persistence;
+package edu.ai.lms.core.course.adapter.out.persistence.mapper;
 
 import org.springframework.stereotype.Component;
 
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-class CourseJdbcMapper {
+public class CourseJdbcMapper {
 
     private final TeacherJdbcMapper teacherJdbcMapper;
     private final ChapterJdbcMapper chapterJdbcMapper;

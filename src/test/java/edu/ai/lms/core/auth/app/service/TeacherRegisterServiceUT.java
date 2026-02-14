@@ -20,8 +20,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.core.auth.adapter.in.request.TeacherRegisterRequest;
 import edu.ai.lms.core.auth.adapter.in.response.TeacherRegisterResponse;
+import edu.ai.lms.core.auth.app.port.in.command.TeacherRegisterCommand;
 import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.Teacher;
 import edu.ai.lms.core.auth.app.port.out.LoadTeacherPort;
@@ -44,18 +44,20 @@ class TeacherRegisterServiceUT {
     @InjectMocks
     private TeacherRegisterService teacherRegisterService;
 
-    private TeacherRegisterRequest validRequest;
+    private TeacherRegisterCommand validCommand;
 
     @BeforeEach
     void setUp() {
-        validRequest = TeacherRegisterRequest.builder()
-                .email("teacher@example.com")
-                .password("Password123!")
-                .firstName("Alice")
-                .lastName("Smith")
-                .phoneNumber("123-456-7890")
-                .department("Computer Science")
-                .specialization("Artificial Intelligence")
+        validCommand = TeacherRegisterCommand.builder()
+                .teacher(Teacher.builder()
+                        .email("teacher@example.com")
+                        .password("Password123!")
+                        .firstName("Alice")
+                        .lastName("Smith")
+                        .phoneNumber("123-456-7890")
+                        .department("Computer Science")
+                        .specialization("Artificial Intelligence")
+                        .build())
                 .build();
     }
 
@@ -63,11 +65,11 @@ class TeacherRegisterServiceUT {
     @DisplayName("Should successfully register a new teacher with valid details")
     void testTeacherRegister_WithValidDetails_ShouldSucceed() {
         // Arrange
-        when(loadTeacherPort.findByEmail(validRequest.getEmail())).thenReturn(Optional.empty());
+        when(loadTeacherPort.findByEmail(validCommand.teacher().getEmail())).thenReturn(Optional.empty());
         when(tokenGenerationPort.generateTeacherToken(any(Teacher.class))).thenReturn("mock-jwt-token");
 
         // Act
-        TeacherRegisterResponse response = teacherRegisterService.teacherRegister(validRequest);
+        TeacherRegisterResponse response = teacherRegisterService.teacherRegister(validCommand);
 
         // Assert
         assertNotNull(response);
@@ -88,11 +90,11 @@ class TeacherRegisterServiceUT {
                 .email("teacher@example.com")
                 .build();
         
-        when(loadTeacherPort.findByEmail(validRequest.getEmail())).thenReturn(Optional.of(existingTeacher));
+        when(loadTeacherPort.findByEmail(validCommand.teacher().getEmail())).thenReturn(Optional.of(existingTeacher));
 
         // Act & Assert
         EmailAlreadyExistsException exception = assertThrows(EmailAlreadyExistsException.class,
-                () -> teacherRegisterService.teacherRegister(validRequest));
+                () -> teacherRegisterService.teacherRegister(validCommand));
         
         assertEquals("Email already registered: teacher@example.com", exception.getMessage());
         
@@ -106,11 +108,11 @@ class TeacherRegisterServiceUT {
     void testTeacherRegister_ShouldSaveTeacherWithCorrectDetails() {
         // Arrange
         ArgumentCaptor<Teacher> teacherCaptor = ArgumentCaptor.forClass(Teacher.class);
-        when(loadTeacherPort.findByEmail(validRequest.getEmail())).thenReturn(Optional.empty());
+        when(loadTeacherPort.findByEmail(validCommand.teacher().getEmail())).thenReturn(Optional.empty());
         when(tokenGenerationPort.generateTeacherToken(any(Teacher.class))).thenReturn("mock-jwt-token");
 
         // Act
-        teacherRegisterService.teacherRegister(validRequest);
+        teacherRegisterService.teacherRegister(validCommand);
 
         // Assert
         verify(saveTeacherPort, times(1)).save(teacherCaptor.capture());
@@ -131,11 +133,11 @@ class TeacherRegisterServiceUT {
     void testTeacherRegister_ShouldGenerateTokenWithTeacher() {
         // Arrange
         ArgumentCaptor<Teacher> teacherCaptor = ArgumentCaptor.forClass(Teacher.class);
-        when(loadTeacherPort.findByEmail(validRequest.getEmail())).thenReturn(Optional.empty());
+        when(loadTeacherPort.findByEmail(validCommand.teacher().getEmail())).thenReturn(Optional.empty());
         when(tokenGenerationPort.generateTeacherToken(any(Teacher.class))).thenReturn("generated-token-123");
 
         // Act
-        TeacherRegisterResponse response = teacherRegisterService.teacherRegister(validRequest);
+        TeacherRegisterResponse response = teacherRegisterService.teacherRegister(validCommand);
 
         // Assert
         verify(tokenGenerationPort, times(1)).generateTeacherToken(teacherCaptor.capture());
@@ -149,18 +151,20 @@ class TeacherRegisterServiceUT {
     @DisplayName("Should handle registration with minimal required fields")
     void testTeacherRegister_WithMinimalFields_ShouldSucceed() {
         // Arrange
-        TeacherRegisterRequest minimalRequest = TeacherRegisterRequest.builder()
-                .email("minimal@example.com")
-                .password("Pass123!")
-                .firstName("Bob")
-                .lastName("Johnson")
+        TeacherRegisterCommand minimalCommand = TeacherRegisterCommand.builder()
+                .teacher(Teacher.builder()
+                        .email("minimal@example.com")
+                        .password("Pass123!")
+                        .firstName("Bob")
+                        .lastName("Johnson")
+                        .build())
                 .build();
 
-        when(loadTeacherPort.findByEmail(minimalRequest.getEmail())).thenReturn(Optional.empty());
+        when(loadTeacherPort.findByEmail(minimalCommand.teacher().getEmail())).thenReturn(Optional.empty());
         when(tokenGenerationPort.generateTeacherToken(any(Teacher.class))).thenReturn("minimal-token");
 
         // Act
-        TeacherRegisterResponse response = teacherRegisterService.teacherRegister(minimalRequest);
+        TeacherRegisterResponse response = teacherRegisterService.teacherRegister(minimalCommand);
 
         // Assert
         assertNotNull(response);
@@ -174,22 +178,24 @@ class TeacherRegisterServiceUT {
     @DisplayName("Should handle registration with optional fields set to null")
     void testTeacherRegister_WithNullOptionalFields_ShouldSucceed() {
         // Arrange
-        TeacherRegisterRequest requestWithNulls = TeacherRegisterRequest.builder()
-                .email("nullfields@example.com")
-                .password("Password123!")
-                .firstName("Charlie")
-                .lastName("Brown")
-                .phoneNumber(null)
-                .department(null)
-                .specialization(null)
+        TeacherRegisterCommand commandWithNulls = TeacherRegisterCommand.builder()
+                .teacher(Teacher.builder()
+                        .email("nullfields@example.com")
+                        .password("Password123!")
+                        .firstName("Charlie")
+                        .lastName("Brown")
+                        .phoneNumber(null)
+                        .department(null)
+                        .specialization(null)
+                        .build())
                 .build();
 
         ArgumentCaptor<Teacher> teacherCaptor = ArgumentCaptor.forClass(Teacher.class);
-        when(loadTeacherPort.findByEmail(requestWithNulls.getEmail())).thenReturn(Optional.empty());
+        when(loadTeacherPort.findByEmail(commandWithNulls.teacher().getEmail())).thenReturn(Optional.empty());
         when(tokenGenerationPort.generateTeacherToken(any(Teacher.class))).thenReturn("token-with-nulls");
 
         // Act
-        TeacherRegisterResponse response = teacherRegisterService.teacherRegister(requestWithNulls);
+        TeacherRegisterResponse response = teacherRegisterService.teacherRegister(commandWithNulls);
 
         // Assert
         assertNotNull(response);
@@ -204,22 +210,24 @@ class TeacherRegisterServiceUT {
     @DisplayName("Should preserve all teacher details through registration flow")
     void testTeacherRegister_ShouldPreserveAllDetails() {
         // Arrange
-        TeacherRegisterRequest detailedRequest = TeacherRegisterRequest.builder()
-                .email("detailed@university.edu")
-                .password("SecurePass456!")
-                .firstName("Dr. Emily")
-                .lastName("Martinez")
-                .phoneNumber("+1-555-0123")
-                .department("Data Science")
-                .specialization("Machine Learning & Deep Learning")
+        TeacherRegisterCommand detailedCommand = TeacherRegisterCommand.builder()
+                .teacher(Teacher.builder()
+                        .email("detailed@university.edu")
+                        .password("SecurePass456!")
+                        .firstName("Dr. Emily")
+                        .lastName("Martinez")
+                        .phoneNumber("+1-555-0123")
+                        .department("Data Science")
+                        .specialization("Machine Learning & Deep Learning")
+                        .build())
                 .build();
 
         ArgumentCaptor<Teacher> teacherCaptor = ArgumentCaptor.forClass(Teacher.class);
-        when(loadTeacherPort.findByEmail(detailedRequest.getEmail())).thenReturn(Optional.empty());
+        when(loadTeacherPort.findByEmail(detailedCommand.teacher().getEmail())).thenReturn(Optional.empty());
         when(tokenGenerationPort.generateTeacherToken(any(Teacher.class))).thenReturn("detailed-token");
 
         // Act
-        TeacherRegisterResponse response = teacherRegisterService.teacherRegister(detailedRequest);
+        TeacherRegisterResponse response = teacherRegisterService.teacherRegister(detailedCommand);
 
         // Assert
         verify(saveTeacherPort, times(1)).save(teacherCaptor.capture());

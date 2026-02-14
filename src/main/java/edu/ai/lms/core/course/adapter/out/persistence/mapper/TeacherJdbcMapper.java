@@ -1,4 +1,4 @@
-package edu.ai.lms.core.course.adapter.out.persistence;
+package edu.ai.lms.core.course.adapter.out.persistence.mapper;
 
 import org.springframework.stereotype.Component;
 

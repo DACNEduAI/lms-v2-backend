@@ -2,6 +2,7 @@ package edu.ai.lms.core.auth.adapter.out.persistence;
 
 import java.util.Optional;
 
+import edu.ai.lms.core.auth.adapter.out.persistence.mapper.UserJdbcMapper;
 import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.auth.app.domain.Teacher;

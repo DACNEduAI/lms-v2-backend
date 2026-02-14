@@ -1,23 +1,19 @@
 package edu.ai.lms.core.course.app.service;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.course.adapter.in.request.CreateCourseRequest;
 import edu.ai.lms.core.course.adapter.in.response.CreateCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.domain.Teacher;
+import edu.ai.lms.core.course.app.exception.CourseCodeAlreadyExistsException;
+import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
+import edu.ai.lms.core.course.app.port.in.command.CreateCourseCommand;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateCourseUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
-import edu.ai.lms.core.course.app.exception.CourseCodeAlreadyExistsException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -31,36 +27,20 @@ public class CreateCourseService implements TeacherCreateCourseUseCase {
 
     @Override
     @Transactional
-    public CreateCourseResponse createCourse(CreateCourseRequest request) {
+    public CreateCourseResponse createCourse(CreateCourseCommand command) {
+        Course course = command.course();
+
         // Business rule validation: Check if entity course already exists
-        if (loadCoursePort.findByCourseCode(request.getCourseCode()).isPresent()) {
-            throw new CourseCodeAlreadyExistsException("Course code already exists: " + request.getCourseCode());
+        if (loadCoursePort.findByCourseCode(course.getCourseCode()).isPresent()) {
+            throw new CourseCodeAlreadyExistsException("Course code already exists: " + course.getCourseCode());
         }
 
         // Validate teacher exists using the token from the request
         Teacher teacher = loadSignedInTeacherPort.findAuthenticatedTeacher()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
-        // Build the learning outcome list
-        List<LearningOutcome> learningOutcomes = request.getLearningOutcomes().stream()
-                .map(learningOutcomeRequest -> LearningOutcome.builder()
-                        .code(learningOutcomeRequest.getCode())
-                        .description(learningOutcomeRequest.getDescription())
-                        .build())
-                .collect(Collectors.toList());
-
-        // Build the Course domain object
-        Course course = Course.builder()
-                .courseName(request.getCourseName())
-                .description(request.getDescription())
-                .courseCode(request.getCourseCode())
-                .teacher(teacher)
-                .active(request.getActive())
-                .coverImage(request.getCoverImage())
-                .startDate(request.getStartDate())
-                .endDate(request.getEndDate())
-                .learningOutcomes(learningOutcomes)
-                .build();
+        // Set the teacher on the course
+        course.setTeacher(teacher);
 
         // Save the course
         Course savedCourse = saveCoursePort.save(course);
