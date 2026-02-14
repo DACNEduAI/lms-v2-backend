@@ -239,6 +239,10 @@
 					</includes>
 					<classesDirectory>${project.build.outputDirectory}</classesDirectory>
 					<testClassesDirectory>${project.build.testOutputDirectory}</testClassesDirectory>
+
+					<systemPropertyVariables>
+						<api.version>1.44</api.version>
+					</systemPropertyVariables>
 				</configuration>
 				<executions>
 					<execution>
