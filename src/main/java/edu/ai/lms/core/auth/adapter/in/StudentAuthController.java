@@ -8,10 +8,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import edu.ai.lms.core.auth.adapter.in.mapper.StudentRegisterCommandMapper;
+import edu.ai.lms.core.auth.adapter.in.mapper.StudentSignInCommandMapper;
 import edu.ai.lms.core.auth.adapter.in.request.StudentRegisterRequest;
 import edu.ai.lms.core.auth.adapter.in.request.StudentSignInRequest;
 import edu.ai.lms.core.auth.adapter.in.response.StudentRegisterResponse;
 import edu.ai.lms.core.auth.adapter.in.response.StudentSignInResponse;
+import edu.ai.lms.core.auth.app.port.in.command.StudentRegisterCommand;
+import edu.ai.lms.core.auth.app.port.in.command.StudentSignInCommand;
 import edu.ai.lms.core.auth.app.port.in.usecase.StudentRegisterUseCase;
 import edu.ai.lms.core.auth.app.port.in.usecase.StudentSignInUseCase;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +35,8 @@ public class StudentAuthController {
 
     private final StudentRegisterUseCase studentRegisterUseCase;
     private final StudentSignInUseCase studentSignInUseCase;
+    private final StudentRegisterCommandMapper studentRegisterCommandMapper;
+    private final StudentSignInCommandMapper studentSignInCommandMapper;
 
     @Operation(summary = "Register a new student", description = "Create a new student account and return JWT token")
     @ApiResponses(value = {
@@ -40,7 +46,8 @@ public class StudentAuthController {
 
     @PostMapping("/register")
     public ResponseEntity<StudentRegisterResponse> registerStudent(@Valid @RequestBody StudentRegisterRequest request) {
-        StudentRegisterResponse response = studentRegisterUseCase.studentRegister(request);
+        StudentRegisterCommand command = studentRegisterCommandMapper.toCommand(request);
+        StudentRegisterResponse response = studentRegisterUseCase.studentRegister(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -51,7 +58,8 @@ public class StudentAuthController {
     })
     @PostMapping("/login")
     public ResponseEntity<StudentSignInResponse> loginStudent(@Valid @RequestBody StudentSignInRequest request) {
-        StudentSignInResponse response = studentSignInUseCase.signIn(request);
+        StudentSignInCommand command = studentSignInCommandMapper.toCommand(request);
+        StudentSignInResponse response = studentSignInUseCase.signIn(command);
         return ResponseEntity.ok(response);
     }
 }

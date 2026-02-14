@@ -8,10 +8,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import edu.ai.lms.core.auth.adapter.in.mapper.TeacherRegisterCommandMapper;
+import edu.ai.lms.core.auth.adapter.in.mapper.TeacherSignInCommandMapper;
 import edu.ai.lms.core.auth.adapter.in.request.TeacherRegisterRequest;
 import edu.ai.lms.core.auth.adapter.in.request.TeacherSignInRequest;
 import edu.ai.lms.core.auth.adapter.in.response.TeacherRegisterResponse;
 import edu.ai.lms.core.auth.adapter.in.response.TeacherSignInResponse;
+import edu.ai.lms.core.auth.app.port.in.command.TeacherRegisterCommand;
+import edu.ai.lms.core.auth.app.port.in.command.TeacherSignInCommand;
 import edu.ai.lms.core.auth.app.port.in.usecase.TeacherRegisterUseCase;
 import edu.ai.lms.core.auth.app.port.in.usecase.TeacherSignInUseCase;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +35,8 @@ public class TeacherAuthController {
 
     private final TeacherRegisterUseCase teacherRegisterUseCase;
     private final TeacherSignInUseCase teacherSignInUseCase;
+    private final TeacherRegisterCommandMapper teacherRegisterCommandMapper;
+    private final TeacherSignInCommandMapper teacherSignInCommandMapper;
 
     @Operation(summary = "Register a new teacher", description = "Create a new teacher account and return JWT token")
     @ApiResponses(value = {
@@ -39,7 +45,8 @@ public class TeacherAuthController {
     })
     @PostMapping("/register")
     public ResponseEntity<TeacherRegisterResponse> registerTeacher(@Valid @RequestBody TeacherRegisterRequest request) {
-        TeacherRegisterResponse response = teacherRegisterUseCase.teacherRegister(request);
+        TeacherRegisterCommand command = teacherRegisterCommandMapper.toCommand(request);
+        TeacherRegisterResponse response = teacherRegisterUseCase.teacherRegister(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -50,7 +57,8 @@ public class TeacherAuthController {
     })
     @PostMapping("/login")
     public ResponseEntity<TeacherSignInResponse> loginTeacher(@Valid @RequestBody TeacherSignInRequest request) {
-        TeacherSignInResponse response = teacherSignInUseCase.signIn(request);
+        TeacherSignInCommand command = teacherSignInCommandMapper.toCommand(request);
+        TeacherSignInResponse response = teacherSignInUseCase.signIn(command);
         return ResponseEntity.ok(response);
     }
 }

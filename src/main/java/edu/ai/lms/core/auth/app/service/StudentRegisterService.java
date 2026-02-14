@@ -3,14 +3,14 @@ package edu.ai.lms.core.auth.app.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.adapter.in.request.StudentRegisterRequest;
 import edu.ai.lms.core.auth.adapter.in.response.StudentRegisterResponse;
 import edu.ai.lms.core.auth.app.domain.Student;
+import edu.ai.lms.core.auth.app.port.in.command.StudentRegisterCommand;
 import edu.ai.lms.core.auth.app.port.in.usecase.StudentRegisterUseCase;
 import edu.ai.lms.core.auth.app.port.out.LoadStudentPort;
 import edu.ai.lms.core.auth.app.port.out.SaveStudentPort;
 import edu.ai.lms.core.auth.app.port.out.TokenGenerationPort;
-import edu.ai.lms.core.auth.exception.EmailAlreadyExistsException;
+import edu.ai.lms.core.auth.app.exception.EmailAlreadyExistsException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -23,20 +23,13 @@ public class StudentRegisterService implements StudentRegisterUseCase {
 
     @Override
     @Transactional
-    public StudentRegisterResponse studentRegister(StudentRegisterRequest request) {
-        // Check if email already exists
-        if (loadStudentPort.findByEmail(request.getEmail()).isPresent()) {
-            throw new EmailAlreadyExistsException("Email already registered: " + request.getEmail());
-        }
+    public StudentRegisterResponse studentRegister(StudentRegisterCommand command) {
+        Student student = command.student();
 
-        // Build the Student domain object with encoded password
-        Student student = Student.builder()
-                .email(request.getEmail())
-                .password(request.getPassword())
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .enrollmentYear(request.getEnrollmentYear())
-                .build();
+        // Check if email already exists
+        if (loadStudentPort.findByEmail(student.getEmail()).isPresent()) {
+            throw new EmailAlreadyExistsException("Email already registered: " + student.getEmail());
+        }
 
         // Save the student
         saveStudentPort.save(student);

@@ -21,14 +21,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.core.auth.adapter.in.request.StudentRegisterRequest;
 import edu.ai.lms.core.auth.adapter.in.response.StudentRegisterResponse;
 import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.Student;
+import edu.ai.lms.core.auth.app.port.in.command.StudentRegisterCommand;
 import edu.ai.lms.core.auth.app.port.out.LoadStudentPort;
 import edu.ai.lms.core.auth.app.port.out.SaveStudentPort;
 import edu.ai.lms.core.auth.app.port.out.TokenGenerationPort;
-import edu.ai.lms.core.auth.exception.EmailAlreadyExistsException;
+import edu.ai.lms.core.auth.app.exception.EmailAlreadyExistsException;
 
 @ExtendWith(MockitoExtension.class)
 class StudentRegisterServiceUT {
@@ -45,16 +45,20 @@ class StudentRegisterServiceUT {
     @InjectMocks
     private StudentRegisterService studentRegisterService;
 
-    private StudentRegisterRequest validRequest;
+    private StudentRegisterCommand validCommand;
 
     @BeforeEach
     void setUp() {
-        validRequest = StudentRegisterRequest.builder()
+        Student student = Student.builder()
                 .email("student@example.com")
                 .password("Password123!")
                 .firstName("John")
                 .lastName("Doe")
                 .enrollmentYear(2024L)
+                .build();
+
+        validCommand = StudentRegisterCommand.builder()
+                .student(student)
                 .build();
     }
 
@@ -63,11 +67,12 @@ class StudentRegisterServiceUT {
     @DisplayName("Should successfully register a new student with valid details")
     void testStudentRegister_WithValidDetails_ShouldSucceed() {
         // Arrange
-        when(loadStudentPort.findByEmail(validRequest.getEmail())).thenReturn(Optional.empty());
+        Student student = validCommand.student();
+        when(loadStudentPort.findByEmail(student.getEmail())).thenReturn(Optional.empty());
         when(tokenGenerationPort.generateStudentToken(any(Student.class))).thenReturn("mock-jwt-token");
 
         // Act
-        StudentRegisterResponse response = studentRegisterService.studentRegister(validRequest);
+        StudentRegisterResponse response = studentRegisterService.studentRegister(validCommand);
 
         // Assert
         assertNotNull(response);
@@ -83,16 +88,17 @@ class StudentRegisterServiceUT {
     @DisplayName("Should throw EmailAlreadyExistsException when email is already registered")
     void testStudentRegister_WithExistingEmail_ShouldThrowException() {
         // Arrange
+        Student student = validCommand.student();
         Student existingStudent = Student.builder()
                 .id(UUID.randomUUID())
                 .email("student@example.com")
                 .build();
         
-        when(loadStudentPort.findByEmail(validRequest.getEmail())).thenReturn(Optional.of(existingStudent));
+        when(loadStudentPort.findByEmail(student.getEmail())).thenReturn(Optional.of(existingStudent));
 
         // Act & Assert
         EmailAlreadyExistsException exception = assertThrows(EmailAlreadyExistsException.class,
-                () -> studentRegisterService.studentRegister(validRequest));
+                () -> studentRegisterService.studentRegister(validCommand));
         
         assertEquals("Email already registered: student@example.com", exception.getMessage());
         
@@ -105,12 +111,13 @@ class StudentRegisterServiceUT {
     @DisplayName("Should save student with correct role and all provided details")
     void testStudentRegister_ShouldSaveStudentWithCorrectDetails() {
         // Arrange
+        Student student = validCommand.student();
         ArgumentCaptor<Student> studentCaptor = ArgumentCaptor.forClass(Student.class);
-        when(loadStudentPort.findByEmail(validRequest.getEmail())).thenReturn(Optional.empty());
+        when(loadStudentPort.findByEmail(student.getEmail())).thenReturn(Optional.empty());
         when(tokenGenerationPort.generateStudentToken(any(Student.class))).thenReturn("mock-jwt-token");
 
         // Act
-        studentRegisterService.studentRegister(validRequest);
+        studentRegisterService.studentRegister(validCommand);
 
         // Assert
         verify(saveStudentPort, times(1)).save(studentCaptor.capture());
@@ -128,12 +135,13 @@ class StudentRegisterServiceUT {
     @DisplayName("Should generate token with the saved student object")
     void testStudentRegister_ShouldGenerateTokenWithStudent() {
         // Arrange
+        Student student = validCommand.student();
         ArgumentCaptor<Student> studentCaptor = ArgumentCaptor.forClass(Student.class);
-        when(loadStudentPort.findByEmail(validRequest.getEmail())).thenReturn(Optional.empty());
+        when(loadStudentPort.findByEmail(student.getEmail())).thenReturn(Optional.empty());
         when(tokenGenerationPort.generateStudentToken(any(Student.class))).thenReturn("generated-token-123");
 
         // Act
-        StudentRegisterResponse response = studentRegisterService.studentRegister(validRequest);
+        StudentRegisterResponse response = studentRegisterService.studentRegister(validCommand);
 
         // Assert
         verify(tokenGenerationPort, times(1)).generateStudentToken(studentCaptor.capture());
@@ -147,19 +155,22 @@ class StudentRegisterServiceUT {
     @DisplayName("Should handle registration with minimal required fields")
     void testStudentRegister_WithMinimalFields_ShouldSucceed() {
         // Arrange
-        StudentRegisterRequest minimalRequest = StudentRegisterRequest.builder()
+        Student minimalStudent = Student.builder()
                 .email("minimal@example.com")
                 .password("Pass123!")
                 .firstName("Jane")
                 .lastName("Smith")
                 .enrollmentYear(2025L)
                 .build();
+        StudentRegisterCommand minimalCommand = StudentRegisterCommand.builder()
+                .student(minimalStudent)
+                .build();
 
-        when(loadStudentPort.findByEmail(minimalRequest.getEmail())).thenReturn(Optional.empty());
+        when(loadStudentPort.findByEmail(minimalStudent.getEmail())).thenReturn(Optional.empty());
         when(tokenGenerationPort.generateStudentToken(any(Student.class))).thenReturn("minimal-token");
 
         // Act
-        StudentRegisterResponse response = studentRegisterService.studentRegister(minimalRequest);
+        StudentRegisterResponse response = studentRegisterService.studentRegister(minimalCommand);
 
         // Assert
         assertNotNull(response);

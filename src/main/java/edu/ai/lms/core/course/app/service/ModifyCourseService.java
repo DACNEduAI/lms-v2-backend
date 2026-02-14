@@ -1,23 +1,20 @@
 package edu.ai.lms.core.course.app.service;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.course.adapter.in.request.ModifyCourseRequest;
 import edu.ai.lms.core.course.adapter.in.response.ModifyCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.domain.Teacher;
+import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
+import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
+import edu.ai.lms.core.course.app.port.in.command.ModifyCourseCommand;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifyCourseUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
-import edu.ai.lms.core.course.exception.CourseNotFoundException;
-import edu.ai.lms.core.course.exception.TeacherNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -30,10 +27,12 @@ public class ModifyCourseService implements TeacherModifyCourseUseCase {
 
     @Override
     @Transactional
-    public ModifyCourseResponse modifyCourse(ModifyCourseRequest request) {
+    public ModifyCourseResponse modifyCourse(ModifyCourseCommand command) {
+        Course course = command.course();
+
         // Validate course exists
-        Course existingCourse = loadCoursePort.findById(request.getCourseId())
-                .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + request.getCourseId()));
+        Course existingCourse = loadCoursePort.findById(command.courseId())
+                .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + command.courseId()));
 
         // Validate teacher exists and get authenticated teacher
         Teacher teacher = loadSignedInTeacherPort.findAuthenticatedTeacher()
@@ -44,26 +43,18 @@ public class ModifyCourseService implements TeacherModifyCourseUseCase {
             throw new IllegalArgumentException("Teacher is not authorized to modify this course");
         }
 
-        // Build the learning outcome list
-        List<LearningOutcome> learningOutcomes = request.getLearningOutcomes().stream()
-                .map(learningOutcomeRequest -> LearningOutcome.builder()
-                        .code(learningOutcomeRequest.getCode())
-                        .description(learningOutcomeRequest.getDescription())
-                        .build())
-                .collect(Collectors.toList());
-
         // Update the Course domain object
         Course updatedCourse = Course.builder()
                 .id(existingCourse.getId())
-                .courseName(request.getCourseName())
-                .description(request.getDescription())
-                .courseCode(request.getCourseCode())
+                .courseName(course.getCourseName())
+                .description(course.getDescription())
+                .courseCode(course.getCourseCode())
                 .teacher(teacher)
-                .active(request.getActive())
-                .coverImage(request.getCoverImage())
-                .startDate(request.getStartDate())
-                .endDate(request.getEndDate())
-                .learningOutcomes(learningOutcomes)
+                .active(course.getActive())
+                .coverImage(course.getCoverImage())
+                .startDate(course.getStartDate())
+                .endDate(course.getEndDate())
+                .learningOutcomes(course.getLearningOutcomes())
                 .build();
 
         // Save the updated course

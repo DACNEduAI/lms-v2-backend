@@ -1,8 +1,11 @@
-package edu.ai.lms.core.course.exception;
+package edu.ai.lms.core.course.adapter.out.exception;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+import edu.ai.lms.core.course.app.exception.CourseCodeAlreadyExistsException;
+import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
+import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;

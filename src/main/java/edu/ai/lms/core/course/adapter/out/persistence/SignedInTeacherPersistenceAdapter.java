@@ -2,6 +2,7 @@ package edu.ai.lms.core.course.adapter.out.persistence;
 
 import java.util.Optional;
 
+import edu.ai.lms.core.course.adapter.out.persistence.mapper.TeacherJdbcMapper;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;

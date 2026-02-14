@@ -23,16 +23,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.core.course.adapter.in.request.CreateLearningOutcomeRequest;
-import edu.ai.lms.core.course.adapter.in.request.ModifyCourseRequest;
 import edu.ai.lms.core.course.adapter.in.response.ModifyCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
+import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.domain.Teacher;
+import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
+import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
+import edu.ai.lms.core.course.app.port.in.command.ModifyCourseCommand;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
-import edu.ai.lms.core.course.exception.CourseNotFoundException;
-import edu.ai.lms.core.course.exception.TeacherNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class ModifyCourseServiceUT {
@@ -49,7 +49,7 @@ class ModifyCourseServiceUT {
     @InjectMocks
     private ModifyCourseService modifyCourseService;
 
-    private ModifyCourseRequest validRequest;
+    private ModifyCourseCommand validCommand;
     private Teacher mockTeacher;
     private Course existingCourse;
     private UUID teacherId;
@@ -76,14 +76,13 @@ class ModifyCourseServiceUT {
                 .active(true)
                 .build();
 
-        List<CreateLearningOutcomeRequest> learningOutcomes = new ArrayList<>();
-        learningOutcomes.add(CreateLearningOutcomeRequest.builder()
+        List<LearningOutcome> learningOutcomes = new ArrayList<>();
+        learningOutcomes.add(LearningOutcome.builder()
                 .code("CLO-1")
                 .description("Updated learning outcome")
                 .build());
 
-        validRequest = ModifyCourseRequest.builder()
-                .courseId(courseId)
+        Course course = Course.builder()
                 .courseName("Updated Course Name")
                 .description("Updated description")
                 .courseCode("CS101")
@@ -93,30 +92,36 @@ class ModifyCourseServiceUT {
                 .endDate(LocalDate.now().plusMonths(3))
                 .learningOutcomes(learningOutcomes)
                 .build();
+
+        validCommand = ModifyCourseCommand.builder()
+                .courseId(courseId)
+                .course(course)
+                .build();
     }
 
     @Test
     @DisplayName("Should successfully modify course with valid details")
     void testModifyCourse_WithValidDetails_ShouldSucceed() {
         // Arrange
+        Course course = validCommand.course();
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
         when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
         
         Course savedCourse = Course.builder()
                 .id(courseId)
-                .courseName(validRequest.getCourseName())
-                .courseCode(validRequest.getCourseCode())
-                .description(validRequest.getDescription())
+                .courseName(course.getCourseName())
+                .courseCode(course.getCourseCode())
+                .description(course.getDescription())
                 .teacher(mockTeacher)
                 .active(true)
-                .coverImage(validRequest.getCoverImage())
-                .startDate(validRequest.getStartDate())
-                .endDate(validRequest.getEndDate())
+                .coverImage(course.getCoverImage())
+                .startDate(course.getStartDate())
+                .endDate(course.getEndDate())
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 
         // Act
-        ModifyCourseResponse response = modifyCourseService.modifyCourse(validRequest);
+        ModifyCourseResponse response = modifyCourseService.modifyCourse(validCommand);
 
         // Assert
         assertNotNull(response);
@@ -138,7 +143,7 @@ class ModifyCourseServiceUT {
 
         // Act & Assert
         CourseNotFoundException exception = assertThrows(CourseNotFoundException.class,
-                () -> modifyCourseService.modifyCourse(validRequest));
+                () -> modifyCourseService.modifyCourse(validCommand));
 
         assertEquals("Course not found with id: " + courseId, exception.getMessage());
         
@@ -156,7 +161,7 @@ class ModifyCourseServiceUT {
 
         // Act & Assert
         TeacherNotFoundException exception = assertThrows(TeacherNotFoundException.class,
-                () -> modifyCourseService.modifyCourse(validRequest));
+                () -> modifyCourseService.modifyCourse(validCommand));
 
         assertEquals("Authenticated teacher not found", exception.getMessage());
         
@@ -180,7 +185,7 @@ class ModifyCourseServiceUT {
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> modifyCourseService.modifyCourse(validRequest));
+                () -> modifyCourseService.modifyCourse(validCommand));
 
         assertEquals("Teacher is not authorized to modify this course", exception.getMessage());
         
@@ -193,20 +198,21 @@ class ModifyCourseServiceUT {
     @DisplayName("Should save course with updated details and learning outcomes")
     void testModifyCourse_ShouldSaveCourseWithUpdatedDetails() {
         // Arrange
+        Course course = validCommand.course();
         ArgumentCaptor<Course> courseCaptor = ArgumentCaptor.forClass(Course.class);
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
         when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
         
         Course savedCourse = Course.builder()
                 .id(courseId)
-                .courseName(validRequest.getCourseName())
-                .courseCode(validRequest.getCourseCode())
+                .courseName(course.getCourseName())
+                .courseCode(course.getCourseCode())
                 .teacher(mockTeacher)
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 
         // Act
-        modifyCourseService.modifyCourse(validRequest);
+        modifyCourseService.modifyCourse(validCommand);
 
         // Assert
         verify(saveCoursePort, times(1)).save(courseCaptor.capture());
@@ -225,19 +231,20 @@ class ModifyCourseServiceUT {
     @DisplayName("Should return response with updatedAt timestamp")
     void testModifyCourse_ShouldReturnResponseWithUpdatedAt() {
         // Arrange
+        Course course = validCommand.course();
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
         when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
         
         Course savedCourse = Course.builder()
                 .id(courseId)
-                .courseName(validRequest.getCourseName())
-                .courseCode(validRequest.getCourseCode())
+                .courseName(course.getCourseName())
+                .courseCode(course.getCourseCode())
                 .teacher(mockTeacher)
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 
         // Act
-        ModifyCourseResponse response = modifyCourseService.modifyCourse(validRequest);
+        ModifyCourseResponse response = modifyCourseService.modifyCourse(validCommand);
 
         // Assert
         assertNotNull(response.getUpdatedAt());
@@ -247,20 +254,33 @@ class ModifyCourseServiceUT {
     @DisplayName("Should handle modify course with empty learning outcomes")
     void testModifyCourse_WithEmptyLearningOutcomes_ShouldSucceed() {
         // Arrange
-        validRequest.setLearningOutcomes(new ArrayList<>());
+        Course emptyLoCourse = Course.builder()
+                .courseName("Updated Course Name")
+                .description("Updated description")
+                .courseCode("CS101")
+                .active(true)
+                .coverImage("https://example.com/new-image.jpg")
+                .startDate(LocalDate.now())
+                .endDate(LocalDate.now().plusMonths(3))
+                .learningOutcomes(new ArrayList<>())
+                .build();
+        ModifyCourseCommand emptyLoCommand = ModifyCourseCommand.builder()
+                .courseId(courseId)
+                .course(emptyLoCourse)
+                .build();
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
         when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
         
         Course savedCourse = Course.builder()
                 .id(courseId)
-                .courseName(validRequest.getCourseName())
-                .courseCode(validRequest.getCourseCode())
+                .courseName(emptyLoCourse.getCourseName())
+                .courseCode(emptyLoCourse.getCourseCode())
                 .teacher(mockTeacher)
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 
         // Act
-        ModifyCourseResponse response = modifyCourseService.modifyCourse(validRequest);
+        ModifyCourseResponse response = modifyCourseService.modifyCourse(emptyLoCommand);
 
         // Assert
         assertNotNull(response);

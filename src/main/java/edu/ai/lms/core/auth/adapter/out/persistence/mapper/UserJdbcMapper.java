@@ -1,4 +1,4 @@
-package edu.ai.lms.core.auth.adapter.out.persistence;
+package edu.ai.lms.core.auth.adapter.out.persistence.mapper;
 
 import org.springframework.stereotype.Component;
 
@@ -9,7 +9,7 @@ import edu.ai.lms.database.StudentJdbcEntity;
 import edu.ai.lms.database.TeacherJdbcEntity;
 
 @Component
-class UserJdbcMapper {
+public class UserJdbcMapper {
 
     public StudentJdbcEntity mapToStudentJdbcEntity(Student student) {
         return StudentJdbcEntity.builder()

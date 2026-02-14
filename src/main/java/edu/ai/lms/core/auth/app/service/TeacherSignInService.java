@@ -3,9 +3,9 @@ package edu.ai.lms.core.auth.app.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.adapter.in.request.TeacherSignInRequest;
 import edu.ai.lms.core.auth.adapter.in.response.TeacherSignInResponse;
 import edu.ai.lms.core.auth.app.domain.Teacher;
+import edu.ai.lms.core.auth.app.port.in.command.TeacherSignInCommand;
 import edu.ai.lms.core.auth.app.port.in.usecase.TeacherSignInUseCase;
 import edu.ai.lms.core.auth.app.port.out.AuthenticationPort;
 import edu.ai.lms.core.auth.app.port.out.TokenGenerationPort;
@@ -20,11 +20,11 @@ public class TeacherSignInService implements TeacherSignInUseCase {
 
     @Override
     @Transactional
-    public TeacherSignInResponse signIn(TeacherSignInRequest request) {
+    public TeacherSignInResponse signIn(TeacherSignInCommand command) {
         // Authenticate teacher using the authentication port
         Teacher teacher = authenticationPort.authenticateTeacher(
-                request.getEmail(),
-                request.getPassword()
+                command.email(),
+                command.password()
         );
 
         // Generate JWT token

@@ -19,13 +19,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.core.auth.adapter.in.request.TeacherSignInRequest;
 import edu.ai.lms.core.auth.adapter.in.response.TeacherSignInResponse;
+import edu.ai.lms.core.auth.app.port.in.command.TeacherSignInCommand;
 import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.Teacher;
 import edu.ai.lms.core.auth.app.port.out.AuthenticationPort;
 import edu.ai.lms.core.auth.app.port.out.TokenGenerationPort;
-import edu.ai.lms.core.auth.exception.InvalidCredentialsException;
+import edu.ai.lms.core.auth.app.exception.InvalidCredentialsException;
 
 @ExtendWith(MockitoExtension.class)
 class TeacherSignInServiceUT {
@@ -39,12 +39,12 @@ class TeacherSignInServiceUT {
     @InjectMocks
     private TeacherSignInService teacherSignInService;
 
-    private TeacherSignInRequest validRequest;
+    private TeacherSignInCommand validCommand;
     private Teacher validTeacher;
 
     @BeforeEach
     void setUp() {
-        validRequest = TeacherSignInRequest.builder()
+        validCommand = TeacherSignInCommand.builder()
                 .email("teacher@example.com")
                 .password("Password123!")
                 .build();
@@ -67,12 +67,12 @@ class TeacherSignInServiceUT {
     @DisplayName("Should successfully sign in with valid credentials")
     void testSignIn_WithValidCredentials_ShouldSucceed() {
         // Arrange
-        when(authenticationPort.authenticateTeacher(validRequest.getEmail(), validRequest.getPassword()))
+        when(authenticationPort.authenticateTeacher(validCommand.email(), validCommand.password()))
                 .thenReturn(validTeacher);
         when(tokenGenerationPort.generateTeacherToken(validTeacher)).thenReturn("mock-jwt-token");
 
         // Act
-        TeacherSignInResponse response = teacherSignInService.signIn(validRequest);
+        TeacherSignInResponse response = teacherSignInService.signIn(validCommand);
 
         // Assert
         assertNotNull(response);
@@ -90,12 +90,12 @@ class TeacherSignInServiceUT {
     @DisplayName("Should throw InvalidCredentialsException when authentication fails")
     void testSignIn_WithInvalidCredentials_ShouldThrowException() {
         // Arrange
-        when(authenticationPort.authenticateTeacher(validRequest.getEmail(), validRequest.getPassword()))
+        when(authenticationPort.authenticateTeacher(validCommand.email(), validCommand.password()))
                 .thenThrow(new InvalidCredentialsException("Invalid email or password"));
 
         // Act & Assert
         InvalidCredentialsException exception = assertThrows(InvalidCredentialsException.class,
-                () -> teacherSignInService.signIn(validRequest));
+                () -> teacherSignInService.signIn(validCommand));
         
         assertEquals("Invalid email or password", exception.getMessage());
         
@@ -107,17 +107,17 @@ class TeacherSignInServiceUT {
     @DisplayName("Should throw InvalidCredentialsException when email does not exist")
     void testSignIn_WithNonExistentEmail_ShouldThrowException() {
         // Arrange
-        TeacherSignInRequest invalidRequest = TeacherSignInRequest.builder()
+        TeacherSignInCommand invalidCommand = TeacherSignInCommand.builder()
                 .email("nonexistent@example.com")
                 .password("Password123!")
                 .build();
 
-        when(authenticationPort.authenticateTeacher(invalidRequest.getEmail(), invalidRequest.getPassword()))
+        when(authenticationPort.authenticateTeacher(invalidCommand.email(), invalidCommand.password()))
                 .thenThrow(new InvalidCredentialsException("Invalid email or password"));
 
         // Act & Assert
         InvalidCredentialsException exception = assertThrows(InvalidCredentialsException.class,
-                () -> teacherSignInService.signIn(invalidRequest));
+                () -> teacherSignInService.signIn(invalidCommand));
         
         assertEquals("Invalid email or password", exception.getMessage());
         verify(tokenGenerationPort, never()).generateTeacherToken(any(Teacher.class));
@@ -127,12 +127,12 @@ class TeacherSignInServiceUT {
     @DisplayName("Should generate token with authenticated teacher details")
     void testSignIn_ShouldGenerateTokenWithCorrectTeacher() {
         // Arrange
-        when(authenticationPort.authenticateTeacher(validRequest.getEmail(), validRequest.getPassword()))
+        when(authenticationPort.authenticateTeacher(validCommand.email(), validCommand.password()))
                 .thenReturn(validTeacher);
         when(tokenGenerationPort.generateTeacherToken(validTeacher)).thenReturn("specific-token-for-teacher");
 
         // Act
-        TeacherSignInResponse response = teacherSignInService.signIn(validRequest);
+        TeacherSignInResponse response = teacherSignInService.signIn(validCommand);
 
         // Assert
         assertEquals("specific-token-for-teacher", response.getToken());
@@ -162,17 +162,17 @@ class TeacherSignInServiceUT {
                 .role(Roles.TEACHER)
                 .build();
 
-        TeacherSignInRequest detailedRequest = TeacherSignInRequest.builder()
+        TeacherSignInCommand detailedCommand = TeacherSignInCommand.builder()
                 .email("detailed@university.edu")
                 .password("Password123!")
                 .build();
 
-        when(authenticationPort.authenticateTeacher(detailedRequest.getEmail(), detailedRequest.getPassword()))
+        when(authenticationPort.authenticateTeacher(detailedCommand.email(), detailedCommand.password()))
                 .thenReturn(detailedTeacher);
         when(tokenGenerationPort.generateTeacherToken(detailedTeacher)).thenReturn("detailed-token");
 
         // Act
-        TeacherSignInResponse response = teacherSignInService.signIn(detailedRequest);
+        TeacherSignInResponse response = teacherSignInService.signIn(detailedCommand);
 
         // Assert
         assertNotNull(response);
@@ -187,17 +187,17 @@ class TeacherSignInServiceUT {
     @DisplayName("Should handle sign in with wrong password")
     void testSignIn_WithWrongPassword_ShouldThrowException() {
         // Arrange
-        TeacherSignInRequest wrongPasswordRequest = TeacherSignInRequest.builder()
+        TeacherSignInCommand wrongPasswordCommand = TeacherSignInCommand.builder()
                 .email("teacher@example.com")
                 .password("WrongPassword!")
                 .build();
 
-        when(authenticationPort.authenticateTeacher(wrongPasswordRequest.getEmail(), wrongPasswordRequest.getPassword()))
+        when(authenticationPort.authenticateTeacher(wrongPasswordCommand.email(), wrongPasswordCommand.password()))
                 .thenThrow(new InvalidCredentialsException("Invalid email or password"));
 
         // Act & Assert
         InvalidCredentialsException exception = assertThrows(InvalidCredentialsException.class,
-                () -> teacherSignInService.signIn(wrongPasswordRequest));
+                () -> teacherSignInService.signIn(wrongPasswordCommand));
         
         assertEquals("Invalid email or password", exception.getMessage());
         verify(tokenGenerationPort, never()).generateTeacherToken(any(Teacher.class));
@@ -212,7 +212,7 @@ class TeacherSignInServiceUT {
         when(tokenGenerationPort.generateTeacherToken(validTeacher)).thenReturn("test-token");
 
         // Act
-        teacherSignInService.signIn(validRequest);
+        teacherSignInService.signIn(validCommand);
 
         // Assert
         verify(authenticationPort, times(1)).authenticateTeacher("teacher@example.com", "Password123!");
@@ -222,12 +222,12 @@ class TeacherSignInServiceUT {
     @DisplayName("Should return Bearer token type by default")
     void testSignIn_ShouldReturnBearerTokenType() {
         // Arrange
-        when(authenticationPort.authenticateTeacher(validRequest.getEmail(), validRequest.getPassword()))
+        when(authenticationPort.authenticateTeacher(validCommand.email(), validCommand.password()))
                 .thenReturn(validTeacher);
         when(tokenGenerationPort.generateTeacherToken(validTeacher)).thenReturn("bearer-token");
 
         // Act
-        TeacherSignInResponse response = teacherSignInService.signIn(validRequest);
+        TeacherSignInResponse response = teacherSignInService.signIn(validCommand);
 
         // Assert
         assertEquals("Bearer", response.getType());

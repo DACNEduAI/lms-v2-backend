@@ -1,9 +1,11 @@
-package edu.ai.lms.core.auth.exception;
+package edu.ai.lms.core.auth.adapter.out.exception;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 import edu.ai.lms.common.ErrorResponse;
+import edu.ai.lms.core.auth.app.exception.EmailAlreadyExistsException;
+import edu.ai.lms.core.auth.app.exception.InvalidCredentialsException;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -13,11 +15,6 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 /**
  * Global exception handler for authentication-related exceptions.
