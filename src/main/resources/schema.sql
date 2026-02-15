@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS chapters (
     title VARCHAR(255),
     description TEXT,
     order_index INTEGER,
-    course_id UUID REFERENCES courses(id),
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

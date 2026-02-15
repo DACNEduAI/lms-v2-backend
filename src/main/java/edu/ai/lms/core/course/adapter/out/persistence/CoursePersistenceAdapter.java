@@ -5,12 +5,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.stereotype.Component;
+
 import edu.ai.lms.core.course.adapter.out.persistence.mapper.ChapterJdbcMapper;
 import edu.ai.lms.core.course.adapter.out.persistence.mapper.CourseJdbcMapper;
 import edu.ai.lms.core.course.adapter.out.persistence.mapper.LearningOutcomeJdbcMapper;
 import edu.ai.lms.core.course.adapter.out.persistence.mapper.MaterialJdbcMapper;
-import org.springframework.stereotype.Component;
-
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
