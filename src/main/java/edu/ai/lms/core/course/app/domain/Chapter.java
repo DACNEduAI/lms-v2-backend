@@ -20,7 +20,7 @@ public class Chapter {
     private String description;
     private Integer orderIndex;
 
-    private Course course;
+    private UUID courseId;
 
     @Builder.Default
     private List<Material> materials = new ArrayList<>();

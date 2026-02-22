@@ -1,11 +1,9 @@
 package edu.ai.lms.core.course.adapter.in.request;
 
-import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.Material;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -16,15 +14,17 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class CreateChapterRequest {
+
+    @NotBlank(message = "Chapter title cannot be blank")
     private String title;
+
     private String description;
+
     private Integer orderIndex;
 
-    private Course course;
+    @NotNull(message = "Course ID cannot be null")
+    private UUID courseId;
 
     @Builder.Default
     private List<CreateMaterialRequest> materials = new ArrayList<>();
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }
