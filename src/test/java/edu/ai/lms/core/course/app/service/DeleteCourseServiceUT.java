@@ -1,5 +1,6 @@
 package edu.ai.lms.core.course.app.service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -67,7 +68,7 @@ class DeleteCourseServiceUT {
                 .courseName("Introduction to Java")
                 .courseCode("CS101")
                 .description("Learn Java programming basics")
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .active(true)
                 .build();
     }
@@ -180,7 +181,7 @@ class DeleteCourseServiceUT {
         Course courseWithOwner = Course.builder()
                 .id(courseId)
                 .courseName("Test Course")
-                .teacher(courseOwner)
+                .teacherIds(List.of(teacherId))
                 .build();
         
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(courseWithOwner));

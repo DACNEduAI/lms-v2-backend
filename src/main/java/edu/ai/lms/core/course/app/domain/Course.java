@@ -23,7 +23,11 @@ public class Course {
 
     private String courseCode;
 
-    private Teacher teacher;
+    @Builder.Default
+    private List<UUID> teacherIds = new ArrayList<>();
+
+    @Builder.Default
+    private List<UUID> studentIds = new ArrayList<>();
 
     private LocalDate startDate;
 

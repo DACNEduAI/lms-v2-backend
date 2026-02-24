@@ -37,7 +37,7 @@ public class CreateChapterService implements TeacherCreateChapterUseCase {
         Course course = loadCoursePort.findById(command.courseId())
                 .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + command.courseId()));
 
-        if (!course.getTeacher().getId().equals(teacher.getId())) {
+        if (!course.getTeacherIds().contains(teacher.getId())) {
             throw new IllegalArgumentException("Teacher is not authorized to add chapters to this course");
         }
 

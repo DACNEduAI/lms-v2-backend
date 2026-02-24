@@ -81,7 +81,7 @@ class CreateChapterServiceUT {
                 .active(true)
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(3))
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .build();
 
         Chapter chapter = Chapter.builder()

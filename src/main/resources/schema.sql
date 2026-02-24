@@ -35,13 +35,26 @@ CREATE TABLE IF NOT EXISTS courses (
     course_name VARCHAR(255) NOT NULL,
     description VARCHAR(1000),
     course_code VARCHAR(255) NOT NULL UNIQUE,
-    teacher_id UUID NOT NULL REFERENCES teachers(id),
     active BOOLEAN NOT NULL DEFAULT true,
     cover_image VARCHAR(255),
     start_date TIMESTAMP NOT NULL,
     end_date TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Junction table for many-to-many: courses <-> teachers
+CREATE TABLE IF NOT EXISTS course_teachers (
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+    PRIMARY KEY (course_id, teacher_id)
+);
+
+-- Junction table for many-to-many: courses <-> students
+CREATE TABLE IF NOT EXISTS course_students (
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    PRIMARY KEY (course_id, student_id)
 );
 
 -- Chapters table

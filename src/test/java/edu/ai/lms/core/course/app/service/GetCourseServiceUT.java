@@ -75,7 +75,7 @@ class GetCourseServiceUT {
                 .coverImage("https://example.com/image.jpg")
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(3))
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .learningOutcomes(learningOutcomes)
                 .build();
     }
@@ -178,7 +178,7 @@ class GetCourseServiceUT {
                 .active(true)
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(1))
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .learningOutcomes(new ArrayList<>())
                 .build();
 
@@ -211,7 +211,7 @@ class GetCourseServiceUT {
                 .active(false)
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(1))
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .learningOutcomes(new ArrayList<>())
                 .build();
 

@@ -1,5 +1,7 @@
 package edu.ai.lms.core.course.app.service;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,8 +41,8 @@ public class CreateCourseService implements TeacherCreateCourseUseCase {
         Teacher teacher = loadSignedInTeacherPort.findAuthenticatedTeacher()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
-        // Set the teacher on the course
-        course.setTeacher(teacher);
+        // Add the authenticated teacher to the course's teacher list
+        course.setTeacherIds(List.of(teacher.getId()));
 
         // Save the course
         Course savedCourse = saveCoursePort.save(course);

@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -102,7 +101,7 @@ class CreateCourseServiceUT {
                 .courseName(course.getCourseName())
                 .courseCode(course.getCourseCode())
                 .description(course.getDescription())
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .active(true)
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
@@ -173,7 +172,7 @@ class CreateCourseServiceUT {
                 .id(courseId)
                 .courseName(course.getCourseName())
                 .courseCode(course.getCourseCode())
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 
@@ -187,7 +186,7 @@ class CreateCourseServiceUT {
         assertEquals("Introduction to Java", capturedCourse.getCourseName());
         assertEquals("CS101", capturedCourse.getCourseCode());
         assertEquals("Learn Java programming basics", capturedCourse.getDescription());
-        assertEquals(mockTeacher, capturedCourse.getTeacher());
+        assertTrue(capturedCourse.getTeacherIds().contains(teacherId));
         assertTrue(capturedCourse.getActive());
         assertNotNull(capturedCourse.getLearningOutcomes());
         assertEquals(1, capturedCourse.getLearningOutcomes().size());
@@ -218,7 +217,7 @@ class CreateCourseServiceUT {
                 .id(courseId)
                 .courseName(emptyLoCourse.getCourseName())
                 .courseCode(emptyLoCourse.getCourseCode())
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 
@@ -248,7 +247,7 @@ class CreateCourseServiceUT {
                 .courseName(course.getCourseName())
                 .courseCode(course.getCourseCode())
                 .description(course.getDescription())
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .active(true)
                 .coverImage("https://example.com/image.jpg")
                 .startDate(startDate)

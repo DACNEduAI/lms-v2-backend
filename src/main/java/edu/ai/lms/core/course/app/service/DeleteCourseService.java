@@ -35,8 +35,8 @@ public class DeleteCourseService implements TeacherDeleteCourseUseCase {
         Teacher teacher = loadSignedInTeacherPort.findAuthenticatedTeacher()
                 .orElseThrow(() -> new TeacherNotFoundException("Authenticated teacher not found"));
 
-        // Business rule: Validate that the teacher owns the course
-        if (!existingCourse.getTeacher().getId().equals(teacher.getId())) {
+        // Business rule: Validate that the teacher is associated with the course
+        if (!existingCourse.getTeacherIds().contains(teacher.getId())) {
             throw new IllegalArgumentException("Teacher is not authorized to delete this course");
         }
 

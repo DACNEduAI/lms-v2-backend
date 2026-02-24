@@ -66,7 +66,7 @@ class GetAllCoursesServiceUT {
                 .coverImage("https://example.com/java-adv.jpg")
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(3))
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .build());
 
         mockCourses.add(Course.builder()
@@ -78,7 +78,7 @@ class GetAllCoursesServiceUT {
                 .coverImage("https://example.com/python.jpg")
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(2))
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .build());
 
         mockCourses.add(Course.builder()
@@ -90,7 +90,7 @@ class GetAllCoursesServiceUT {
                 .coverImage("https://example.com/cloud.jpg")
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(4))
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .build());
     }
 

@@ -29,9 +29,6 @@ public class CourseJdbcTable {
     private String description;
     private String courseCode;
 
-    @Column("teacher_id")
-    private UUID teacherId;
-
     @Builder.Default
     private Boolean active = true;
 
@@ -43,6 +40,14 @@ public class CourseJdbcTable {
     @MappedCollection(idColumn = "course_id")
     @Builder.Default
     private Set<ChapterJdbcTable> chapters = new HashSet<>();
+
+    @MappedCollection(idColumn = "course_id")
+    @Builder.Default
+    private Set<CourseTeacherJdbcTable> courseTeachers = new HashSet<>();
+
+    @MappedCollection(idColumn = "course_id")
+    @Builder.Default
+    private Set<CourseStudentJdbcTable> courseStudents = new HashSet<>();
 
     @CreatedDate
     private LocalDateTime createdAt;

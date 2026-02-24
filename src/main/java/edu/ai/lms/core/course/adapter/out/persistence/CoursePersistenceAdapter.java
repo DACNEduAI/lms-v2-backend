@@ -21,14 +21,13 @@ import edu.ai.lms.database.ChapterJdbcTable;
 import edu.ai.lms.database.CourseJdbcTable;
 import edu.ai.lms.database.LearningOutcomeJdbcTable;
 import edu.ai.lms.database.MaterialJdbcTable;
-import edu.ai.lms.database.TeacherJdbcTable;
 import lombok.RequiredArgsConstructor;
+
 @Component
 @RequiredArgsConstructor
 class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, DeleteCoursePort {
 
     private final CourseRepository courseRepository;
-    private final TeacherRepository teacherRepository;
     private final ChapterRepository chapterRepository;
     private final LearningOutcomeRepository learningOutcomeRepository;
     private final MaterialRepository materialRepository;
@@ -39,14 +38,8 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
 
     @Override
     public Course save(Course course) {
-        UUID teacherId = course.getTeacher().getId();
-
-        // Verify teacher exists
-        TeacherJdbcTable teacherEntity = teacherRepository.findById(teacherId)
-                .orElseThrow(() -> new IllegalArgumentException("Teacher not found with id: " + teacherId));
-
-        // Save the course entity
-        CourseJdbcTable courseEntity = courseJdbcMapper.mapToCourseJdbcEntity(course, teacherId);
+        // Save the course entity (junction table refs are managed via @MappedCollection)
+        CourseJdbcTable courseEntity = courseJdbcMapper.mapToCourseJdbcEntity(course);
         CourseJdbcTable savedCourse = courseRepository.save(courseEntity);
 
         // Save chapters
@@ -87,12 +80,16 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     @Override
     public Optional<Course> findByCourseCode(String courseCode) {
         return courseRepository.findByCourseCode(courseCode)
+                .flatMap(entity -> courseRepository.findById(entity.getId()))
                 .map(this::loadFullCourse);
     }
 
     @Override
     public List<Course> findAllByTeacherId(UUID teacherId) {
         return courseRepository.findAllByTeacherId(teacherId).stream()
+                .map(entity -> courseRepository.findById(entity.getId()))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .map(this::loadFullCourse)
                 .collect(java.util.stream.Collectors.toList());
     }
@@ -113,19 +110,18 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
         // Delete learning outcomes
         learningOutcomeRepository.deleteByCourseId(courseId);
         
-        // Finally delete the course
+        // Finally delete the course (junction table entries are cascade-deleted
+        // via @MappedCollection and ON DELETE CASCADE)
         courseRepository.deleteById(courseId);
     }
 
     /**
      * Loads a full Course aggregate by explicitly fetching related entities.
-     * With Spring Data JDBC there are no lazy-loading surprises —
-     * we control exactly what gets loaded.
+     * Teacher/student IDs are extracted from the entity's @MappedCollection sets
+     * (populated automatically by Spring Data JDBC when loading via findById).
+     * Chapters, materials, and learning outcomes are loaded manually.
      */
     private Course loadFullCourse(CourseJdbcTable courseEntity) {
-        TeacherJdbcTable teacherEntity = teacherRepository.findById(courseEntity.getTeacherId())
-                .orElse(null);
-
         List<ChapterJdbcTable> chapters = chapterRepository.findByCourseId(courseEntity.getId());
 
         // Load all materials for all chapters in one batch
@@ -136,6 +132,6 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
 
         List<LearningOutcomeJdbcTable> learningOutcomes = learningOutcomeRepository.findByCourseId(courseEntity.getId());
 
-        return courseJdbcMapper.mapToCourse(courseEntity, teacherEntity, chapters, learningOutcomes, allMaterials);
+        return courseJdbcMapper.mapToCourse(courseEntity, chapters, learningOutcomes, allMaterials);
     }
 }

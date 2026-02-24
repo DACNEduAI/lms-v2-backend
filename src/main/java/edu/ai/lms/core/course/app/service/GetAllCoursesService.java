@@ -4,8 +4,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.common.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +30,7 @@ public class GetAllCoursesService implements GetAllCoursesUseCase {
         Teacher teacher = loadSignedInTeacherPort.findAuthenticatedTeacher()
                 .orElseThrow(() -> new TeacherNotFoundException("Authenticated teacher not found"));
 
-        // Load all courses for the teacher
+        // Load all courses for the teacher (via junction table)
         List<Course> courses = loadCoursePort.findAllByTeacherId(teacher.getId());
 
         // Sort courses by course name (first letter)
@@ -67,9 +65,4 @@ public class GetAllCoursesService implements GetAllCoursesUseCase {
                 .sortDirection(sortDirection != null ? sortDirection : "asc")
                 .build();
     }
-}
-
-interface GetAllCoursesStrategy {
-    Roles getRole();
-    GetAllCoursesResponse getAllCourses(User user, int pageSize, String sortDirection);
 }
