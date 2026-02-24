@@ -10,23 +10,24 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table("answers")
+@Table("enrollments")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AnswerJdbcEntity {
+public class EnrollmentJdbcTable {
 
     @Id
     private UUID id;
 
-    private String content;
-    private boolean isCorrect;
-    private String explanation;
+    @Column("student_id")
+    private UUID studentId;
 
-    @Column("question_id")
-    private UUID questionId;
+    @Column("course_id")
+    private UUID courseId;
+
+    private LocalDateTime enrolledDate;
 
     @CreatedDate
     private LocalDateTime createdAt;

@@ -5,44 +5,34 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.relational.core.mapping.Column;
-import org.springframework.data.relational.core.mapping.MappedCollection;
 import org.springframework.data.relational.core.mapping.Table;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
-@Table("courses")
+@Table("quizzes")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CourseJdbcEntity {
+public class QuizJdbcTable {
 
     @Id
     private UUID id;
 
-    private String courseName;
-    private String description;
-    private String courseCode;
+    private String quizTitle;
+    private Integer timeLimitMinutes;
+    private Double passScore;
 
-    @Column("teacher_id")
-    private UUID teacherId;
+    @Column("ai_settings_id")
+    private UUID aiSettingsId;
+
+    @Column("student_id")
+    private UUID studentId;
 
     @Builder.Default
     private Boolean active = true;
-
-    private String coverImage;
-
-    private LocalDate startDate;
-    private LocalDate endDate;
-
-    @MappedCollection(idColumn = "course_id")
-    @Builder.Default
-    private Set<ChapterJdbcEntity> chapters = new HashSet<>();
 
     @CreatedDate
     private LocalDateTime createdAt;

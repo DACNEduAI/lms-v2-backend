@@ -4,42 +4,29 @@ import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.relational.core.mapping.MappedCollection;
+import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
-import java.util.Set;
 import java.util.UUID;
 
-@Table("teachers")
+@Table("chapters")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TeacherJdbcEntity {
-
-    public enum Roles {
-        ADMIN,
-        TEACHER,
-        STUDENT
-    }
+public class ChapterJdbcTable {
 
     @Id
     private UUID id;
 
-    private String email;
-    private String password;
-    private String firstName;
-    private String lastName;
-    private String avatarUrl;
+    private String title;
+    private String description;
+    private Integer orderIndex;
 
-    private Roles role;
-
-    private String employeeId;
-    private String phoneNumber;
-    private String department;
-    private String specialization;
+    @Column("course_id")
+    private UUID courseId;
 
     @CreatedDate
     private LocalDateTime createdAt;

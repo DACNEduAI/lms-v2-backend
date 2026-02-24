@@ -4,16 +4,18 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import edu.ai.lms.common.Roles;
+import edu.ai.lms.common.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.core.course.adapter.in.response.GetAllCoursesResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.Teacher;
+import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.in.usecase.GetAllCoursesUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
-import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -65,4 +67,9 @@ public class GetAllCoursesService implements GetAllCoursesUseCase {
                 .sortDirection(sortDirection != null ? sortDirection : "asc")
                 .build();
     }
+}
+
+interface GetAllCoursesStrategy {
+    Roles getRole();
+    GetAllCoursesResponse getAllCourses(User user, int pageSize, String sortDirection);
 }

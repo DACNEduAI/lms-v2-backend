@@ -6,11 +6,11 @@ import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.domain.Teacher;
-import edu.ai.lms.database.ChapterJdbcEntity;
-import edu.ai.lms.database.CourseJdbcEntity;
-import edu.ai.lms.database.LearningOutcomeJdbcEntity;
-import edu.ai.lms.database.MaterialJdbcEntity;
-import edu.ai.lms.database.TeacherJdbcEntity;
+import edu.ai.lms.database.ChapterJdbcTable;
+import edu.ai.lms.database.CourseJdbcTable;
+import edu.ai.lms.database.LearningOutcomeJdbcTable;
+import edu.ai.lms.database.MaterialJdbcTable;
+import edu.ai.lms.database.TeacherJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
@@ -27,8 +27,8 @@ public class CourseJdbcMapper {
     private final LearningOutcomeJdbcMapper learningOutcomeJdbcMapper;
     private final MaterialJdbcMapper materialJdbcMapper;
 
-    public CourseJdbcEntity mapToCourseJdbcEntity(Course course, UUID teacherId) {
-        return CourseJdbcEntity.builder()
+    public CourseJdbcTable mapToCourseJdbcEntity(Course course, UUID teacherId) {
+        return CourseJdbcTable.builder()
                 .id(course.getId())
                 .courseName(course.getCourseName())
                 .description(course.getDescription())
@@ -42,11 +42,11 @@ public class CourseJdbcMapper {
     }
 
     public Course mapToCourse(
-            CourseJdbcEntity entity,
-            TeacherJdbcEntity teacherEntity,
-            List<ChapterJdbcEntity> chapterEntities,
-            List<LearningOutcomeJdbcEntity> learningOutcomeEntities,
-            List<MaterialJdbcEntity> allMaterials
+            CourseJdbcTable entity,
+            TeacherJdbcTable teacherEntity,
+            List<ChapterJdbcTable> chapterEntities,
+            List<LearningOutcomeJdbcTable> learningOutcomeEntities,
+            List<MaterialJdbcTable> allMaterials
     ) {
         Teacher teacher = teacherJdbcMapper.mapToTeacher(teacherEntity);
 
@@ -54,7 +54,7 @@ public class CourseJdbcMapper {
         if (chapterEntities != null) {
             chapters = chapterEntities.stream()
                     .map(chapterEntity -> {
-                        List<MaterialJdbcEntity> chapterMaterials = allMaterials != null
+                        List<MaterialJdbcTable> chapterMaterials = allMaterials != null
                                 ? allMaterials.stream()
                                     .filter(m -> m.getChapterId().equals(chapterEntity.getId()))
                                     .collect(Collectors.toList())

@@ -10,32 +10,30 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table("ai_settings")
+@Table("materials")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AISettingsJdbcEntity {
+public class MaterialJdbcTable {
+
+    public enum MaterialType {
+        PDF,
+        VIDEO,
+        LINK
+    }
 
     @Id
     private UUID id;
 
-    private String generationPrompt;
-    private String difficultyLevel;
-    private boolean focusOnWeakAreas;
-    private Integer numberOfQuestions;
+    private String title;
+    private MaterialType type;
+    private String sourceUrl;
+    private boolean isDownloadable;
 
-    /**
-     * Discriminator: "STUDENT" or "TEACHER"
-     */
-    @Column("setting_type")
-    private String settingType;
-
-    // Student-specific fields
-    private Boolean alignToClo;
-    private Boolean includeAnswerKey;
-    private String mode;
+    @Column("chapter_id")
+    private UUID chapterId;
 
     @CreatedDate
     private LocalDateTime createdAt;

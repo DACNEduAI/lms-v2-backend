@@ -9,16 +9,16 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import edu.ai.lms.database.MaterialJdbcEntity;
+import edu.ai.lms.database.MaterialJdbcTable;
 
 /**
  * Package-private repository interface for materials.
  */
 @Repository
-interface MaterialRepository extends CrudRepository<MaterialJdbcEntity, UUID> {
+interface MaterialRepository extends CrudRepository<MaterialJdbcTable, UUID> {
 
     @Query("SELECT * FROM materials WHERE chapter_id = :chapterId")
-    List<MaterialJdbcEntity> findByChapterId(@Param("chapterId") UUID chapterId);
+    List<MaterialJdbcTable> findByChapterId(@Param("chapterId") UUID chapterId);
 
     @Modifying
     @Query("DELETE FROM materials WHERE chapter_id = :chapterId")

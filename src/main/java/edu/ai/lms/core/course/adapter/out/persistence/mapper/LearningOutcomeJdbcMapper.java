@@ -3,15 +3,15 @@ package edu.ai.lms.core.course.adapter.out.persistence.mapper;
 import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
-import edu.ai.lms.database.LearningOutcomeJdbcEntity;
+import edu.ai.lms.database.LearningOutcomeJdbcTable;
 
 import java.util.UUID;
 
 @Component
 public class LearningOutcomeJdbcMapper {
 
-    public LearningOutcomeJdbcEntity mapToEntity(LearningOutcome learningOutcome, UUID courseId) {
-        return LearningOutcomeJdbcEntity.builder()
+    public LearningOutcomeJdbcTable mapToEntity(LearningOutcome learningOutcome, UUID courseId) {
+        return LearningOutcomeJdbcTable.builder()
                 .id(learningOutcome.getId())
                 .code(learningOutcome.getCode())
                 .description(learningOutcome.getDescription())
@@ -19,7 +19,7 @@ public class LearningOutcomeJdbcMapper {
                 .build();
     }
 
-    public LearningOutcome mapToLearningOutcome(LearningOutcomeJdbcEntity entity) {
+    public LearningOutcome mapToLearningOutcome(LearningOutcomeJdbcTable entity) {
         return LearningOutcome.builder()
                 .id(entity.getId())
                 .code(entity.getCode())

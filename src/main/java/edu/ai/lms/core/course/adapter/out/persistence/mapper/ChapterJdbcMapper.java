@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Material;
-import edu.ai.lms.database.ChapterJdbcEntity;
-import edu.ai.lms.database.MaterialJdbcEntity;
+import edu.ai.lms.database.ChapterJdbcTable;
+import edu.ai.lms.database.MaterialJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -19,8 +19,8 @@ public class ChapterJdbcMapper {
 
     private final MaterialJdbcMapper materialJdbcMapper;
 
-    public ChapterJdbcEntity mapToChapterJdbcEntity(Chapter chapter, UUID courseId) {
-        return ChapterJdbcEntity.builder()
+    public ChapterJdbcTable mapToChapterJdbcEntity(Chapter chapter, UUID courseId) {
+        return ChapterJdbcTable.builder()
                 .id(chapter.getId())
                 .title(chapter.getTitle())
                 .description(chapter.getDescription())
@@ -30,7 +30,7 @@ public class ChapterJdbcMapper {
     }
 
     /// Map to chapter WITHOUT Materials
-    public Chapter mapToChapterWithoutMaterials(ChapterJdbcEntity entity) {
+    public Chapter mapToChapterWithoutMaterials(ChapterJdbcTable entity) {
         return Chapter.builder()
                 .id(entity.getId())
                 .title(entity.getTitle())
@@ -42,7 +42,7 @@ public class ChapterJdbcMapper {
                 .build();
     }
     /// Map to chapter WITH Materials
-    public Chapter mapToChapter(ChapterJdbcEntity entity, List<MaterialJdbcEntity> materialEntities) {
+    public Chapter mapToChapter(ChapterJdbcTable entity, List<MaterialJdbcTable> materialEntities) {
         Chapter chapter = Chapter.builder()
                 .id(entity.getId())
                 .title(entity.getTitle())

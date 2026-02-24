@@ -9,16 +9,16 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import edu.ai.lms.database.ChapterJdbcEntity;
+import edu.ai.lms.database.ChapterJdbcTable;
 
 /**
  * Package-private repository interface for chapters.
  */
 @Repository
-interface ChapterRepository extends CrudRepository<ChapterJdbcEntity, UUID> {
+interface ChapterRepository extends CrudRepository<ChapterJdbcTable, UUID> {
 
     @Query("SELECT * FROM chapters WHERE course_id = :courseId ORDER BY order_index")
-    List<ChapterJdbcEntity> findByCourseId(@Param("courseId") UUID courseId);
+    List<ChapterJdbcTable> findByCourseId(@Param("courseId") UUID courseId);
 
     @Modifying
     @Query("DELETE FROM chapters WHERE course_id = :courseId")

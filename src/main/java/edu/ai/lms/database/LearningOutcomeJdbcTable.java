@@ -10,30 +10,22 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table("materials")
+@Table("learning_outcomes")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MaterialJdbcEntity {
-
-    public enum MaterialType {
-        PDF,
-        VIDEO,
-        LINK
-    }
+public class LearningOutcomeJdbcTable {
 
     @Id
     private UUID id;
 
-    private String title;
-    private MaterialType type;
-    private String sourceUrl;
-    private boolean isDownloadable;
+    private String code;
+    private String description;
 
-    @Column("chapter_id")
-    private UUID chapterId;
+    @Column("course_id")
+    private UUID courseId;
 
     @CreatedDate
     private LocalDateTime createdAt;

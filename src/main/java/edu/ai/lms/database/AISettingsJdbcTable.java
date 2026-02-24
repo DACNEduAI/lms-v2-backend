@@ -10,29 +10,32 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table("quizzes")
+@Table("ai_settings")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class QuizJdbcEntity {
+public class AISettingsJdbcTable {
 
     @Id
     private UUID id;
 
-    private String quizTitle;
-    private Integer timeLimitMinutes;
-    private Double passScore;
+    private String generationPrompt;
+    private String difficultyLevel;
+    private boolean focusOnWeakAreas;
+    private Integer numberOfQuestions;
 
-    @Column("ai_settings_id")
-    private UUID aiSettingsId;
+    /**
+     * Discriminator: "STUDENT" or "TEACHER"
+     */
+    @Column("setting_type")
+    private String settingType;
 
-    @Column("student_id")
-    private UUID studentId;
-
-    @Builder.Default
-    private Boolean active = true;
+    // Student-specific fields
+    private Boolean alignToClo;
+    private Boolean includeAnswerKey;
+    private String mode;
 
     @CreatedDate
     private LocalDateTime createdAt;
