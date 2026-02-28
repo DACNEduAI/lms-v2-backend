@@ -9,6 +9,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -72,7 +73,7 @@ class ModifyCourseServiceUT {
                 .courseName("Old Course Name")
                 .courseCode("CS101")
                 .description("Old description")
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .active(true)
                 .build();
 
@@ -112,7 +113,7 @@ class ModifyCourseServiceUT {
                 .courseName(course.getCourseName())
                 .courseCode(course.getCourseCode())
                 .description(course.getDescription())
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .active(true)
                 .coverImage(course.getCoverImage())
                 .startDate(course.getStartDate())
@@ -207,7 +208,7 @@ class ModifyCourseServiceUT {
                 .id(courseId)
                 .courseName(course.getCourseName())
                 .courseCode(course.getCourseCode())
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 
@@ -221,7 +222,7 @@ class ModifyCourseServiceUT {
         assertEquals(courseId, capturedCourse.getId());
         assertEquals("Updated Course Name", capturedCourse.getCourseName());
         assertEquals("Updated description", capturedCourse.getDescription());
-        assertEquals(mockTeacher, capturedCourse.getTeacher());
+        assertTrue(capturedCourse.getTeacherIds().contains(teacherId));
         assertNotNull(capturedCourse.getLearningOutcomes());
         assertEquals(1, capturedCourse.getLearningOutcomes().size());
         assertEquals("CLO-1", capturedCourse.getLearningOutcomes().get(0).getCode());
@@ -239,7 +240,7 @@ class ModifyCourseServiceUT {
                 .id(courseId)
                 .courseName(course.getCourseName())
                 .courseCode(course.getCourseCode())
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 
@@ -275,7 +276,7 @@ class ModifyCourseServiceUT {
                 .id(courseId)
                 .courseName(emptyLoCourse.getCourseName())
                 .courseCode(emptyLoCourse.getCourseCode())
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 

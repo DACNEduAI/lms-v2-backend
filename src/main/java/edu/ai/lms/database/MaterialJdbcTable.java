@@ -10,29 +10,34 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table("quizzes")
+@Table("materials")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class QuizJdbcEntity {
+public class MaterialJdbcTable {
+
+    public enum MaterialType {
+        PDF,
+        VIDEO,
+        LINK
+    }
 
     @Id
     private UUID id;
 
-    private String quizTitle;
-    private Integer timeLimitMinutes;
-    private Double passScore;
+    private String title;
+    private MaterialType type;
+    private String sourceUrl;
+    private boolean isDownloadable;
 
-    @Column("ai_settings_id")
-    private UUID aiSettingsId;
+    // Reference to chapter composite key (chapter_number, course_id)
+    @Column("chapter_number")
+    private Long chapterNumber;
 
-    @Column("student_id")
-    private UUID studentId;
-
-    @Builder.Default
-    private Boolean active = true;
+    @Column("chapter_course_id")
+    private UUID chapterCourseId;
 
     @CreatedDate
     private LocalDateTime createdAt;

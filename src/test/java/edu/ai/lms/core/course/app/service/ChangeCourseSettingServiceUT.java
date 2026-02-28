@@ -1,6 +1,7 @@
 package edu.ai.lms.core.course.app.service;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,10 +27,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import edu.ai.lms.core.course.adapter.in.response.ChangeCourseSettingResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.Teacher;
+import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.port.in.command.ChangeCourseSettingCommand;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
-import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class ChangeCourseSettingServiceUT {
@@ -66,7 +67,7 @@ class ChangeCourseSettingServiceUT {
                 .courseName("Original Course Name")
                 .courseCode("CS101")
                 .description("Original description")
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .active(true)
                 .coverImage("https://example.com/old-image.jpg")
                 .startDate(LocalDate.now())
@@ -95,7 +96,7 @@ class ChangeCourseSettingServiceUT {
                 .courseName(validCommand.courseName())
                 .courseCode(existingCourse.getCourseCode())
                 .description(validCommand.description())
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .active(validCommand.active())
                 .coverImage(validCommand.coverImage())
                 .startDate(validCommand.startDate())
@@ -261,7 +262,7 @@ class ChangeCourseSettingServiceUT {
                 .courseName("Updated Course Name")
                 .courseCode("CS101")
                 .description("Updated description")
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .active(false)
                 .coverImage("https://example.com/new-image.jpg")
                 .startDate(validCommand.startDate())
@@ -293,7 +294,7 @@ class ChangeCourseSettingServiceUT {
                 .id(courseId)
                 .courseName(validCommand.courseName())
                 .courseCode("CS101")
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 

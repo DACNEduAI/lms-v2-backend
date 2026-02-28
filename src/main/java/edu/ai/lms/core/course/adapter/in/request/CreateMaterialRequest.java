@@ -32,6 +32,4 @@ public class CreateMaterialRequest {
     private String sourceUrl;
 
     private boolean downloadable;
-
-    private UUID chapter;
 }

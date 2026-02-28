@@ -14,13 +14,13 @@ import java.util.UUID;
 @Builder
 public class Chapter {
 
-    private UUID id;
+    // Chapter is a weak entity - its identity is (chapterNumber, courseId)
+    private Long chapterNumber; // Auto-increment within the course context
 
     private String title;
     private String description;
-    private Integer orderIndex;
 
-    private Course course;
+    private UUID courseId; // Part of composite primary key
 
     @Builder.Default
     private List<Material> materials = new ArrayList<>();

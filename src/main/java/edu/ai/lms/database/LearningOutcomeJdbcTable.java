@@ -10,33 +10,22 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table("attempts")
+@Table("learning_outcomes")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AttemptJdbcEntity {
-
-    public enum AttemptStatus {
-        STARTED,
-        SUBMITTED,
-        GRADED
-    }
+public class LearningOutcomeJdbcTable {
 
     @Id
     private UUID id;
 
-    @Column("student_id")
-    private UUID studentId;
+    private String code;
+    private String description;
 
-    @Column("quiz_id")
-    private UUID quizId;
-
-    private Double score;
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
-    private AttemptStatus status;
+    @Column("course_id")
+    private UUID courseId;
 
     @CreatedDate
     private LocalDateTime createdAt;

@@ -10,29 +10,32 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table("questions")
+@Table("ai_settings")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class QuestionJdbcEntity {
-
-    public enum QuestionType {
-        MULTIPLE_CHOICE,
-        TRUE_FALSE,
-        ESSAY
-    }
+public class AISettingsJdbcTable {
 
     @Id
     private UUID id;
 
-    private String content;
-    private QuestionType type;
-    private Double points;
+    private String generationPrompt;
+    private String difficultyLevel;
+    private boolean focusOnWeakAreas;
+    private Integer numberOfQuestions;
 
-    @Column("quiz_id")
-    private UUID quizId;
+    /**
+     * Discriminator: "STUDENT" or "TEACHER"
+     */
+    @Column("setting_type")
+    private String settingType;
+
+    // Student-specific fields
+    private Boolean alignToClo;
+    private Boolean includeAnswerKey;
+    private String mode;
 
     @CreatedDate
     private LocalDateTime createdAt;

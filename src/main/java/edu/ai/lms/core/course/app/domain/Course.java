@@ -23,7 +23,15 @@ public class Course {
 
     private String courseCode;
 
-    private Teacher teacher;
+    @Builder.Default
+    private List<UUID> teacherIds = new ArrayList<>();
+
+    @Builder.Default
+    private List<UUID> studentIds = new ArrayList<>();
+
+    // Course-Material 1-N relationship (via junction table)
+    @Builder.Default
+    private List<UUID> materialIds = new ArrayList<>();
 
     private LocalDate startDate;
 

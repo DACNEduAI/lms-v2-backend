@@ -1,62 +1,104 @@
 package edu.ai.lms.core.course.adapter.out.persistence.mapper;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
-import edu.ai.lms.core.course.app.domain.Teacher;
-import edu.ai.lms.database.ChapterJdbcEntity;
-import edu.ai.lms.database.CourseJdbcEntity;
-import edu.ai.lms.database.LearningOutcomeJdbcEntity;
-import edu.ai.lms.database.MaterialJdbcEntity;
-import edu.ai.lms.database.TeacherJdbcEntity;
+import edu.ai.lms.database.ChapterJdbcTable;
+import edu.ai.lms.database.CourseJdbcTable;
+import edu.ai.lms.database.CourseMaterialJdbcTable;
+import edu.ai.lms.database.CourseStudentJdbcTable;
+import edu.ai.lms.database.CourseTeacherJdbcTable;
+import edu.ai.lms.database.LearningOutcomeJdbcTable;
+import edu.ai.lms.database.MaterialJdbcTable;
 import lombok.RequiredArgsConstructor;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
 public class CourseJdbcMapper {
 
-    private final TeacherJdbcMapper teacherJdbcMapper;
     private final ChapterJdbcMapper chapterJdbcMapper;
     private final LearningOutcomeJdbcMapper learningOutcomeJdbcMapper;
-    private final MaterialJdbcMapper materialJdbcMapper;
 
-    public CourseJdbcEntity mapToCourseJdbcEntity(Course course, UUID teacherId) {
-        return CourseJdbcEntity.builder()
+    public CourseJdbcTable mapToCourseJdbcEntity(Course course) {
+        Set<CourseTeacherJdbcTable> courseTeachers = new HashSet<>();
+        if (course.getTeacherIds() != null) {
+            courseTeachers = course.getTeacherIds().stream()
+                    .map(id -> CourseTeacherJdbcTable.builder().teacherId(id).build())
+                    .collect(Collectors.toSet());
+        }
+
+        Set<CourseStudentJdbcTable> courseStudents = new HashSet<>();
+        if (course.getStudentIds() != null) {
+            courseStudents = course.getStudentIds().stream()
+                    .map(id -> CourseStudentJdbcTable.builder().studentId(id).build())
+                    .collect(Collectors.toSet());
+        }
+
+        Set<CourseMaterialJdbcTable> courseMaterials = new HashSet<>();
+        if (course.getMaterialIds() != null) {
+            courseMaterials = course.getMaterialIds().stream()
+                    .map(id -> CourseMaterialJdbcTable.builder().materialId(id).build())
+                    .collect(Collectors.toSet());
+        }
+
+        return CourseJdbcTable.builder()
                 .id(course.getId())
                 .courseName(course.getCourseName())
                 .description(course.getDescription())
                 .courseCode(course.getCourseCode())
-                .teacherId(teacherId)
                 .active(course.getActive())
                 .coverImage(course.getCoverImage())
                 .startDate(course.getStartDate())
                 .endDate(course.getEndDate())
+                .courseTeachers(courseTeachers)
+                .courseStudents(courseStudents)
+                .courseMaterials(courseMaterials)
                 .build();
     }
 
     public Course mapToCourse(
-            CourseJdbcEntity entity,
-            TeacherJdbcEntity teacherEntity,
-            List<ChapterJdbcEntity> chapterEntities,
-            List<LearningOutcomeJdbcEntity> learningOutcomeEntities,
-            List<MaterialJdbcEntity> allMaterials
+            CourseJdbcTable entity,
+            List<ChapterJdbcTable> chapterEntities,
+            List<LearningOutcomeJdbcTable> learningOutcomeEntities,
+            List<MaterialJdbcTable> allMaterials
     ) {
-        Teacher teacher = teacherJdbcMapper.mapToTeacher(teacherEntity);
+        List<UUID> teacherIds = entity.getCourseTeachers() != null
+                ? entity.getCourseTeachers().stream()
+                    .map(CourseTeacherJdbcTable::getTeacherId)
+                    .collect(Collectors.toList())
+                : new ArrayList<>();
+
+        List<UUID> studentIds = entity.getCourseStudents() != null
+                ? entity.getCourseStudents().stream()
+                    .map(CourseStudentJdbcTable::getStudentId)
+                    .collect(Collectors.toList())
+                : new ArrayList<>();
+
+        List<UUID> materialIds = entity.getCourseMaterials() != null
+                ? entity.getCourseMaterials().stream()
+                    .map(CourseMaterialJdbcTable::getMaterialId)
+                    .collect(Collectors.toList())
+                : new ArrayList<>();
 
         List<Chapter> chapters = new ArrayList<>();
         if (chapterEntities != null) {
             chapters = chapterEntities.stream()
                     .map(chapterEntity -> {
-                        List<MaterialJdbcEntity> chapterMaterials = allMaterials != null
+                        List<MaterialJdbcTable> chapterMaterials = allMaterials != null
                                 ? allMaterials.stream()
-                                    .filter(m -> m.getChapterId().equals(chapterEntity.getId()))
+                                    .filter(m -> m.getChapterNumber() != null &&
+                                                 m.getChapterNumber().equals(chapterEntity.getChapterNumber()) &&
+                                                 m.getChapterCourseId() != null &&
+                                                 m.getChapterCourseId().equals(chapterEntity.getCourseId()))
                                     .collect(Collectors.toList())
                                 : new ArrayList<>();
                         return chapterJdbcMapper.mapToChapter(chapterEntity, chapterMaterials);
@@ -76,7 +118,9 @@ public class CourseJdbcMapper {
                 .courseName(entity.getCourseName())
                 .description(entity.getDescription())
                 .courseCode(entity.getCourseCode())
-                .teacher(teacher)
+                .teacherIds(teacherIds)
+                .studentIds(studentIds)
+                .materialIds(materialIds)
                 .active(entity.getActive())
                 .coverImage(entity.getCoverImage())
                 .startDate(entity.getStartDate())

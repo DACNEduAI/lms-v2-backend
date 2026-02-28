@@ -1,5 +1,6 @@
 package edu.ai.lms.core.course.app.service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,11 +25,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import edu.ai.lms.core.course.adapter.in.response.DeleteCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.Teacher;
+import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
+import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.out.DeleteCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
-import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
-import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class DeleteCourseServiceUT {
@@ -67,7 +68,7 @@ class DeleteCourseServiceUT {
                 .courseName("Introduction to Java")
                 .courseCode("CS101")
                 .description("Learn Java programming basics")
-                .teacher(mockTeacher)
+                .teacherIds(List.of(teacherId))
                 .active(true)
                 .build();
     }
@@ -180,7 +181,7 @@ class DeleteCourseServiceUT {
         Course courseWithOwner = Course.builder()
                 .id(courseId)
                 .courseName("Test Course")
-                .teacher(courseOwner)
+                .teacherIds(List.of(teacherId))
                 .build();
         
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(courseWithOwner));

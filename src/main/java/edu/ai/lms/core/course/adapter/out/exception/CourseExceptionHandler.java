@@ -3,9 +3,6 @@ package edu.ai.lms.core.course.adapter.out.exception;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import edu.ai.lms.core.course.app.exception.CourseCodeAlreadyExistsException;
-import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
-import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -15,6 +12,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import edu.ai.lms.common.ErrorResponse;
+import edu.ai.lms.core.course.app.exception.ChapterNotFoundException;
+import edu.ai.lms.core.course.app.exception.CourseCodeAlreadyExistsException;
+import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
+import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -80,6 +81,22 @@ public class CourseExceptionHandler {
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .status(HttpStatus.NOT_FOUND.value())
                 .error("Course Not Found")
+                .message(ex.getMessage())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Handles ChapterNotFoundException.
+     */
+    @ApiResponse(responseCode = "404", description = "Chapter not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ExceptionHandler(ChapterNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleChapterNotFoundException(ChapterNotFoundException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.NOT_FOUND.value())
+                .error("Chapter Not Found")
                 .message(ex.getMessage())
                 .build();
 

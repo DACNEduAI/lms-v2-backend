@@ -1,6 +1,5 @@
 package edu.ai.lms.core.course.adapter.out.persistence;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,18 +16,17 @@ import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.port.out.DeleteCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
-import edu.ai.lms.database.ChapterJdbcEntity;
-import edu.ai.lms.database.CourseJdbcEntity;
-import edu.ai.lms.database.LearningOutcomeJdbcEntity;
-import edu.ai.lms.database.MaterialJdbcEntity;
-import edu.ai.lms.database.TeacherJdbcEntity;
+import edu.ai.lms.database.ChapterJdbcTable;
+import edu.ai.lms.database.CourseJdbcTable;
+import edu.ai.lms.database.LearningOutcomeJdbcTable;
+import edu.ai.lms.database.MaterialJdbcTable;
 import lombok.RequiredArgsConstructor;
+
 @Component
 @RequiredArgsConstructor
 class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, DeleteCoursePort {
 
     private final CourseRepository courseRepository;
-    private final TeacherRepository teacherRepository;
     private final ChapterRepository chapterRepository;
     private final LearningOutcomeRepository learningOutcomeRepository;
     private final MaterialRepository materialRepository;
@@ -39,27 +37,25 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
 
     @Override
     public Course save(Course course) {
-        UUID teacherId = course.getTeacher().getId();
 
-        // Verify teacher exists
-        TeacherJdbcEntity teacherEntity = teacherRepository.findById(teacherId)
-                .orElseThrow(() -> new IllegalArgumentException("Teacher not found with id: " + teacherId));
+        ///  The mechanism of saving a Course will be frequently reviewed later on
 
-        // Save the course entity
-        CourseJdbcEntity courseEntity = courseJdbcMapper.mapToCourseJdbcEntity(course, teacherId);
-        CourseJdbcEntity savedCourse = courseRepository.save(courseEntity);
+        // Save the course entity (junction table refs are managed via @MappedCollection)
+        CourseJdbcTable courseEntity = courseJdbcMapper.mapToCourseJdbcEntity(course);
+        CourseJdbcTable savedCourse = courseRepository.save(courseEntity);
 
         // Save chapters
         if (course.getChapters() != null) {
             for (Chapter chapter : course.getChapters()) {
-                ChapterJdbcEntity chapterEntity = chapterJdbcMapper.mapToChapterJdbcEntity(chapter, savedCourse.getId());
-                ChapterJdbcEntity savedChapter = chapterRepository.save(chapterEntity);
+                ChapterJdbcTable chapterEntity = chapterJdbcMapper.mapToChapterJdbcEntity(chapter, savedCourse.getId());
+                ChapterJdbcTable savedChapter = chapterRepository.save(chapterEntity);
 
-                // Save materials for each chapter
+                // Save materials for each chapter using composite key
                 if (chapter.getMaterials() != null) {
                     chapter.getMaterials().forEach(material -> {
-                        MaterialJdbcEntity materialEntity = materialJdbcMapper.mapToMaterialJdbcEntity(material);
-                        materialEntity.setChapterId(savedChapter.getId());
+                        MaterialJdbcTable materialEntity = materialJdbcMapper.mapToMaterialJdbcEntity(material);
+                        materialEntity.setChapterNumber(savedChapter.getChapterNumber());
+                        materialEntity.setChapterCourseId(savedChapter.getCourseId());
                         materialRepository.save(materialEntity);
                     });
                 }
@@ -69,7 +65,7 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
         // Save learning outcomes
         if (course.getLearningOutcomes() != null) {
             for (LearningOutcome lo : course.getLearningOutcomes()) {
-                LearningOutcomeJdbcEntity loEntity = learningOutcomeJdbcMapper.mapToEntity(lo, savedCourse.getId());
+                LearningOutcomeJdbcTable loEntity = learningOutcomeJdbcMapper.mapToEntity(lo, savedCourse.getId());
                 learningOutcomeRepository.save(loEntity);
             }
         }
@@ -87,12 +83,26 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     @Override
     public Optional<Course> findByCourseCode(String courseCode) {
         return courseRepository.findByCourseCode(courseCode)
+                .flatMap(entity -> courseRepository.findById(entity.getId()))
                 .map(this::loadFullCourse);
     }
 
     @Override
     public List<Course> findAllByTeacherId(UUID teacherId) {
         return courseRepository.findAllByTeacherId(teacherId).stream()
+                .map(entity -> courseRepository.findById(entity.getId()))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(this::loadFullCourse)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    public List<Course> findAllByStudentId(UUID studentId) {
+        return courseRepository.findAllByStudentId(studentId).stream()
+                .map(entity -> courseRepository.findById(entity.getId()))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .map(this::loadFullCourse)
                 .collect(java.util.stream.Collectors.toList());
     }
@@ -100,12 +110,8 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     @Override
     public void deleteById(UUID courseId) {
         // Delete related entities first due to foreign key constraints
-        List<ChapterJdbcEntity> chapters = chapterRepository.findByCourseId(courseId);
-        
-        // Delete materials for each chapter
-        for (ChapterJdbcEntity chapter : chapters) {
-            materialRepository.deleteByChapterId(chapter.getId());
-        }
+        // Delete materials for the course (by course_id reference)
+        materialRepository.deleteByCourseId(courseId);
         
         // Delete chapters
         chapterRepository.deleteByCourseId(courseId);
@@ -113,29 +119,25 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
         // Delete learning outcomes
         learningOutcomeRepository.deleteByCourseId(courseId);
         
-        // Finally delete the course
+        // Finally delete the course (junction table entries are cascade-deleted
+        // via @MappedCollection and ON DELETE CASCADE)
         courseRepository.deleteById(courseId);
     }
 
     /**
      * Loads a full Course aggregate by explicitly fetching related entities.
-     * With Spring Data JDBC there are no lazy-loading surprises —
-     * we control exactly what gets loaded.
+     * Teacher/student IDs are extracted from the entity's @MappedCollection sets
+     * (populated automatically by Spring Data JDBC when loading via findById).
+     * Chapters, materials, and learning outcomes are loaded manually.
      */
-    private Course loadFullCourse(CourseJdbcEntity courseEntity) {
-        TeacherJdbcEntity teacherEntity = teacherRepository.findById(courseEntity.getTeacherId())
-                .orElse(null);
+    private Course loadFullCourse(CourseJdbcTable courseEntity) {
+        List<ChapterJdbcTable> chapters = chapterRepository.findByCourseId(courseEntity.getId());
 
-        List<ChapterJdbcEntity> chapters = chapterRepository.findByCourseId(courseEntity.getId());
+        // Load all materials for all chapters in one batch using course_id
+        List<MaterialJdbcTable> allMaterials = materialRepository.findByCourseId(courseEntity.getId());
 
-        // Load all materials for all chapters in one batch
-        List<MaterialJdbcEntity> allMaterials = new ArrayList<>();
-        for (ChapterJdbcEntity chapter : chapters) {
-            allMaterials.addAll(materialRepository.findByChapterId(chapter.getId()));
-        }
+        List<LearningOutcomeJdbcTable> learningOutcomes = learningOutcomeRepository.findByCourseId(courseEntity.getId());
 
-        List<LearningOutcomeJdbcEntity> learningOutcomes = learningOutcomeRepository.findByCourseId(courseEntity.getId());
-
-        return courseJdbcMapper.mapToCourse(courseEntity, teacherEntity, chapters, learningOutcomes, allMaterials);
+        return courseJdbcMapper.mapToCourse(courseEntity, chapters, learningOutcomes, allMaterials);
     }
 }

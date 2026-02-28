@@ -4,42 +4,35 @@ import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.relational.core.mapping.MappedCollection;
+import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
-import java.util.Set;
 import java.util.UUID;
 
-@Table("teachers")
+@Table("questions")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TeacherJdbcEntity {
+public class QuestionJdbcTable {
 
-    public enum Roles {
-        ADMIN,
-        TEACHER,
-        STUDENT
+    public enum QuestionType {
+        MULTIPLE_CHOICE,
+        TRUE_FALSE,
+        ESSAY
     }
 
     @Id
     private UUID id;
 
-    private String email;
-    private String password;
-    private String firstName;
-    private String lastName;
-    private String avatarUrl;
+    private String content;
+    private QuestionType type;
+    private Double points;
 
-    private Roles role;
-
-    private String employeeId;
-    private String phoneNumber;
-    private String department;
-    private String specialization;
+    @Column("quiz_id")
+    private UUID quizId;
 
     @CreatedDate
     private LocalDateTime createdAt;

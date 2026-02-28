@@ -2,18 +2,19 @@ package edu.ai.lms.core.course.app.service;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.course.adapter.in.response.GetAllCoursesResponse;
 import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.port.in.usecase.GetAllCoursesUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
-import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort.SignedInUser;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -21,17 +22,50 @@ import lombok.RequiredArgsConstructor;
 public class GetAllCoursesService implements GetAllCoursesUseCase {
 
     private final LoadCoursePort loadCoursePort;
-    private final LoadSignedInTeacherPort loadSignedInTeacherPort;
+    private final LoadSignedInUserPort loadSignedInUserPort;
+
+    // Strategy Pattern - Inner interface for loading courses
+    private interface CourseLoadStrategy {
+        List<Course> loadCourses(UUID userId);
+    }
+
+    // Strategy Pattern - Teacher implementation
+    private class TeacherCourseLoadStrategy implements CourseLoadStrategy {
+        @Override
+        public List<Course> loadCourses(UUID userId) {
+            return loadCoursePort.findAllByTeacherId(userId);
+        }
+    }
+
+    // Strategy Pattern - Student implementation
+    private class StudentCourseLoadStrategy implements CourseLoadStrategy {
+        @Override
+        public List<Course> loadCourses(UUID userId) {
+            return loadCoursePort.findAllByStudentId(userId);
+        }
+    }
+
+    // Strategy Pattern - Select strategy based on role
+    private CourseLoadStrategy selectStrategy(Roles role) {
+        return switch (role) {
+            case TEACHER -> new TeacherCourseLoadStrategy();
+            case STUDENT -> new StudentCourseLoadStrategy();
+            default -> throw new IllegalArgumentException("Unsupported role: " + role);
+        };
+    }
 
     @Override
     @Transactional(readOnly = true)
     public GetAllCoursesResponse getAllCourses(int pageSize, String sortDirection) {
-        // Validate teacher exists and get authenticated teacher
-        Teacher teacher = loadSignedInTeacherPort.findAuthenticatedTeacher()
-                .orElseThrow(() -> new TeacherNotFoundException("Authenticated teacher not found"));
+        // Validate user exists and get authenticated user
+        SignedInUser user = loadSignedInUserPort.findAuthenticatedUser()
+                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
 
-        // Load all courses for the teacher
-        List<Course> courses = loadCoursePort.findAllByTeacherId(teacher.getId());
+        // Select the appropriate strategy based on user's role
+        CourseLoadStrategy strategy = selectStrategy(user.role());
+
+        // Load all courses for the user using the selected strategy
+        List<Course> courses = strategy.loadCourses(user.id());
 
         // Sort courses by course name (first letter)
         Comparator<Course> comparator = Comparator.comparing(

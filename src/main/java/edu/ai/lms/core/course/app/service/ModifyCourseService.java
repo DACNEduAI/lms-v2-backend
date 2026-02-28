@@ -38,18 +38,19 @@ public class ModifyCourseService implements TeacherModifyCourseUseCase {
         Teacher teacher = loadSignedInTeacherPort.findAuthenticatedTeacher()
                 .orElseThrow(() -> new TeacherNotFoundException("Authenticated teacher not found"));
 
-        // Business rule: Validate that the teacher owns the course
-        if (!existingCourse.getTeacher().getId().equals(teacher.getId())) {
+        // Business rule: Validate that the teacher is associated with the course
+        if (!existingCourse.getTeacherIds().contains(teacher.getId())) {
             throw new IllegalArgumentException("Teacher is not authorized to modify this course");
         }
 
-        // Update the Course domain object
+        // Update the Course domain object, preserving existing teacher/student relationships
         Course updatedCourse = Course.builder()
                 .id(existingCourse.getId())
                 .courseName(course.getCourseName())
                 .description(course.getDescription())
                 .courseCode(course.getCourseCode())
-                .teacher(teacher)
+                .teacherIds(existingCourse.getTeacherIds())
+                .studentIds(existingCourse.getStudentIds())
                 .active(course.getActive())
                 .coverImage(course.getCoverImage())
                 .startDate(course.getStartDate())

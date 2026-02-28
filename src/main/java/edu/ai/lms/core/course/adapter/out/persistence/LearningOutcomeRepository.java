@@ -9,16 +9,16 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import edu.ai.lms.database.LearningOutcomeJdbcEntity;
+import edu.ai.lms.database.LearningOutcomeJdbcTable;
 
 /**
  * Package-private repository interface for learning outcomes.
  */
 @Repository
-interface LearningOutcomeRepository extends CrudRepository<LearningOutcomeJdbcEntity, UUID> {
+interface LearningOutcomeRepository extends CrudRepository<LearningOutcomeJdbcTable, UUID> {
 
     @Query("SELECT * FROM learning_outcomes WHERE course_id = :courseId")
-    List<LearningOutcomeJdbcEntity> findByCourseId(@Param("courseId") UUID courseId);
+    List<LearningOutcomeJdbcTable> findByCourseId(@Param("courseId") UUID courseId);
 
     @Modifying
     @Query("DELETE FROM learning_outcomes WHERE course_id = :courseId")

@@ -1,5 +1,8 @@
 package edu.ai.lms.core.course.adapter.in;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -11,6 +14,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -25,7 +29,6 @@ import io.restassured.response.Response;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Course Controller Integration Tests")
 class CourseControllerIT extends IntegrationTestConfiguration {
-
     private static String teacherToken;
     private static UUID createdCourseId;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");

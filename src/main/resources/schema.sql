@@ -35,7 +35,6 @@ CREATE TABLE IF NOT EXISTS courses (
     course_name VARCHAR(255) NOT NULL,
     description VARCHAR(1000),
     course_code VARCHAR(255) NOT NULL UNIQUE,
-    teacher_id UUID NOT NULL REFERENCES teachers(id),
     active BOOLEAN NOT NULL DEFAULT true,
     cover_image VARCHAR(255),
     start_date TIMESTAMP NOT NULL,
@@ -44,15 +43,29 @@ CREATE TABLE IF NOT EXISTS courses (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Chapters table
+-- Junction table for many-to-many: courses <-> teachers
+CREATE TABLE IF NOT EXISTS course_teachers (
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+    PRIMARY KEY (course_id, teacher_id)
+);
+
+-- Junction table for many-to-many: courses <-> students
+CREATE TABLE IF NOT EXISTS course_students (
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    PRIMARY KEY (course_id, student_id)
+);
+
+-- Chapters table (weak entity dependent on Course)
 CREATE TABLE IF NOT EXISTS chapters (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    chapter_number BIGINT GENERATED ALWAYS AS IDENTITY,
     title VARCHAR(255),
     description TEXT,
-    order_index INTEGER,
     course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (chapter_number, course_id)
 );
 
 -- Materials table
@@ -62,9 +75,18 @@ CREATE TABLE IF NOT EXISTS materials (
     type VARCHAR(50),
     source_url VARCHAR(255),
     is_downloadable BOOLEAN DEFAULT false,
-    chapter_id UUID REFERENCES chapters(id),
+    chapter_number BIGINT,
+    chapter_course_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (chapter_number, chapter_course_id) REFERENCES chapters(chapter_number, course_id) ON DELETE SET NULL
+);
+
+-- Junction table for many-to-many: courses <-> materials
+CREATE TABLE IF NOT EXISTS course_materials (
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    material_id UUID NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
+    PRIMARY KEY (course_id, material_id)
 );
 
 -- Learning outcomes table
@@ -153,8 +175,10 @@ CREATE TABLE IF NOT EXISTS attempts (
 -- Join tables for many-to-many relationships
 CREATE TABLE IF NOT EXISTS quiz_chapters (
     quiz_id UUID REFERENCES quizzes(id),
-    chapter_id UUID REFERENCES chapters(id),
-    PRIMARY KEY (quiz_id, chapter_id)
+    chapter_number BIGINT,
+    chapter_course_id UUID,
+    PRIMARY KEY (quiz_id, chapter_number, chapter_course_id),
+    FOREIGN KEY (chapter_number, chapter_course_id) REFERENCES chapters(chapter_number, course_id)
 );
 
 CREATE TABLE IF NOT EXISTS quiz_learning_outcomes (

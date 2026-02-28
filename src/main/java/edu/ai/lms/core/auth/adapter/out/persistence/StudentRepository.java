@@ -7,7 +7,7 @@ import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 
-import edu.ai.lms.database.StudentJdbcEntity;
+import edu.ai.lms.database.StudentJdbcTable;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -15,8 +15,8 @@ import org.springframework.stereotype.Repository;
  * Only classes within the persistence package can access this repository.
  */
 @Repository
-interface StudentRepository extends CrudRepository<StudentJdbcEntity, UUID> {
+interface StudentRepository extends CrudRepository<StudentJdbcTable, UUID> {
 
     @Query("SELECT * FROM students WHERE email = :email")
-    Optional<StudentJdbcEntity> findByEmail(@Param("email") String email);
+    Optional<StudentJdbcTable> findByEmail(@Param("email") String email);
 }
