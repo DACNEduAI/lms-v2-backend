@@ -1,29 +1,36 @@
 package edu.ai.lms.core.course.app.service;
 
-import edu.ai.lms.core.course.adapter.in.response.GetCourseResponse;
-import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.LearningOutcome;
-import edu.ai.lms.core.course.app.domain.Teacher;
-import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
-import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
-import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import edu.ai.lms.core.course.adapter.in.response.GetCourseResponse;
+import edu.ai.lms.core.course.app.domain.Course;
+import edu.ai.lms.core.course.app.domain.LearningOutcome;
+import edu.ai.lms.core.course.app.domain.Teacher;
+import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
+import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
+import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
 
 @ExtendWith(MockitoExtension.class)
 class GetCourseServiceUT {

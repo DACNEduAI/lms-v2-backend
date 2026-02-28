@@ -22,12 +22,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.course.adapter.in.response.GetAllCoursesResponse;
 import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
-import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort.SignedInUser;
 
 @ExtendWith(MockitoExtension.class)
 class GetAllCoursesServiceUT {
@@ -36,25 +36,24 @@ class GetAllCoursesServiceUT {
     private LoadCoursePort loadCoursePort;
 
     @Mock
-    private LoadSignedInTeacherPort loadSignedInTeacherPort;
+    private LoadSignedInUserPort loadSignedInUserPort;
 
     @InjectMocks
     private GetAllCoursesService getAllCoursesService;
 
-    private Teacher mockTeacher;
+    private SignedInUser mockTeacherUser;
+    private SignedInUser mockStudentUser;
     private UUID teacherId;
+    private UUID studentId;
     private List<Course> mockCourses;
 
     @BeforeEach
     void setUp() {
         teacherId = UUID.randomUUID();
+        studentId = UUID.randomUUID();
 
-        mockTeacher = Teacher.builder()
-                .id(teacherId)
-                .employeeId("EMP001")
-                .department("Computer Science")
-                .specialization("Software Engineering")
-                .build();
+        mockTeacherUser = new SignedInUser(teacherId, Roles.TEACHER);
+        mockStudentUser = new SignedInUser(studentId, Roles.STUDENT);
 
         mockCourses = new ArrayList<>();
         mockCourses.add(Course.builder()
@@ -98,7 +97,7 @@ class GetAllCoursesServiceUT {
     @DisplayName("Should successfully get all courses for authenticated teacher")
     void testGetAllCourses_WithAuthenticatedTeacher_ShouldSucceed() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacherUser));
         when(loadCoursePort.findAllByTeacherId(teacherId)).thenReturn(mockCourses);
 
         // Act
@@ -116,15 +115,41 @@ class GetAllCoursesServiceUT {
         assertEquals("Basic Python", response.getCourses().get(1).getCourseName());
         assertEquals("Cloud Computing", response.getCourses().get(2).getCourseName());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findAllByTeacherId(teacherId);
+    }
+
+    @Test
+    @DisplayName("Should successfully get all courses for authenticated student")
+    void testGetAllCourses_WithAuthenticatedStudent_ShouldSucceed() {
+        // Arrange
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockStudentUser));
+        when(loadCoursePort.findAllByStudentId(studentId)).thenReturn(mockCourses);
+
+        // Act
+        GetAllCoursesResponse response = getAllCoursesService.getAllCourses(10, "asc");
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(3, response.getTotalCourses());
+        assertEquals(10, response.getPageSize());
+        assertEquals("asc", response.getSortDirection());
+        assertEquals(3, response.getCourses().size());
+        
+        // Verify ascending order by first letter of course name
+        assertEquals("Advanced Java Programming", response.getCourses().get(0).getCourseName());
+        assertEquals("Basic Python", response.getCourses().get(1).getCourseName());
+        assertEquals("Cloud Computing", response.getCourses().get(2).getCourseName());
+
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
+        verify(loadCoursePort, times(1)).findAllByStudentId(studentId);
     }
 
     @Test
     @DisplayName("Should return courses in descending order when sortDirection is desc")
     void testGetAllCourses_WithDescendingSortOrder_ShouldReturnDescending() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacherUser));
         when(loadCoursePort.findAllByTeacherId(teacherId)).thenReturn(mockCourses);
 
         // Act
@@ -141,7 +166,7 @@ class GetAllCoursesServiceUT {
         assertEquals("Basic Python", response.getCourses().get(1).getCourseName());
         assertEquals("Advanced Java Programming", response.getCourses().get(2).getCourseName());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findAllByTeacherId(teacherId);
     }
 
@@ -149,7 +174,7 @@ class GetAllCoursesServiceUT {
     @DisplayName("Should limit courses based on pageSize parameter")
     void testGetAllCourses_WithLimitedPageSize_ShouldReturnLimitedResults() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacherUser));
         when(loadCoursePort.findAllByTeacherId(teacherId)).thenReturn(mockCourses);
 
         // Act
@@ -165,31 +190,32 @@ class GetAllCoursesServiceUT {
         assertEquals("Advanced Java Programming", response.getCourses().get(0).getCourseName());
         assertEquals("Basic Python", response.getCourses().get(1).getCourseName());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findAllByTeacherId(teacherId);
     }
 
     @Test
-    @DisplayName("Should throw TeacherNotFoundException when teacher is not authenticated")
-    void testGetAllCourses_WithNonAuthenticatedTeacher_ShouldThrowException() {
+    @DisplayName("Should throw RuntimeException when user is not authenticated")
+    void testGetAllCourses_WithNonAuthenticatedUser_ShouldThrowException() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
-        TeacherNotFoundException exception = assertThrows(TeacherNotFoundException.class,
+        RuntimeException exception = assertThrows(RuntimeException.class,
                 () -> getAllCoursesService.getAllCourses(10, "asc"));
 
-        assertEquals("Authenticated teacher not found", exception.getMessage());
+        assertEquals("Authenticated user not found", exception.getMessage());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, never()).findAllByTeacherId(any());
+        verify(loadCoursePort, never()).findAllByStudentId(any());
     }
 
     @Test
     @DisplayName("Should return empty list when teacher has no courses")
     void testGetAllCourses_WithNoCourses_ShouldReturnEmptyList() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacherUser));
         when(loadCoursePort.findAllByTeacherId(teacherId)).thenReturn(new ArrayList<>());
 
         // Act
@@ -202,7 +228,7 @@ class GetAllCoursesServiceUT {
         assertEquals("asc", response.getSortDirection());
         assertEquals(0, response.getCourses().size());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findAllByTeacherId(teacherId);
     }
 
@@ -210,7 +236,7 @@ class GetAllCoursesServiceUT {
     @DisplayName("Should use default sort direction when sortDirection is null")
     void testGetAllCourses_WithNullSortDirection_ShouldUseDefault() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacherUser));
         when(loadCoursePort.findAllByTeacherId(teacherId)).thenReturn(mockCourses);
 
         // Act
@@ -223,7 +249,7 @@ class GetAllCoursesServiceUT {
         // Should be in ascending order since null defaults to ascending
         assertEquals("Advanced Java Programming", response.getCourses().get(0).getCourseName());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findAllByTeacherId(teacherId);
     }
 
@@ -231,7 +257,7 @@ class GetAllCoursesServiceUT {
     @DisplayName("Should return all courses when pageSize is larger than total courses")
     void testGetAllCourses_WithLargePageSize_ShouldReturnAllCourses() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacherUser));
         when(loadCoursePort.findAllByTeacherId(teacherId)).thenReturn(mockCourses);
 
         // Act
@@ -243,7 +269,7 @@ class GetAllCoursesServiceUT {
         assertEquals(100, response.getPageSize());
         assertEquals(3, response.getCourses().size());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findAllByTeacherId(teacherId);
     }
 
@@ -251,7 +277,7 @@ class GetAllCoursesServiceUT {
     @DisplayName("Should return courses with correct course summary fields")
     void testGetAllCourses_ShouldReturnCorrectCourseSummaryFields() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacherUser));
         when(loadCoursePort.findAllByTeacherId(teacherId)).thenReturn(mockCourses);
 
         // Act
@@ -269,7 +295,7 @@ class GetAllCoursesServiceUT {
         assertNotNull(firstCourse.getStartDate());
         assertNotNull(firstCourse.getEndDate());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findAllByTeacherId(teacherId);
     }
 
@@ -277,7 +303,7 @@ class GetAllCoursesServiceUT {
     @DisplayName("Should handle case-insensitive sort direction")
     void testGetAllCourses_WithUpperCaseSortDirection_ShouldWork() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacherUser));
         when(loadCoursePort.findAllByTeacherId(teacherId)).thenReturn(mockCourses);
 
         // Act
@@ -292,7 +318,7 @@ class GetAllCoursesServiceUT {
         assertEquals("Basic Python", response.getCourses().get(1).getCourseName());
         assertEquals("Advanced Java Programming", response.getCourses().get(2).getCourseName());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findAllByTeacherId(teacherId);
     }
 }

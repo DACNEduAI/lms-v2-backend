@@ -1,6 +1,7 @@
 package edu.ai.lms.core.course.adapter.in.mapper;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
@@ -13,7 +14,7 @@ import edu.ai.lms.core.course.app.port.in.command.CreateChapterCommand;
 @Component
 public class CreateChapterCommandMapper {
 
-    public CreateChapterCommand toCommand(CreateChapterRequest request) {
+    public CreateChapterCommand toCommand(UUID courseId, CreateChapterRequest request) {
         List<Material> materials = request.getMaterials().stream()
                 .map(materialRequest -> Material.builder()
                         .title(materialRequest.getTitle())
@@ -26,12 +27,11 @@ public class CreateChapterCommandMapper {
         Chapter chapter = Chapter.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
-                .orderIndex(request.getOrderIndex())
                 .materials(materials)
                 .build();
 
         return CreateChapterCommand.builder()
-                .courseId(request.getCourseId())
+                .courseId(courseId)
                 .chapter(chapter)
                 .build();
     }

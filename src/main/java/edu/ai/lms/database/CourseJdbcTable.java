@@ -37,17 +37,26 @@ public class CourseJdbcTable {
     private LocalDate startDate;
     private LocalDate endDate;
 
+
+    // This only store the list of chapter IDs
     @MappedCollection(idColumn = "course_id")
     @Builder.Default
     private Set<ChapterJdbcTable> chapters = new HashSet<>();
 
+    // This only store the list of teacher IDs
     @MappedCollection(idColumn = "course_id")
     @Builder.Default
     private Set<CourseTeacherJdbcTable> courseTeachers = new HashSet<>();
 
+    // This only store the list of student IDs
     @MappedCollection(idColumn = "course_id")
     @Builder.Default
     private Set<CourseStudentJdbcTable> courseStudents = new HashSet<>();
+
+    // Junction table for Course-Material (1-N) relationship
+    @MappedCollection(idColumn = "course_id")
+    @Builder.Default
+    private Set<CourseMaterialJdbcTable> courseMaterials = new HashSet<>();
 
     @CreatedDate
     private LocalDateTime createdAt;

@@ -56,7 +56,7 @@ class CreateChapterServiceUT {
     private Teacher mockTeacher;
     private UUID teacherId;
     private UUID courseId;
-    private UUID chapterId;
+    private Long chapterNumber;
     private Course mockCourse;
     private CreateChapterCommand validCommand;
 
@@ -64,7 +64,7 @@ class CreateChapterServiceUT {
     void setUp() {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
-        chapterId = UUID.randomUUID();
+        chapterNumber = 1L;
 
         mockTeacher = Teacher.builder()
                 .id(teacherId)
@@ -87,7 +87,6 @@ class CreateChapterServiceUT {
         Chapter chapter = Chapter.builder()
                 .title("Chapter 1: Introduction")
                 .description("Introduction to Java programming")
-                .orderIndex(1)
                 .materials(new ArrayList<>())
                 .build();
 
@@ -105,10 +104,9 @@ class CreateChapterServiceUT {
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         Chapter savedChapter = Chapter.builder()
-                .id(chapterId)
+                .chapterNumber(chapterNumber)
                 .title("Chapter 1: Introduction")
                 .description("Introduction to Java programming")
-                .orderIndex(1)
                 .courseId(courseId)
                 .materials(new ArrayList<>())
                 .createdAt(LocalDateTime.now())
@@ -120,10 +118,9 @@ class CreateChapterServiceUT {
 
         // Assert
         assertNotNull(response);
-        assertEquals(chapterId, response.getChapterId());
+        assertEquals(chapterNumber, response.getChapterNumber());
         assertEquals("Chapter 1: Introduction", response.getTitle());
         assertEquals("Introduction to Java programming", response.getDescription());
-        assertEquals(1, response.getOrderIndex());
         assertEquals(courseId, response.getCourseId());
         assertNotNull(response.getCreatedAt());
 
@@ -201,10 +198,9 @@ class CreateChapterServiceUT {
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         Chapter savedChapter = Chapter.builder()
-                .id(chapterId)
+                .chapterNumber(chapterNumber)
                 .title("Chapter 1: Introduction")
                 .description("Introduction to Java programming")
-                .orderIndex(1)
                 .courseId(courseId)
                 .materials(new ArrayList<>())
                 .createdAt(LocalDateTime.now())
@@ -221,7 +217,6 @@ class CreateChapterServiceUT {
         assertEquals(courseId, capturedChapter.getCourseId());
         assertEquals("Chapter 1: Introduction", capturedChapter.getTitle());
         assertEquals("Introduction to Java programming", capturedChapter.getDescription());
-        assertEquals(1, capturedChapter.getOrderIndex());
     }
 
     @Test
@@ -245,7 +240,6 @@ class CreateChapterServiceUT {
         Chapter chapterWithMaterials = Chapter.builder()
                 .title("Chapter with Materials")
                 .description("Has multiple materials")
-                .orderIndex(2)
                 .materials(materials)
                 .build();
 
@@ -276,10 +270,9 @@ class CreateChapterServiceUT {
                 .build());
 
         Chapter savedChapter = Chapter.builder()
-                .id(chapterId)
+                .chapterNumber(2L)
                 .title("Chapter with Materials")
                 .description("Has multiple materials")
-                .orderIndex(2)
                 .courseId(courseId)
                 .materials(savedMaterials)
                 .createdAt(LocalDateTime.now())
@@ -291,7 +284,7 @@ class CreateChapterServiceUT {
 
         // Assert
         assertNotNull(response);
-        assertEquals(chapterId, response.getChapterId());
+        assertEquals(2L, response.getChapterNumber());
         assertEquals("Chapter with Materials", response.getTitle());
         assertEquals(courseId, response.getCourseId());
         assertNotNull(response.getMaterials());
@@ -318,10 +311,9 @@ class CreateChapterServiceUT {
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         Chapter savedChapter = Chapter.builder()
-                .id(chapterId)
+                .chapterNumber(chapterNumber)
                 .title("Chapter 1: Introduction")
                 .description("Introduction to Java programming")
-                .orderIndex(1)
                 .courseId(courseId)
                 .materials(new ArrayList<>())
                 .createdAt(LocalDateTime.now())
@@ -333,7 +325,7 @@ class CreateChapterServiceUT {
 
         // Assert
         assertNotNull(response);
-        assertEquals(chapterId, response.getChapterId());
+        assertEquals(chapterNumber, response.getChapterNumber());
         assertNotNull(response.getMaterials());
         assertEquals(0, response.getMaterials().size());
 
@@ -347,7 +339,6 @@ class CreateChapterServiceUT {
         Chapter chapterNullMaterials = Chapter.builder()
                 .title("Chapter with Null Materials")
                 .description("Materials list is null")
-                .orderIndex(1)
                 .materials(null)
                 .build();
 
@@ -360,10 +351,9 @@ class CreateChapterServiceUT {
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         Chapter savedChapter = Chapter.builder()
-                .id(chapterId)
+                .chapterNumber(chapterNumber)
                 .title("Chapter with Null Materials")
                 .description("Materials list is null")
-                .orderIndex(1)
                 .courseId(courseId)
                 .materials(null)
                 .createdAt(LocalDateTime.now())
@@ -375,7 +365,7 @@ class CreateChapterServiceUT {
 
         // Assert
         assertNotNull(response);
-        assertEquals(chapterId, response.getChapterId());
+        assertEquals(chapterNumber, response.getChapterNumber());
         assertNull(response.getMaterials());
 
         verify(saveChapterPort, times(1)).save(any(Chapter.class));
@@ -390,10 +380,9 @@ class CreateChapterServiceUT {
 
         LocalDateTime createdAt = LocalDateTime.now();
         Chapter savedChapter = Chapter.builder()
-                .id(chapterId)
+                .chapterNumber(chapterNumber)
                 .title("Chapter 1: Introduction")
                 .description("Introduction to Java programming")
-                .orderIndex(1)
                 .courseId(courseId)
                 .materials(new ArrayList<>())
                 .createdAt(createdAt)
@@ -404,10 +393,9 @@ class CreateChapterServiceUT {
         CreateChapterResponse response = createChapterService.createChapter(validCommand);
 
         // Assert
-        assertEquals(chapterId, response.getChapterId());
+        assertEquals(chapterNumber, response.getChapterNumber());
         assertEquals("Chapter 1: Introduction", response.getTitle());
         assertEquals("Introduction to Java programming", response.getDescription());
-        assertEquals(1, response.getOrderIndex());
         assertEquals(courseId, response.getCourseId());
         assertEquals(createdAt, response.getCreatedAt());
     }

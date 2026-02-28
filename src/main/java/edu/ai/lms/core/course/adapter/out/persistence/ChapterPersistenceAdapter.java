@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import edu.ai.lms.core.course.adapter.out.persistence.mapper.ChapterJdbcMapper;
 import edu.ai.lms.core.course.adapter.out.persistence.mapper.MaterialJdbcMapper;
 import edu.ai.lms.core.course.app.domain.Chapter;
+import edu.ai.lms.core.course.app.port.out.DeleteChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
 import edu.ai.lms.core.course.app.port.out.SaveChapterPort;
 import edu.ai.lms.database.ChapterJdbcTable;
@@ -17,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
-class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort {
+class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, DeleteChapterPort {
 
     private final ChapterRepository chapterRepository;
     private final MaterialRepository materialRepository;
@@ -32,11 +33,12 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort {
         ChapterJdbcTable chapterEntity = chapterJdbcMapper.mapToChapterJdbcEntity(chapter, courseId);
         ChapterJdbcTable savedChapter = chapterRepository.save(chapterEntity);
 
-        // Save materials for this chapter
+        // Save materials for this chapter using the composite key
         if (chapter.getMaterials() != null) {
             chapter.getMaterials().forEach(material -> {
                 MaterialJdbcTable materialEntity = materialJdbcMapper.mapToMaterialJdbcEntity(material);
-                materialEntity.setChapterId(savedChapter.getId());
+                materialEntity.setChapterNumber(savedChapter.getChapterNumber());
+                materialEntity.setChapterCourseId(savedChapter.getCourseId());
                 materialRepository.save(materialEntity);
             });
         }
@@ -46,22 +48,31 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort {
     }
 
     @Override
-    public Optional<Chapter> findById(UUID chapterId) {
-        return chapterRepository.findById(chapterId)
+    public Optional<Chapter> findByKey(UUID courseId, Long chapterNumber) {
+        return chapterRepository.findByChapterNumberAndCourseId(chapterNumber, courseId)
                 .map(this::loadChapter);
     }
 
     @Override
-    public Optional<Chapter> findByIdWithoutMaterials(UUID chapterId) {
-        return chapterRepository.findById(chapterId)
+    public Optional<Chapter> findByKeyWithoutMaterials(UUID courseId, Long chapterNumber) {
+        return chapterRepository.findByChapterNumberAndCourseId(chapterNumber, courseId)
                 .map(this::loadChapterWithoutMaterials);
+    }
+
+    @Override
+    public void deleteByKey(UUID courseId, Long chapterNumber) {
+        // First delete all materials for this chapter
+        materialRepository.deleteByChapterKey(chapterNumber, courseId);
+        // Then delete the chapter itself
+        chapterRepository.deleteByChapterNumberAndCourseId(chapterNumber, courseId);
     }
 
     /**
      * Loads a full Chapter aggregate with materials by explicitly fetching related entities.
      */
     private Chapter loadChapter(ChapterJdbcTable chapterEntity) {
-        List<MaterialJdbcTable> materials = materialRepository.findByChapterId(chapterEntity.getId());
+        List<MaterialJdbcTable> materials = materialRepository.findByChapterKey(
+                chapterEntity.getChapterNumber(), chapterEntity.getCourseId());
         return chapterJdbcMapper.mapToChapter(chapterEntity, materials);
     }
 

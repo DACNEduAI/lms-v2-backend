@@ -49,10 +49,9 @@ public class CreateChapterService implements TeacherCreateChapterUseCase {
         Chapter savedChapter = saveChapterPort.save(chapter);
 
         return CreateChapterResponse.builder()
-                .chapterId(savedChapter.getId())
+                .chapterNumber(savedChapter.getChapterNumber())
                 .title(savedChapter.getTitle())
                 .description(savedChapter.getDescription())
-                .orderIndex(savedChapter.getOrderIndex())
                 .courseId(command.courseId())
                 .materials(savedChapter.getMaterials() != null
                         ? savedChapter.getMaterials().stream()

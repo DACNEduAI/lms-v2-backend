@@ -25,11 +25,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import edu.ai.lms.core.course.adapter.in.response.DeleteCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.Teacher;
+import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
+import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.out.DeleteCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
-import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
-import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class DeleteCourseServiceUT {

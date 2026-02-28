@@ -4,6 +4,7 @@ import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.ReadOnlyProperty;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -18,12 +19,16 @@ import java.util.UUID;
 @Builder
 public class ChapterJdbcTable {
 
+    // Composite primary key: (chapter_number, course_id)
+    // chapter_number is auto-generated
+
+    @ReadOnlyProperty
+    @Column("chapter_number")
     @Id
-    private UUID id;
+    private Long chapterNumber;
 
     private String title;
     private String description;
-    private Integer orderIndex;
 
     @Column("course_id")
     private UUID courseId;

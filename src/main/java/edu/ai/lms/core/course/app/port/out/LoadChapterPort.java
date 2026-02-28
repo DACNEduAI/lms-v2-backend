@@ -6,6 +6,6 @@ import java.util.UUID;
 import edu.ai.lms.core.course.app.domain.Chapter;
 
 public interface LoadChapterPort {
-    Optional<Chapter> findById(UUID chapterId);
-    Optional<Chapter> findByIdWithoutMaterials(UUID chapterId);
+    Optional<Chapter> findByKey(UUID courseId, Long chapterNumber);
+    Optional<Chapter> findByKeyWithoutMaterials(UUID courseId, Long chapterNumber);
 }

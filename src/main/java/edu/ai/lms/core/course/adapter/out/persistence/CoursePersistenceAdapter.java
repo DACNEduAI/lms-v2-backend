@@ -1,6 +1,5 @@
 package edu.ai.lms.core.course.adapter.out.persistence;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,6 +37,9 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
 
     @Override
     public Course save(Course course) {
+
+        ///  The mechanism of saving a Course will be frequently reviewed later on
+
         // Save the course entity (junction table refs are managed via @MappedCollection)
         CourseJdbcTable courseEntity = courseJdbcMapper.mapToCourseJdbcEntity(course);
         CourseJdbcTable savedCourse = courseRepository.save(courseEntity);
@@ -48,11 +50,12 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
                 ChapterJdbcTable chapterEntity = chapterJdbcMapper.mapToChapterJdbcEntity(chapter, savedCourse.getId());
                 ChapterJdbcTable savedChapter = chapterRepository.save(chapterEntity);
 
-                // Save materials for each chapter
+                // Save materials for each chapter using composite key
                 if (chapter.getMaterials() != null) {
                     chapter.getMaterials().forEach(material -> {
                         MaterialJdbcTable materialEntity = materialJdbcMapper.mapToMaterialJdbcEntity(material);
-                        materialEntity.setChapterId(savedChapter.getId());
+                        materialEntity.setChapterNumber(savedChapter.getChapterNumber());
+                        materialEntity.setChapterCourseId(savedChapter.getCourseId());
                         materialRepository.save(materialEntity);
                     });
                 }
@@ -95,14 +98,20 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     }
 
     @Override
+    public List<Course> findAllByStudentId(UUID studentId) {
+        return courseRepository.findAllByStudentId(studentId).stream()
+                .map(entity -> courseRepository.findById(entity.getId()))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(this::loadFullCourse)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
     public void deleteById(UUID courseId) {
         // Delete related entities first due to foreign key constraints
-        List<ChapterJdbcTable> chapters = chapterRepository.findByCourseId(courseId);
-        
-        // Delete materials for each chapter
-        for (ChapterJdbcTable chapter : chapters) {
-            materialRepository.deleteByChapterId(chapter.getId());
-        }
+        // Delete materials for the course (by course_id reference)
+        materialRepository.deleteByCourseId(courseId);
         
         // Delete chapters
         chapterRepository.deleteByCourseId(courseId);
@@ -124,11 +133,8 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     private Course loadFullCourse(CourseJdbcTable courseEntity) {
         List<ChapterJdbcTable> chapters = chapterRepository.findByCourseId(courseEntity.getId());
 
-        // Load all materials for all chapters in one batch
-        List<MaterialJdbcTable> allMaterials = new ArrayList<>();
-        for (ChapterJdbcTable chapter : chapters) {
-            allMaterials.addAll(materialRepository.findByChapterId(chapter.getId()));
-        }
+        // Load all materials for all chapters in one batch using course_id
+        List<MaterialJdbcTable> allMaterials = materialRepository.findByCourseId(courseEntity.getId());
 
         List<LearningOutcomeJdbcTable> learningOutcomes = learningOutcomeRepository.findByCourseId(courseEntity.getId());
 

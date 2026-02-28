@@ -27,10 +27,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import edu.ai.lms.core.course.adapter.in.response.ChangeCourseSettingResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.Teacher;
+import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.port.in.command.ChangeCourseSettingCommand;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
-import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class ChangeCourseSettingServiceUT {

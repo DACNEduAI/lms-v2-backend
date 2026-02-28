@@ -1,14 +1,17 @@
 package edu.ai.lms.core.course.adapter.out.persistence;
 
-import edu.ai.lms.database.TeacherJdbcTable;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.data.jdbc.repository.query.Query;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
+import edu.ai.lms.database.StudentJdbcTable;
 
 @Repository
-public interface StudentRepository {
+interface StudentRepository extends CrudRepository<StudentJdbcTable, UUID> {
     @Query("SELECT * FROM students WHERE email = :email")
-    Optional<TeacherJdbcTable> findByEmail(@Param("email") String email);
+    Optional<StudentJdbcTable> findByEmail(@Param("email") String email);
 }

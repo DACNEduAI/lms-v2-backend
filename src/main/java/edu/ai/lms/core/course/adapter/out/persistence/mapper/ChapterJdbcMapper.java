@@ -21,10 +21,9 @@ public class ChapterJdbcMapper {
 
     public ChapterJdbcTable mapToChapterJdbcEntity(Chapter chapter, UUID courseId) {
         return ChapterJdbcTable.builder()
-                .id(chapter.getId())
+                .chapterNumber(chapter.getChapterNumber())
                 .title(chapter.getTitle())
                 .description(chapter.getDescription())
-                .orderIndex(chapter.getOrderIndex())
                 .courseId(courseId)
                 .build();
     }
@@ -32,10 +31,9 @@ public class ChapterJdbcMapper {
     /// Map to chapter WITHOUT Materials
     public Chapter mapToChapterWithoutMaterials(ChapterJdbcTable entity) {
         return Chapter.builder()
-                .id(entity.getId())
+                .chapterNumber(entity.getChapterNumber())
                 .title(entity.getTitle())
                 .description(entity.getDescription())
-                .orderIndex(entity.getOrderIndex())
                 .courseId(entity.getCourseId())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
@@ -44,10 +42,9 @@ public class ChapterJdbcMapper {
     /// Map to chapter WITH Materials
     public Chapter mapToChapter(ChapterJdbcTable entity, List<MaterialJdbcTable> materialEntities) {
         Chapter chapter = Chapter.builder()
-                .id(entity.getId())
+                .chapterNumber(entity.getChapterNumber())
                 .title(entity.getTitle())
                 .description(entity.getDescription())
-                .orderIndex(entity.getOrderIndex())
                 .courseId(entity.getCourseId())
                 .materials(new ArrayList<>())
                 .createdAt(entity.getCreatedAt())

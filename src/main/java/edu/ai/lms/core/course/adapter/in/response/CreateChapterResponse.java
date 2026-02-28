@@ -12,10 +12,9 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class CreateChapterResponse {
-    private UUID chapterId;
+    private Long chapterNumber;
     private String title;
     private String description;
-    private Integer orderIndex;
     private UUID courseId;
     private List<MaterialDto> materials;
     private LocalDateTime createdAt;

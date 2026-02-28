@@ -12,11 +12,24 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class GetChapterResponse {
-    private UUID chapterId;
+    private Long chapterNumber;
     private String title;
     private String description;
-    private Integer orderIndex;
     private UUID courseId;
+    private List<MaterialDto> materials;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class MaterialDto {
+        private UUID id;
+        private String title;
+        private String type;
+        private String sourceUrl;
+        private boolean downloadable;
+    }
 }
