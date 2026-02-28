@@ -1,5 +1,8 @@
 package edu.ai.lms.core.course.adapter.in;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -9,6 +12,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -23,7 +27,6 @@ import io.restassured.response.Response;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Chapter Controller Integration Tests")
 class ChapterControllerIT extends IntegrationTestConfiguration {
-
     private static String teacherToken;
     private static UUID createdCourseId;
     private static Long createdChapterNumber;

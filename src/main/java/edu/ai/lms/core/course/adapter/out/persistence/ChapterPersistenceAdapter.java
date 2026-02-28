@@ -28,22 +28,57 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
     @Override
     public Chapter save(Chapter chapter) {
         UUID courseId = chapter.getCourseId();
+        boolean isUpdate = chapter.getChapterNumber() != null;
 
-        // Save the chapter entity
-        ChapterJdbcTable chapterEntity = chapterJdbcMapper.mapToChapterJdbcEntity(chapter, courseId);
-        ChapterJdbcTable savedChapter = chapterRepository.save(chapterEntity);
+        ChapterJdbcTable savedChapter;
 
-        // Save materials for this chapter using the composite key
-        if (chapter.getMaterials() != null) {
-            chapter.getMaterials().forEach(material -> {
-                MaterialJdbcTable materialEntity = materialJdbcMapper.mapToMaterialJdbcEntity(material);
-                materialEntity.setChapterNumber(savedChapter.getChapterNumber());
-                materialEntity.setChapterCourseId(savedChapter.getCourseId());
-                materialRepository.save(materialEntity);
-            });
+        if (isUpdate) {
+            // UPDATE existing chapter using custom method for composite key
+            chapterRepository.updateByCompositeKey(
+                    chapter.getChapterNumber(),
+                    courseId,
+                    chapter.getTitle(),
+                    chapter.getDescription());
+
+            // Delete existing materials and re-save new ones
+            materialRepository.deleteByChapterKey(chapter.getChapterNumber(), courseId);
+
+            // Save new materials
+            if (chapter.getMaterials() != null) {
+                chapter.getMaterials().forEach(material -> {
+                    MaterialJdbcTable materialEntity = materialJdbcMapper.mapToMaterialJdbcEntity(material);
+                    materialEntity.setChapterNumber(chapter.getChapterNumber());
+                    materialEntity.setChapterCourseId(courseId);
+                    materialRepository.save(materialEntity);
+                });
+            }
+
+            // Re-fetch the updated chapter
+            savedChapter = chapterRepository.findByChapterNumberAndCourseId(chapter.getChapterNumber(), courseId)
+                    .orElseThrow(() -> new RuntimeException("Chapter not found after update"));
+        } else {
+            // INSERT new chapter using custom method that returns generated chapter_number
+            Long generatedChapterNumber = chapterRepository.insertAndReturnChapterNumber(
+                    courseId,
+                    chapter.getTitle(),
+                    chapter.getDescription());
+
+            // Save materials for this chapter using the generated chapter number
+            if (chapter.getMaterials() != null) {
+                chapter.getMaterials().forEach(material -> {
+                    MaterialJdbcTable materialEntity = materialJdbcMapper.mapToMaterialJdbcEntity(material);
+                    materialEntity.setChapterNumber(generatedChapterNumber);
+                    materialEntity.setChapterCourseId(courseId);
+                    materialRepository.save(materialEntity);
+                });
+            }
+
+            // Fetch the newly created chapter
+            savedChapter = chapterRepository.findByChapterNumberAndCourseId(generatedChapterNumber, courseId)
+                    .orElseThrow(() -> new RuntimeException("Chapter not found after insert"));
         }
 
-        // Re-load to return complete chapter with generated IDs and timestamps
+        // Return complete chapter with materials
         return loadChapter(savedChapter);
     }
 

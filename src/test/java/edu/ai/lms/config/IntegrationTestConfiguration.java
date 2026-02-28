@@ -47,6 +47,8 @@ public abstract class IntegrationTestConfiguration {
         // JDBC schema initialization
         registry.add("spring.sql.init.mode", () -> "always");
         registry.add("spring.sql.init.schema-locations", () -> "classpath:schema.sql");
+        // Disable data.sql for tests to ensure clean database state
+        registry.add("spring.sql.init.data-locations", () -> "");
         
         // Disable Liquibase for tests
         registry.add("spring.liquibase.enabled", () -> "false");

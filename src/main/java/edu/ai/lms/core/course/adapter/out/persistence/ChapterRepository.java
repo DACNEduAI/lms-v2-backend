@@ -15,6 +15,8 @@ import edu.ai.lms.database.ChapterJdbcTable;
 /**
  * Package-private repository interface for chapters.
  * Chapter is a weak entity with composite primary key (chapter_number, course_id).
+ * We use Long as the ID type (chapter_number) but handle updates via custom queries
+ * because the actual primary key is composite and includes course_id.
  */
 @Repository
 interface ChapterRepository extends CrudRepository<ChapterJdbcTable, Long> {
@@ -36,4 +38,29 @@ interface ChapterRepository extends CrudRepository<ChapterJdbcTable, Long> {
     void deleteByChapterNumberAndCourseId(
             @Param("chapterNumber") Long chapterNumber,
             @Param("courseId") UUID courseId);
+
+    /**
+     * Custom INSERT that returns the auto-generated chapter_number.
+     * Used for creating new chapters since chapter_number is GENERATED ALWAYS AS IDENTITY.
+     */
+    @Query("INSERT INTO chapters (course_id, title, description, created_at, updated_at) " +
+           "VALUES (:courseId, :title, :description, NOW(), NOW()) " +
+           "RETURNING chapter_number")
+    Long insertAndReturnChapterNumber(
+            @Param("courseId") UUID courseId,
+            @Param("title") String title,
+            @Param("description") String description);
+
+    /**
+     * Custom UPDATE by composite key (chapter_number, course_id).
+     * Standard save() doesn't work properly with composite keys that have auto-generated parts.
+     */
+    @Modifying
+    @Query("UPDATE chapters SET title = :title, description = :description, updated_at = NOW() " +
+           "WHERE chapter_number = :chapterNumber AND course_id = :courseId")
+    void updateByCompositeKey(
+            @Param("chapterNumber") Long chapterNumber,
+            @Param("courseId") UUID courseId,
+            @Param("title") String title,
+            @Param("description") String description);
 }
