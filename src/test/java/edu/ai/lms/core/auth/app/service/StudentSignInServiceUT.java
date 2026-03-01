@@ -19,7 +19,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.core.auth.adapter.in.response.StudentSignInResponse;
+import edu.ai.lms.core.auth.adapter.in.http.response.StudentSignInResponse;
 import edu.ai.lms.core.auth.app.port.in.command.StudentSignInCommand;
 import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.Student;

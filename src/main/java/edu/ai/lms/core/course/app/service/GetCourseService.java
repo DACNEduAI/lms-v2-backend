@@ -7,14 +7,14 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.GetCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.in.usecase.GetCourseUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class GetCourseService implements GetCourseUseCase {
 
     private final LoadCoursePort loadCoursePort;
-    private final LoadSignedInTeacherPort loadSignedInTeacherPort;
+    private final LoadSignedInUserPort loadSignedInUserPort;
 
     @Override
     @Transactional(readOnly = true)
@@ -32,11 +32,11 @@ public class GetCourseService implements GetCourseUseCase {
                 .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + courseId));
 
         // Validate teacher exists and get authenticated teacher
-        Teacher teacher = loadSignedInTeacherPort.findAuthenticatedTeacher()
+        User user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Authenticated teacher not found"));
 
         // Business rule: Validate that the teacher is associated with the course
-        if (!course.getTeacherIds().contains(teacher.getId())) {
+        if (!course.getTeacherIds().contains(user.getId())) {
             throw new IllegalArgumentException("Teacher is not authorized to access this course");
         }
 
@@ -55,7 +55,7 @@ public class GetCourseService implements GetCourseUseCase {
                 .courseName(course.getCourseName())
                 .courseCode(course.getCourseCode())
                 .description(course.getDescription())
-                .teacherId(teacher.getId())
+                .teacherId(user.getId())
                 .active(course.getActive())
                 .coverImage(course.getCoverImage())
                 .startDate(course.getStartDate())

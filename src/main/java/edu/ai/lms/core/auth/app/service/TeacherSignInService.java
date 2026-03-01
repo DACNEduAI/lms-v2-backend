@@ -3,7 +3,7 @@ package edu.ai.lms.core.auth.app.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.adapter.in.response.TeacherSignInResponse;
+import edu.ai.lms.core.auth.adapter.in.http.response.TeacherSignInResponse;
 import edu.ai.lms.core.auth.app.domain.Teacher;
 import edu.ai.lms.core.auth.app.port.in.command.TeacherSignInCommand;
 import edu.ai.lms.core.auth.app.port.in.usecase.TeacherSignInUseCase;

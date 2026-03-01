@@ -5,16 +5,16 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.CreateChapterResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.in.command.CreateChapterCommand;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateChapterUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.SaveChapterPort;
 import lombok.RequiredArgsConstructor;
 
@@ -24,20 +24,20 @@ public class CreateChapterService implements TeacherCreateChapterUseCase {
 
     private final SaveChapterPort saveChapterPort;
     private final LoadCoursePort loadCoursePort;
-    private final LoadSignedInTeacherPort loadSignedInTeacherPort;
+    private final LoadSignedInUserPort loadSignedInUserPort;
 
     @Override
     @Transactional
     public CreateChapterResponse createChapter(CreateChapterCommand command) {
         // Verify teacher is authenticated
-        Teacher teacher = loadSignedInTeacherPort.findAuthenticatedTeacher()
+        User user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         // Verify course exists and belongs to the authenticated teacher
         Course course = loadCoursePort.findById(command.courseId())
                 .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + command.courseId()));
 
-        if (!course.getTeacherIds().contains(teacher.getId())) {
+        if (!course.getTeacherIds().contains(user.getId())) {
             throw new IllegalArgumentException("Teacher is not authorized to add chapters to this course");
         }
 

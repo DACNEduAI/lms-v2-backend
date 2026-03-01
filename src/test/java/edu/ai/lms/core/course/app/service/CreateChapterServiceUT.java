@@ -26,16 +26,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import edu.ai.lms.common.Roles;
+import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.CreateChapterResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.Material;
-import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.in.command.CreateChapterCommand;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.SaveChapterPort;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,12 +49,12 @@ class CreateChapterServiceUT {
     private LoadCoursePort loadCoursePort;
 
     @Mock
-    private LoadSignedInTeacherPort loadSignedInTeacherPort;
+    private LoadSignedInUserPort loadSignedInUserPort;
 
     @InjectMocks
     private CreateChapterService createChapterService;
 
-    private Teacher mockTeacher;
+    private User mockUser;
     private UUID teacherId;
     private UUID courseId;
     private Long chapterNumber;
@@ -66,11 +67,9 @@ class CreateChapterServiceUT {
         courseId = UUID.randomUUID();
         chapterNumber = 1L;
 
-        mockTeacher = Teacher.builder()
+        mockUser = User.builder()
                 .id(teacherId)
-                .employeeId("EMP001")
-                .department("Computer Science")
-                .specialization("Software Engineering")
+                .role(Roles.TEACHER)
                 .build();
 
         mockCourse = Course.builder()
@@ -100,7 +99,7 @@ class CreateChapterServiceUT {
     @DisplayName("Should successfully create a chapter with valid details")
     void testCreateChapter_WithValidDetails_ShouldSucceed() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         Chapter savedChapter = Chapter.builder()
@@ -124,7 +123,7 @@ class CreateChapterServiceUT {
         assertEquals(courseId, response.getCourseId());
         assertNotNull(response.getCreatedAt());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(saveChapterPort, times(1)).save(any(Chapter.class));
     }
@@ -133,7 +132,7 @@ class CreateChapterServiceUT {
     @DisplayName("Should throw TeacherNotFoundException when teacher is not authenticated")
     void testCreateChapter_WithNonAuthenticatedTeacher_ShouldThrowException() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
         TeacherNotFoundException exception = assertThrows(TeacherNotFoundException.class,
@@ -141,7 +140,7 @@ class CreateChapterServiceUT {
 
         assertEquals("Teacher not authenticated", exception.getMessage());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, never()).findById(any());
         verify(saveChapterPort, never()).save(any(Chapter.class));
     }
@@ -150,7 +149,7 @@ class CreateChapterServiceUT {
     @DisplayName("Should throw CourseNotFoundException when course does not exist")
     void testCreateChapter_WithNonExistentCourse_ShouldThrowException() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.empty());
 
         // Act & Assert
@@ -159,7 +158,7 @@ class CreateChapterServiceUT {
 
         assertTrue(exception.getMessage().contains("Course not found with id:"));
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(saveChapterPort, never()).save(any(Chapter.class));
     }
@@ -168,14 +167,12 @@ class CreateChapterServiceUT {
     @DisplayName("Should throw IllegalArgumentException when teacher is not authorized for the course")
     void testCreateChapter_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
-        Teacher anotherTeacher = Teacher.builder()
+        User anotherUser = User.builder()
                 .id(UUID.randomUUID())
-                .employeeId("EMP002")
-                .department("Physics")
-                .specialization("Quantum Mechanics")
+                .role(Roles.TEACHER)
                 .build();
 
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(anotherTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(anotherUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         // Act & Assert
@@ -184,7 +181,7 @@ class CreateChapterServiceUT {
 
         assertEquals("Teacher is not authorized to add chapters to this course", exception.getMessage());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(saveChapterPort, never()).save(any(Chapter.class));
     }
@@ -194,7 +191,7 @@ class CreateChapterServiceUT {
     void testCreateChapter_ShouldSetCourseIdBeforeSaving() {
         // Arrange
         ArgumentCaptor<Chapter> chapterCaptor = ArgumentCaptor.forClass(Chapter.class);
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         Chapter savedChapter = Chapter.builder()
@@ -248,7 +245,7 @@ class CreateChapterServiceUT {
                 .chapter(chapterWithMaterials)
                 .build();
 
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         UUID materialId1 = UUID.randomUUID();
@@ -307,7 +304,7 @@ class CreateChapterServiceUT {
     @DisplayName("Should handle chapter creation with empty materials list")
     void testCreateChapter_WithEmptyMaterials_ShouldSucceed() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         Chapter savedChapter = Chapter.builder()
@@ -347,7 +344,7 @@ class CreateChapterServiceUT {
                 .chapter(chapterNullMaterials)
                 .build();
 
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         Chapter savedChapter = Chapter.builder()
@@ -375,7 +372,7 @@ class CreateChapterServiceUT {
     @DisplayName("Should return correct response with all fields populated")
     void testCreateChapter_ShouldReturnCorrectResponse() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         LocalDateTime createdAt = LocalDateTime.now();

@@ -9,12 +9,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.Roles;
+import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.GetAllCoursesResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.port.in.usecase.GetAllCoursesUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort.SignedInUser;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -58,14 +58,14 @@ public class GetAllCoursesService implements GetAllCoursesUseCase {
     @Transactional(readOnly = true)
     public GetAllCoursesResponse getAllCourses(int pageSize, String sortDirection) {
         // Validate user exists and get authenticated user
-        SignedInUser user = loadSignedInUserPort.findAuthenticatedUser()
+        User user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
 
         // Select the appropriate strategy based on user's role
-        CourseLoadStrategy strategy = selectStrategy(user.role());
+        CourseLoadStrategy strategy = selectStrategy(user.getRole());
 
         // Load all courses for the user using the selected strategy
-        List<Course> courses = strategy.loadCourses(user.id());
+        List<Course> courses = strategy.loadCourses(user.getId());
 
         // Sort courses by course name (first letter)
         Comparator<Course> comparator = Comparator.comparing(

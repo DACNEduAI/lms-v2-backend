@@ -23,11 +23,11 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
+import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.GetAllCoursesResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort.SignedInUser;
 
 @ExtendWith(MockitoExtension.class)
 class GetAllCoursesServiceUT {
@@ -41,8 +41,8 @@ class GetAllCoursesServiceUT {
     @InjectMocks
     private GetAllCoursesService getAllCoursesService;
 
-    private SignedInUser mockTeacherUser;
-    private SignedInUser mockStudentUser;
+    private User mockTeacherUser;
+    private User mockStudentUser;
     private UUID teacherId;
     private UUID studentId;
     private List<Course> mockCourses;
@@ -52,8 +52,8 @@ class GetAllCoursesServiceUT {
         teacherId = UUID.randomUUID();
         studentId = UUID.randomUUID();
 
-        mockTeacherUser = new SignedInUser(teacherId, Roles.TEACHER);
-        mockStudentUser = new SignedInUser(studentId, Roles.STUDENT);
+        mockTeacherUser = User.builder().id(teacherId).role(Roles.TEACHER).build();
+        mockStudentUser = User.builder().id(studentId).role(Roles.STUDENT).build();
 
         mockCourses = new ArrayList<>();
         mockCourses.add(Course.builder()

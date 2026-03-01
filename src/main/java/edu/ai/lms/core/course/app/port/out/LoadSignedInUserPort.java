@@ -1,20 +1,14 @@
 package edu.ai.lms.core.course.app.port.out;
 
 import java.util.Optional;
-import java.util.UUID;
 
-import edu.ai.lms.common.Roles;
+import edu.ai.lms.core.auth.app.domain.User;
 
 public interface LoadSignedInUserPort {
-    
+
     /**
-     * Represents the authenticated user's information needed for course operations.
+     * Finds the currently authenticated user.
+     * @return Optional containing the authenticated User, or empty if not authenticated.
      */
-    record SignedInUser(UUID id, Roles role) {}
-    
-    /**
-     * Finds the currently authenticated user (either Teacher or Student).
-     * @return Optional containing the signed-in user's ID and role, or empty if not authenticated.
-     */
-    Optional<SignedInUser> findAuthenticatedUser();
+    Optional<User> findAuthenticatedUser();
 }
