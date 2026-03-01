@@ -65,11 +65,11 @@ INSERT INTO ai_settings (id, generation_prompt, difficulty_level, focus_on_weak_
 VALUES
     ('77777777-1111-1111-1111-111111111111', 'Generate a quiz on basic java syntax.', 'MEDIUM', true, 10, 'QUIZ_GENERATION', true, true, 'STRICT');
 
--- 11. Insert Quizzes (Using 8888...)
-INSERT INTO quizzes (id, quiz_title, time_limit_minutes, pass_score, ai_settings_id, student_id, active)
+-- 11. Insert Quizzes (Using 8888...) -- FIXED: Added course_id constraint requirement
+INSERT INTO quizzes (id, quiz_title, time_limit_minutes, pass_score, ai_settings_id, course_id, student_id, active)
 VALUES
-    ('88888888-1111-1111-1111-111111111111', 'CS101 Chapter 1 Quiz', 30, 70.0, '77777777-1111-1111-1111-111111111111', null, true),
-    ('88888888-2222-2222-2222-222222222222', 'Midterm Practice (Personalized)', 60, 50.0, '77777777-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true);
+    ('88888888-1111-1111-1111-111111111111', 'CS101 Chapter 1 Quiz', 30, 70.0, '77777777-1111-1111-1111-111111111111', '33333333-1111-1111-1111-111111111111', null, true),
+    ('88888888-2222-2222-2222-222222222222', 'Midterm Practice (Personalized)', 60, 50.0, '77777777-1111-1111-1111-111111111111', '33333333-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true);
 
 -- 12. Insert Questions (Using 9999...)
 INSERT INTO questions (id, content, type, points, quiz_id)
@@ -77,12 +77,12 @@ VALUES
     ('99999999-1111-1111-1111-111111111111', 'What keyword is used to declare an integer in Java?', 'MULTIPLE_CHOICE', 10.0, '88888888-1111-1111-1111-111111111111'),
     ('99999999-2222-2222-2222-222222222222', 'Boolean values can only be true or false.', 'TRUE_FALSE', 5.0, '88888888-1111-1111-1111-111111111111');
 
--- 13. Insert Answers (Using aaaa...)
-INSERT INTO answers (id, content, is_correct, explanation, question_id)
+-- 13. Insert Answers -- FIXED: Removed `id` field, database will auto-generate `answer_number`
+INSERT INTO answers (content, is_correct, explanation, question_id)
 VALUES
-    ('aaaaaaaa-1111-1111-1111-111111111111', 'int', true, 'The int keyword declares an integer primitive.', '99999999-1111-1111-1111-111111111111'),
-    ('aaaaaaaa-2222-2222-2222-222222222222', 'integer', false, 'integer is a wrapper class, int is the primitive.', '99999999-1111-1111-1111-111111111111'),
-    ('aaaaaaaa-3333-3333-3333-333333333333', 'True', true, 'Booleans represent binary logic states.', '99999999-2222-2222-2222-222222222222');
+    ('int', true, 'The int keyword declares an integer primitive.', '99999999-1111-1111-1111-111111111111'),
+    ('integer', false, 'integer is a wrapper class, int is the primitive.', '99999999-1111-1111-1111-111111111111'),
+    ('True', true, 'Booleans represent binary logic states.', '99999999-2222-2222-2222-222222222222');
 
 -- 14. Insert Attempts (Using bbbb...)
 INSERT INTO attempts (id, student_id, quiz_id, score, start_time, end_time, status)

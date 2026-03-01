@@ -23,17 +23,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import edu.ai.lms.common.Roles;
+import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.DeleteChapterResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.exception.ChapterNotFoundException;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.out.DeleteChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 
 @ExtendWith(MockitoExtension.class)
 class DeleteChapterServiceUT {
@@ -48,12 +49,12 @@ class DeleteChapterServiceUT {
     private LoadCoursePort loadCoursePort;
 
     @Mock
-    private LoadSignedInTeacherPort loadSignedInTeacherPort;
+    private LoadSignedInUserPort loadSignedInUserPort;
 
     @InjectMocks
     private DeleteChapterService deleteChapterService;
 
-    private Teacher mockTeacher;
+    private User mockUser;
     private UUID teacherId;
     private UUID courseId;
     private Long chapterNumber;
@@ -66,11 +67,9 @@ class DeleteChapterServiceUT {
         courseId = UUID.randomUUID();
         chapterNumber = 1L;
 
-        mockTeacher = Teacher.builder()
+        mockUser = User.builder()
                 .id(teacherId)
-                .employeeId("EMP001")
-                .department("Computer Science")
-                .specialization("Software Engineering")
+                .role(Roles.TEACHER)
                 .build();
 
         mockCourse = Course.builder()
@@ -98,7 +97,7 @@ class DeleteChapterServiceUT {
     @DisplayName("Should successfully delete a chapter with valid details")
     void testDeleteChapter_WithValidDetails_ShouldSucceed() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
         when(loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)).thenReturn(Optional.of(mockChapter));
 
@@ -112,7 +111,7 @@ class DeleteChapterServiceUT {
         assertEquals("Chapter deleted successfully", response.getMessage());
         assertTrue(response.getSuccess());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(loadChapterPort, times(1)).findByKeyWithoutMaterials(courseId, chapterNumber);
         verify(deleteChapterPort, times(1)).deleteByKey(courseId, chapterNumber);
@@ -122,7 +121,7 @@ class DeleteChapterServiceUT {
     @DisplayName("Should throw TeacherNotFoundException when teacher is not authenticated")
     void testDeleteChapter_WithNonAuthenticatedTeacher_ShouldThrowException() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
         TeacherNotFoundException exception = assertThrows(TeacherNotFoundException.class,
@@ -130,7 +129,7 @@ class DeleteChapterServiceUT {
 
         assertEquals("Teacher not authenticated", exception.getMessage());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, never()).findById(any());
         verify(loadChapterPort, never()).findByKeyWithoutMaterials(any(), any());
         verify(deleteChapterPort, never()).deleteByKey(any(), any());
@@ -140,7 +139,7 @@ class DeleteChapterServiceUT {
     @DisplayName("Should throw CourseNotFoundException when course does not exist")
     void testDeleteChapter_WithNonExistentCourse_ShouldThrowException() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.empty());
 
         // Act & Assert
@@ -149,7 +148,7 @@ class DeleteChapterServiceUT {
 
         assertTrue(exception.getMessage().contains("Course not found with id:"));
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(loadChapterPort, never()).findByKeyWithoutMaterials(any(), any());
         verify(deleteChapterPort, never()).deleteByKey(any(), any());
@@ -159,14 +158,12 @@ class DeleteChapterServiceUT {
     @DisplayName("Should throw IllegalArgumentException when teacher is not authorized for the course")
     void testDeleteChapter_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
-        Teacher anotherTeacher = Teacher.builder()
+        User anotherUser = User.builder()
                 .id(UUID.randomUUID())
-                .employeeId("EMP002")
-                .department("Physics")
-                .specialization("Quantum Mechanics")
+                .role(Roles.TEACHER)
                 .build();
 
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(anotherTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(anotherUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         // Act & Assert
@@ -175,7 +172,7 @@ class DeleteChapterServiceUT {
 
         assertEquals("Teacher is not authorized to delete chapters in this course", exception.getMessage());
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(loadChapterPort, never()).findByKeyWithoutMaterials(any(), any());
         verify(deleteChapterPort, never()).deleteByKey(any(), any());
@@ -185,7 +182,7 @@ class DeleteChapterServiceUT {
     @DisplayName("Should throw ChapterNotFoundException when chapter does not exist")
     void testDeleteChapter_WithNonExistentChapter_ShouldThrowException() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
         when(loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)).thenReturn(Optional.empty());
 
@@ -195,7 +192,7 @@ class DeleteChapterServiceUT {
 
         assertTrue(exception.getMessage().contains("Chapter not found with number:"));
 
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(loadChapterPort, times(1)).findByKeyWithoutMaterials(courseId, chapterNumber);
         verify(deleteChapterPort, never()).deleteByKey(any(), any());
@@ -205,7 +202,7 @@ class DeleteChapterServiceUT {
     @DisplayName("Should call deleteByKey with correct parameters")
     void testDeleteChapter_ShouldCallDeleteByKeyWithCorrectParams() {
         // Arrange
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
         when(loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)).thenReturn(Optional.of(mockChapter));
 
@@ -229,7 +226,7 @@ class DeleteChapterServiceUT {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
         when(loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)).thenReturn(Optional.of(chapterNoDescription));
 

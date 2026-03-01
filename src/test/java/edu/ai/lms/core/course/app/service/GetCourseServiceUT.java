@@ -23,14 +23,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import edu.ai.lms.common.Roles;
+import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.GetCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
-import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 
 @ExtendWith(MockitoExtension.class)
 class GetCourseServiceUT {
@@ -39,12 +40,12 @@ class GetCourseServiceUT {
     private LoadCoursePort loadCoursePort;
 
     @Mock
-    private LoadSignedInTeacherPort loadSignedInTeacherPort;
+    private LoadSignedInUserPort loadSignedInUserPort;
 
     @InjectMocks
     private GetCourseService getCourseService;
 
-    private Teacher mockTeacher;
+    private User mockUser;
     private UUID teacherId;
     private UUID courseId;
     private Course mockCourse;
@@ -54,11 +55,9 @@ class GetCourseServiceUT {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
 
-        mockTeacher = Teacher.builder()
+        mockUser = User.builder()
                 .id(teacherId)
-                .employeeId("EMP001")
-                .department("Computer Science")
-                .specialization("Software Engineering")
+                .role(Roles.TEACHER)
                 .build();
 
         List<LearningOutcome> learningOutcomes = new ArrayList<>();
@@ -92,7 +91,7 @@ class GetCourseServiceUT {
     void testGetCourse_WithValidCourseIdAndAuthenticatedTeacher_ShouldSucceed() {
         // Arrange
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
 
         // Act
         GetCourseResponse response = getCourseService.getCourse(courseId);
@@ -112,7 +111,7 @@ class GetCourseServiceUT {
         assertEquals("CLO-2", response.getLearningOutcomes().get(1).getCode());
 
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
     }
 
     @Test
@@ -129,7 +128,7 @@ class GetCourseServiceUT {
         assertTrue(exception.getMessage().contains("Course not found with id:"));
 
         verify(loadCoursePort, times(1)).findById(nonExistentCourseId);
-        verify(loadSignedInTeacherPort, never()).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, never()).findAuthenticatedUser();
     }
 
     @Test
@@ -137,7 +136,7 @@ class GetCourseServiceUT {
     void testGetCourse_WithNonAuthenticatedTeacher_ShouldThrowException() {
         // Arrange
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
         TeacherNotFoundException exception = assertThrows(TeacherNotFoundException.class,
@@ -146,22 +145,20 @@ class GetCourseServiceUT {
         assertEquals("Authenticated teacher not found", exception.getMessage());
 
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
     }
 
     @Test
     @DisplayName("Should throw IllegalArgumentException when teacher is not authorized to access the course")
     void testGetCourse_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
-        Teacher anotherTeacher = Teacher.builder()
+        User anotherUser = User.builder()
                 .id(UUID.randomUUID())
-                .employeeId("EMP002")
-                .department("Physics")
-                .specialization("Quantum Mechanics")
+                .role(Roles.TEACHER)
                 .build();
 
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(anotherTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(anotherUser));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -170,7 +167,7 @@ class GetCourseServiceUT {
         assertEquals("Teacher is not authorized to access this course", exception.getMessage());
 
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
     }
 
     @Test
@@ -190,7 +187,7 @@ class GetCourseServiceUT {
                 .build();
 
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(courseWithNoLearningOutcomes));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
 
         // Act
         GetCourseResponse response = getCourseService.getCourse(courseId);
@@ -203,7 +200,7 @@ class GetCourseServiceUT {
         assertEquals(0, response.getLearningOutcomes().size());
 
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
     }
 
     @Test
@@ -223,7 +220,7 @@ class GetCourseServiceUT {
                 .build();
 
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(inactiveCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
 
         // Act
         GetCourseResponse response = getCourseService.getCourse(courseId);
@@ -235,6 +232,6 @@ class GetCourseServiceUT {
         assertFalse(response.getActive());
 
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
     }
 }

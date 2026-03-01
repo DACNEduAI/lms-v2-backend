@@ -3,7 +3,7 @@ package edu.ai.lms.core.auth.app.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.adapter.in.response.StudentRegisterResponse;
+import edu.ai.lms.core.auth.adapter.in.http.response.StudentRegisterResponse;
 import edu.ai.lms.core.auth.app.domain.Student;
 import edu.ai.lms.core.auth.app.port.in.command.StudentRegisterCommand;
 import edu.ai.lms.core.auth.app.port.in.usecase.StudentRegisterUseCase;

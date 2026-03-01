@@ -28,8 +28,14 @@ public class QuizJdbcTable {
     @Column("ai_settings_id")
     private UUID aiSettingsId;
 
+    @Column("course_id")
+    private UUID courseId;
+
     @Column("student_id")
     private UUID studentId;
+
+    @Column("teacher_id")
+    private UUID teacherId;
 
     @Builder.Default
     private Boolean active = true;

@@ -24,15 +24,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import edu.ai.lms.common.Roles;
+import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.ModifyCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
-import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.in.command.ModifyCourseCommand;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,13 +46,13 @@ class ModifyCourseServiceUT {
     private LoadCoursePort loadCoursePort;
 
     @Mock
-    private LoadSignedInTeacherPort loadSignedInTeacherPort;
+    private LoadSignedInUserPort loadSignedInUserPort;
 
     @InjectMocks
     private ModifyCourseService modifyCourseService;
 
     private ModifyCourseCommand validCommand;
-    private Teacher mockTeacher;
+    private User mockUser;
     private Course existingCourse;
     private UUID teacherId;
     private UUID courseId;
@@ -61,11 +62,9 @@ class ModifyCourseServiceUT {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
 
-        mockTeacher = Teacher.builder()
+        mockUser = User.builder()
                 .id(teacherId)
-                .employeeId("EMP001")
-                .department("Computer Science")
-                .specialization("Software Engineering")
+                .role(Roles.TEACHER)
                 .build();
 
         existingCourse = Course.builder()
@@ -106,7 +105,7 @@ class ModifyCourseServiceUT {
         // Arrange
         Course course = validCommand.course();
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         
         Course savedCourse = Course.builder()
                 .id(courseId)
@@ -132,7 +131,7 @@ class ModifyCourseServiceUT {
         assertEquals("Updated description", response.getDescription());
         
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(saveCoursePort, times(1)).save(any(Course.class));
     }
 
@@ -149,7 +148,7 @@ class ModifyCourseServiceUT {
         assertEquals("Course not found with id: " + courseId, exception.getMessage());
         
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, never()).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, never()).findAuthenticatedUser();
         verify(saveCoursePort, never()).save(any(Course.class));
     }
 
@@ -158,7 +157,7 @@ class ModifyCourseServiceUT {
     void testModifyCourse_WithNonExistentTeacher_ShouldThrowException() {
         // Arrange
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
         TeacherNotFoundException exception = assertThrows(TeacherNotFoundException.class,
@@ -167,7 +166,7 @@ class ModifyCourseServiceUT {
         assertEquals("Authenticated teacher not found", exception.getMessage());
         
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(saveCoursePort, never()).save(any(Course.class));
     }
 
@@ -176,13 +175,13 @@ class ModifyCourseServiceUT {
     void testModifyCourse_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
         UUID differentTeacherId = UUID.randomUUID();
-        Teacher differentTeacher = Teacher.builder()
+        User differentUser = User.builder()
                 .id(differentTeacherId)
-                .employeeId("EMP002")
+                .role(Roles.TEACHER)
                 .build();
         
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(differentTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(differentUser));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -191,7 +190,7 @@ class ModifyCourseServiceUT {
         assertEquals("Teacher is not authorized to modify this course", exception.getMessage());
         
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(saveCoursePort, never()).save(any(Course.class));
     }
 
@@ -202,7 +201,7 @@ class ModifyCourseServiceUT {
         Course course = validCommand.course();
         ArgumentCaptor<Course> courseCaptor = ArgumentCaptor.forClass(Course.class);
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         
         Course savedCourse = Course.builder()
                 .id(courseId)
@@ -234,7 +233,7 @@ class ModifyCourseServiceUT {
         // Arrange
         Course course = validCommand.course();
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         
         Course savedCourse = Course.builder()
                 .id(courseId)
@@ -270,7 +269,7 @@ class ModifyCourseServiceUT {
                 .course(emptyLoCourse)
                 .build();
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         
         Course savedCourse = Course.builder()
                 .id(courseId)

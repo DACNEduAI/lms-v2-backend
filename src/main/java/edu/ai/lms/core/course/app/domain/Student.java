@@ -1,13 +1,12 @@
 package edu.ai.lms.core.course.app.domain;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.common.User;
+import edu.ai.lms.core.auth.app.domain.User;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Getter
 @Setter
@@ -15,8 +14,6 @@ import java.util.UUID;
 @AllArgsConstructor
 @SuperBuilder
 public class Student extends User {
-
-    private UUID id;
 
     private Long enrollmentYear;
 

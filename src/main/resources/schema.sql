@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS chapters (
 CREATE TABLE IF NOT EXISTS materials (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255),
-    type VARCHAR(50),
+    type VARCHAR(50) CHECK (type IN ('PDF', 'VIDEO', 'LINK')), -- Added CHECK constraint here
     source_url VARCHAR(255),
     is_downloadable BOOLEAN DEFAULT false,
     chapter_number BIGINT,
@@ -131,7 +131,9 @@ CREATE TABLE IF NOT EXISTS quizzes (
     time_limit_minutes INTEGER,
     pass_score DOUBLE PRECISION,
     ai_settings_id UUID REFERENCES ai_settings(id),
+    course_id UUID NOT NULL REFERENCES courses(id),
     student_id UUID REFERENCES students(id),
+    teacher_id UUID REFERENCES teachers(id),
     active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -148,15 +150,16 @@ CREATE TABLE IF NOT EXISTS questions (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Answers table
+-- Answers table (weak entity dependent on Question)
 CREATE TABLE IF NOT EXISTS answers (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    answer_number BIGINT GENERATED ALWAYS AS IDENTITY,
     content VARCHAR(255),
     is_correct BOOLEAN DEFAULT false,
     explanation TEXT,
-    question_id UUID REFERENCES questions(id),
+    question_id UUID NOT NULL REFERENCES questions(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (answer_number, question_id)
 );
 
 -- Attempts table

@@ -6,10 +6,10 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.ModifyChapterResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.exception.ChapterNotFoundException;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
@@ -17,7 +17,7 @@ import edu.ai.lms.core.course.app.port.in.command.ModifyChapterCommand;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifyChapterUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.SaveChapterPort;
 import lombok.RequiredArgsConstructor;
 
@@ -28,13 +28,13 @@ public class ModifyChapterService implements TeacherModifyChapterUseCase {
     private final SaveChapterPort saveChapterPort;
     private final LoadChapterPort loadChapterPort;
     private final LoadCoursePort loadCoursePort;
-    private final LoadSignedInTeacherPort loadSignedInTeacherPort;
+    private final LoadSignedInUserPort loadSignedInUserPort;
 
     @Override
     @Transactional
     public ModifyChapterResponse modifyChapter(ModifyChapterCommand command) {
         // Verify teacher is authenticated
-        Teacher teacher = loadSignedInTeacherPort.findAuthenticatedTeacher()
+        User user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         // Verify course exists
@@ -42,7 +42,7 @@ public class ModifyChapterService implements TeacherModifyChapterUseCase {
                 .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + command.courseId()));
 
         // Business rule: Validate that the teacher is associated with the course
-        if (!course.getTeacherIds().contains(teacher.getId())) {
+        if (!course.getTeacherIds().contains(user.getId())) {
             throw new IllegalArgumentException("Teacher is not authorized to modify chapters in this course");
         }
 

@@ -24,15 +24,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import edu.ai.lms.common.Roles;
+import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.CreateCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
-import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.exception.CourseCodeAlreadyExistsException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.in.command.CreateCourseCommand;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,13 +46,13 @@ class CreateCourseServiceUT {
     private LoadCoursePort loadCoursePort;
 
     @Mock
-    private LoadSignedInTeacherPort loadSignedInTeacherPort;
+    private LoadSignedInUserPort loadSignedInUserPort;
 
     @InjectMocks
     private CreateCourseService createCourseService;
 
     private CreateCourseCommand validCommand;
-    private Teacher mockTeacher;
+    private User mockUser;
     private UUID teacherId;
     private UUID courseId;
 
@@ -60,11 +61,9 @@ class CreateCourseServiceUT {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
 
-        mockTeacher = Teacher.builder()
+        mockUser = User.builder()
                 .id(teacherId)
-                .employeeId("EMP001")
-                .department("Computer Science")
-                .specialization("Software Engineering")
+                .role(Roles.TEACHER)
                 .build();
 
         List<LearningOutcome> learningOutcomes = new ArrayList<>();
@@ -95,7 +94,7 @@ class CreateCourseServiceUT {
         // Arrange
         Course course = validCommand.course();
         when(loadCoursePort.findByCourseCode(course.getCourseCode())).thenReturn(Optional.empty());
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         
         Course savedCourse = Course.builder()
                 .id(courseId)
@@ -117,7 +116,7 @@ class CreateCourseServiceUT {
         assertEquals("CS101", response.getCourseCode());
         
         verify(loadCoursePort, times(1)).findByCourseCode("CS101");
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(saveCoursePort, times(1)).save(any(Course.class));
     }
 
@@ -138,7 +137,7 @@ class CreateCourseServiceUT {
         assertEquals("Course code already exists: CS101", exception.getMessage());
         
         verify(loadCoursePort, times(1)).findByCourseCode("CS101");
-        verify(loadSignedInTeacherPort, never()).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, never()).findAuthenticatedUser();
         verify(saveCoursePort, never()).save(any(Course.class));
     }
 
@@ -147,7 +146,7 @@ class CreateCourseServiceUT {
     void testCreateCourse_WithNonExistentTeacher_ShouldThrowException() {
         // Arrange
         when(loadCoursePort.findByCourseCode(validCommand.course().getCourseCode())).thenReturn(Optional.empty());
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
         TeacherNotFoundException exception = assertThrows(TeacherNotFoundException.class,
@@ -156,7 +155,7 @@ class CreateCourseServiceUT {
         assertEquals("Teacher not authenticated", exception.getMessage());
         
         verify(loadCoursePort, times(1)).findByCourseCode("CS101");
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(saveCoursePort, never()).save(any(Course.class));
     }
 
@@ -167,7 +166,7 @@ class CreateCourseServiceUT {
         Course course = validCommand.course();
         ArgumentCaptor<Course> courseCaptor = ArgumentCaptor.forClass(Course.class);
         when(loadCoursePort.findByCourseCode(course.getCourseCode())).thenReturn(Optional.empty());
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         
         Course savedCourse = Course.builder()
                 .id(courseId)
@@ -212,7 +211,7 @@ class CreateCourseServiceUT {
                 .course(emptyLoCourse)
                 .build();
         when(loadCoursePort.findByCourseCode(emptyLoCourse.getCourseCode())).thenReturn(Optional.empty());
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         
         Course savedCourse = Course.builder()
                 .id(courseId)
@@ -241,7 +240,7 @@ class CreateCourseServiceUT {
         course.setEndDate(endDate);
         
         when(loadCoursePort.findByCourseCode(course.getCourseCode())).thenReturn(Optional.empty());
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         
         Course savedCourse = Course.builder()
                 .id(courseId)

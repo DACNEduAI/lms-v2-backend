@@ -1,0 +1,83 @@
+package edu.ai.lms.core.quiz.adapter.out.persistence;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+
+import edu.ai.lms.core.quiz.adapter.out.persistence.mapper.AnswerJdbcMapper;
+import edu.ai.lms.core.quiz.app.domain.Answer;
+import edu.ai.lms.core.quiz.app.port.out.DeleteAnswerPort;
+import edu.ai.lms.core.quiz.app.port.out.LoadAnswerPort;
+import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
+import edu.ai.lms.database.AnswerJdbcTable;
+import lombok.RequiredArgsConstructor;
+
+/**
+ * Persistence adapter for Answer entity.
+ * Answer has a composite primary key (answer_number, question_id) where answer_number
+ * is auto-generated (GENERATED ALWAYS AS IDENTITY), following the same pattern as
+ * ChapterPersistenceAdapter.
+ */
+@Component
+@RequiredArgsConstructor
+class AnswerPersistenceAdapter implements SaveAnswerPort, LoadAnswerPort, DeleteAnswerPort {
+
+    private final AnswerRepository answerRepository;
+    private final AnswerJdbcMapper answerJdbcMapper;
+
+    @Override
+    public Answer save(Answer answer) {
+        UUID questionId = answer.getQuestionId();
+        boolean isUpdate = answer.getAnswerNumber() != null;
+
+        if (isUpdate) {
+            // UPDATE existing answer using custom method for composite key
+            answerRepository.updateByCompositeKey(
+                    answer.getAnswerNumber(),
+                    questionId,
+                    answer.getContent(),
+                    answer.isCorrect(),
+                    answer.getExplanation());
+
+            // Re-fetch the updated answer
+            AnswerJdbcTable updatedEntity = answerRepository
+                    .findByAnswerNumberAndQuestionId(answer.getAnswerNumber(), questionId)
+                    .orElseThrow(() -> new RuntimeException("Answer not found after update"));
+            return answerJdbcMapper.mapToAnswer(updatedEntity);
+        } else {
+            // INSERT new answer using custom method that returns generated answer_number
+            Long generatedAnswerNumber = answerRepository.insertAndReturnAnswerNumber(
+                    questionId,
+                    answer.getContent(),
+                    answer.isCorrect(),
+                    answer.getExplanation());
+
+            // Fetch the newly created answer
+            AnswerJdbcTable savedEntity = answerRepository
+                    .findByAnswerNumberAndQuestionId(generatedAnswerNumber, questionId)
+                    .orElseThrow(() -> new RuntimeException("Answer not found after insert"));
+            return answerJdbcMapper.mapToAnswer(savedEntity);
+        }
+    }
+
+    @Override
+    public Optional<Answer> findByKey(UUID questionId, Long answerNumber) {
+        return answerRepository.findByAnswerNumberAndQuestionId(answerNumber, questionId)
+                .map(answerJdbcMapper::mapToAnswer);
+    }
+
+    @Override
+    public List<Answer> findByQuestionId(UUID questionId) {
+        return answerRepository.findByQuestionId(questionId).stream()
+                .map(answerJdbcMapper::mapToAnswer)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void deleteByKey(UUID questionId, Long answerNumber) {
+        answerRepository.deleteByAnswerNumberAndQuestionId(answerNumber, questionId);
+    }
+}

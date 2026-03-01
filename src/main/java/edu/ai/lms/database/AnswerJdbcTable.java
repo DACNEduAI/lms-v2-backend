@@ -4,6 +4,7 @@ import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.ReadOnlyProperty;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -19,7 +20,9 @@ import java.util.UUID;
 public class AnswerJdbcTable {
 
     @Id
-    private UUID id;
+    @ReadOnlyProperty
+    @Column("answer_number")
+    private Long answerNumber;
 
     private String content;
     private boolean isCorrect;

@@ -22,14 +22,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import edu.ai.lms.common.Roles;
+import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.DeleteCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.out.DeleteCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
-import edu.ai.lms.core.course.app.port.out.LoadSignedInTeacherPort;
+import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 
 @ExtendWith(MockitoExtension.class)
 class DeleteCourseServiceUT {
@@ -41,12 +42,12 @@ class DeleteCourseServiceUT {
     private LoadCoursePort loadCoursePort;
 
     @Mock
-    private LoadSignedInTeacherPort loadSignedInTeacherPort;
+    private LoadSignedInUserPort loadSignedInUserPort;
 
     @InjectMocks
     private DeleteCourseService deleteCourseService;
 
-    private Teacher mockTeacher;
+    private User mockUser;
     private Course existingCourse;
     private UUID teacherId;
     private UUID courseId;
@@ -56,11 +57,9 @@ class DeleteCourseServiceUT {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
 
-        mockTeacher = Teacher.builder()
+        mockUser = User.builder()
                 .id(teacherId)
-                .employeeId("EMP001")
-                .department("Computer Science")
-                .specialization("Software Engineering")
+                .role(Roles.TEACHER)
                 .build();
 
         existingCourse = Course.builder()
@@ -78,7 +77,7 @@ class DeleteCourseServiceUT {
     void testDeleteCourse_WithValidDetails_ShouldSucceed() {
         // Arrange
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         doNothing().when(deleteCoursePort).deleteById(courseId);
 
         // Act
@@ -91,7 +90,7 @@ class DeleteCourseServiceUT {
         assertTrue(response.getSuccess());
         
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(deleteCoursePort, times(1)).deleteById(courseId);
     }
 
@@ -108,7 +107,7 @@ class DeleteCourseServiceUT {
         assertEquals("Course not found with id: " + courseId, exception.getMessage());
         
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, never()).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, never()).findAuthenticatedUser();
         verify(deleteCoursePort, never()).deleteById(any());
     }
 
@@ -117,13 +116,13 @@ class DeleteCourseServiceUT {
     void testDeleteCourse_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
         UUID differentTeacherId = UUID.randomUUID();
-        Teacher differentTeacher = Teacher.builder()
+        User differentUser = User.builder()
                 .id(differentTeacherId)
-                .employeeId("EMP002")
+                .role(Roles.TEACHER)
                 .build();
         
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(differentTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(differentUser));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -132,7 +131,7 @@ class DeleteCourseServiceUT {
         assertEquals("Teacher is not authorized to delete this course", exception.getMessage());
         
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(deleteCoursePort, never()).deleteById(any());
     }
 
@@ -141,7 +140,7 @@ class DeleteCourseServiceUT {
     void testDeleteCourse_ShouldCallDeleteByIdWithCorrectCourseId() {
         // Arrange
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         doNothing().when(deleteCoursePort).deleteById(courseId);
 
         // Act
@@ -156,7 +155,7 @@ class DeleteCourseServiceUT {
     void testDeleteCourse_ShouldReturnSuccessResponse() {
         // Arrange
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         doNothing().when(deleteCoursePort).deleteById(courseId);
 
         // Act
@@ -173,9 +172,9 @@ class DeleteCourseServiceUT {
     @DisplayName("Should verify course ownership before deletion")
     void testDeleteCourse_ShouldVerifyCourseOwnership() {
         // Arrange
-        Teacher courseOwner = Teacher.builder()
+        User courseOwner = User.builder()
                 .id(teacherId)
-                .employeeId("EMP001")
+                .role(Roles.TEACHER)
                 .build();
         
         Course courseWithOwner = Course.builder()
@@ -185,7 +184,7 @@ class DeleteCourseServiceUT {
                 .build();
         
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(courseWithOwner));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.of(courseOwner));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(courseOwner));
         doNothing().when(deleteCoursePort).deleteById(courseId);
 
         // Act
@@ -195,7 +194,7 @@ class DeleteCourseServiceUT {
         assertNotNull(response);
         assertTrue(response.getSuccess());
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(deleteCoursePort, times(1)).deleteById(courseId);
     }
 
@@ -204,7 +203,7 @@ class DeleteCourseServiceUT {
     void testDeleteCourse_WithNoAuthenticatedTeacher_ShouldThrowException() {
         // Arrange
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
-        when(loadSignedInTeacherPort.findAuthenticatedTeacher()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
         TeacherNotFoundException exception = assertThrows(TeacherNotFoundException.class,
@@ -213,7 +212,7 @@ class DeleteCourseServiceUT {
         assertEquals("Authenticated teacher not found", exception.getMessage());
         
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInTeacherPort, times(1)).findAuthenticatedTeacher();
+        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(deleteCoursePort, never()).deleteById(any());
     }
 }
