@@ -24,6 +24,7 @@ public class LearningOutcomeJdbcMapper {
                 .id(entity.getId())
                 .code(entity.getCode())
                 .description(entity.getDescription())
+                .courseId(entity.getCourseId())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
