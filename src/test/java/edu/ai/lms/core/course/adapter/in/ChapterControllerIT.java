@@ -44,6 +44,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Teacher",
                     "email": "chapter.teacher@example.com",
                     "password": "TeacherPass123!",
+                    "employeeId": "EMP-CHAP001",
                     "department": "Computer Science",
                     "specialization": "Software Engineering"
                 }
@@ -259,6 +260,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                     "lastName": "ChapterTeacher",
                     "email": "another.chapter.teacher@example.com",
                     "password": "AnotherPass123!",
+                    "employeeId": "EMP-CHAP002",
                     "department": "Mathematics",
                     "specialization": "Algebra"
                 }
@@ -355,6 +357,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Teacher",
                     "email": "viewer.chapter.teacher@example.com",
                     "password": "ViewerPass123!",
+                    "employeeId": "EMP-CHAP003",
                     "department": "Physics",
                     "specialization": "Optics"
                 }
@@ -586,6 +589,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Unauthorized",
                     "email": "modify.unauthorized@example.com",
                     "password": "UnauthorizedPass123!",
+                    "employeeId": "EMP-CHAP004",
                     "department": "Chemistry",
                     "specialization": "Organic Chemistry"
                 }
@@ -663,6 +667,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Unauthorized",
                     "email": "delete.unauthorized@example.com",
                     "password": "DeleteUnauthorizedPass123!",
+                    "employeeId": "EMP-CHAP005",
                     "department": "Biology",
                     "specialization": "Genetics"
                 }

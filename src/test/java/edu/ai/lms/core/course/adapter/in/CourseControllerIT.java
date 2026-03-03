@@ -43,6 +43,7 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Teacher",
                     "email": "course.teacher@example.com",
                     "password": "TeacherPass123!",
+                    "employeeId": "EMP-CRS001",
                     "department": "Computer Science",
                     "specialization": "Software Engineering"
                 }
@@ -340,6 +341,7 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Teacher",
                     "email": "another.teacher@example.com",
                     "password": "AnotherPass123!",
+                    "employeeId": "EMP-CRS002",
                     "department": "Mathematics",
                     "specialization": "Algebra"
                 }
@@ -471,6 +473,7 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Deleter",
                     "email": "unauthorized.deleter@example.com",
                     "password": "DeleterPass123!",
+                    "employeeId": "EMP-CRS003",
                     "department": "Physics",
                     "specialization": "Quantum Mechanics"
                 }
@@ -644,6 +647,7 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Getter",
                     "email": "unauthorized.getter@example.com",
                     "password": "GetterPass123!",
+                    "employeeId": "EMP-CRS004",
                     "department": "Chemistry",
                     "specialization": "Organic Chemistry"
                 }
@@ -799,6 +803,7 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Teacher",
                     "email": "new.nocourses@example.com",
                     "password": "NewTeacherPass123!",
+                    "employeeId": "EMP-CRS005",
                     "department": "Biology",
                     "specialization": "Genetics"
                 }

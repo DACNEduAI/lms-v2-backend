@@ -30,6 +30,7 @@ class StudentAuthControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Doe",
                     "email": "john.doe@example.com",
                     "password": "SecurePass123!",
+                    "studentId": "STU-IT001",
                     "enrollmentYear": 2024
                 }
                 """;
@@ -57,6 +58,7 @@ class StudentAuthControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Doe",
                     "email": "invalid-email",
                     "password": "SecurePass123!",
+                    "studentId": "STU-IT002",
                     "enrollmentYear": 2024
                 }
                 """;
@@ -100,6 +102,7 @@ class StudentAuthControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Doe",
                     "email": "jane.short@example.com",
                     "password": "short",
+                    "studentId": "STU-IT003",
                     "enrollmentYear": 2024
                 }
                 """;
@@ -124,6 +127,7 @@ class StudentAuthControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Smith",
                     "email": "alice.smith@example.com",
                     "password": "AlicePass123!",
+                    "studentId": "STU-IT004",
                     "enrollmentYear": 2024
                 }
                 """;
@@ -191,6 +195,7 @@ class StudentAuthControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Johnson",
                     "email": "bob.johnson@example.com",
                     "password": "BobPass123!",
+                    "studentId": "STU-IT005",
                     "enrollmentYear": 2024
                 }
                 """;
@@ -250,6 +255,7 @@ class StudentAuthControllerIT extends IntegrationTestConfiguration {
                     "lastName": "User",
                     "email": "duplicate.user@example.com",
                     "password": "DuplicatePass123!",
+                    "studentId": "STU-IT006",
                     "enrollmentYear": 2024
                 }
                 """;

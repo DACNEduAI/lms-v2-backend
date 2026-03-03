@@ -46,6 +46,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Teacher",
                     "email": "clo.teacher@example.com",
                     "password": "TeacherPass123!",
+                    "employeeId": "EMP-CLO001",
                     "department": "Computer Science",
                     "specialization": "Software Engineering"
                 }
@@ -318,6 +319,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                     "lastName": "CLOTeacher",
                     "email": "another.clo.teacher@example.com",
                     "password": "AnotherPass123!",
+                    "employeeId": "EMP-CLO002",
                     "department": "Mathematics",
                     "specialization": "Algebra"
                 }
