@@ -16,19 +16,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TeacherJdbcTable {
-
-    @Id
-    private UUID id;
-
-    private String email;
-    private String password;
-    private String firstName;
-    private String lastName;
-    private String avatarUrl;
-
-    private Roles role;
-
+public class TeacherJdbcTable extends UserJdbcTable{
     private String employeeId;
     private String phoneNumber;
     private String department;

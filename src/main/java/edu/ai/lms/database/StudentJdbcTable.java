@@ -17,18 +17,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class StudentJdbcTable {
-
-    @Id
-    private UUID id;
-
-    private String email;
-    private String password;
-    private String firstName;
-    private String lastName;
-    private String avatarUrl;
-
-    private Roles role;
+public class StudentJdbcTable extends UserJdbcTable {
 
     @Column("enrollment_year")
     private Long enrollmentYear;
