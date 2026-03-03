@@ -15,6 +15,8 @@ import edu.ai.lms.common.ErrorResponse;
 import edu.ai.lms.core.course.app.exception.ChapterNotFoundException;
 import edu.ai.lms.core.course.app.exception.CourseCodeAlreadyExistsException;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
+import edu.ai.lms.core.course.app.exception.StudentNotEnrolledInCourseException;
+import edu.ai.lms.core.course.app.exception.StudentsNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -117,6 +119,42 @@ public class CourseExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Handles StudentsNotFoundException.
+     * This occurs when some student emails in the request are not found in the system.
+     */
+    @ApiResponse(responseCode = "404", description = "Students not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ExceptionHandler(StudentsNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleStudentsNotFoundException(StudentsNotFoundException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.NOT_FOUND.value())
+                .error("Students Not Found")
+                .message(ex.getMessage())
+                .details(ex.getMissingEmails())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Handles StudentNotEnrolledInCourseException.
+     * This occurs when trying to remove students who are not enrolled in the course.
+     */
+    @ApiResponse(responseCode = "400", description = "Students not enrolled in course",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ExceptionHandler(StudentNotEnrolledInCourseException.class)
+    public ResponseEntity<ErrorResponse> handleStudentNotEnrolledInCourseException(StudentNotEnrolledInCourseException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Students Not Enrolled")
+                .message(ex.getMessage())
+                .details(ex.getNotEnrolledEmails())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
     /**
