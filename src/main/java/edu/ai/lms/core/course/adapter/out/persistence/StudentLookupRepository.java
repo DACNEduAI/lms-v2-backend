@@ -4,15 +4,13 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jdbc.repository.query.Query;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
-import edu.ai.lms.database.StudentJdbcTable;
+import edu.ai.lms.database.UserJdbcTable;
 
-@Repository
-interface StudentLookupRepository extends CrudRepository<StudentJdbcTable, UUID> {
+interface StudentLookupRepository extends Repository<UserJdbcTable, UUID> {
 
-    @Query("SELECT * FROM students WHERE email IN (:emails)")
-    List<StudentJdbcTable> findByEmailIn(@Param("emails") List<String> emails);
+    @Query("SELECT u.* FROM users u INNER JOIN students s ON u.id = s.user_id WHERE u.email IN (:emails)")
+    List<UserJdbcTable> findStudentsByEmailIn(@Param("emails") List<String> emails);
 }

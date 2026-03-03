@@ -1,14 +1,22 @@
--- 1. Insert Students (Using 1111...)
-INSERT INTO students (id, email, password, first_name, last_name, avatar_url, role, enrollment_year)
+-- 1. Insert Users (shared data for both students and teachers)
+INSERT INTO users (id, email, password, first_name, last_name, avatar_url, role)
 VALUES
-    ('11111111-1111-1111-1111-111111111111', 'student1@university.edu', '$2a$10$DummyHashForPassword1', 'John', 'Doe', 'https://example.com/avatars/john.jpg', 'STUDENT', 2023),
-    ('11111111-2222-2222-2222-222222222222', 'student2@university.edu', '$2a$10$DummyHashForPassword2', 'Jane', 'Smith', 'https://example.com/avatars/jane.jpg', 'STUDENT', 2024);
+    ('11111111-1111-1111-1111-111111111111', 'student1@university.edu', '$2a$10$DummyHashForPassword1', 'John', 'Doe', 'https://example.com/avatars/john.jpg', 'STUDENT'),
+    ('11111111-2222-2222-2222-222222222222', 'student2@university.edu', '$2a$10$DummyHashForPassword2', 'Jane', 'Smith', 'https://example.com/avatars/jane.jpg', 'STUDENT'),
+    ('22222222-1111-1111-1111-111111111111', 'dr.turing@university.edu', '$2a$10$DummyHashForPassword3', 'Alan', 'Turing', 'https://example.com/avatars/alan.jpg', 'TEACHER'),
+    ('22222222-2222-2222-2222-222222222222', 'dr.lovelace@university.edu', '$2a$10$DummyHashForPassword4', 'Ada', 'Lovelace', 'https://example.com/avatars/ada.jpg', 'TEACHER');
 
--- 2. Insert Teachers (Using 2222...)
-INSERT INTO teachers (id, email, password, first_name, last_name, avatar_url, role, employee_id, phone_number, department, specialization)
+-- 2. Insert Students (role-specific data)
+INSERT INTO students (user_id, enrollment_year)
 VALUES
-    ('22222222-1111-1111-1111-111111111111', 'dr.turing@university.edu', '$2a$10$DummyHashForPassword3', 'Alan', 'Turing', 'https://example.com/avatars/alan.jpg', 'TEACHER', 'EMP001', '555-0101', 'Computer Science', 'Artificial Intelligence'),
-    ('22222222-2222-2222-2222-222222222222', 'dr.lovelace@university.edu', '$2a$10$DummyHashForPassword4', 'Ada', 'Lovelace', 'https://example.com/avatars/ada.jpg', 'TEACHER', 'EMP002', '555-0102', 'Mathematics', 'Algorithms');
+    ('11111111-1111-1111-1111-111111111111', 2023),
+    ('11111111-2222-2222-2222-222222222222', 2024);
+
+-- 3. Insert Teachers (role-specific data)
+INSERT INTO teachers (user_id, employee_id, phone_number, department, specialization)
+VALUES
+    ('22222222-1111-1111-1111-111111111111', 'EMP001', '555-0101', 'Computer Science', 'Artificial Intelligence'),
+    ('22222222-2222-2222-2222-222222222222', 'EMP002', '555-0102', 'Mathematics', 'Algorithms');
 
 -- 3. Insert Courses (Using 3333...)
 INSERT INTO courses (id, course_name, description, course_code, active, cover_image, start_date, end_date)

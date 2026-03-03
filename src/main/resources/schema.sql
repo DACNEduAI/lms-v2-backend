@@ -1,32 +1,30 @@
--- Students table (flattened from users + students)
-CREATE TABLE IF NOT EXISTS students (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    first_name VARCHAR(255),
-    last_name VARCHAR(255),
-    avatar_url VARCHAR(255),
-    role VARCHAR(50),
-    enrollment_year BIGINT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS users (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     email VARCHAR(255) NOT NULL UNIQUE,
+     password VARCHAR(255) NOT NULL,
+     first_name VARCHAR(255),
+     last_name VARCHAR(255),
+     avatar_url VARCHAR(255),
+     role VARCHAR(50),
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Teachers table (flattened from users + teachers)
+CREATE TABLE IF NOT EXISTS students (
+-- Define the column, make it the Primary Key, and reference the users table
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    student_id VARCHAR(255) UNIQUE,
+    enrollment_year BIGINT NOT NULL
+
+);
+
 CREATE TABLE IF NOT EXISTS teachers (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    first_name VARCHAR(255),
-    last_name VARCHAR(255),
-    avatar_url VARCHAR(255),
-    role VARCHAR(50),
-    employee_id VARCHAR(255),
+-- Define the column, make it the Primary Key, and reference the users table
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    employee_id VARCHAR(255) UNIQUE,
     phone_number VARCHAR(255),
     department VARCHAR(255),
-    specialization VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    specialization VARCHAR(255)
 );
 
 -- Courses table
@@ -46,14 +44,14 @@ CREATE TABLE IF NOT EXISTS courses (
 -- Junction table for many-to-many: courses <-> teachers
 CREATE TABLE IF NOT EXISTS course_teachers (
     course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+    teacher_id UUID NOT NULL REFERENCES teachers(user_id) ON DELETE CASCADE,
     PRIMARY KEY (course_id, teacher_id)
 );
 
 -- Junction table for many-to-many: courses <-> students
 CREATE TABLE IF NOT EXISTS course_students (
     course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    student_id UUID NOT NULL REFERENCES students(user_id) ON DELETE CASCADE,
     PRIMARY KEY (course_id, student_id)
 );
 
@@ -102,7 +100,7 @@ CREATE TABLE IF NOT EXISTS learning_outcomes (
 -- Enrollments table
 CREATE TABLE IF NOT EXISTS enrollments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    student_id UUID REFERENCES students(id),
+    student_id UUID REFERENCES students(user_id),
     course_id UUID REFERENCES courses(id),
     enrolled_date TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -132,8 +130,8 @@ CREATE TABLE IF NOT EXISTS quizzes (
     pass_score DOUBLE PRECISION,
     ai_settings_id UUID REFERENCES ai_settings(id),
     course_id UUID NOT NULL REFERENCES courses(id),
-    student_id UUID REFERENCES students(id),
-    teacher_id UUID REFERENCES teachers(id),
+    student_id UUID REFERENCES students(user_id),
+    teacher_id UUID REFERENCES teachers(user_id),
     active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -165,7 +163,7 @@ CREATE TABLE IF NOT EXISTS answers (
 -- Attempts table
 CREATE TABLE IF NOT EXISTS attempts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    student_id UUID REFERENCES students(id),
+    student_id UUID REFERENCES students(user_id),
     quiz_id UUID REFERENCES quizzes(id),
     score DOUBLE PRECISION,
     start_time TIMESTAMP,
@@ -197,7 +195,7 @@ CREATE TABLE IF NOT EXISTS question_learning_outcomes (
 );
 
 CREATE TABLE IF NOT EXISTS student_learning_outcomes (
-    student_id UUID REFERENCES students(id),
+    student_id UUID REFERENCES students(user_id),
     learning_outcome_id UUID REFERENCES learning_outcomes(id),
     PRIMARY KEY (student_id, learning_outcome_id)
 );

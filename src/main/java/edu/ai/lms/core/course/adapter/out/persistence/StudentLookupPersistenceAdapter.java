@@ -8,7 +8,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.course.app.port.out.LoadStudentsByEmailPort;
-import edu.ai.lms.database.StudentJdbcTable;
+import edu.ai.lms.database.UserJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -19,10 +19,10 @@ class StudentLookupPersistenceAdapter implements LoadStudentsByEmailPort {
 
     @Override
     public Map<String, UUID> findStudentIdsByEmails(List<String> emails) {
-        List<StudentJdbcTable> students = studentLookupRepository.findByEmailIn(emails);
+        List<UserJdbcTable> users = studentLookupRepository.findStudentsByEmailIn(emails);
         Map<String, UUID> result = new HashMap<>();
-        for (StudentJdbcTable student : students) {
-            result.put(student.getEmail(), student.getId());
+        for (UserJdbcTable user : users) {
+            result.put(user.getEmail(), user.getId());
         }
         return result;
     }
