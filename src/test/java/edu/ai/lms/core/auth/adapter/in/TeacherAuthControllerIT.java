@@ -33,6 +33,7 @@ class TeacherAuthControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Smith",
                     "email": "jane.smith@university.edu",
                     "password": "TeacherPass123!",
+                    "employeeId": "EMP-IT001",
                     "phoneNumber": "+1234567890",
                     "department": "Computer Science",
                     "specialization": "Machine Learning"
@@ -62,7 +63,8 @@ class TeacherAuthControllerIT extends IntegrationTestConfiguration {
                     "firstName": "Prof. John",
                     "lastName": "Doe",
                     "email": "john.doe@university.edu",
-                    "password": "ProfPass123!"
+                    "password": "ProfPass123!",
+                    "employeeId": "EMP-IT002"
                 }
                 """;
 
@@ -86,7 +88,8 @@ class TeacherAuthControllerIT extends IntegrationTestConfiguration {
                     "firstName": "Prof. Test",
                     "lastName": "User",
                     "email": "invalid-email-format",
-                    "password": "TestPass123!"
+                    "password": "TestPass123!",
+                    "employeeId": "EMP-IT003"
                 }
                 """;
 
@@ -130,6 +133,7 @@ class TeacherAuthControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Johnson",
                     "email": "alice.johnson@university.edu",
                     "password": "AliceTeacher123!",
+                    "employeeId": "EMP-IT004",
                     "department": "Mathematics"
                 }
                 """;
@@ -197,6 +201,7 @@ class TeacherAuthControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Williams",
                     "email": "bob.williams@university.edu",
                     "password": "BobTeacher123!",
+                    "employeeId": "EMP-IT005",
                     "department": "Physics"
                 }
                 """;
@@ -256,6 +261,7 @@ class TeacherAuthControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Test",
                     "email": "duplicate.teacher@university.edu",
                     "password": "DuplicatePass123!",
+                    "employeeId": "EMP-IT006",
                     "department": "Engineering"
                 }
                 """;
@@ -289,6 +295,7 @@ class TeacherAuthControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Profile",
                     "email": "complete.profile@university.edu",
                     "password": "CompletePass123!",
+                    "employeeId": "EMP-IT007",
                     "phoneNumber": "+9876543210",
                     "department": "Biology",
                     "specialization": "Genetics"

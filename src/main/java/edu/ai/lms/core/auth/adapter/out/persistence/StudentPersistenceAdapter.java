@@ -28,6 +28,7 @@ class StudentPersistenceAdapter implements
         UserJdbcTable savedUser = userRepository.save(userEntity);
         studentRepository.insertStudent(
                 savedUser.getId(),
+                student.getStudentId(),
                 student.getEnrollmentYear()
         );
         return true;

@@ -32,6 +32,7 @@ public class UserJdbcMapper {
                 .firstName(userEntity.getFirstName())
                 .lastName(userEntity.getLastName())
                 .avatarUrl(userEntity.getAvatarUrl())
+                .studentId(studentEntity.getStudentId())
                 .enrollmentYear(studentEntity.getEnrollmentYear())
                 .role(userEntity.getRole())
                 .build();

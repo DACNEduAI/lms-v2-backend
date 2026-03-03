@@ -43,6 +43,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Teacher",
                     "email": "quiz.teacher@example.com",
                     "password": "TeacherPass123!",
+                    "employeeId": "EMP-QIZ001",
                     "department": "Computer Science",
                     "specialization": "Software Engineering"
                 }

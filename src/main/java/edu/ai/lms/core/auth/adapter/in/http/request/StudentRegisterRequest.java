@@ -27,6 +27,9 @@ public class StudentRegisterRequest {
     @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
 
+    @NotBlank(message = "Student ID is required")
+    private String studentId;
+
     @NotNull(message = "Enrollment year is required")
     private Long enrollmentYear;
 }

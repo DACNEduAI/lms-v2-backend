@@ -54,6 +54,7 @@ class TeacherRegisterServiceUT {
                         .password("Password123!")
                         .firstName("Alice")
                         .lastName("Smith")
+                        .employeeId("EMP001")
                         .phoneNumber("123-456-7890")
                         .department("Computer Science")
                         .specialization("Artificial Intelligence")
@@ -122,6 +123,7 @@ class TeacherRegisterServiceUT {
         assertEquals("Password123!", savedTeacher.getPassword());
         assertEquals("Alice", savedTeacher.getFirstName());
         assertEquals("Smith", savedTeacher.getLastName());
+        assertEquals("EMP001", savedTeacher.getEmployeeId());
         assertEquals("123-456-7890", savedTeacher.getPhoneNumber());
         assertEquals("Computer Science", savedTeacher.getDepartment());
         assertEquals("Artificial Intelligence", savedTeacher.getSpecialization());
@@ -157,6 +159,7 @@ class TeacherRegisterServiceUT {
                         .password("Pass123!")
                         .firstName("Bob")
                         .lastName("Johnson")
+                        .employeeId("EMP002")
                         .build())
                 .build();
 
@@ -184,6 +187,7 @@ class TeacherRegisterServiceUT {
                         .password("Password123!")
                         .firstName("Charlie")
                         .lastName("Brown")
+                        .employeeId("EMP003")
                         .phoneNumber(null)
                         .department(null)
                         .specialization(null)
@@ -216,6 +220,7 @@ class TeacherRegisterServiceUT {
                         .password("SecurePass456!")
                         .firstName("Dr. Emily")
                         .lastName("Martinez")
+                        .employeeId("EMP004")
                         .phoneNumber("+1-555-0123")
                         .department("Data Science")
                         .specialization("Machine Learning & Deep Learning")
@@ -240,6 +245,7 @@ class TeacherRegisterServiceUT {
         assertEquals("+1-555-0123", savedTeacher.getPhoneNumber());
         assertEquals("Data Science", savedTeacher.getDepartment());
         assertEquals("Machine Learning & Deep Learning", savedTeacher.getSpecialization());
+        assertEquals("EMP004", savedTeacher.getEmployeeId());
         assertEquals("detailed-token", response.getToken());
     }
 }

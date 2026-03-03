@@ -42,6 +42,7 @@ class CourseEnrollmentControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Teacher",
                     "email": "cs.teacher@example.com",
                     "password": "TeacherPass123!",
+                    "employeeId": "EMP-ENR001",
                     "department": "Computer Science",
                     "specialization": "Software Engineering"
                 }
@@ -71,6 +72,7 @@ class CourseEnrollmentControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Teacher",
                     "email": "other.cs.teacher@example.com",
                     "password": "OtherPass123!",
+                    "employeeId": "EMP-ENR002",
                     "department": "Mathematics",
                     "specialization": "Algebra"
                 }
@@ -134,6 +136,7 @@ class CourseEnrollmentControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Student",
                     "email": "alice.student@example.com",
                     "password": "StudentPass123!",
+                    "studentId": "STU-ENR001",
                     "enrollmentYear": 2025
                 }
                 """;
@@ -159,6 +162,7 @@ class CourseEnrollmentControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Student",
                     "email": "bob.student@example.com",
                     "password": "StudentPass123!",
+                    "studentId": "STU-ENR002",
                     "enrollmentYear": 2025
                 }
                 """;
@@ -184,6 +188,7 @@ class CourseEnrollmentControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Student",
                     "email": "charlie.student@example.com",
                     "password": "StudentPass123!",
+                    "studentId": "STU-ENR003",
                     "enrollmentYear": 2025
                 }
                 """;

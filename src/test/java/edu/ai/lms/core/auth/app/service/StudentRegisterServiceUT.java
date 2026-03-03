@@ -54,6 +54,7 @@ class StudentRegisterServiceUT {
                 .password("Password123!")
                 .firstName("John")
                 .lastName("Doe")
+                .studentId("STU001")
                 .enrollmentYear(2024L)
                 .build();
 
@@ -127,6 +128,7 @@ class StudentRegisterServiceUT {
         assertEquals("Password123!", savedStudent.getPassword());
         assertEquals("John", savedStudent.getFirstName());
         assertEquals("Doe", savedStudent.getLastName());
+        assertEquals("STU001", savedStudent.getStudentId());
         assertEquals(2024L, savedStudent.getEnrollmentYear());
         assertEquals(Roles.STUDENT, savedStudent.getRole());
     }
@@ -160,6 +162,7 @@ class StudentRegisterServiceUT {
                 .password("Pass123!")
                 .firstName("Jane")
                 .lastName("Smith")
+                .studentId("STU002")
                 .enrollmentYear(2025L)
                 .build();
         StudentRegisterCommand minimalCommand = StudentRegisterCommand.builder()

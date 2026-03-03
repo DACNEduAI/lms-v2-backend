@@ -18,6 +18,6 @@ import edu.ai.lms.database.StudentJdbcTable;
 interface StudentRepository extends CrudRepository<StudentJdbcTable, UUID> {
 
     @Modifying
-    @Query("INSERT INTO students (user_id, enrollment_year) VALUES (:userId, :enrollmentYear)")
-    void insertStudent(@Param("userId") UUID userId, @Param("enrollmentYear") Long enrollmentYear);
+    @Query("INSERT INTO students (user_id, student_id, enrollment_year) VALUES (:userId, :studentId, :enrollmentYear)")
+    void insertStudent(@Param("userId") UUID userId, @Param("studentId") String studentId, @Param("enrollmentYear") Long enrollmentYear);
 }

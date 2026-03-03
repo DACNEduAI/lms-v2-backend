@@ -13,15 +13,15 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS students (
 -- Define the column, make it the Primary Key, and reference the users table
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    student_id VARCHAR(255) UNIQUE,
+    student_id VARCHAR(255) NOT NULL UNIQUE,
     enrollment_year BIGINT NOT NULL
 
 );
 
 CREATE TABLE IF NOT EXISTS teachers (
 -- Define the column, make it the Primary Key, and reference the users table
-    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    employee_id VARCHAR(255) UNIQUE,
+    user_id UUID PRIMARY KEY REFERENCES users(id)    ON DELETE CASCADE,
+    employee_id VARCHAR(255) NOT NULL UNIQUE,
     phone_number VARCHAR(255),
     department VARCHAR(255),
     specialization VARCHAR(255)

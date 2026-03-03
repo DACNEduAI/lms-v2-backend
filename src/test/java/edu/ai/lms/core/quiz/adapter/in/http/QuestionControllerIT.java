@@ -43,6 +43,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Teacher",
                     "email": "question.teacher@example.com",
                     "password": "TeacherPass123!",
+                    "employeeId": "EMP-QST001",
                     "department": "Mathematics",
                     "specialization": "Algebra"
                 }
