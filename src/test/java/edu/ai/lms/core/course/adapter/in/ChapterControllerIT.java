@@ -1,8 +1,5 @@
 package edu.ai.lms.core.course.adapter.in;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -12,7 +9,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -109,13 +105,12 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(3)
-    @DisplayName("Should successfully create a chapter without materials")
+    @DisplayName("Should successfully create a chapter")
     void testCreateChapter_WithoutMaterials() {
         String requestBody = """
                 {
                     "title": "Chapter 1: Introduction",
-                    "description": "Introduction to Java programming",
-                    "materials": []
+                    "description": "Introduction to Java programming"
                 }
                 """;
 
@@ -139,56 +134,13 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(4)
-    @DisplayName("Should successfully create a chapter with materials")
-    void testCreateChapter_WithMaterials() {
-        String requestBody = """
-                {
-                    "title": "Chapter 2: Variables and Data Types",
-                    "description": "Learn about Java variables and data types",
-                    "materials": [
-                        {
-                            "title": "Variables Tutorial PDF",
-                            "type": "PDF",
-                            "sourceUrl": "https://example.com/variables.pdf",
-                            "downloadable": true
-                        },
-                        {
-                            "title": "Variables Video Lecture",
-                            "type": "VIDEO",
-                            "sourceUrl": "https://example.com/variables-video.mp4",
-                            "downloadable": false
-                        }
-                    ]
-                }
-                """;
-
-        given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + teacherToken)
-                .body(requestBody)
-                .when()
-                .post("/api/" + createdCourseId + "/chapter")
-                .then()
-                .log().all()
-                .statusCode(201)
-                .body("chapterNumber", notNullValue())
-                .body("title", equalTo("Chapter 2: Variables and Data Types"))
-                .body("description", equalTo("Learn about Java variables and data types"))
-                .body("courseId", equalTo(createdCourseId.toString()))
-                .body("materials", hasSize(2))
-                .body("createdAt", notNullValue());
-    }
-
-    @Test
     @Order(5)
     @DisplayName("Should fail to create chapter without authentication")
     void testCreateChapter_WithoutAuth() {
         String requestBody = """
                 {
                     "title": "Unauthorized Chapter",
-                    "description": "This should fail",
-                    "materials": []
+                    "description": "This should fail"
                 }
                 """;
 
@@ -208,8 +160,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
     void testCreateChapter_WithMissingTitle() {
         String requestBody = """
                 {
-                    "description": "Missing title chapter",
-                    "materials": []
+                    "description": "Missing title chapter"
                 }
                 """;
 
@@ -233,8 +184,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "title": "Orphan Chapter",
-                    "description": "This should fail - course does not exist",
-                    "materials": []
+                    "description": "This should fail - course does not exist"
                 }
                 """;
 
@@ -282,8 +232,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "title": "Hijacked Chapter",
-                    "description": "This should fail - not the course owner",
-                    "materials": []
+                    "description": "This should fail - not the course owner"
                 }
                 """;
 

@@ -50,15 +50,6 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
                 ChapterJdbcTable chapterEntity = chapterJdbcMapper.mapToChapterJdbcEntity(chapter, savedCourse.getId());
                 ChapterJdbcTable savedChapter = chapterRepository.save(chapterEntity);
 
-                // Save materials for each chapter using composite key
-                if (chapter.getMaterials() != null) {
-                    chapter.getMaterials().forEach(material -> {
-                        MaterialJdbcTable materialEntity = materialJdbcMapper.mapToMaterialJdbcEntity(material);
-                        materialEntity.setChapterNumber(savedChapter.getChapterNumber());
-                        materialEntity.setChapterCourseId(savedChapter.getCourseId());
-                        materialRepository.save(materialEntity);
-                    });
-                }
             }
         }
 

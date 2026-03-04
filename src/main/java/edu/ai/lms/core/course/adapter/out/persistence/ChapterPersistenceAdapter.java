@@ -63,16 +63,6 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
                     chapter.getTitle(),
                     chapter.getDescription());
 
-            // Save materials for this chapter using the generated chapter number
-            if (chapter.getMaterials() != null) {
-                chapter.getMaterials().forEach(material -> {
-                    MaterialJdbcTable materialEntity = materialJdbcMapper.mapToMaterialJdbcEntity(material);
-                    materialEntity.setChapterNumber(generatedChapterNumber);
-                    materialEntity.setChapterCourseId(courseId);
-                    materialRepository.save(materialEntity);
-                });
-            }
-
             // Fetch the newly created chapter
             savedChapter = chapterRepository.findByChapterNumberAndCourseId(generatedChapterNumber, courseId)
                     .orElseThrow(() -> new RuntimeException("Chapter not found after insert"));

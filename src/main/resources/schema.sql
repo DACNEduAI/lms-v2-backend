@@ -73,19 +73,20 @@ CREATE TABLE IF NOT EXISTS materials (
     type VARCHAR(50) CHECK (type IN ('PDF', 'VIDEO', 'LINK')), -- Added CHECK constraint here
     source_url VARCHAR(255),
     is_downloadable BOOLEAN DEFAULT false,
-    chapter_number BIGINT,
-    chapter_course_id UUID,
+--     chapter_number BIGINT,
+    course_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (chapter_number, chapter_course_id) REFERENCES chapters(chapter_number, course_id) ON DELETE SET NULL
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL
 );
 
--- Junction table for many-to-many: courses <-> materials
-CREATE TABLE IF NOT EXISTS course_materials (
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS chapter_materials (
     material_id UUID NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
-    PRIMARY KEY (course_id, material_id)
+    chapter_number uuid NOT NULL REFERENCES chapters(chapter_number) ON DELETE CASCADE,
+    course_id UUID NOT NULL REFERENCES chapters(course_id) ON DELETE CASCADE,
+    FOREIGN KEY (chapter_number, course_id) REFERENCES chapters(chapter_number, course_id)
 );
+
 
 -- Learning outcomes table
 CREATE TABLE IF NOT EXISTS learning_outcomes (
