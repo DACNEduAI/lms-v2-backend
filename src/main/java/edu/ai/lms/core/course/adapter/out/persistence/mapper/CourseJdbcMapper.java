@@ -14,7 +14,6 @@ import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.database.ChapterJdbcTable;
 import edu.ai.lms.database.CourseJdbcTable;
-import edu.ai.lms.database.CourseMaterialJdbcTable;
 import edu.ai.lms.database.CourseStudentJdbcTable;
 import edu.ai.lms.database.CourseTeacherJdbcTable;
 import edu.ai.lms.database.LearningOutcomeJdbcTable;
@@ -43,13 +42,6 @@ public class CourseJdbcMapper {
                     .collect(Collectors.toSet());
         }
 
-        Set<CourseMaterialJdbcTable> courseMaterials = new HashSet<>();
-        if (course.getMaterialIds() != null) {
-            courseMaterials = course.getMaterialIds().stream()
-                    .map(id -> CourseMaterialJdbcTable.builder().materialId(id).build())
-                    .collect(Collectors.toSet());
-        }
-
         return CourseJdbcTable.builder()
                 .id(course.getId())
                 .courseName(course.getCourseName())
@@ -61,7 +53,6 @@ public class CourseJdbcMapper {
                 .endDate(course.getEndDate())
                 .courseTeachers(courseTeachers)
                 .courseStudents(courseStudents)
-                .courseMaterials(courseMaterials)
                 .build();
     }
 
@@ -69,7 +60,7 @@ public class CourseJdbcMapper {
             CourseJdbcTable entity,
             List<ChapterJdbcTable> chapterEntities,
             List<LearningOutcomeJdbcTable> learningOutcomeEntities,
-            List<MaterialJdbcTable> allMaterials
+            List<MaterialJdbcTable> allCourseMaterials
     ) {
         List<UUID> teacherIds = entity.getCourseTeachers() != null
                 ? entity.getCourseTeachers().stream()
@@ -83,26 +74,17 @@ public class CourseJdbcMapper {
                     .collect(Collectors.toList())
                 : new ArrayList<>();
 
-        List<UUID> materialIds = entity.getCourseMaterials() != null
-                ? entity.getCourseMaterials().stream()
-                    .map(CourseMaterialJdbcTable::getMaterialId)
+        // Material IDs from the 1-N relationship (materials.course_id FK)
+        List<UUID> materialIds = allCourseMaterials != null
+                ? allCourseMaterials.stream()
+                    .map(MaterialJdbcTable::getId)
                     .collect(Collectors.toList())
                 : new ArrayList<>();
 
         List<Chapter> chapters = new ArrayList<>();
         if (chapterEntities != null) {
             chapters = chapterEntities.stream()
-                    .map(chapterEntity -> {
-                        List<MaterialJdbcTable> chapterMaterials = allMaterials != null
-                                ? allMaterials.stream()
-                                    .filter(m -> m.getChapterNumber() != null &&
-                                                 m.getChapterNumber().equals(chapterEntity.getChapterNumber()) &&
-                                                 m.getChapterCourseId() != null &&
-                                                 m.getChapterCourseId().equals(chapterEntity.getCourseId()))
-                                    .collect(Collectors.toList())
-                                : new ArrayList<>();
-                        return chapterJdbcMapper.mapToChapter(chapterEntity, chapterMaterials);
-                    })
+                    .map(chapterJdbcMapper::mapToChapterWithoutMaterials)
                     .collect(Collectors.toList());
         }
 

@@ -7,9 +7,12 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.ReadOnlyProperty;
 import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.MappedCollection;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Table("chapters")
@@ -36,6 +39,14 @@ public class ChapterJdbcTable {
 
     @Column("course_id")
     private UUID courseId;
+
+    // Chapter-Material M-N relationship via chapter_materials junction table.
+    // Spring Data JDBC will use chapter_number as the FK into chapter_materials.
+    // The course_id column in chapter_materials must be populated explicitly when
+    // building ChapterMaterialJdbcTable instances.
+    @MappedCollection(idColumn = "chapter_number")
+    @Builder.Default
+    private Set<ChapterMaterialJdbcTable> chapterMaterials = new HashSet<>();
 
     @CreatedDate
     private LocalDateTime createdAt;

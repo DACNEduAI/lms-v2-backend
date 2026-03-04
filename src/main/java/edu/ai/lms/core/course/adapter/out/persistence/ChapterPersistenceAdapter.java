@@ -7,7 +7,6 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.course.adapter.out.persistence.mapper.ChapterJdbcMapper;
-import edu.ai.lms.core.course.adapter.out.persistence.mapper.MaterialJdbcMapper;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.port.out.DeleteChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
@@ -23,7 +22,6 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
     private final ChapterRepository chapterRepository;
     private final MaterialRepository materialRepository;
     private final ChapterJdbcMapper chapterJdbcMapper;
-    private final MaterialJdbcMapper materialJdbcMapper;
 
     @Override
     public Chapter save(Chapter chapter) {
@@ -39,19 +37,6 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
                     courseId,
                     chapter.getTitle(),
                     chapter.getDescription());
-
-            // Delete existing materials and re-save new ones
-            materialRepository.deleteByChapterKey(chapter.getChapterNumber(), courseId);
-
-            // Save new materials
-            if (chapter.getMaterials() != null) {
-                chapter.getMaterials().forEach(material -> {
-                    MaterialJdbcTable materialEntity = materialJdbcMapper.mapToMaterialJdbcEntity(material);
-                    materialEntity.setChapterNumber(chapter.getChapterNumber());
-                    materialEntity.setChapterCourseId(courseId);
-                    materialRepository.save(materialEntity);
-                });
-            }
 
             // Re-fetch the updated chapter
             savedChapter = chapterRepository.findByChapterNumberAndCourseId(chapter.getChapterNumber(), courseId)

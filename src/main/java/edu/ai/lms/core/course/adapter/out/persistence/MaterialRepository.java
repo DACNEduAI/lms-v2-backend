@@ -17,21 +17,23 @@ import edu.ai.lms.database.MaterialJdbcTable;
 @Repository
 interface MaterialRepository extends CrudRepository<MaterialJdbcTable, UUID> {
 
-    @Query("SELECT * FROM materials WHERE chapter_number = :chapterNumber AND chapter_course_id = :courseId")
+    @Query("SELECT m.* FROM materials m " +
+           "INNER JOIN chapter_materials cm ON m.id = cm.material_id " +
+           "WHERE cm.chapter_number = :chapterNumber AND cm.course_id = :courseId")
     List<MaterialJdbcTable> findByChapterKey(
             @Param("chapterNumber") Long chapterNumber,
             @Param("courseId") UUID courseId);
 
-    @Query("SELECT * FROM materials WHERE chapter_course_id = :courseId")
+    @Query("SELECT * FROM materials WHERE course_id = :courseId")
     List<MaterialJdbcTable> findByCourseId(@Param("courseId") UUID courseId);
 
     @Modifying
-    @Query("DELETE FROM materials WHERE chapter_number = :chapterNumber AND chapter_course_id = :courseId")
+    @Query("DELETE FROM chapter_materials WHERE chapter_number = :chapterNumber AND course_id = :courseId")
     void deleteByChapterKey(
             @Param("chapterNumber") Long chapterNumber,
             @Param("courseId") UUID courseId);
 
     @Modifying
-    @Query("DELETE FROM materials WHERE chapter_course_id = :courseId")
+    @Query("DELETE FROM materials WHERE course_id = :courseId")
     void deleteByCourseId(@Param("courseId") UUID courseId);
 }

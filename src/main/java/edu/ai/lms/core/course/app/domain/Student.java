@@ -21,8 +21,8 @@ public class Student extends User {
         this.setRole(Roles.STUDENT);
     }
 
-    @Builder.Default
-    private List<Course> courses = new ArrayList<>();
+//    @Builder.Default
+//    private List<Course> courses = new ArrayList<>();
 
     @Builder.Default
     private List<LearningOutcome> masteredLearningOutcomes = new ArrayList<>();

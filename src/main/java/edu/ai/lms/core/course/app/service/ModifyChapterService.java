@@ -1,7 +1,6 @@
 package edu.ai.lms.core.course.app.service;
 
 import java.time.LocalDateTime;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,7 +56,6 @@ public class ModifyChapterService implements TeacherModifyChapterUseCase {
                 .courseId(existingChapter.getCourseId())
                 .title(command.chapter().getTitle())
                 .description(command.chapter().getDescription())
-                .materials(command.chapter().getMaterials())
                 .createdAt(existingChapter.getCreatedAt())
                 .build();
 
@@ -69,17 +67,6 @@ public class ModifyChapterService implements TeacherModifyChapterUseCase {
                 .title(savedChapter.getTitle())
                 .description(savedChapter.getDescription())
                 .courseId(savedChapter.getCourseId())
-                .materials(savedChapter.getMaterials() != null
-                        ? savedChapter.getMaterials().stream()
-                                .map(m -> ModifyChapterResponse.MaterialDto.builder()
-                                        .id(m.getId())
-                                        .title(m.getTitle())
-                                        .type(m.getType() != null ? m.getType().name() : null)
-                                        .sourceUrl(m.getSourceUrl())
-                                        .downloadable(m.isDownloadable())
-                                        .build())
-                                .collect(Collectors.toList())
-                        : null)
                 .updatedAt(LocalDateTime.now())
                 .build();
     }

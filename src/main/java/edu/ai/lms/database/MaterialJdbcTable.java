@@ -32,12 +32,9 @@ public class MaterialJdbcTable {
     private String sourceUrl;
     private boolean isDownloadable;
 
-    // Reference to chapter composite key (chapter_number, course_id)
-    @Column("chapter_number")
-    private Long chapterNumber;
-
-    @Column("chapter_course_id")
-    private UUID chapterCourseId;
+    // Direct reference to the owning course
+    @Column("course_id")
+    private UUID courseId;
 
     @CreatedDate
     private LocalDateTime createdAt;

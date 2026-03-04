@@ -15,8 +15,6 @@ public class MaterialJdbcMapper {
                 .type(mapToJdbcMaterialType(material.getType()))
                 .sourceUrl(material.getSourceUrl())
                 .isDownloadable(material.isDownloadable())
-                .chapterNumber(material.getChapter() != null ? material.getChapter().getChapterNumber() : null)
-                .chapterCourseId(material.getChapter() != null ? material.getChapter().getCourseId() : null)
                 .build();
     }
 
