@@ -10,9 +10,6 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @SuperBuilder
 public class Teacher extends User {
-    private String firstName;
-    private String lastName;
-    private String avatarUrl;
     private String employeeId;
     private String phoneNumber;
     private String department;

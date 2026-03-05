@@ -14,6 +14,7 @@ public class StudentRegisterCommandMapper {
                 .password(request.getPassword())
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
+                .studentId(request.getStudentId())
                 .enrollmentYear(request.getEnrollmentYear())
                 .build();
 

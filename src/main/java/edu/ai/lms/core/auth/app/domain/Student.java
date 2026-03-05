@@ -10,9 +10,7 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @SuperBuilder
 public class Student extends User {
-    private String firstName;
-    private String lastName;
-    private String avatarUrl;
+    private String studentId;
     private Long enrollmentYear;
 
     {

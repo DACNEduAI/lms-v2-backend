@@ -43,6 +43,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                     "lastName": "Teacher",
                     "email": "answer.teacher@example.com",
                     "password": "TeacherPass123!",
+                    "employeeId": "EMP-ANS001",
                     "department": "Science",
                     "specialization": "Physics"
                 }

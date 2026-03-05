@@ -55,6 +55,7 @@ class StudentSignInServiceUT {
                 .password("encodedPassword123!")
                 .firstName("John")
                 .lastName("Doe")
+                .studentId("STU001")
                 .enrollmentYear(2024L)
                 .role(Roles.STUDENT)
                 .build();
@@ -151,6 +152,7 @@ class StudentSignInServiceUT {
                 .password("encodedPassword")
                 .firstName("Alice")
                 .lastName("Johnson")
+                .studentId("STU003")
                 .enrollmentYear(2023L)
                 .avatarUrl("https://example.com/avatar.jpg")
                 .role(Roles.STUDENT)

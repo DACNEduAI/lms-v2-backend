@@ -2,6 +2,7 @@ package edu.ai.lms.core.auth.adapter.out.persistence;
 
 import java.util.Optional;
 
+import edu.ai.lms.common.Roles;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 class AuthenticatedUserPersistenceAdapter implements LoadAuthenticatedUserApi {
 
+    private final UserRepository userRepository;
     private final TeacherRepository teacherRepository;
     private final StudentRepository studentRepository;
     private final UserJdbcMapper userJdbcMapper;
@@ -26,18 +28,17 @@ class AuthenticatedUserPersistenceAdapter implements LoadAuthenticatedUserApi {
         if (principal instanceof UserDetails userDetails) {
             String email = userDetails.getUsername();
 
-            // Try to find as teacher first
-            Optional<User> teacher = teacherRepository.findByEmail(email)
-                    .map(userJdbcMapper::mapToTeacher)
-                    .map(t -> (User) t);
-            if (teacher.isPresent()) {
-                return teacher;
-            }
-
-            // Then try to find as student
-            return studentRepository.findByEmail(email)
-                    .map(userJdbcMapper::mapToStudent)
-                    .map(s -> (User) s);
+            return userRepository.findByEmail(email)
+                    .flatMap(userEntity -> {
+                        if (userEntity.getRole() == Roles.TEACHER) {
+                            return teacherRepository.findById(userEntity.getId())
+                                    .map(teacher -> (User) userJdbcMapper.mapToTeacher(userEntity, teacher));
+                        } else if (userEntity.getRole() == Roles.STUDENT) {
+                            return studentRepository.findById(userEntity.getId())
+                                    .map(student -> (User) userJdbcMapper.mapToStudent(userEntity, student));
+                        }
+                        return Optional.<User>empty();
+                    });
         }
 
         return Optional.empty();

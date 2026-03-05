@@ -20,6 +20,9 @@ public class User implements UserDetails {
     private UUID id;
     private String password;
     private String email;
+    private String firstName;
+    private String lastName;
+    private String avatarUrl;
     private Roles role;
 
     /**

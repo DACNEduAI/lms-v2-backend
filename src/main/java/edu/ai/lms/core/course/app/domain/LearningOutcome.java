@@ -19,6 +19,8 @@ public class LearningOutcome {
     private String code;   // e.g. "CLO-1"
     private String description;
 
+    private UUID courseId;
+
     private Course course;
 
     @Builder.Default
