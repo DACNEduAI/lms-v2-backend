@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 import edu.ai.lms.database.MaterialJdbcTable;
 
 /**
- * Package-private repository interface for materials.
+ * Package-private repository interface for materials in course module.
  */
 @Repository
 interface MaterialRepository extends CrudRepository<MaterialJdbcTable, UUID> {

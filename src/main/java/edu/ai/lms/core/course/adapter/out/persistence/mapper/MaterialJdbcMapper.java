@@ -13,7 +13,7 @@ public class MaterialJdbcMapper {
                 .id(material.getId())
                 .title(material.getTitle())
                 .type(mapToJdbcMaterialType(material.getType()))
-                .sourceUrl(material.getSourceUrl())
+                .fileKey(material.getFileKey())
                 .isDownloadable(material.isDownloadable())
                 .build();
     }
@@ -23,7 +23,7 @@ public class MaterialJdbcMapper {
                 .id(entity.getId())
                 .title(entity.getTitle())
                 .type(mapToDomainMaterialType(entity.getType()))
-                .sourceUrl(entity.getSourceUrl())
+                .fileKey(entity.getFileKey())
                 .downloadable(entity.isDownloadable())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
@@ -37,7 +37,6 @@ public class MaterialJdbcMapper {
         return switch (type) {
             case PDF -> MaterialJdbcTable.MaterialType.PDF;
             case VIDEO -> MaterialJdbcTable.MaterialType.VIDEO;
-            case LINK -> MaterialJdbcTable.MaterialType.LINK;
         };
     }
 
@@ -48,7 +47,6 @@ public class MaterialJdbcMapper {
         return switch (type) {
             case PDF -> Material.MaterialType.PDF;
             case VIDEO -> Material.MaterialType.VIDEO;
-            case LINK -> Material.MaterialType.LINK;
         };
     }
 }

@@ -98,8 +98,9 @@ CREATE TABLE IF NOT EXISTS materials (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255),
     type VARCHAR(50) CHECK (type IN ('PDF', 'VIDEO', 'LINK')), -- Added CHECK constraint here
-    source_url VARCHAR(255),
+    file_key VARCHAR(255) UNIQUE,
     is_downloadable BOOLEAN DEFAULT false,
+    status VARCHAR(50) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'UPLOADED', 'FAILED')),
     course_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

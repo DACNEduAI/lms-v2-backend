@@ -21,7 +21,12 @@ public class MaterialJdbcTable {
     public enum MaterialType {
         PDF,
         VIDEO,
-        LINK
+    }
+
+    public enum MaterialStatus {
+        PENDING,
+        UPLOADED,
+        FAILED
     }
 
     @Id
@@ -29,8 +34,9 @@ public class MaterialJdbcTable {
 
     private String title;
     private MaterialType type;
-    private String sourceUrl;
+    private String fileKey;
     private boolean isDownloadable;
+    private MaterialStatus status;
 
     // Direct reference to the owning course
     @Column("course_id")

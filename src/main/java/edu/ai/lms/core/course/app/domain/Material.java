@@ -15,7 +15,6 @@ public class Material {
     public enum MaterialType {
         PDF,
         VIDEO,
-        LINK
     }
 
     private UUID id;
@@ -24,7 +23,7 @@ public class Material {
 
     private MaterialType type;
 
-    private String sourceUrl;
+    private String fileKey;
 
     private boolean downloadable;
 
