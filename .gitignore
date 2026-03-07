@@ -37,3 +37,6 @@ build/
 
 ### Local overrides ###
 src/main/resources/application-local.properties
+
+### Local Stack storage development ###
+/storage

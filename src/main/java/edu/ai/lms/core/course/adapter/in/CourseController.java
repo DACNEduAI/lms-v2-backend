@@ -46,7 +46,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CourseController {
 
-    @Autowired
     private final TeacherCreateCourseUseCase teacherCreateCourseUseCase;
     private final TeacherModifyCourseUseCase teacherModifyCourseUseCase;
     private final TeacherDeleteCourseUseCase teacherDeleteCourseUseCase;

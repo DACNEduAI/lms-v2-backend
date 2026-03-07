@@ -156,6 +156,13 @@
 			<version>1.21.4</version>
 			<scope>test</scope>
 		</dependency>
+		<!-- Source: https://mvnrepository.com/artifact/org.testcontainers/localstack -->
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>localstack</artifactId>
+			<version>1.21.4</version>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>io.rest-assured</groupId>
 			<artifactId>rest-assured</artifactId>
@@ -166,6 +173,14 @@
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>s3</artifactId>
 			<version>2.42.4</version>
+			<scope>compile</scope>
+		</dependency>
+
+		<!-- Source: https://mvnrepository.com/artifact/software.amazon.awssdk/s3-transfer-manager -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>s3-transfer-manager</artifactId>
+			<version>2.42.5</version>
 			<scope>compile</scope>
 		</dependency>
 

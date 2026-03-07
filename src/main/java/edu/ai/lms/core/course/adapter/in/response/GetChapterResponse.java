@@ -29,7 +29,7 @@ public class GetChapterResponse {
         private UUID id;
         private String title;
         private String type;
-        private String sourceUrl;
+        private String fileKey;
         private boolean downloadable;
     }
 }

@@ -4,12 +4,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.course.adapter.out.persistence.mapper.ChapterJdbcMapper;
 import edu.ai.lms.core.course.adapter.out.persistence.mapper.CourseJdbcMapper;
 import edu.ai.lms.core.course.adapter.out.persistence.mapper.LearningOutcomeJdbcMapper;
-import edu.ai.lms.core.course.adapter.out.persistence.mapper.MaterialJdbcMapper;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
@@ -33,7 +33,6 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     private final CourseJdbcMapper courseJdbcMapper;
     private final ChapterJdbcMapper chapterJdbcMapper;
     private final LearningOutcomeJdbcMapper learningOutcomeJdbcMapper;
-    private final MaterialJdbcMapper materialJdbcMapper;
 
     @Override
     public Course save(Course course) {
@@ -50,15 +49,6 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
                 ChapterJdbcTable chapterEntity = chapterJdbcMapper.mapToChapterJdbcEntity(chapter, savedCourse.getId());
                 ChapterJdbcTable savedChapter = chapterRepository.save(chapterEntity);
 
-                // Save materials for each chapter using composite key
-                if (chapter.getMaterials() != null) {
-                    chapter.getMaterials().forEach(material -> {
-                        MaterialJdbcTable materialEntity = materialJdbcMapper.mapToMaterialJdbcEntity(material);
-                        materialEntity.setChapterNumber(savedChapter.getChapterNumber());
-                        materialEntity.setChapterCourseId(savedChapter.getCourseId());
-                        materialRepository.save(materialEntity);
-                    });
-                }
             }
         }
 
@@ -133,11 +123,12 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     private Course loadFullCourse(CourseJdbcTable courseEntity) {
         List<ChapterJdbcTable> chapters = chapterRepository.findByCourseId(courseEntity.getId());
 
-        // Load all materials for all chapters in one batch using course_id
-        List<MaterialJdbcTable> allMaterials = materialRepository.findByCourseId(courseEntity.getId());
+        // Load all materials belonging to this course (1-N via course_id FK).
+        // Chapter materials are a subset of these — loaded separately when needed.
+        List<MaterialJdbcTable> allCourseMaterials = materialRepository.findByCourseId(courseEntity.getId());
 
         List<LearningOutcomeJdbcTable> learningOutcomes = learningOutcomeRepository.findByCourseId(courseEntity.getId());
 
-        return courseJdbcMapper.mapToCourse(courseEntity, chapters, learningOutcomes, allMaterials);
+        return courseJdbcMapper.mapToCourse(courseEntity, chapters, learningOutcomes, allCourseMaterials);
     }
 }

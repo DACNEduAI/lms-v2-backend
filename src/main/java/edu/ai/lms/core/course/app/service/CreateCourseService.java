@@ -22,7 +22,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CreateCourseService implements TeacherCreateCourseUseCase {
 
-    @Autowired
     private final SaveCoursePort saveCoursePort;
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInUserPort loadSignedInUserPort;

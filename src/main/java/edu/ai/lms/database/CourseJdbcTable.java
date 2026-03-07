@@ -53,11 +53,6 @@ public class CourseJdbcTable {
     @Builder.Default
     private Set<CourseStudentJdbcTable> courseStudents = new HashSet<>();
 
-    // Junction table for Course-Material (1-N) relationship
-    @MappedCollection(idColumn = "course_id")
-    @Builder.Default
-    private Set<CourseMaterialJdbcTable> courseMaterials = new HashSet<>();
-
     @CreatedDate
     private LocalDateTime createdAt;
 

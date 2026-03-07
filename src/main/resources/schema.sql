@@ -1,3 +1,29 @@
+-- Drop existing tables to start fresh on every application boot
+DROP TABLE IF EXISTS
+    users,
+    students,
+    teachers,
+    courses,
+    course_teachers,
+    course_students,
+    chapters,
+    materials,
+    chapter_materials,
+    learning_outcomes,
+    enrollments,
+    ai_settings,
+    quizzes,
+    questions,
+    answers,
+    attempts,
+    quiz_chapters,
+    quiz_learning_outcomes,
+    question_learning_outcomes,
+    student_learning_outcomes
+    CASCADE;
+
+-- Below is the actual schema of the code
+
 CREATE TABLE IF NOT EXISTS users (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
      email VARCHAR(255) NOT NULL UNIQUE,
@@ -57,10 +83,11 @@ CREATE TABLE IF NOT EXISTS course_students (
 
 -- Chapters table (weak entity dependent on Course)
 CREATE TABLE IF NOT EXISTS chapters (
-    chapter_number BIGINT GENERATED ALWAYS AS IDENTITY,
+    -- No UNIQUE constraint here because a single course can have many chapters starting from 1
+    chapter_number BIGINT UNIQUE GENERATED ALWAYS AS IDENTITY,
     title VARCHAR(255),
     description TEXT,
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE, -- khong co UNIQUE o day
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (chapter_number, course_id)
@@ -71,21 +98,28 @@ CREATE TABLE IF NOT EXISTS materials (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255),
     type VARCHAR(50) CHECK (type IN ('PDF', 'VIDEO', 'LINK')), -- Added CHECK constraint here
-    source_url VARCHAR(255),
+    file_key VARCHAR(255) UNIQUE,
     is_downloadable BOOLEAN DEFAULT false,
-    chapter_number BIGINT,
-    chapter_course_id UUID,
+    status VARCHAR(50) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'UPLOADED', 'FAILED')),
+    course_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (chapter_number, chapter_course_id) REFERENCES chapters(chapter_number, course_id) ON DELETE SET NULL
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL
 );
 
--- Junction table for many-to-many: courses <-> materials
-CREATE TABLE IF NOT EXISTS course_materials (
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS chapter_materials (
+    -- Composite foreign key (because chapter is a weak entity)
+    chapter_number BIGINT NOT NULL,
+    course_id UUID NOT NULL,
+    FOREIGN KEY (chapter_number, course_id) REFERENCES chapters(chapter_number, course_id) ON DELETE CASCADE,
+
+    -- Reference to material table
     material_id UUID NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
-    PRIMARY KEY (course_id, material_id)
+
+    -- Create the composite Primary Key
+    PRIMARY KEY (material_id, chapter_number, course_id)
 );
+
 
 -- Learning outcomes table
 CREATE TABLE IF NOT EXISTS learning_outcomes (
