@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.core.material.adapter.in.response.DeleteMaterialResponse;
 import edu.ai.lms.core.material.app.domain.Material;
+import edu.ai.lms.core.material.app.exception.MaterialNotFoundException;
 import edu.ai.lms.core.material.app.port.in.usecase.DeleteMaterialUseCase;
 import edu.ai.lms.core.material.app.port.out.storage.DeleteFilePort;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
@@ -26,7 +27,7 @@ public class DeleteMaterialService implements DeleteMaterialUseCase {
     public DeleteMaterialResponse deleteMaterial(UUID courseId, UUID materialId) {
         // Verify the material exists and belongs to the course
         Material material = getMaterialPort.findByIdAndCourseId(materialId, courseId)
-                .orElseThrow(() -> new RuntimeException(
+                .orElseThrow(() -> new MaterialNotFoundException(
                         "Material not found with id: " + materialId + " in course: " + courseId));
 
         // Delete file from S3 storage first

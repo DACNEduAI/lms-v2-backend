@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.core.material.adapter.in.response.GetMaterialResponse;
 import edu.ai.lms.core.material.app.domain.Material;
+import edu.ai.lms.core.material.app.exception.MaterialNotFoundException;
 import edu.ai.lms.core.material.app.port.in.usecase.GetMaterialUseCase;
 import edu.ai.lms.core.material.app.port.out.storage.CreateDownloadLinkPort;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
@@ -23,7 +24,7 @@ public class GetMaterialService implements GetMaterialUseCase {
     @Transactional(readOnly = true)
     public GetMaterialResponse getMaterial(UUID courseId, UUID materialId) {
         Material material = getMaterialPort.findByIdAndCourseId(materialId, courseId)
-                .orElseThrow(() -> new RuntimeException(
+                .orElseThrow(() -> new MaterialNotFoundException(
                         "Material not found with id: " + materialId + " in course: " + courseId));
 
         String presignedUrl = null;
