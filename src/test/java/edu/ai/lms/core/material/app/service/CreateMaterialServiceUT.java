@@ -255,4 +255,73 @@ class CreateMaterialServiceUT {
 
         verify(createMaterialPort, never()).createForChapter(any(), any(), any());
     }
+
+    @Test
+    @DisplayName("Should throw MaterialUploadPendingException when creating chapter material with duplicate pending fileKey")
+    void testCreateMaterialForChapter_WithDuplicatePendingFileKey_ShouldThrowException() {
+        // Arrange
+        Material existingMaterial = Material.builder()
+                .id(UUID.randomUUID())
+                .fileKey(material.getFileKey())
+                .status(MaterialStatus.PENDING)
+                .build();
+        when(getMaterialPort.findByFileKey(material.getFileKey())).thenReturn(Optional.of(existingMaterial));
+
+        CreateMaterialForChapterCommand command = CreateMaterialForChapterCommand.builder()
+                .courseId(courseId)
+                .chapterNumber(1L)
+                .material(material)
+                .build();
+
+        // Act & Assert
+        MaterialUploadPendingException exception = assertThrows(MaterialUploadPendingException.class,
+                () -> createMaterialService.createMaterialForChapter(command));
+
+        assertTrue(exception.getMessage().contains("upload status is unknown"));
+        verify(createMaterialPort, never()).createForChapter(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Should resolve content type to video/mp4 for VIDEO type when creating chapter material")
+    void testCreateMaterialForChapter_WithVideoType_ShouldResolveContentType() {
+        // Arrange
+        Long chapterNumber = 2L;
+        Material videoMaterial = Material.builder()
+                .title("Chapter Video")
+                .type(MaterialType.VIDEO)
+                .fileKey("courses/" + courseId + "/Chapter_Video.mp4")
+                .downloadable(false)
+                .build();
+
+        Material savedVideo = Material.builder()
+                .id(materialId)
+                .title("Chapter Video")
+                .type(MaterialType.VIDEO)
+                .fileKey("courses/" + courseId + "/Chapter_Video.mp4")
+                .downloadable(false)
+                .status(MaterialStatus.PENDING)
+                .courseId(courseId)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        when(getMaterialPort.findByFileKey(videoMaterial.getFileKey())).thenReturn(Optional.empty());
+        when(createMaterialPort.createForChapter(eq(courseId), eq(chapterNumber), any(Material.class)))
+                .thenReturn(savedVideo);
+        when(createUploadLinkPort.createUploadLink(eq(savedVideo.getFileKey()), eq("video/mp4")))
+                .thenReturn("https://presigned-url.example.com/upload-video");
+
+        CreateMaterialForChapterCommand command = CreateMaterialForChapterCommand.builder()
+                .courseId(courseId)
+                .chapterNumber(chapterNumber)
+                .material(videoMaterial)
+                .build();
+
+        // Act
+        CreateMaterialResponse response = createMaterialService.createMaterialForChapter(command);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals("VIDEO", response.getType());
+        verify(createUploadLinkPort, times(1)).createUploadLink(savedVideo.getFileKey(), "video/mp4");
+    }
 }

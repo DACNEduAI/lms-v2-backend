@@ -501,4 +501,475 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
                 .body("status", equalTo("FAILED"))
                 .body("uploaded", equalTo(false));
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //                  CHAPTER MATERIAL TESTS
+    // ══════════════════════════════════════════════════════════════════════
+
+    private static Long chapterNumber;
+    private static UUID chapterMaterialId;
+    private static String chapterPresignedUrl;
+
+    @Test
+    @Order(16)
+    @DisplayName("Should create a chapter for chapter material tests")
+    void testCreateChapter() {
+        String body = """
+                {
+                    "title": "Chapter 1 - Introduction",
+                    "description": "Introduction to the course material"
+                }
+                """;
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(body)
+                .when()
+                .post("/api/" + courseId + "/chapter")
+                .then()
+                .log().all()
+                .statusCode(201)
+                .body("chapterNumber", notNullValue())
+                .extract().response();
+
+        chapterNumber = response.jsonPath().getLong("chapterNumber");
+    }
+
+    @Test
+    @Order(17)
+    @DisplayName("Should create a PDF material for a specific chapter")
+    void testCreateMaterialForChapter() {
+        String body = """
+                {
+                    "title": "Chapter Notes",
+                    "type": "PDF",
+                    "isDownloadable": true
+                }
+                """;
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(body)
+                .when()
+                .post("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .then()
+                .log().all()
+                .statusCode(201)
+                .body("id", notNullValue())
+                .body("title", equalTo("Chapter Notes"))
+                .body("type", equalTo("PDF"))
+                .body("status", equalTo("PENDING"))
+                .body("presignedUploadUrl", notNullValue())
+                .body("courseId", equalTo(courseId.toString()))
+                .extract().response();
+
+        chapterMaterialId = UUID.fromString(response.jsonPath().getString("id"));
+        chapterPresignedUrl = response.jsonPath().getString("presignedUploadUrl");
+    }
+
+    @Test
+    @Order(18)
+    @DisplayName("Should upload chapter material file to presigned URL")
+    void testUploadChapterMaterialFile() {
+        byte[] pdfContent = "%PDF-1.4 chapter content".getBytes();
+
+        given()
+                .urlEncodingEnabled(false)
+                .contentType("application/pdf")
+                .body(pdfContent)
+                .when()
+                .put(chapterPresignedUrl)
+                .then()
+                .log().all()
+                .statusCode(200);
+    }
+
+    @Test
+    @Order(19)
+    @DisplayName("Should confirm chapter material upload successfully")
+    void testConfirmChapterMaterialUpload() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .patch("/api/" + courseId + "/material/" + chapterMaterialId + "/confirm-upload")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("materialId", equalTo(chapterMaterialId.toString()))
+                .body("status", equalTo("UPLOADED"))
+                .body("uploaded", equalTo(true));
+    }
+
+    @Test
+    @Order(20)
+    @DisplayName("Should get chapter material with presigned download URL")
+    void testGetChapterMaterial() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + courseId + "/material/" + chapterMaterialId)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("id", equalTo(chapterMaterialId.toString()))
+                .body("title", equalTo("Chapter Notes"))
+                .body("type", equalTo("PDF"))
+                .body("status", equalTo("UPLOADED"))
+                .body("isDownloadable", equalTo(true))
+                .body("presignedUrl", notNullValue());
+    }
+
+    @Test
+    @Order(21)
+    @DisplayName("Should modify chapter material title")
+    void testModifyChapterMaterial() {
+        String body = """
+                {
+                    "title": "Updated Chapter Notes",
+                    "isDownloadable": false
+                }
+                """;
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(body)
+                .when()
+                .put("/api/" + courseId + "/material/" + chapterMaterialId)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("id", equalTo(chapterMaterialId.toString()))
+                .body("title", equalTo("Updated Chapter Notes"))
+                .body("isDownloadable", equalTo(false));
+    }
+
+    @Test
+    @Order(22)
+    @DisplayName("Should create a VIDEO material for a chapter")
+    void testCreateVideoMaterialForChapter() {
+        String body = """
+                {
+                    "title": "Chapter Video Lecture",
+                    "type": "VIDEO",
+                    "isDownloadable": true
+                }
+                """;
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(body)
+                .when()
+                .post("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .then()
+                .log().all()
+                .statusCode(201)
+                .body("type", equalTo("VIDEO"))
+                .body("status", equalTo("PENDING"))
+                .body("presignedUploadUrl", notNullValue())
+                .extract().response();
+
+        String videoPresignedUrl = response.jsonPath().getString("presignedUploadUrl");
+        UUID videoMaterialId = UUID.fromString(response.jsonPath().getString("id"));
+
+        // Upload video
+        given()
+                .urlEncodingEnabled(false)
+                .contentType("video/mp4")
+                .body("fake video content".getBytes())
+                .when()
+                .put(videoPresignedUrl)
+                .then()
+                .log().all()
+                .statusCode(200);
+
+        // Confirm upload
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .patch("/api/" + courseId + "/material/" + videoMaterialId + "/confirm-upload")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("status", equalTo("UPLOADED"));
+    }
+
+    @Test
+    @Order(23)
+    @DisplayName("Should fail to create chapter material without authentication")
+    void testCreateChapterMaterialWithoutAuth() {
+        String body = """
+                {
+                    "title": "Unauthorized Chapter Material",
+                    "type": "PDF",
+                    "isDownloadable": true
+                }
+                """;
+
+        given()
+                .contentType(ContentType.JSON)
+                .body(body)
+                .when()
+                .post("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .then()
+                .log().all()
+                .statusCode(anyOf(is(401), is(403)));
+    }
+
+    @Test
+    @Order(24)
+    @DisplayName("Should delete chapter material successfully")
+    void testDeleteChapterMaterial() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .delete("/api/" + courseId + "/material/" + chapterMaterialId)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("materialId", equalTo(chapterMaterialId.toString()))
+                .body("success", equalTo(true))
+                .body("message", equalTo("Material deleted successfully"));
+    }
+
+    @Test
+    @Order(25)
+    @DisplayName("Should return 404 when getting deleted chapter material")
+    void testGetDeletedChapterMaterial() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + courseId + "/material/" + chapterMaterialId)
+                .then()
+                .log().all()
+                .statusCode(404);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //                  GET UPLOADED MATERIALS TESTS
+    // ══════════════════════════════════════════════════════════════════════
+
+    @Test
+    @Order(26)
+    @DisplayName("Should return all UPLOADED materials for the course without presigned URLs")
+    void testGetUploadedMaterials() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + courseId + "/material")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("$", notNullValue())
+                // every item must have status UPLOADED
+                .body("status.every { it == 'UPLOADED' }", equalTo(true))
+                // presigned URLs must NOT be present in the list response
+                .body("presignedUrl.every { it == null }", equalTo(true));
+    }
+
+    @Test
+    @Order(27)
+    @DisplayName("Should return at least one UPLOADED material with correct fields")
+    void testGetUploadedMaterials_FieldsAreCorrect() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + courseId + "/material")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("[0].id", notNullValue())
+                .body("[0].title", notNullValue())
+                .body("[0].type", notNullValue())
+                .body("[0].status", equalTo("UPLOADED"))
+                .body("[0].courseId", equalTo(courseId.toString()))
+                .body("[0].presignedUrl", equalTo(null));
+    }
+
+    @Test
+    @Order(28)
+    @DisplayName("Should return 401/403 when getting uploaded materials without authentication")
+    void testGetUploadedMaterials_WithoutAuth() {
+        given()
+                .when()
+                .get("/api/" + courseId + "/material")
+                .then()
+                .log().all()
+                .statusCode(anyOf(is(401), is(403)));
+    }
+
+    @Test
+    @Order(29)
+    @DisplayName("Should return empty list for a course with no uploaded materials")
+    void testGetUploadedMaterials_EmptyCourse() {
+        // Create a fresh course that will have no materials
+        String startDate = java.time.LocalDate.now().plusDays(1)
+                .format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+        String endDate = java.time.LocalDate.now().plusMonths(3)
+                .format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+
+        String courseBody = """
+                {
+                    "courseName": "Empty Material Course",
+                    "description": "Course with no materials",
+                    "courseCode": "MAT-EMPTY-001",
+                    "active": true,
+                    "startDate": "%s",
+                    "endDate": "%s",
+                    "learningOutcomes": []
+                }
+                """.formatted(startDate, endDate);
+
+        UUID emptyCourseId = UUID.fromString(
+                given()
+                        .contentType(ContentType.JSON)
+                        .header("Authorization", "Bearer " + teacherToken)
+                        .body(courseBody)
+                        .when()
+                        .post("/api/course")
+                        .then()
+                        .statusCode(201)
+                        .extract().jsonPath().getString("courseId"));
+
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + emptyCourseId + "/material")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("$.size()", equalTo(0));
+    }
+
+    // ══════════════════════════════════════════════════════
+    //                  GET CHAPTER MATERIALS TESTS
+    // ══════════════════════════════════════════════════════
+
+    // chapterNumber is already set from the chapter material tests (Order 16)
+
+    @Test
+    @Order(30)
+    @DisplayName("Should return all materials for a chapter including all statuses")
+    void testGetChapterMaterials() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("$", notNullValue());
+    }
+
+    @Test
+    @Order(31)
+    @DisplayName("Should return correct fields for chapter materials (no presigned URL)")
+    void testGetChapterMaterials_FieldsAreCorrect() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("[0].id", notNullValue())
+                .body("[0].title", notNullValue())
+                .body("[0].type", notNullValue())
+                .body("[0].courseId", equalTo(courseId.toString()))
+                .body("[0].presignedUrl", equalTo(null));
+    }
+
+    @Test
+    @Order(32)
+    @DisplayName("Should return multiple materials for the chapter")
+    void testGetChapterMaterials_ReturnsMultipleMaterials() {
+        // Chapter already has at least 1 UPLOADED VIDEO from Order(22)
+        // (chapter notes PDF was deleted in Order(24), video was confirmed uploaded)
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("$.size()", org.hamcrest.Matchers.greaterThanOrEqualTo(1));
+    }
+
+    @Test
+    @Order(33)
+    @DisplayName("Should return empty list for a chapter with no materials")
+    void testGetChapterMaterials_EmptyChapter() {
+        // Create a second chapter with no materials
+        Long emptyChapterNumber = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body("""
+                        {
+                            "title": "Empty Chapter",
+                            "description": "A chapter with no materials"
+                        }
+                        """)
+                .when()
+                .post("/api/" + courseId + "/chapter")
+                .then()
+                .statusCode(201)
+                .extract().jsonPath().getLong("chapterNumber");
+
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + courseId + "/material/chapter/" + emptyChapterNumber)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("$.size()", equalTo(0));
+    }
+
+    @Test
+    @Order(34)
+    @DisplayName("Should return 401/403 when getting chapter materials without authentication")
+    void testGetChapterMaterials_WithoutAuth() {
+        given()
+                .when()
+                .get("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .then()
+                .log().all()
+                .statusCode(anyOf(is(401), is(403)));
+    }
+
+    @Test
+    @Order(35)
+    @DisplayName("Should also include PENDING materials in chapter list")
+    void testGetChapterMaterials_IncludesPendingMaterial() {
+        // Create a material for the chapter but do NOT confirm upload (status stays PENDING)
+        String body = """
+                {
+                    "title": "Pending Chapter Material",
+                    "type": "PDF",
+                    "isDownloadable": false
+                }
+                """;
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(body)
+                .when()
+                .post("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .then()
+                .statusCode(201);
+
+        // The list endpoint should include the PENDING material too
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("status", org.hamcrest.Matchers.hasItem("PENDING"));
+    }
 }
