@@ -23,8 +23,8 @@ public class Teacher extends User {
 
     private String specialization;
 
-    @Builder.Default
-    private List<Course> courses = new ArrayList<>();
+//    @Builder.Default
+//    private List<Course> courses = new ArrayList<>();
 
     {
         this.setRole(Roles.TEACHER);

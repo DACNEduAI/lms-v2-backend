@@ -2,7 +2,6 @@ package edu.ai.lms.core.course.app.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,7 +29,6 @@ import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.ModifyChapterResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.Material;
 import edu.ai.lms.core.course.app.exception.ChapterNotFoundException;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
@@ -93,7 +91,6 @@ class ModifyChapterServiceUT {
                 .title("Chapter 1: Introduction")
                 .description("Introduction to Java programming")
                 .courseId(courseId)
-                .materials(new ArrayList<>())
                 .createdAt(LocalDateTime.now().minusDays(1))
                 .updatedAt(LocalDateTime.now().minusDays(1))
                 .build();
@@ -101,7 +98,6 @@ class ModifyChapterServiceUT {
         Chapter updatedChapterData = Chapter.builder()
                 .title("Chapter 1: Updated Introduction")
                 .description("Updated introduction to Java programming")
-                .materials(new ArrayList<>())
                 .build();
 
         validCommand = ModifyChapterCommand.builder()
@@ -124,7 +120,6 @@ class ModifyChapterServiceUT {
                 .title("Chapter 1: Updated Introduction")
                 .description("Updated introduction to Java programming")
                 .courseId(courseId)
-                .materials(new ArrayList<>())
                 .createdAt(existingChapter.getCreatedAt())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -242,7 +237,6 @@ class ModifyChapterServiceUT {
                 .title("Chapter 1: Updated Introduction")
                 .description("Updated introduction to Java programming")
                 .courseId(courseId)
-                .materials(new ArrayList<>())
                 .createdAt(existingChapter.getCreatedAt())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -263,90 +257,12 @@ class ModifyChapterServiceUT {
     }
 
     @Test
-    @DisplayName("Should successfully modify a chapter with materials")
-    void testModifyChapter_WithMaterials_ShouldSucceed() {
-        // Arrange
-        List<Material> newMaterials = new ArrayList<>();
-        newMaterials.add(Material.builder()
-                .title("Updated Tutorial PDF")
-                .type(Material.MaterialType.PDF)
-                .sourceUrl("https://example.com/updated-tutorial.pdf")
-                .downloadable(true)
-                .build());
-        newMaterials.add(Material.builder()
-                .title("New Video Lecture")
-                .type(Material.MaterialType.VIDEO)
-                .sourceUrl("https://example.com/new-video.mp4")
-                .downloadable(false)
-                .build());
-
-        Chapter chapterWithMaterials = Chapter.builder()
-                .title("Updated Chapter with Materials")
-                .description("Has updated materials")
-                .materials(newMaterials)
-                .build();
-
-        ModifyChapterCommand commandWithMaterials = ModifyChapterCommand.builder()
-                .courseId(courseId)
-                .chapterNumber(chapterNumber)
-                .chapter(chapterWithMaterials)
-                .build();
-
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
-        when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.of(existingChapter));
-
-        List<Material> savedMaterials = new ArrayList<>();
-        savedMaterials.add(Material.builder()
-                .id(UUID.randomUUID())
-                .title("Updated Tutorial PDF")
-                .type(Material.MaterialType.PDF)
-                .sourceUrl("https://example.com/updated-tutorial.pdf")
-                .downloadable(true)
-                .build());
-        savedMaterials.add(Material.builder()
-                .id(UUID.randomUUID())
-                .title("New Video Lecture")
-                .type(Material.MaterialType.VIDEO)
-                .sourceUrl("https://example.com/new-video.mp4")
-                .downloadable(false)
-                .build());
-
-        Chapter savedChapter = Chapter.builder()
-                .chapterNumber(chapterNumber)
-                .title("Updated Chapter with Materials")
-                .description("Has updated materials")
-                .courseId(courseId)
-                .materials(savedMaterials)
-                .createdAt(existingChapter.getCreatedAt())
-                .updatedAt(LocalDateTime.now())
-                .build();
-        when(saveChapterPort.save(any(Chapter.class))).thenReturn(savedChapter);
-
-        // Act
-        ModifyChapterResponse response = modifyChapterService.modifyChapter(commandWithMaterials);
-
-        // Assert
-        assertNotNull(response);
-        assertEquals("Updated Chapter with Materials", response.getTitle());
-        assertEquals(2, response.getMaterials().size());
-
-        ModifyChapterResponse.MaterialDto firstMaterial = response.getMaterials().get(0);
-        assertEquals("Updated Tutorial PDF", firstMaterial.getTitle());
-        assertEquals("PDF", firstMaterial.getType());
-        assertTrue(firstMaterial.isDownloadable());
-
-        verify(saveChapterPort, times(1)).save(any(Chapter.class));
-    }
-
-    @Test
     @DisplayName("Should handle null description when modifying chapter")
     void testModifyChapter_WithNullDescription_ShouldSucceed() {
         // Arrange
         Chapter chapterNullDescription = Chapter.builder()
                 .title("Updated Title Only")
                 .description(null)
-                .materials(new ArrayList<>())
                 .build();
 
         ModifyChapterCommand commandNullDesc = ModifyChapterCommand.builder()
@@ -364,7 +280,6 @@ class ModifyChapterServiceUT {
                 .title("Updated Title Only")
                 .description(null)
                 .courseId(courseId)
-                .materials(new ArrayList<>())
                 .createdAt(existingChapter.getCreatedAt())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -377,48 +292,6 @@ class ModifyChapterServiceUT {
         assertNotNull(response);
         assertEquals("Updated Title Only", response.getTitle());
         assertEquals(null, response.getDescription());
-
-        verify(saveChapterPort, times(1)).save(any(Chapter.class));
-    }
-
-    @Test
-    @DisplayName("Should handle null materials list when modifying chapter")
-    void testModifyChapter_WithNullMaterials_ShouldSucceed() {
-        // Arrange
-        Chapter chapterNullMaterials = Chapter.builder()
-                .title("Chapter No Materials")
-                .description("Updated description")
-                .materials(null)
-                .build();
-
-        ModifyChapterCommand commandNullMaterials = ModifyChapterCommand.builder()
-                .courseId(courseId)
-                .chapterNumber(chapterNumber)
-                .chapter(chapterNullMaterials)
-                .build();
-
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
-        when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.of(existingChapter));
-
-        Chapter savedChapter = Chapter.builder()
-                .chapterNumber(chapterNumber)
-                .title("Chapter No Materials")
-                .description("Updated description")
-                .courseId(courseId)
-                .materials(null)
-                .createdAt(existingChapter.getCreatedAt())
-                .updatedAt(LocalDateTime.now())
-                .build();
-        when(saveChapterPort.save(any(Chapter.class))).thenReturn(savedChapter);
-
-        // Act
-        ModifyChapterResponse response = modifyChapterService.modifyChapter(commandNullMaterials);
-
-        // Assert
-        assertNotNull(response);
-        assertEquals("Chapter No Materials", response.getTitle());
-        assertEquals(null, response.getMaterials());
 
         verify(saveChapterPort, times(1)).save(any(Chapter.class));
     }

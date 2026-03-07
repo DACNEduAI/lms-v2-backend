@@ -1,7 +1,5 @@
 package edu.ai.lms.core.course.app.service;
 
-import java.util.stream.Collectors;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +43,7 @@ public class CreateChapterService implements TeacherCreateChapterUseCase {
         Chapter chapter = command.chapter();
         chapter.setCourseId(course.getId());
 
-        // Save chapter (including materials)
+        // Save chapter
         Chapter savedChapter = saveChapterPort.save(chapter);
 
         return CreateChapterResponse.builder()
@@ -53,17 +51,6 @@ public class CreateChapterService implements TeacherCreateChapterUseCase {
                 .title(savedChapter.getTitle())
                 .description(savedChapter.getDescription())
                 .courseId(command.courseId())
-                .materials(savedChapter.getMaterials() != null
-                        ? savedChapter.getMaterials().stream()
-                                .map(m -> CreateChapterResponse.MaterialDto.builder()
-                                        .id(m.getId())
-                                        .title(m.getTitle())
-                                        .type(m.getType() != null ? m.getType().name() : null)
-                                        .sourceUrl(m.getSourceUrl())
-                                        .downloadable(m.isDownloadable())
-                                        .build())
-                                .collect(Collectors.toList())
-                        : null)
                 .createdAt(savedChapter.getCreatedAt())
                 .build();
     }

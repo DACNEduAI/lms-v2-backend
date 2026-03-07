@@ -1,8 +1,5 @@
 package edu.ai.lms.core.course.adapter.in.request;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,7 +18,4 @@ public class ModifyChapterRequest {
     private String title;
 
     private String description;
-
-    @Builder.Default
-    private List<CreateMaterialRequest> materials = new ArrayList<>();
 }

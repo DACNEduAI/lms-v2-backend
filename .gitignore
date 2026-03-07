@@ -34,3 +34,6 @@ build/
 
 .fake
 .env
+
+### Local Stack storage development ###
+/storage

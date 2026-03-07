@@ -21,7 +21,12 @@ public class MaterialJdbcTable {
     public enum MaterialType {
         PDF,
         VIDEO,
-        LINK
+    }
+
+    public enum MaterialStatus {
+        PENDING,
+        UPLOADED,
+        FAILED
     }
 
     @Id
@@ -29,15 +34,13 @@ public class MaterialJdbcTable {
 
     private String title;
     private MaterialType type;
-    private String sourceUrl;
+    private String fileKey;
     private boolean isDownloadable;
+    private MaterialStatus status;
 
-    // Reference to chapter composite key (chapter_number, course_id)
-    @Column("chapter_number")
-    private Long chapterNumber;
-
-    @Column("chapter_course_id")
-    private UUID chapterCourseId;
+    // Direct reference to the owning course
+    @Column("course_id")
+    private UUID courseId;
 
     @CreatedDate
     private LocalDateTime createdAt;

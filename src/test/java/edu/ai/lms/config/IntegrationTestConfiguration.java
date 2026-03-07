@@ -31,6 +31,8 @@ public abstract class IntegrationTestConfiguration {
                 .withUsername("testuser")
                 .withPassword("testpass");
         postgres.start();
+
+
     }
 
     @DynamicPropertySource
