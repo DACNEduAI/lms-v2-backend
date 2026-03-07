@@ -3,12 +3,15 @@ services:
     container_name: "${LOCALSTACK_DOCKER_NAME:-localstack-main}"
     image: localstack/localstack
     ports:
-      - "127.0.0.1:4566:4566"            # LocalStack Gateway
-      - "127.0.0.1:4510-4559:4510-4559"  # external services port range
+      - "127.0.0.1:4566:4566"
+      - "127.0.0.1:4510-4559:4510-4559"
     environment:
       - DEBUG=${DEBUG:-0}
+      # Inject AWS default credentials directly into the container
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
     volumes:
       - "${LOCALSTACK_VOLUME_DIR:-./storage}:/var/lib/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
-      # Script to init a lms-materials bucket inside the container
       - ./init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh
