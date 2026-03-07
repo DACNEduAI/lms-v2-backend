@@ -34,3 +34,6 @@ build/
 
 .fake
 .env
+
+### Local overrides ###
+src/main/resources/application-local.properties
