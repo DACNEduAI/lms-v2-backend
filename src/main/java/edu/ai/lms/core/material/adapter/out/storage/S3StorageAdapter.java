@@ -1,10 +1,12 @@
 package edu.ai.lms.core.material.adapter.out.storage;
 
+import edu.ai.lms.core.material.adapter.out.storage.config.StorageConfig;
 import edu.ai.lms.core.material.app.port.out.storage.CreateDownloadLinkPort;
 import edu.ai.lms.core.material.app.port.out.storage.CreateUploadLinkPort;
 import edu.ai.lms.core.material.app.port.out.storage.DeleteFilePort;
 import edu.ai.lms.core.material.app.port.out.storage.VerifyFileUploadedPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
@@ -31,18 +33,23 @@ import java.util.stream.Collectors;
  * helper methods and a uniform API on top of it.
  */
 @Service
-@RequiredArgsConstructor
 public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLinkPort, DeleteFilePort, VerifyFileUploadedPort {
 
     private static final Duration DEFAULT_PRESIGN_EXPIRY = Duration.ofMinutes(5);
 
-    /** Resolved by Spring from whichever @Profile-guarded @Bean is active. */
+//    private final StorageConfig storageConfig;
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
     private final Environment environment;
+    private final String bucketName;
 
-    @Value("${prod.storage.bucketName}")
-    private String bucketName;
+    @Autowired
+    public S3StorageAdapter(StorageConfig storageConfig, Environment environment) {
+        this.s3Client = storageConfig.s3Client();
+        this.s3Presigner = storageConfig.s3Presigner();
+        this.environment = environment;
+        this.bucketName = storageConfig.getBucketName();
+    }
 
     // Profile helpers
 
@@ -57,26 +64,6 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
     // Storage operations
 
     /**
-     * Uploads an object to the given bucket.
-     *
-     * @param bucketName    target bucket
-     * @param key           object key (path inside the bucket)
-     * @param contentType   MIME type (e.g. "application/pdf")
-     * @return S3 put-object response
-     */
-    public PutObjectResponse uploadFile(String bucketName,
-                                        String key,
-                                        String contentType,
-                                        byte[] files) {
-        PutObjectRequest request = PutObjectRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .contentType(contentType)
-                .build();
-        return s3Client.putObject(request, RequestBody.fromBytes(files));
-    }
-
-    /**
      * Deletes an object from the given bucket.
      *
      * @param bucketName source bucket
@@ -88,21 +75,6 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
                 .key(key)
                 .build();
         s3Client.deleteObject(request);
-    }
-
-    /**
-     * Returns the public URL of an object.
-     *
-     * @param bucketName source bucket
-     * @param key        object key
-     * @return URL string
-     */
-    public String getFileUrl(String bucketName, String key) {
-        GetUrlRequest request = GetUrlRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .build();
-        return s3Client.utilities().getUrl(request).toString();
     }
 
     /**
@@ -125,28 +97,6 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
         return response.contents().stream()
                 .map(S3Object::key)
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * Replaces (modifies) an existing object by uploading new content to the same key.
-     * S3 overwrites the object in-place; the key remains unchanged.
-     *
-     * @param bucketName target bucket
-     * @param key        existing object key to overwrite
-     * @param contentType MIME type of the new content
-     * @param newContent  new byte content
-     * @return S3 put-object response
-     */
-    public PutObjectResponse modifyFile(String bucketName,
-                                        String key,
-                                        String contentType,
-                                        byte[] newContent) {
-        PutObjectRequest request = PutObjectRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .contentType(contentType)
-                .build();
-        return s3Client.putObject(request, RequestBody.fromBytes(newContent));
     }
 
     /**

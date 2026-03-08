@@ -17,31 +17,22 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 @ConfigurationProperties("prod.storage")
 @Getter
 @Setter
-public class DigitalOceanConfig {
-    @Value("${prod.storage.region}")
+public class DigitalOceanConfig implements StorageConfig {
     public String region;
-
-    @Value("${prod.storage.accessKey}")
     public String accessKey;
-
-    @Value("${prod.storage.secret}")
     public String secretKey;
-
-    @Value("${prod.storage.endpoint}")
     public String endPoint;
+    public String bucketName;
 
-    @Bean
     public S3Client s3Client() {
-
         return S3Client.builder()
-                .region(Region.US_EAST_1)
+                .region(Region.of(region))
                 .build();
     }
 
-    @Bean
     public S3Presigner s3Presigner() {
         return S3Presigner.builder()
-                .region(Region.US_EAST_1)
+                .region(Region.of(region))
                 .build();
     }
 }

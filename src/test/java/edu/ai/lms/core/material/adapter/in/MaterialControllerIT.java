@@ -101,7 +101,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
 
     @DynamicPropertySource
     static void configureStorageProperties(DynamicPropertyRegistry registry) {
-        registry.add("storage.bucket-name", () -> BUCKET_NAME);
+        registry.add("dev.storage.bucket-name", () -> BUCKET_NAME);
         registry.add("dev.storage.accessKey", localStack::getAccessKey);
         registry.add("dev.storage.secretKey", localStack::getSecretKey);
         registry.add("dev.storage.endPoint", virtualHostEndpoint::toString);
