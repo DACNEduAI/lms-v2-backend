@@ -41,7 +41,7 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
     private final S3Presigner s3Presigner;
     private final Environment environment;
 
-    @Value("${storage.bucket-name}")
+    @Value("${prod.storage.bucketName}")
     private String bucketName;
 
     // Profile helpers
