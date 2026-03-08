@@ -70,6 +70,13 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
     }
 
     @Override
+    public List<Chapter> findAllByCourseId(UUID courseId) {
+        return chapterRepository.findByCourseId(courseId).stream()
+                .map(this::loadChapterWithoutMaterials)
+                .toList();
+    }
+
+    @Override
     public void deleteByKey(UUID courseId, Long chapterNumber) {
         // First delete all materials for this chapter
         materialRepository.deleteByChapterKey(chapterNumber, courseId);
