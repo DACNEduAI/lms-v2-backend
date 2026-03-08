@@ -37,7 +37,6 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
 
     private static final Duration DEFAULT_PRESIGN_EXPIRY = Duration.ofMinutes(5);
 
-//    private final StorageConfig storageConfig;
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
     private final Environment environment;
