@@ -1,0 +1,14 @@
+.git
+.github
+.idea
+.vscode
+.postman
+postman
+target
+storage
+*.md
+.env
+.fake
+.gitignore
+.gitattributes
+docker-compose.yml
