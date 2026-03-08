@@ -20,14 +20,12 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 @ConfigurationProperties("dev.storage")
 @Getter
 @Setter
-public class LocalStorageConfig {
-    public String region;
+public class DevConfig implements StorageConfig{
     public String accessKey;
     public String secretKey;
     public String endPoint;
     public String bucketName;
 
-    @Bean
     public S3Client s3Client() {
         return S3Client.builder()
                 .endpointOverride(URI.create("https://s3.localhost.localstack.cloud:4566"))
@@ -37,7 +35,6 @@ public class LocalStorageConfig {
                 .build();
     }
 
-    @Bean
     public S3Presigner s3Presigner() {
         return S3Presigner.builder()
                 .endpointOverride(URI.create("https://s3.localhost.localstack.cloud:4566"))
