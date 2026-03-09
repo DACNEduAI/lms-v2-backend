@@ -1,5 +1,6 @@
 package edu.ai.lms.core.material.app.service;
 
+import edu.ai.lms.core.material.app.port.in.usecase.CreateMaterialUseCase;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -9,8 +10,6 @@ import edu.ai.lms.core.material.app.exception.MaterialAlreadyUploadedException;
 import edu.ai.lms.core.material.app.exception.MaterialUploadPendingException;
 import edu.ai.lms.core.material.app.port.in.command.CreateMaterialForChapterCommand;
 import edu.ai.lms.core.material.app.port.in.command.CreateMaterialForCourseCommand;
-import edu.ai.lms.core.material.app.port.in.usecase.CreateMaterialForChapterUseCase;
-import edu.ai.lms.core.material.app.port.in.usecase.CreateMaterialForCourseUseCase;
 import edu.ai.lms.core.material.app.port.out.persistence.CreateMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
 import edu.ai.lms.core.material.app.port.out.storage.CreateUploadLinkPort;
@@ -18,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class CreateMaterialService implements CreateMaterialForCourseUseCase, CreateMaterialForChapterUseCase {
+public class CreateMaterialService implements CreateMaterialUseCase {
 
     private final CreateMaterialPort createMaterialPort;
     private final GetMaterialPort getMaterialPort;

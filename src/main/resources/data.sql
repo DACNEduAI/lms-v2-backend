@@ -50,22 +50,6 @@ VALUES
     (2, 'Control Flow', 'If statements and loops.', '33333333-1111-1111-1111-111111111111'),
     (3, 'Arrays and Linked Lists', 'Basic structures.', '33333333-2222-2222-2222-222222222222');
 
--- 8. Insert Materials
--- FIXED: Material table only contains 'course_id', removed 'chapter_number' and 'chapter_course_id' from this insert.
--- INSERT INTO materials (id, title, type, file_key, is_downloadable, status, course_id)
--- VALUES
---     ('55555555-1111-1111-1111-111111111111', 'Syllabus PDF', 'PDF', 'courses/33333333-1111-1111-1111-111111111111/syllabus.pdf', true, 'UPLOADED', '33333333-1111-1111-1111-111111111111'),
---     ('55555555-2222-2222-2222-222222222222', 'Intro Lecture', 'VIDEO', 'courses/33333333-1111-1111-1111-111111111111/intro-lecture.mp4', false, 'UPLOADED', '33333333-1111-1111-1111-111111111111'),
---     ('55555555-3333-3333-3333-333333333333', 'Java Documentation', 'LINK', 'https://docs.oracle.com/java', false, 'UPLOADED', '33333333-1111-1111-1111-111111111111');
-
--- 9. Insert Chapter-Materials Junction
--- FIXED: The correct table in the schema is chapter_materials
--- INSERT INTO chapter_materials (material_id, chapter_number, course_id)
--- VALUES
---     ('55555555-1111-1111-1111-111111111111', 1, '33333333-1111-1111-1111-111111111111'),
---     ('55555555-2222-2222-2222-222222222222', 1, '33333333-1111-1111-1111-111111111111'),
---     ('55555555-3333-3333-3333-333333333333', 2, '33333333-1111-1111-1111-111111111111');
-
 -- 10. Insert Learning Outcomes
 INSERT INTO learning_outcomes (id, code, description, course_id)
 VALUES

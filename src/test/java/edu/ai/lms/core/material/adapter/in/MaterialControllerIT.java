@@ -24,6 +24,7 @@ import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import edu.ai.lms.config.IntegrationTestConfiguration;
+import edu.ai.lms.core.material.adapter.out.storage.config.StorageConfig;
 import static io.restassured.RestAssured.given;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
@@ -44,7 +45,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
 
     // Singleton LocalStack container – started once and reused across all tests
     protected static final LocalStackContainer localStack;
-    private static URI virtualHostEndpoint;
+    private static final URI virtualHostEndpoint;
 
     static {
         localStack = new LocalStackContainer(DockerImageName.parse("localstack/localstack:3.0"))
@@ -69,42 +70,54 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
     }
 
     /**
-     * Overrides the S3Client and S3Presigner beans with versions pointing to the
+     * Overrides the StorageConfig bean with a version pointing to the
      * LocalStack testcontainer, using virtual-hosted style URL resolution
      * (e.g. http://&lt;bucket&gt;.s3.localhost.localstack.cloud:&lt;port&gt;).
+     *
+     * S3StorageAdapter uses StorageConfig to obtain S3Client, S3Presigner,
+     * and the bucket name, so we must override StorageConfig (not individual beans).
      */
     @TestConfiguration
     static class TestStorageConfig {
 
         @Bean
         @Primary
-        public S3Client testS3Client() {
-            return S3Client.builder()
-                    .endpointOverride(virtualHostEndpoint)
-                    .credentialsProvider(StaticCredentialsProvider.create(
-                            AwsBasicCredentials.create(localStack.getAccessKey(), localStack.getSecretKey())))
-                    .region(Region.of(localStack.getRegion()))
-                    .build();
-        }
+        public StorageConfig testStorageConfig() {
+            return new StorageConfig() {
+                @Override
+                public S3Client s3Client() {
+                    return S3Client.builder()
+                            .endpointOverride(virtualHostEndpoint)
+                            .credentialsProvider(StaticCredentialsProvider.create(
+                                    AwsBasicCredentials.create(localStack.getAccessKey(), localStack.getSecretKey())))
+                            .region(Region.of(localStack.getRegion()))
+                            .build();
+                }
 
-        @Bean
-        @Primary
-        public S3Presigner testS3Presigner() {
-            return S3Presigner.builder()
-                    .endpointOverride(virtualHostEndpoint)
-                    .credentialsProvider(StaticCredentialsProvider.create(
-                            AwsBasicCredentials.create(localStack.getAccessKey(), localStack.getSecretKey())))
-                    .region(Region.of(localStack.getRegion()))
-                    .build();
+                @Override
+                public S3Presigner s3Presigner() {
+                    return S3Presigner.builder()
+                            .endpointOverride(virtualHostEndpoint)
+                            .credentialsProvider(StaticCredentialsProvider.create(
+                                    AwsBasicCredentials.create(localStack.getAccessKey(), localStack.getSecretKey())))
+                            .region(Region.of(localStack.getRegion()))
+                            .build();
+                }
+
+                @Override
+                public String getBucketName() {
+                    return BUCKET_NAME;
+                }
+            };
         }
     }
 
     @DynamicPropertySource
     static void configureStorageProperties(DynamicPropertyRegistry registry) {
-        registry.add("storage.bucket-name", () -> BUCKET_NAME);
-        registry.add("dev.storage.accessKey", localStack::getAccessKey);
-        registry.add("dev.storage.secretKey", localStack::getSecretKey);
-        registry.add("dev.storage.endPoint", virtualHostEndpoint::toString);
+        registry.add("dev.storage.bucket-name", () -> BUCKET_NAME);
+        registry.add("dev.storage.access-key", localStack::getAccessKey);
+        registry.add("dev.storage.secret-key", localStack::getSecretKey);
+        registry.add("dev.storage.end-point", virtualHostEndpoint::toString);
     }
 
     private static String teacherToken;
