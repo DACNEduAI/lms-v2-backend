@@ -33,7 +33,8 @@ build/
 .vscode/
 
 .fake
-.env
+.env.dev
+.env.prod
 
 ### Local Stack storage development ###
 /storage
