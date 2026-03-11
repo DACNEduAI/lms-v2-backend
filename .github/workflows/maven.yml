@@ -103,13 +103,29 @@ jobs:
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
         with:
-          token: ${{ secrets.DO_SECRET_KEY }}
+          token: ${{ secrets.DO_PERSONAL_ACCESS_TOKEN }}
 
       - name: Log in to DigitalOcean Container Registry
         run: doctl registry login --expiry-seconds 1200
 
       - name: Build Docker image
-        run: docker build -t registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/lms-platform:${{ github.sha }} -t registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/lms-platform:latest .
+        run: |
+          docker build \
+            --build-arg PROFILE=${{ vars.PROFILE }} \
+            --build-arg DATA_SOURCE="${{ secrets.DATA_SOURCE }}" \
+            --build-arg DB_USERNAME="${{ secrets.DB_USERNAME }}" \
+            --build-arg DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+            --build-arg JWT_KEY="${{ secrets.JWT_KEY }}" \
+            --build-arg JWT_EXPIRATION=${{ vars.JWT_EXPIRATION }} \
+            --build-arg DATABASE_INITIALIZATION_OPTION=${{ vars.DATABASE_INITIALIZATION_OPTION }} \
+            --build-arg REGION=${{ vars.REGION }} \
+            --build-arg DO_END_POINT="${{ secrets.DO_STORAGE_END_POINT }}" \
+            --build-arg DO_ACCESS_KEY="${{ secrets.DO_STORAGE_ACCESS_KEY }}" \
+            --build-arg DO_SECRET_KEY="${{ secrets.DO_STORAGE_SECRET_KEY }}" \
+            --build-arg DO_BUCKET="${{ secrets.DO_STORAGE_BUCKET }}" \
+            -t registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/lms-platform:${{ github.sha }} \
+            -t registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/lms-platform:latest \
+            .
 
       - name: Push Docker image
         run: |
@@ -119,4 +135,4 @@ jobs:
       - name: Deploy the app
         uses: digitalocean/app_action/deploy@v2
         with:
-          token: ${{ secrets.DO_SECRET_KEY }}
+          token: ${{ secrets.DO_PERSONAL_ACCESS_TOKEN }}
