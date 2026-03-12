@@ -23,7 +23,7 @@ public class GetChapterService implements GetChapterUseCase, GetAllChaptersUseCa
     @Override
     @Transactional(readOnly = true)
     public GetChapterResponse getChapter(UUID courseId, Long chapterNumber) {
-        Chapter chapter = loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)
+        Chapter chapter = loadChapterPort.findByKey(courseId, chapterNumber)
                 .orElseThrow(() -> new ChapterNotFoundException(
                         "Chapter not found with courseId: " + courseId + " and chapterNumber: " + chapterNumber));
 
@@ -44,6 +44,7 @@ public class GetChapterService implements GetChapterUseCase, GetAllChaptersUseCa
                 .title(chapter.getTitle())
                 .description(chapter.getDescription())
                 .courseId(chapter.getCourseId())
+                .learningOutcomeIds(chapter.getLearningOutcomeIds())
                 .createdAt(chapter.getCreatedAt())
                 .updatedAt(chapter.getUpdatedAt())
                 .build();

@@ -99,7 +99,7 @@ class DeleteChapterServiceUT {
         // Arrange
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)).thenReturn(Optional.of(mockChapter));
+        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.of(mockChapter));
 
         // Act
         DeleteChapterResponse response = deleteChapterService.deleteChapter(courseId, chapterNumber);
@@ -113,7 +113,7 @@ class DeleteChapterServiceUT {
 
         verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadChapterPort, times(1)).findByKeyWithoutMaterials(courseId, chapterNumber);
+        verify(loadChapterPort, times(1)).findByKey(courseId, chapterNumber);
         verify(deleteChapterPort, times(1)).deleteByKey(courseId, chapterNumber);
     }
 
@@ -131,7 +131,7 @@ class DeleteChapterServiceUT {
 
         verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, never()).findById(any());
-        verify(loadChapterPort, never()).findByKeyWithoutMaterials(any(), any());
+        verify(loadChapterPort, never()).findByKey(any(), any());
         verify(deleteChapterPort, never()).deleteByKey(any(), any());
     }
 
@@ -150,7 +150,7 @@ class DeleteChapterServiceUT {
 
         verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadChapterPort, never()).findByKeyWithoutMaterials(any(), any());
+        verify(loadChapterPort, never()).findByKey(any(), any());
         verify(deleteChapterPort, never()).deleteByKey(any(), any());
     }
 
@@ -174,7 +174,7 @@ class DeleteChapterServiceUT {
 
         verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadChapterPort, never()).findByKeyWithoutMaterials(any(), any());
+        verify(loadChapterPort, never()).findByKey(any(), any());
         verify(deleteChapterPort, never()).deleteByKey(any(), any());
     }
 
@@ -184,7 +184,7 @@ class DeleteChapterServiceUT {
         // Arrange
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)).thenReturn(Optional.empty());
+        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.empty());
 
         // Act & Assert
         ChapterNotFoundException exception = assertThrows(ChapterNotFoundException.class,
@@ -194,7 +194,7 @@ class DeleteChapterServiceUT {
 
         verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadChapterPort, times(1)).findByKeyWithoutMaterials(courseId, chapterNumber);
+        verify(loadChapterPort, times(1)).findByKey(courseId, chapterNumber);
         verify(deleteChapterPort, never()).deleteByKey(any(), any());
     }
 
@@ -204,7 +204,7 @@ class DeleteChapterServiceUT {
         // Arrange
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)).thenReturn(Optional.of(mockChapter));
+        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.of(mockChapter));
 
         // Act
         deleteChapterService.deleteChapter(courseId, chapterNumber);
@@ -228,7 +228,7 @@ class DeleteChapterServiceUT {
 
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)).thenReturn(Optional.of(chapterNoDescription));
+        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.of(chapterNoDescription));
 
         // Act
         DeleteChapterResponse response = deleteChapterService.deleteChapter(courseId, chapterNumber);

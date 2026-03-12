@@ -14,6 +14,7 @@ import edu.ai.lms.core.course.app.port.in.usecase.TeacherDeleteCourseUseCase;
 import edu.ai.lms.core.course.app.port.out.DeleteCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.material.adapter.in.internal.DeleteCourseMaterialsApi;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -23,6 +24,7 @@ public class DeleteCourseService implements TeacherDeleteCourseUseCase {
     private final DeleteCoursePort deleteCoursePort;
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInUserPort loadSignedInUserPort;
+    private final DeleteCourseMaterialsApi deleteCourseMaterialsApi;
 
     @Override
     @Transactional
@@ -40,7 +42,11 @@ public class DeleteCourseService implements TeacherDeleteCourseUseCase {
             throw new IllegalArgumentException("Teacher is not authorized to delete this course");
         }
 
-        // Delete the course
+        // Delete S3 files for all materials belonging to this course
+        // (must happen before DB cascade deletes material records)
+        deleteCourseMaterialsApi.deleteAllMaterialsByCourseId(courseId);
+
+        // Delete the course (DB cascades handle chapters, learning outcomes, material records)
         deleteCoursePort.deleteById(courseId);
 
         // Return response

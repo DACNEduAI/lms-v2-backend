@@ -45,7 +45,7 @@ public class DeleteChapterService implements TeacherDeleteChapterUseCase {
         }
 
         // Verify chapter exists
-        Chapter existingChapter = loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)
+        Chapter existingChapter = loadChapterPort.findByKey(courseId, chapterNumber)
                 .orElseThrow(() -> new ChapterNotFoundException(
                         "Chapter not found with number: " + chapterNumber + " in course: " + courseId));
 

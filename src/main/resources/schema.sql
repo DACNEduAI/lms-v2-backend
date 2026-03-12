@@ -9,6 +9,7 @@ DROP TABLE IF EXISTS
     chapters,
     materials,
     chapter_materials,
+    chapter_learning_outcomes,
     learning_outcomes,
     enrollments,
     ai_settings,
@@ -104,7 +105,7 @@ CREATE TABLE IF NOT EXISTS materials (
     course_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS chapter_materials (
@@ -129,6 +130,15 @@ CREATE TABLE IF NOT EXISTS learning_outcomes (
     course_id UUID REFERENCES courses(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Junction table for many-to-many: chapters <-> learning_outcomes
+CREATE TABLE IF NOT EXISTS chapter_learning_outcomes (
+    chapter_number BIGINT NOT NULL,
+    course_id UUID NOT NULL,
+    learning_outcome_id UUID NOT NULL REFERENCES learning_outcomes(id) ON DELETE CASCADE,
+    FOREIGN KEY (chapter_number, course_id) REFERENCES chapters(chapter_number, course_id) ON DELETE CASCADE,
+    PRIMARY KEY (chapter_number, course_id, learning_outcome_id)
 );
 
 -- Enrollments table

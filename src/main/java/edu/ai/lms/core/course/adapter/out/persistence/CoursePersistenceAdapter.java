@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.course.adapter.out.persistence.mapper.ChapterJdbcMapper;
@@ -19,7 +18,6 @@ import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
 import edu.ai.lms.database.ChapterJdbcTable;
 import edu.ai.lms.database.CourseJdbcTable;
 import edu.ai.lms.database.LearningOutcomeJdbcTable;
-import edu.ai.lms.database.MaterialJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -29,7 +27,6 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     private final CourseRepository courseRepository;
     private final ChapterRepository chapterRepository;
     private final LearningOutcomeRepository learningOutcomeRepository;
-    private final MaterialRepository materialRepository;
     private final CourseJdbcMapper courseJdbcMapper;
     private final ChapterJdbcMapper chapterJdbcMapper;
     private final LearningOutcomeJdbcMapper learningOutcomeJdbcMapper;
@@ -99,18 +96,8 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
 
     @Override
     public void deleteById(UUID courseId) {
-        // Delete related entities first due to foreign key constraints
-        // Delete materials for the course (by course_id reference)
-        materialRepository.deleteByCourseId(courseId);
-        
-        // Delete chapters
-        chapterRepository.deleteByCourseId(courseId);
-        
-        // Delete learning outcomes
-        learningOutcomeRepository.deleteByCourseId(courseId);
-        
-        // Finally delete the course (junction table entries are cascade-deleted
-        // via @MappedCollection and ON DELETE CASCADE)
+        // All child entities (chapters, learning outcomes, materials, junction tables)
+        // are cascade-deleted by the database via ON DELETE CASCADE.
         courseRepository.deleteById(courseId);
     }
 
@@ -118,17 +105,12 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
      * Loads a full Course aggregate by explicitly fetching related entities.
      * Teacher/student IDs are extracted from the entity's @MappedCollection sets
      * (populated automatically by Spring Data JDBC when loading via findById).
-     * Chapters, materials, and learning outcomes are loaded manually.
+     * Chapters and learning outcomes are loaded manually.
      */
     private Course loadFullCourse(CourseJdbcTable courseEntity) {
         List<ChapterJdbcTable> chapters = chapterRepository.findByCourseId(courseEntity.getId());
-
-        // Load all materials belonging to this course (1-N via course_id FK).
-        // Chapter materials are a subset of these — loaded separately when needed.
-        List<MaterialJdbcTable> allCourseMaterials = materialRepository.findByCourseId(courseEntity.getId());
-
         List<LearningOutcomeJdbcTable> learningOutcomes = learningOutcomeRepository.findByCourseId(courseEntity.getId());
 
-        return courseJdbcMapper.mapToCourse(courseEntity, chapters, learningOutcomes, allCourseMaterials);
+        return courseJdbcMapper.mapToCourse(courseEntity, chapters, learningOutcomes);
     }
 }

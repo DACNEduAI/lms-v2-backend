@@ -8,6 +8,7 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -32,6 +33,8 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
     private static UUID createdLoId1;
     private static UUID createdLoId2;
     private static UUID createdLoId3;
+    private static Long createdChapterNumber1;
+    private static Long createdChapterNumber2;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     // ==================== SETUP: Register teacher and create a course ====================
@@ -957,5 +960,540 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .log().all()
                 .statusCode(400);
+    }
+
+    // ==================== CHAPTER-LEVEL: SETUP ====================
+
+    @Test
+    @Order(32)
+    @DisplayName("Should create chapters for chapter-LO tests")
+    void testCreateChaptersForChapterLOTests() {
+        String requestBody1 = """
+                {
+                    "title": "Chapter 1: Introduction",
+                    "description": "Introduction to Java programming"
+                }
+                """;
+
+        Response response1 = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody1)
+                .when()
+                .post("/api/" + createdCourseId + "/chapter")
+                .then()
+                .log().all()
+                .statusCode(201)
+                .extract().response();
+
+        createdChapterNumber1 = response1.jsonPath().getLong("chapterNumber");
+
+        String requestBody2 = """
+                {
+                    "title": "Chapter 2: Variables",
+                    "description": "Understanding variables in Java"
+                }
+                """;
+
+        Response response2 = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody2)
+                .when()
+                .post("/api/" + createdCourseId + "/chapter")
+                .then()
+                .log().all()
+                .statusCode(201)
+                .extract().response();
+
+        createdChapterNumber2 = response2.jsonPath().getLong("chapterNumber");
+    }
+
+    // ==================== CHAPTER-LEVEL: ADD LEARNING OUTCOMES TO CHAPTER ====================
+
+    @Test
+    @Order(33)
+    @DisplayName("Should successfully add learning outcomes to a chapter")
+    void testAddLearningOutcomesToChapter_Success() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s", "%s"]
+                }
+                """.formatted(createdLoId1, createdLoId2);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("courseId", equalTo(createdCourseId.toString()))
+                .body("chapterNumber", equalTo(createdChapterNumber1.intValue()))
+                .body("totalAdded", equalTo(2))
+                .body("addedLearningOutcomeIds", hasSize(2))
+                .body("message", equalTo("Learning outcomes added to chapter successfully"));
+    }
+
+    @Test
+    @Order(34)
+    @DisplayName("Should skip duplicate learning outcomes when adding again")
+    void testAddLearningOutcomesToChapter_SkipDuplicates() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s", "%s"]
+                }
+                """.formatted(createdLoId1, createdLoId3);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("courseId", equalTo(createdCourseId.toString()))
+                .body("chapterNumber", equalTo(createdChapterNumber1.intValue()))
+                .body("totalAdded", equalTo(1))
+                .body("addedLearningOutcomeIds", hasSize(1))
+                .body("addedLearningOutcomeIds", hasItem(createdLoId3.toString()));
+    }
+
+    @Test
+    @Order(35)
+    @DisplayName("Should verify chapter now returns learning outcome IDs")
+    void testGetChapter_ReturnsLearningOutcomeIds() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("chapterNumber", equalTo(createdChapterNumber1.intValue()))
+                .body("learningOutcomeIds", notNullValue())
+                .body("learningOutcomeIds", hasSize(3))
+                .body("learningOutcomeIds", hasItem(createdLoId1.toString()))
+                .body("learningOutcomeIds", hasItem(createdLoId2.toString()))
+                .body("learningOutcomeIds", hasItem(createdLoId3.toString()));
+    }
+
+    @Test
+    @Order(36)
+    @DisplayName("Should verify chapter without LOs returns empty list")
+    void testGetChapter_WithoutLOs_ReturnsEmptyList() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/chapter/" + createdChapterNumber2)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("chapterNumber", equalTo(createdChapterNumber2.intValue()))
+                .body("learningOutcomeIds", notNullValue())
+                .body("learningOutcomeIds", hasSize(0));
+    }
+
+    @Test
+    @Order(37)
+    @DisplayName("Should fail to add learning outcomes to chapter without authentication")
+    void testAddLearningOutcomesToChapter_WithoutAuth() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(createdLoId1);
+
+        given()
+                .contentType(ContentType.JSON)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .then()
+                .log().all()
+                .statusCode(anyOf(is(401), is(403)));
+    }
+
+    @Test
+    @Order(38)
+    @DisplayName("Should fail to add learning outcomes to chapter with empty list")
+    void testAddLearningOutcomesToChapter_EmptyList() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": []
+                }
+                """;
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .then()
+                .log().all()
+                .statusCode(400);
+    }
+
+    @Test
+    @Order(39)
+    @DisplayName("Should fail to add learning outcomes to chapter of non-existent course")
+    void testAddLearningOutcomesToChapter_CourseNotFound() {
+        UUID nonExistentCourseId = UUID.randomUUID();
+
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(createdLoId1);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + nonExistentCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .then()
+                .log().all()
+                .statusCode(404);
+    }
+
+    @Test
+    @Order(40)
+    @DisplayName("Should fail to add learning outcomes to non-existent chapter")
+    void testAddLearningOutcomesToChapter_ChapterNotFound() {
+        Long nonExistentChapterNumber = 99999L;
+
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(createdLoId1);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + nonExistentChapterNumber + "/learning-outcomes/add")
+                .then()
+                .log().all()
+                .statusCode(404);
+    }
+
+    @Test
+    @Order(41)
+    @DisplayName("Should fail to add learning outcomes to chapter by unauthorized teacher")
+    void testAddLearningOutcomesToChapter_UnauthorizedTeacher() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(createdLoId1);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + anotherTeacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .then()
+                .log().all()
+                .statusCode(anyOf(is(403), is(400), is(500)));
+    }
+
+    @Test
+    @Order(42)
+    @DisplayName("Should fail to add learning outcomes that don't belong to the course")
+    void testAddLearningOutcomesToChapter_LONotInCourse() {
+        UUID nonExistentLoId = UUID.randomUUID();
+
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(nonExistentLoId);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .then()
+                .log().all()
+                .statusCode(404);
+    }
+
+    @Test
+    @Order(43)
+    @DisplayName("Should successfully add learning outcomes to a second chapter")
+    void testAddLearningOutcomesToChapter2_Success() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(createdLoId1);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber2 + "/learning-outcomes/add")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("totalAdded", equalTo(1))
+                .body("addedLearningOutcomeIds", hasSize(1))
+                .body("addedLearningOutcomeIds", hasItem(createdLoId1.toString()));
+    }
+
+    // ==================== CHAPTER-LEVEL: REMOVE LEARNING OUTCOMES FROM CHAPTER ====================
+
+    @Test
+    @Order(44)
+    @DisplayName("Should successfully remove a learning outcome from a chapter")
+    void testRemoveLearningOutcomesFromChapter_SingleLO() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(createdLoId3);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("courseId", equalTo(createdCourseId.toString()))
+                .body("chapterNumber", equalTo(createdChapterNumber1.intValue()))
+                .body("totalRemoved", equalTo(1))
+                .body("removedLearningOutcomeIds", hasSize(1))
+                .body("removedLearningOutcomeIds", hasItem(createdLoId3.toString()))
+                .body("message", equalTo("Learning outcomes removed from chapter successfully"));
+    }
+
+    @Test
+    @Order(45)
+    @DisplayName("Should verify chapter has correct LOs after removal")
+    void testGetChapter_AfterRemoval() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("learningOutcomeIds", hasSize(2))
+                .body("learningOutcomeIds", hasItem(createdLoId1.toString()))
+                .body("learningOutcomeIds", hasItem(createdLoId2.toString()));
+    }
+
+    @Test
+    @Order(46)
+    @DisplayName("Should successfully remove multiple learning outcomes from a chapter")
+    void testRemoveLearningOutcomesFromChapter_MultipleLOs() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s", "%s"]
+                }
+                """.formatted(createdLoId1, createdLoId2);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("totalRemoved", equalTo(2))
+                .body("removedLearningOutcomeIds", hasSize(2));
+    }
+
+    @Test
+    @Order(47)
+    @DisplayName("Should verify chapter has no LOs after removing all")
+    void testGetChapter_AfterRemovingAll() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("learningOutcomeIds", hasSize(0));
+    }
+
+    @Test
+    @Order(48)
+    @DisplayName("Should fail to remove learning outcomes from chapter without authentication")
+    void testRemoveLearningOutcomesFromChapter_WithoutAuth() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(createdLoId1);
+
+        given()
+                .contentType(ContentType.JSON)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .then()
+                .log().all()
+                .statusCode(anyOf(is(401), is(403)));
+    }
+
+    @Test
+    @Order(49)
+    @DisplayName("Should fail to remove learning outcomes from chapter with empty list")
+    void testRemoveLearningOutcomesFromChapter_EmptyList() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": []
+                }
+                """;
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .then()
+                .log().all()
+                .statusCode(400);
+    }
+
+    @Test
+    @Order(50)
+    @DisplayName("Should fail to remove learning outcomes from chapter of non-existent course")
+    void testRemoveLearningOutcomesFromChapter_CourseNotFound() {
+        UUID nonExistentCourseId = UUID.randomUUID();
+
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(createdLoId1);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + nonExistentCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .then()
+                .log().all()
+                .statusCode(404);
+    }
+
+    @Test
+    @Order(51)
+    @DisplayName("Should fail to remove learning outcomes from non-existent chapter")
+    void testRemoveLearningOutcomesFromChapter_ChapterNotFound() {
+        Long nonExistentChapterNumber = 99999L;
+
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(createdLoId1);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + nonExistentChapterNumber + "/learning-outcomes/remove")
+                .then()
+                .log().all()
+                .statusCode(404);
+    }
+
+    @Test
+    @Order(52)
+    @DisplayName("Should fail to remove learning outcomes from chapter by unauthorized teacher")
+    void testRemoveLearningOutcomesFromChapter_UnauthorizedTeacher() {
+        // First re-add an LO so there's something to attempt to remove
+        String addBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(createdLoId1);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(addBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .then()
+                .statusCode(200);
+
+        // Try to remove as unauthorized teacher
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(createdLoId1);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + anotherTeacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .then()
+                .log().all()
+                .statusCode(anyOf(is(403), is(400), is(500)));
+    }
+
+    @Test
+    @Order(53)
+    @DisplayName("Should fail to remove learning outcomes not associated with the chapter")
+    void testRemoveLearningOutcomesFromChapter_LONotAssociated() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(createdLoId2);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .then()
+                .log().all()
+                .statusCode(404);
+    }
+
+    @Test
+    @Order(54)
+    @DisplayName("Should verify getAllChapters returns learning outcome IDs")
+    void testGetAllChapters_ReturnsLearningOutcomeIds() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/chapter")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("$.size()", equalTo(2))
+                .body("[0].learningOutcomeIds", notNullValue())
+                .body("[1].learningOutcomeIds", notNullValue());
     }
 }

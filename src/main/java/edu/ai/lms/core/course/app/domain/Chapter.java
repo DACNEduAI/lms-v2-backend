@@ -23,7 +23,7 @@ public class Chapter {
     private UUID courseId; // Part of composite primary key
 
     @Builder.Default
-    private List<Material> materials = new ArrayList<>();
+    private List<UUID> learningOutcomeIds = new ArrayList<>();
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

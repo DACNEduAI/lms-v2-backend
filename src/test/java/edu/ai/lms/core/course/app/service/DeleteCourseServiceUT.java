@@ -31,6 +31,7 @@ import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.out.DeleteCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.material.adapter.in.internal.DeleteCourseMaterialsApi;
 
 @ExtendWith(MockitoExtension.class)
 class DeleteCourseServiceUT {
@@ -43,6 +44,9 @@ class DeleteCourseServiceUT {
 
     @Mock
     private LoadSignedInUserPort loadSignedInUserPort;
+
+    @Mock
+    private DeleteCourseMaterialsApi deleteCourseMaterialsApi;
 
     @InjectMocks
     private DeleteCourseService deleteCourseService;
@@ -78,6 +82,7 @@ class DeleteCourseServiceUT {
         // Arrange
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
+        doNothing().when(deleteCourseMaterialsApi).deleteAllMaterialsByCourseId(courseId);
         doNothing().when(deleteCoursePort).deleteById(courseId);
 
         // Act
@@ -91,6 +96,7 @@ class DeleteCourseServiceUT {
         
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
+        verify(deleteCourseMaterialsApi, times(1)).deleteAllMaterialsByCourseId(courseId);
         verify(deleteCoursePort, times(1)).deleteById(courseId);
     }
 
@@ -108,6 +114,7 @@ class DeleteCourseServiceUT {
         
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(loadSignedInUserPort, never()).findAuthenticatedUser();
+        verify(deleteCourseMaterialsApi, never()).deleteAllMaterialsByCourseId(any());
         verify(deleteCoursePort, never()).deleteById(any());
     }
 
@@ -132,6 +139,7 @@ class DeleteCourseServiceUT {
         
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
+        verify(deleteCourseMaterialsApi, never()).deleteAllMaterialsByCourseId(any());
         verify(deleteCoursePort, never()).deleteById(any());
     }
 
@@ -141,12 +149,14 @@ class DeleteCourseServiceUT {
         // Arrange
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
+        doNothing().when(deleteCourseMaterialsApi).deleteAllMaterialsByCourseId(courseId);
         doNothing().when(deleteCoursePort).deleteById(courseId);
 
         // Act
         deleteCourseService.deleteCourse(courseId);
 
         // Assert
+        verify(deleteCourseMaterialsApi, times(1)).deleteAllMaterialsByCourseId(courseId);
         verify(deleteCoursePort, times(1)).deleteById(courseId);
     }
 
@@ -156,6 +166,7 @@ class DeleteCourseServiceUT {
         // Arrange
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
+        doNothing().when(deleteCourseMaterialsApi).deleteAllMaterialsByCourseId(courseId);
         doNothing().when(deleteCoursePort).deleteById(courseId);
 
         // Act
@@ -185,6 +196,7 @@ class DeleteCourseServiceUT {
         
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(courseWithOwner));
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(courseOwner));
+        doNothing().when(deleteCourseMaterialsApi).deleteAllMaterialsByCourseId(courseId);
         doNothing().when(deleteCoursePort).deleteById(courseId);
 
         // Act
@@ -195,6 +207,7 @@ class DeleteCourseServiceUT {
         assertTrue(response.getSuccess());
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
+        verify(deleteCourseMaterialsApi, times(1)).deleteAllMaterialsByCourseId(courseId);
         verify(deleteCoursePort, times(1)).deleteById(courseId);
     }
 
@@ -213,6 +226,7 @@ class DeleteCourseServiceUT {
         
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
+        verify(deleteCourseMaterialsApi, never()).deleteAllMaterialsByCourseId(any());
         verify(deleteCoursePort, never()).deleteById(any());
     }
 }
