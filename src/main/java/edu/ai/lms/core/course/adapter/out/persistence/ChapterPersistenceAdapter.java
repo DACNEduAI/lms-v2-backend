@@ -8,15 +8,18 @@ import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.course.adapter.out.persistence.mapper.ChapterJdbcMapper;
 import edu.ai.lms.core.course.app.domain.Chapter;
+import edu.ai.lms.core.course.app.port.out.DeleteChapterLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.DeleteChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
+import edu.ai.lms.core.course.app.port.out.SaveChapterLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.SaveChapterPort;
 import edu.ai.lms.database.ChapterJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
-class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, DeleteChapterPort {
+class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, DeleteChapterPort,
+        SaveChapterLearningOutcomePort, DeleteChapterLearningOutcomePort {
 
     private final ChapterRepository chapterRepository;
     private final ChapterJdbcMapper chapterJdbcMapper;
@@ -29,47 +32,61 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
         ChapterJdbcTable savedChapter;
 
         if (isUpdate) {
-            // UPDATE existing chapter using custom method for composite key
             chapterRepository.updateByCompositeKey(
                     chapter.getChapterNumber(),
                     courseId,
                     chapter.getTitle(),
                     chapter.getDescription());
 
-            // Re-fetch the updated chapter
             savedChapter = chapterRepository.findByChapterNumberAndCourseId(chapter.getChapterNumber(), courseId)
                     .orElseThrow(() -> new RuntimeException("Chapter not found after update"));
         } else {
-            // INSERT new chapter using custom method that returns generated chapter_number
             Long generatedChapterNumber = chapterRepository.insertAndReturnChapterNumber(
                     courseId,
                     chapter.getTitle(),
                     chapter.getDescription());
 
-            // Fetch the newly created chapter
             savedChapter = chapterRepository.findByChapterNumberAndCourseId(generatedChapterNumber, courseId)
                     .orElseThrow(() -> new RuntimeException("Chapter not found after insert"));
         }
 
-        return chapterJdbcMapper.mapToChapter(savedChapter);
+        List<UUID> loIds = chapterRepository.findLearningOutcomeIdsByChapterKey(
+                savedChapter.getChapterNumber(), savedChapter.getCourseId());
+        return chapterJdbcMapper.mapToChapter(savedChapter, loIds);
     }
 
     @Override
     public Optional<Chapter> findByKey(UUID courseId, Long chapterNumber) {
         return chapterRepository.findByChapterNumberAndCourseId(chapterNumber, courseId)
-                .map(chapterJdbcMapper::mapToChapter);
+                .map(entity -> {
+                    List<UUID> loIds = chapterRepository.findLearningOutcomeIdsByChapterKey(chapterNumber, courseId);
+                    return chapterJdbcMapper.mapToChapter(entity, loIds);
+                });
     }
 
     @Override
     public List<Chapter> findAllByCourseId(UUID courseId) {
         return chapterRepository.findByCourseId(courseId).stream()
-                .map(chapterJdbcMapper::mapToChapter)
+                .map(entity -> {
+                    List<UUID> loIds = chapterRepository.findLearningOutcomeIdsByChapterKey(
+                            entity.getChapterNumber(), entity.getCourseId());
+                    return chapterJdbcMapper.mapToChapter(entity, loIds);
+                })
                 .toList();
     }
 
     @Override
     public void deleteByKey(UUID courseId, Long chapterNumber) {
-        // chapter_materials junction rows are cascade-deleted by the database
         chapterRepository.deleteByChapterNumberAndCourseId(chapterNumber, courseId);
+    }
+
+    @Override
+    public void addLearningOutcomeToChapter(Long chapterNumber, UUID courseId, UUID learningOutcomeId) {
+        chapterRepository.insertChapterLearningOutcome(chapterNumber, courseId, learningOutcomeId);
+    }
+
+    @Override
+    public void removeLearningOutcomeFromChapter(Long chapterNumber, UUID courseId, UUID learningOutcomeId) {
+        chapterRepository.deleteChapterLearningOutcome(chapterNumber, courseId, learningOutcomeId);
     }
 }

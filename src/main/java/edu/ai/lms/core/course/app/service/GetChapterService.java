@@ -44,6 +44,7 @@ public class GetChapterService implements GetChapterUseCase, GetAllChaptersUseCa
                 .title(chapter.getTitle())
                 .description(chapter.getDescription())
                 .courseId(chapter.getCourseId())
+                .learningOutcomeIds(chapter.getLearningOutcomeIds())
                 .createdAt(chapter.getCreatedAt())
                 .updatedAt(chapter.getUpdatedAt())
                 .build();

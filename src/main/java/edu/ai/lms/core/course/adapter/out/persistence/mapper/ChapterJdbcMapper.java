@@ -1,5 +1,7 @@
 package edu.ai.lms.core.course.adapter.out.persistence.mapper;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
@@ -25,6 +27,18 @@ public class ChapterJdbcMapper {
                 .title(entity.getTitle())
                 .description(entity.getDescription())
                 .courseId(entity.getCourseId())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .build();
+    }
+
+    public Chapter mapToChapter(ChapterJdbcTable entity, List<UUID> learningOutcomeIds) {
+        return Chapter.builder()
+                .chapterNumber(entity.getChapterNumber())
+                .title(entity.getTitle())
+                .description(entity.getDescription())
+                .courseId(entity.getCourseId())
+                .learningOutcomeIds(learningOutcomeIds != null ? learningOutcomeIds : new ArrayList<>())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

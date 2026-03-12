@@ -63,4 +63,26 @@ interface ChapterRepository extends CrudRepository<ChapterJdbcTable, Long> {
             @Param("courseId") UUID courseId,
             @Param("title") String title,
             @Param("description") String description);
+
+    @Query("SELECT learning_outcome_id FROM chapter_learning_outcomes " +
+           "WHERE chapter_number = :chapterNumber AND course_id = :courseId")
+    List<UUID> findLearningOutcomeIdsByChapterKey(
+            @Param("chapterNumber") Long chapterNumber,
+            @Param("courseId") UUID courseId);
+
+    @Modifying
+    @Query("INSERT INTO chapter_learning_outcomes (chapter_number, course_id, learning_outcome_id) " +
+           "VALUES (:chapterNumber, :courseId, :learningOutcomeId) ON CONFLICT DO NOTHING")
+    void insertChapterLearningOutcome(
+            @Param("chapterNumber") Long chapterNumber,
+            @Param("courseId") UUID courseId,
+            @Param("learningOutcomeId") UUID learningOutcomeId);
+
+    @Modifying
+    @Query("DELETE FROM chapter_learning_outcomes " +
+           "WHERE chapter_number = :chapterNumber AND course_id = :courseId AND learning_outcome_id = :learningOutcomeId")
+    void deleteChapterLearningOutcome(
+            @Param("chapterNumber") Long chapterNumber,
+            @Param("courseId") UUID courseId,
+            @Param("learningOutcomeId") UUID learningOutcomeId);
 }
