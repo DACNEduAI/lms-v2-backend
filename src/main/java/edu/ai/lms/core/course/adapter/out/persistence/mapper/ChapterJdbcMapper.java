@@ -1,23 +1,14 @@
 package edu.ai.lms.core.course.adapter.out.persistence.mapper;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.course.app.domain.Chapter;
-import edu.ai.lms.core.course.app.domain.Material;
 import edu.ai.lms.database.ChapterJdbcTable;
-import edu.ai.lms.database.MaterialJdbcTable;
-import lombok.RequiredArgsConstructor;
 
 @Component
-@RequiredArgsConstructor
 public class ChapterJdbcMapper {
-
-    private final MaterialJdbcMapper materialJdbcMapper;
 
     public ChapterJdbcTable mapToChapterJdbcEntity(Chapter chapter, UUID courseId) {
         return ChapterJdbcTable.builder()
@@ -28,8 +19,7 @@ public class ChapterJdbcMapper {
                 .build();
     }
 
-    /// Map to chapter WITHOUT Materials
-    public Chapter mapToChapterWithoutMaterials(ChapterJdbcTable entity) {
+    public Chapter mapToChapter(ChapterJdbcTable entity) {
         return Chapter.builder()
                 .chapterNumber(entity.getChapterNumber())
                 .title(entity.getTitle())
@@ -38,26 +28,5 @@ public class ChapterJdbcMapper {
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
-    }
-    /// Map to chapter WITH Materials
-    public Chapter mapToChapter(ChapterJdbcTable entity, List<MaterialJdbcTable> materialEntities) {
-        Chapter chapter = Chapter.builder()
-                .chapterNumber(entity.getChapterNumber())
-                .title(entity.getTitle())
-                .description(entity.getDescription())
-                .courseId(entity.getCourseId())
-                .materials(new ArrayList<>())
-                .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt())
-                .build();
-
-        if (materialEntities != null) {
-            List<Material> materials = materialEntities.stream()
-                    .map(materialJdbcMapper::mapToMaterial)
-                    .collect(Collectors.toList());
-            chapter.setMaterials(materials);
-        }
-
-        return chapter;
     }
 }

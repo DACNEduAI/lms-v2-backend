@@ -17,7 +17,6 @@ import edu.ai.lms.database.CourseJdbcTable;
 import edu.ai.lms.database.CourseStudentJdbcTable;
 import edu.ai.lms.database.CourseTeacherJdbcTable;
 import edu.ai.lms.database.LearningOutcomeJdbcTable;
-import edu.ai.lms.database.MaterialJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -59,8 +58,7 @@ public class CourseJdbcMapper {
     public Course mapToCourse(
             CourseJdbcTable entity,
             List<ChapterJdbcTable> chapterEntities,
-            List<LearningOutcomeJdbcTable> learningOutcomeEntities,
-            List<MaterialJdbcTable> allCourseMaterials
+            List<LearningOutcomeJdbcTable> learningOutcomeEntities
     ) {
         List<UUID> teacherIds = entity.getCourseTeachers() != null
                 ? entity.getCourseTeachers().stream()
@@ -74,17 +72,10 @@ public class CourseJdbcMapper {
                     .collect(Collectors.toList())
                 : new ArrayList<>();
 
-        // Material IDs from the 1-N relationship (materials.course_id FK)
-        List<UUID> materialIds = allCourseMaterials != null
-                ? allCourseMaterials.stream()
-                    .map(MaterialJdbcTable::getId)
-                    .collect(Collectors.toList())
-                : new ArrayList<>();
-
         List<Chapter> chapters = new ArrayList<>();
         if (chapterEntities != null) {
             chapters = chapterEntities.stream()
-                    .map(chapterJdbcMapper::mapToChapterWithoutMaterials)
+                    .map(chapterJdbcMapper::mapToChapter)
                     .collect(Collectors.toList());
         }
 
@@ -102,7 +93,6 @@ public class CourseJdbcMapper {
                 .courseCode(entity.getCourseCode())
                 .teacherIds(teacherIds)
                 .studentIds(studentIds)
-                .materialIds(materialIds)
                 .active(entity.getActive())
                 .coverImage(entity.getCoverImage())
                 .startDate(entity.getStartDate())

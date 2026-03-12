@@ -60,7 +60,7 @@ class GetChapterServiceUT {
     @DisplayName("Should successfully get a chapter with valid course ID and chapter number")
     void testGetChapter_WithValidKey_ShouldSucceed() {
         // Arrange
-        when(loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)).thenReturn(Optional.of(mockChapter));
+        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.of(mockChapter));
 
         // Act
         GetChapterResponse response = getChapterService.getChapter(courseId, chapterNumber);
@@ -74,7 +74,7 @@ class GetChapterServiceUT {
         assertNotNull(response.getCreatedAt());
         assertNotNull(response.getUpdatedAt());
 
-        verify(loadChapterPort, times(1)).findByKeyWithoutMaterials(courseId, chapterNumber);
+        verify(loadChapterPort, times(1)).findByKey(courseId, chapterNumber);
     }
 
     @Test
@@ -82,7 +82,7 @@ class GetChapterServiceUT {
     void testGetChapter_WithNonExistentChapter_ShouldThrowException() {
         // Arrange
         Long nonExistentChapterNumber = 999L;
-        when(loadChapterPort.findByKeyWithoutMaterials(courseId, nonExistentChapterNumber)).thenReturn(Optional.empty());
+        when(loadChapterPort.findByKey(courseId, nonExistentChapterNumber)).thenReturn(Optional.empty());
 
         // Act & Assert
         ChapterNotFoundException exception = assertThrows(ChapterNotFoundException.class,
@@ -90,7 +90,7 @@ class GetChapterServiceUT {
 
         assertTrue(exception.getMessage().contains("Chapter not found"));
 
-        verify(loadChapterPort, times(1)).findByKeyWithoutMaterials(courseId, nonExistentChapterNumber);
+        verify(loadChapterPort, times(1)).findByKey(courseId, nonExistentChapterNumber);
     }
 
     @Test
@@ -106,7 +106,7 @@ class GetChapterServiceUT {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        when(loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)).thenReturn(Optional.of(chapterNoDescription));
+        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.of(chapterNoDescription));
 
         // Act
         GetChapterResponse response = getChapterService.getChapter(courseId, chapterNumber);
@@ -118,7 +118,7 @@ class GetChapterServiceUT {
         assertEquals(null, response.getDescription());
         assertEquals(courseId, response.getCourseId());
 
-        verify(loadChapterPort, times(1)).findByKeyWithoutMaterials(courseId, chapterNumber);
+        verify(loadChapterPort, times(1)).findByKey(courseId, chapterNumber);
     }
 
     @Test
@@ -135,7 +135,7 @@ class GetChapterServiceUT {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        when(loadChapterPort.findByKeyWithoutMaterials(specificCourseId, chapterNumber)).thenReturn(Optional.of(chapter));
+        when(loadChapterPort.findByKey(specificCourseId, chapterNumber)).thenReturn(Optional.of(chapter));
 
         // Act
         GetChapterResponse response = getChapterService.getChapter(specificCourseId, chapterNumber);
@@ -144,21 +144,7 @@ class GetChapterServiceUT {
         assertNotNull(response);
         assertEquals(specificCourseId, response.getCourseId());
 
-        verify(loadChapterPort, times(1)).findByKeyWithoutMaterials(specificCourseId, chapterNumber);
-    }
-
-    @Test
-    @DisplayName("Should call findByKeyWithoutMaterials, not findByKey")
-    void testGetChapter_ShouldUseFindByKeyWithoutMaterials() {
-        // Arrange
-        when(loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)).thenReturn(Optional.of(mockChapter));
-
-        // Act
-        getChapterService.getChapter(courseId, chapterNumber);
-
-        // Assert - verify the correct port method is called
-        verify(loadChapterPort, times(1)).findByKeyWithoutMaterials(courseId, chapterNumber);
-        verify(loadChapterPort, never()).findByKey(courseId, chapterNumber);
+        verify(loadChapterPort, times(1)).findByKey(specificCourseId, chapterNumber);
     }
 
     // ==================== getAllChapters Tests ====================
@@ -315,7 +301,6 @@ class GetChapterServiceUT {
             // Assert
             verify(loadChapterPort, times(1)).findAllByCourseId(courseId);
             verify(loadChapterPort, never()).findByKey(courseId, chapterNumber);
-            verify(loadChapterPort, never()).findByKeyWithoutMaterials(courseId, chapterNumber);
         }
     }
 }

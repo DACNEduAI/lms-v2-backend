@@ -12,7 +12,6 @@ import edu.ai.lms.core.course.app.port.out.DeleteChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
 import edu.ai.lms.core.course.app.port.out.SaveChapterPort;
 import edu.ai.lms.database.ChapterJdbcTable;
-import edu.ai.lms.database.MaterialJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -20,7 +19,6 @@ import lombok.RequiredArgsConstructor;
 class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, DeleteChapterPort {
 
     private final ChapterRepository chapterRepository;
-    private final MaterialRepository materialRepository;
     private final ChapterJdbcMapper chapterJdbcMapper;
 
     @Override
@@ -53,50 +51,25 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
                     .orElseThrow(() -> new RuntimeException("Chapter not found after insert"));
         }
 
-        // Return complete chapter with materials
-        return loadChapter(savedChapter);
+        return chapterJdbcMapper.mapToChapter(savedChapter);
     }
 
     @Override
     public Optional<Chapter> findByKey(UUID courseId, Long chapterNumber) {
         return chapterRepository.findByChapterNumberAndCourseId(chapterNumber, courseId)
-                .map(this::loadChapter);
-    }
-
-    @Override
-    public Optional<Chapter> findByKeyWithoutMaterials(UUID courseId, Long chapterNumber) {
-        return chapterRepository.findByChapterNumberAndCourseId(chapterNumber, courseId)
-                .map(this::loadChapterWithoutMaterials);
+                .map(chapterJdbcMapper::mapToChapter);
     }
 
     @Override
     public List<Chapter> findAllByCourseId(UUID courseId) {
         return chapterRepository.findByCourseId(courseId).stream()
-                .map(this::loadChapterWithoutMaterials)
+                .map(chapterJdbcMapper::mapToChapter)
                 .toList();
     }
 
     @Override
     public void deleteByKey(UUID courseId, Long chapterNumber) {
-        // First delete all materials for this chapter
-        materialRepository.deleteByChapterKey(chapterNumber, courseId);
-        // Then delete the chapter itself
+        // chapter_materials junction rows are cascade-deleted by the database
         chapterRepository.deleteByChapterNumberAndCourseId(chapterNumber, courseId);
-    }
-
-    /**
-     * Loads a full Chapter aggregate with materials by explicitly fetching related entities.
-     */
-    private Chapter loadChapter(ChapterJdbcTable chapterEntity) {
-        List<MaterialJdbcTable> materials = materialRepository.findByChapterKey(
-                chapterEntity.getChapterNumber(), chapterEntity.getCourseId());
-        return chapterJdbcMapper.mapToChapter(chapterEntity, materials);
-    }
-
-    /**
-     * Loads a Chapter without materials - only basic chapter data with courseId.
-     */
-    private Chapter loadChapterWithoutMaterials(ChapterJdbcTable chapterEntity) {
-        return chapterJdbcMapper.mapToChapterWithoutMaterials(chapterEntity);
     }
 }

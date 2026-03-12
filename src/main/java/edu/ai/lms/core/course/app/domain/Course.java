@@ -29,10 +29,6 @@ public class Course {
     @Builder.Default
     private List<UUID> studentIds = new ArrayList<>();
 
-    // Course-Material 1-N relationship (via junction table)
-    @Builder.Default
-    private List<UUID> materialIds = new ArrayList<>();
-
     private LocalDate startDate;
 
     private LocalDate endDate;

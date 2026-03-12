@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LMS Material Upload/Download Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      padding: 24px;
+    }
+
+    h1 { font-size: 1.6rem; margin-bottom: 4px; color: #1a1a2e; }
+    .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 28px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 22px 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #1a1a2e;
+      border-bottom: 2px solid #e8e8e8;
+      padding-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-badge {
+      background: #4361ee;
+      color: #fff;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      font-size: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: #555;
+      margin-bottom: 4px;
+      margin-top: 12px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d0d0d0;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      outline: none;
+      background: #fafafa;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus { border-color: #4361ee; background: #fff; }
+
+    input[type="file"] { padding: 6px; cursor: pointer; }
+
+    button {
+      margin-top: 14px;
+      width: 100%;
+      padding: 9px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    button:hover { opacity: 0.88; }
+    button:active { transform: scale(0.98); }
+
+    .btn-primary   { background: #4361ee; color: #fff; }
+    .btn-success   { background: #2ec4b6; color: #fff; }
+    .btn-warning   { background: #f4a261; color: #fff; }
+    .btn-danger    { background: #e63946; color: #fff; }
+    .btn-secondary { background: #6c757d; color: #fff; }
+
+    .result {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .result.ok    { background: #e8f5e9; border-left: 4px solid #4caf50; color: #2e7d32; display: block; }
+    .result.err   { background: #ffebee; border-left: 4px solid #f44336; color: #c62828; display: block; }
+    .result.info  { background: #e3f2fd; border-left: 4px solid #2196f3; color: #1565c0; display: block; }
+
+    .token-box {
+      background: #1a1a2e;
+      color: #a8d8ea;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 0.78rem;
+      font-family: 'Courier New', monospace;
+      word-break: break-all;
+      margin-top: 10px;
+      min-height: 40px;
+    }
+
+    .token-label { font-size: 0.78rem; font-weight: 500; color: #888; margin-top: 10px; }
+
+    .info-note {
+      background: #fff9e6;
+      border-left: 4px solid #ffc107;
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      color: #7a5c00;
+      margin-top: 10px;
+    }
+
+    .base-url-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      align-items: center;
+    }
+
+    .base-url-bar input {
+      flex: 1;
+      font-size: 0.9rem;
+    }
+
+    .base-url-bar button {
+      margin-top: 0;
+      width: auto;
+      padding: 9px 16px;
+    }
+
+    .full-width { grid-column: 1 / -1; }
+
+    #upload-section { display: block; }
+  </style>
+</head>
+<body>
+
+<h1>📦 LMS Material — Upload &amp; Download Flow Tester</h1>
+<p class="subtitle">Test the full pre-signed S3 upload/download flow. Works against a locally running Spring Boot app (dev profile).</p>
+
+<!-- Base URL -->
+<div class="base-url-bar">
+  <label style="margin:0;white-space:nowrap;font-size:0.88rem;font-weight:600;">Base URL:</label>
+  <input id="baseUrl" type="text" value="http://localhost:8080" />
+  <button class="btn-secondary" onclick="saveBaseUrl()">Save</button>
+</div>
+
+<div class="grid">
+
+  <!-- ── STEP 1: Auth ─────────────────────────────────────────── -->
+  <div class="card">
+    <h2><span class="step-badge">1</span> Authenticate (get JWT)</h2>
+
+    <label>Role</label>
+    <select id="authRole">
+      <option value="teacher">Teacher</option>
+      <option value="student">Student</option>
+    </select>
+
+    <label>Email</label>
+    <input id="authEmail" type="email" placeholder="teacher@example.com" />
+
+    <label>Password</label>
+    <input id="authPassword" type="password" placeholder="password" />
+
+    <button class="btn-primary" onclick="login()">Login</button>
+
+    <div class="token-label">JWT Token (auto-used in all requests below)</div>
+    <div class="token-box" id="tokenDisplay">— not authenticated —</div>
+    <div class="result" id="authResult"></div>
+  </div>
+
+  <!-- ── STEP 2: Create Material (PENDING + presigned upload URL) -->
+  <div class="card">
+    <h2><span class="step-badge">2</span> Create Material (get upload URL)</h2>
+
+    <div class="info-note">
+      POST <code>/api/{courseId}/material</code><br>
+      Returns a <strong>pre-signed upload URL</strong> + material record in PENDING status.
+    </div>
+
+    <label>Course ID (UUID)</label>
+    <input id="createCourseId" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+
+    <label>Material Title</label>
+    <input id="materialTitle" type="text" placeholder="Lecture Notes Week 1" />
+
+    <label>Type</label>
+    <select id="materialType">
+      <option value="PDF">PDF</option>
+      <option value="VIDEO">VIDEO</option>
+    </select>
+
+    <label>Downloadable?</label>
+    <select id="materialDownloadable">
+      <option value="true">Yes</option>
+      <option value="false">No</option>
+    </select>
+
+    <label>Chapter Number (optional — leave blank for course-level material)</label>
+    <input id="chapterNumber" type="number" placeholder="1" />
+
+    <button class="btn-primary" onclick="createMaterial()">Create Material</button>
+    <div class="result" id="createResult"></div>
+  </div>
+
+  <!-- ── STEP 3: Upload file to S3 via pre-signed URL ──────── -->
+  <div class="card">
+    <h2><span class="step-badge">3</span> Upload File (PUT to pre-signed URL)</h2>
+
+    <div class="info-note">
+      Put the file directly to S3/LocalStack via the pre-signed URL returned in step 2.
+      The backend is NOT involved — this is a direct S3 PUT request.<br><br>
+      ⚠️ CORS must be enabled on the bucket. The init-s3.sh script handles this for LocalStack.
+    </div>
+
+    <label>Pre-signed Upload URL (auto-filled from step 2)</label>
+    <input id="presignedUploadUrl" type="text" placeholder="https://s3.localhost.localstack.cloud:4566/..." />
+
+    <label>Content-Type (must match what was used when generating the URL)</label>
+    <select id="uploadContentType">
+      <option value="application/pdf">application/pdf (PDF)</option>
+      <option value="video/mp4">video/mp4 (VIDEO)</option>
+    </select>
+
+    <label>Select File to Upload</label>
+    <input id="uploadFile" type="file" />
+
+    <button class="btn-success" onclick="uploadFile()">Upload File to S3</button>
+    <div class="result" id="uploadResult"></div>
+  </div>
+
+  <!-- ── STEP 4: Confirm Upload ────────────────────────────── -->
+  <div class="card">
+    <h2><span class="step-badge">4</span> Confirm Upload</h2>
+
+    <div class="info-note">
+      PATCH <code>/api/{courseId}/material/{materialId}/confirm-upload</code><br>
+      Backend verifies the file exists in S3 (HeadObject) and sets status to <strong>UPLOADED</strong>.
+    </div>
+
+    <label>Course ID (UUID)</label>
+    <input id="confirmCourseId" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+
+    <label>Material ID (UUID — auto-filled from step 2)</label>
+    <input id="confirmMaterialId" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+
+    <button class="btn-warning" onclick="confirmUpload()">Confirm Upload</button>
+    <div class="result" id="confirmResult"></div>
+  </div>
+
+  <!-- ── STEP 5: Download Material (get pre-signed download URL) -->
+  <div class="card">
+    <h2><span class="step-badge">5</span> Download Material (get download URL)</h2>
+
+    <div class="info-note">
+      GET <code>/api/{courseId}/material/{materialId}</code><br>
+      Returns the material info with a <strong>pre-signed download URL</strong>.
+      Only provided if the material is marked as downloadable.
+    </div>
+
+    <label>Course ID (UUID)</label>
+    <input id="downloadCourseId" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+
+    <label>Material ID (UUID — auto-filled from step 2)</label>
+    <input id="downloadMaterialId" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+
+    <button class="btn-success" onclick="getMaterial()">Get Material (download URL)</button>
+    <div class="result" id="downloadResult"></div>
+  </div>
+
+  <!-- ── BONUS: List all uploaded materials ───────────────── -->
+  <div class="card">
+    <h2><span class="step-badge">✦</span> List Uploaded Materials for Course</h2>
+
+    <label>Course ID (UUID)</label>
+    <input id="listCourseId" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+
+    <button class="btn-secondary" onclick="listMaterials()">List Materials</button>
+    <div class="result" id="listResult"></div>
+  </div>
+
+</div>
+
+<script>
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  let jwt = '';
+
+  function base() {
+    return document.getElementById('baseUrl').value.replace(/\/$/, '');
+  }
+
+  function saveBaseUrl() {
+    localStorage.setItem('lms_base_url', base());
+    showResult('authResult', 'info', `Base URL saved: ${base()}`);
+  }
+
+  function authHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${jwt}`
+    };
+  }
+
+  function showResult(id, type, data) {
+    const el = document.getElementById(id);
+    el.className = 'result ' + type;
+    el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+  }
+
+  async function apiFetch(url, opts, resultId) {
+    try {
+      const res = await fetch(url, opts);
+      const text = await res.text();
+      let parsed;
+      try { parsed = JSON.parse(text); } catch { parsed = text; }
+      const ok = res.ok ? 'ok' : 'err';
+      showResult(resultId, ok, `HTTP ${res.status}\n\n${typeof parsed === 'string' ? parsed : JSON.stringify(parsed, null, 2)}`);
+      return { ok: res.ok, data: parsed, status: res.status };
+    } catch (e) {
+      showResult(resultId, 'err', `Network error: ${e.message}\n\nMake sure the app is running and CORS is configured.`);
+      return { ok: false, data: null };
+    }
+  }
+
+  // ── Step 1: Login ─────────────────────────────────────────────────────────
+
+  async function login() {
+    const role  = document.getElementById('authRole').value;
+    const email = document.getElementById('authEmail').value.trim();
+    const pass  = document.getElementById('authPassword').value;
+    const url   = `${base()}/api/auth/${role}/login`;
+
+    const result = await apiFetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    }, 'authResult');
+
+    if (result.ok && result.data) {
+      // Try common token field names
+      jwt = result.data.token || result.data.accessToken || result.data.jwt || '';
+      if (jwt) {
+        document.getElementById('tokenDisplay').textContent = jwt;
+      } else {
+        document.getElementById('tokenDisplay').textContent = 'Login OK but no token field found in response. Full response shown above.';
+      }
+    }
+  }
+
+  // ── Step 2: Create Material ───────────────────────────────────────────────
+
+  async function createMaterial() {
+    const courseId    = document.getElementById('createCourseId').value.trim();
+    const title       = document.getElementById('materialTitle').value.trim();
+    const type        = document.getElementById('materialType').value;
+    const downloadable = document.getElementById('materialDownloadable').value === 'true';
+    const chapter     = document.getElementById('chapterNumber').value.trim();
+
+    if (!courseId) { showResult('createResult', 'err', 'Course ID is required.'); return; }
+
+    const endpoint = chapter
+      ? `${base()}/api/${courseId}/material/chapter/${chapter}`
+      : `${base()}/api/${courseId}/material`;
+
+    const result = await apiFetch(endpoint, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ title, type, isDownloadable: downloadable })
+    }, 'createResult');
+
+    if (result.ok && result.data) {
+      const d = result.data;
+      // Auto-fill downstream fields
+      if (d.presignedUploadUrl) {
+        document.getElementById('presignedUploadUrl').value = d.presignedUploadUrl;
+        // Auto-select content type
+        if (type === 'PDF') document.getElementById('uploadContentType').value = 'application/pdf';
+        if (type === 'VIDEO') document.getElementById('uploadContentType').value = 'video/mp4';
+      }
+      if (d.id) {
+        document.getElementById('confirmMaterialId').value  = d.id;
+        document.getElementById('downloadMaterialId').value = d.id;
+      }
+      if (d.courseId) {
+        document.getElementById('confirmCourseId').value  = d.courseId;
+        document.getElementById('downloadCourseId').value = d.courseId;
+        document.getElementById('listCourseId').value     = d.courseId;
+      }
+    }
+  }
+
+  // ── Step 3: Upload file to S3 via pre-signed URL ──────────────────────────
+
+  async function uploadFile() {
+    const url         = document.getElementById('presignedUploadUrl').value.trim();
+    const contentType = document.getElementById('uploadContentType').value;
+    const fileInput   = document.getElementById('uploadFile');
+
+    if (!url)  { showResult('uploadResult', 'err', 'Pre-signed upload URL is required.'); return; }
+    if (!fileInput.files.length) { showResult('uploadResult', 'err', 'Please select a file.'); return; }
+
+    const file = fileInput.files[0];
+    showResult('uploadResult', 'info', `Uploading "${file.name}" (${(file.size / 1024).toFixed(1)} KB)…`);
+
+    try {
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': contentType },
+        body: file
+      });
+
+      if (res.ok || res.status === 200) {
+        showResult('uploadResult', 'ok', `✅ Upload successful! HTTP ${res.status}\n\nFile "${file.name}" uploaded to S3.\nNow proceed to Step 4 to confirm the upload.`);
+      } else {
+        const text = await res.text();
+        showResult('uploadResult', 'err', `HTTP ${res.status}\n\n${text}`);
+      }
+    } catch (e) {
+      showResult('uploadResult', 'err',
+        `Upload failed: ${e.message}\n\nCommon causes:\n• LocalStack not running (docker compose up -d)\n• CORS not configured on bucket (check init-s3.sh)\n• Expired pre-signed URL (re-run Step 2)`);
+    }
+  }
+
+  // ── Step 4: Confirm Upload ────────────────────────────────────────────────
+
+  async function confirmUpload() {
+    const courseId   = document.getElementById('confirmCourseId').value.trim();
+    const materialId = document.getElementById('confirmMaterialId').value.trim();
+
+    if (!courseId || !materialId) {
+      showResult('confirmResult', 'err', 'Course ID and Material ID are required.');
+      return;
+    }
+
+    await apiFetch(
+      `${base()}/api/${courseId}/material/${materialId}/confirm-upload`,
+      { method: 'PATCH', headers: authHeaders() },
+      'confirmResult'
+    );
+  }
+
+  // ── Step 5: Get Material (download URL) ───────────────────────────────────
+
+  async function getMaterial() {
+    const courseId   = document.getElementById('downloadCourseId').value.trim();
+    const materialId = document.getElementById('downloadMaterialId').value.trim();
+
+    if (!courseId || !materialId) {
+      showResult('downloadResult', 'err', 'Course ID and Material ID are required.');
+      return;
+    }
+
+    const result = await apiFetch(
+      `${base()}/api/${courseId}/material/${materialId}`,
+      { method: 'GET', headers: authHeaders() },
+      'downloadResult'
+    );
+
+    if (result.ok && result.data && result.data.presignedUrl) {
+      showResult('downloadResult', 'ok',
+        `HTTP 200\n\n${JSON.stringify(result.data, null, 2)}\n\n` +
+        `─────────────────────────────\n` +
+        `📥 Download URL (open in a new tab):\n${result.data.presignedUrl}`
+      );
+    }
+  }
+
+  // ── Bonus: List uploaded materials ────────────────────────────────────────
+
+  async function listMaterials() {
+    const courseId = document.getElementById('listCourseId').value.trim();
+    if (!courseId) { showResult('listResult', 'err', 'Course ID is required.'); return; }
+
+    await apiFetch(
+      `${base()}/api/${courseId}/material`,
+      { method: 'GET', headers: authHeaders() },
+      'listResult'
+    );
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+
+  window.addEventListener('load', () => {
+    const saved = localStorage.getItem('lms_base_url');
+    if (saved) document.getElementById('baseUrl').value = saved;
+  });
+</script>
+
+</body>
+</html>
