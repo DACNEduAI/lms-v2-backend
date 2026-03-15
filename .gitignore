@@ -40,5 +40,5 @@ build/
 /storage
 
 ### postman
-postman
-.postman
+postman/**
+.postman/**
