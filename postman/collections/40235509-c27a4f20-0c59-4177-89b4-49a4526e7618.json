@@ -57,11 +57,10 @@
 					}
 				},
 				"url": {
-					"raw": "localhost:8080/api/auth/teacher/register",
+					"raw": "{{localhost}}/api/auth/teacher/register",
 					"host": [
-						"localhost"
+						"{{localhost}}"
 					],
-					"port": "8080",
 					"path": [
 						"api",
 						"auth",
