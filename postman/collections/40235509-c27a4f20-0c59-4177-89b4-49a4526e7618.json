@@ -24,9 +24,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{deployed_host}}/api/auth/student/login",
+					"raw": "{{localhost}}/api/auth/student/login",
 					"host": [
-						"{{deployed_host}}"
+						"{{localhost}}"
 					],
 					"path": [
 						"api",
