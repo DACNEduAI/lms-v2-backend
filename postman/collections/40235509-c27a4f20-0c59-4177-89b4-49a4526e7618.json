@@ -1,0 +1,169 @@
+{
+	"info": {
+		"_postman_id": "40235509-c27a4f20-0c59-4177-89b4-49a4526e7618",
+		"name": "Auth",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Student Log In",
+			"id": "40235509-5e84f96d-5473-4982-9f88-e70bdabe0e7e",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"student1@university.edu\",\n  \"password\": \"$2a$10$DummyHashForPassword1\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{deployed_host}}/api/auth/student/login",
+					"host": [
+						"{{deployed_host}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"student",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Teacher Register",
+			"id": "40235509-1fdb058d-fee3-4bd1-81b6-eb24b3ab57cd",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"firstName\": \"Thanh\",\n    \"lastName\": \"Nguyen\",\n    \"email\": \"thanh.nguyen@example.com\",\n    \"password\": \"123456789\",\n    \"phoneNumber\": \"0989664274\",\n    \"department\": \"Engineering\",\n    \"specialization\": \"Software Development\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8080/api/auth/teacher/register",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"auth",
+						"teacher",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Student Register",
+			"id": "40235509-32a548c4-1c28-4d1f-9df4-65fb79768dce",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"firstName\": \"Thanh Danh\",\n  \"lastName\": \"Nguyen\",\n  \"email\": \"danh@gmail.com\",\n  \"password\": \"123456789\",\n  \"enrollmentYear\": 2022\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{localhost}}/api/auth/student/register",
+					"host": [
+						"{{localhost}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"student",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Teacher Sign In",
+			"id": "40235509-d74b9c49-f763-4525-b50c-64be80c718a7",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"dr.turing@university.edu\",\n  \"password\": \"$2a$10$DummyHashForPassword3\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8080/api/auth/teacher/login",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"auth",
+						"teacher",
+						"login"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "27fbe4ab-da1f-4730-8715-c8bd33aecac3",
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "4751a17c-bd95-41c8-89cb-17a8878038a4",
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
