@@ -1,6 +1,7 @@
 package edu.ai.lms.core.material.adapter.out.storage.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import java.net.URI;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,8 +14,9 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-
-import java.net.URI;
+import software.amazon.awssdk.services.s3.model.CORSConfiguration;
+import software.amazon.awssdk.services.s3.model.CORSRule;
+import software.amazon.awssdk.services.s3.model.PutBucketCorsRequest;
 
 @Profile("prod")
 @Configuration
@@ -28,25 +30,58 @@ public class DigitalOceanConfig implements StorageConfig {
     public String endPoint;
     public String bucketName;
 
-    @Bean
+    private boolean corsConfigured;
+
+    @Override
     public S3Client s3Client() {
         AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
 
-        return S3Client.builder()
+        S3Client client = S3Client.builder()
                 .region(Region.of(region))
                 .endpointOverride(URI.create(endPoint))
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                .build();
+            .build();
+
+        ensureCorsConfigured(client);
+        return client;
     }
 
-    @Bean
+    @Override
     public S3Presigner s3Presigner() {
         AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
+
+        S3Client client = S3Client.builder()
+            .region(Region.of(region))
+            .endpointOverride(URI.create(endPoint))
+            .credentialsProvider(StaticCredentialsProvider.create(credentials))
+            .build();
+
+        ensureCorsConfigured(client);
 
         return S3Presigner.builder()
                 .region(Region.of(region))
                 .endpointOverride(URI.create(endPoint))
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
                 .build();
+    }
+
+    private synchronized void ensureCorsConfigured(S3Client client) {
+        if (corsConfigured) {
+            return;
+        }
+
+        CORSRule rule = CORSRule.builder()
+            .allowedOrigins("*")
+            .allowedHeaders("*")
+            .allowedMethods("GET", "PUT", "POST", "DELETE", "HEAD")
+            .build();
+
+        PutBucketCorsRequest request = PutBucketCorsRequest.builder()
+            .bucket(bucketName)
+            .corsConfiguration(CORSConfiguration.builder().corsRules(rule).build())
+            .build();
+
+        client.putBucketCors(request);
+        corsConfigured = true;
     }
 }

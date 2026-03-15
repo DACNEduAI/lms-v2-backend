@@ -26,6 +26,7 @@ public class DevConfig implements StorageConfig{
     public String endPoint;
     public String bucketName;
 
+    @Override
     public S3Client s3Client() {
         return S3Client.builder()
                 .endpointOverride(URI.create("https://s3.localhost.localstack.cloud:4566"))
@@ -35,6 +36,7 @@ public class DevConfig implements StorageConfig{
                 .build();
     }
 
+    @Override
     public S3Presigner s3Presigner() {
         return S3Presigner.builder()
                 .endpointOverride(URI.create("https://s3.localhost.localstack.cloud:4566"))
