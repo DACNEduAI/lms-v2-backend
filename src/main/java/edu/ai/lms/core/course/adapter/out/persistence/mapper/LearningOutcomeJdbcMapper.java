@@ -16,6 +16,7 @@ public class LearningOutcomeJdbcMapper {
                 .code(learningOutcome.getCode())
                 .description(learningOutcome.getDescription())
                 .courseId(courseId)
+                .groupLearningOutcomeId(learningOutcome.getGroupLearningOutcomeId())
                 .build();
     }
 
@@ -25,6 +26,7 @@ public class LearningOutcomeJdbcMapper {
                 .code(entity.getCode())
                 .description(entity.getDescription())
                 .courseId(entity.getCourseId())
+                .groupLearningOutcomeId(entity.getGroupLearningOutcomeId())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

@@ -27,6 +27,9 @@ public class LearningOutcomeJdbcTable {
     @Column("course_id")
     private UUID courseId;
 
+    @Column("group_learning_outcome_id")
+    private UUID groupLearningOutcomeId;
+
     @CreatedDate
     private LocalDateTime createdAt;
 

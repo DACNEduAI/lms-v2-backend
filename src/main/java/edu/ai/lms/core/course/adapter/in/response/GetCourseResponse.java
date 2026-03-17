@@ -21,7 +21,20 @@ public class GetCourseResponse {
     private String coverImage;
     private LocalDate startDate;
     private LocalDate endDate;
-    private List<LearningOutcomeDto> learningOutcomes;
+    private List<GroupLearningOutcomeDto> groupLearningOutcomes;
+    private List<LearningOutcomeDto> ungroupedLearningOutcomes;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class GroupLearningOutcomeDto {
+        private UUID id;
+        private String name;
+        private String description;
+        private List<LearningOutcomeDto> learningOutcomes;
+    }
 
     @Getter
     @Setter

@@ -48,4 +48,7 @@ public class Course {
 
     @Builder.Default
     private List<LearningOutcome> learningOutcomes = new ArrayList<>();
+
+    @Builder.Default
+    private List<GroupLearningOutcome> groupLearningOutcomes = new ArrayList<>();
 }

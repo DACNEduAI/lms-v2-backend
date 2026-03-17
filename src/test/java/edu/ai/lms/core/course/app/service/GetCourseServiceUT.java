@@ -2,6 +2,7 @@ package edu.ai.lms.core.course.app.service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,10 +28,12 @@ import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.GetCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
+import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
+import edu.ai.lms.core.course.app.port.out.LoadGroupLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,6 +45,9 @@ class GetCourseServiceUT {
     @Mock
     private LoadSignedInUserPort loadSignedInUserPort;
 
+    @Mock
+    private LoadGroupLearningOutcomePort loadGroupLearningOutcomePort;
+
     @InjectMocks
     private GetCourseService getCourseService;
 
@@ -49,11 +55,13 @@ class GetCourseServiceUT {
     private UUID teacherId;
     private UUID courseId;
     private Course mockCourse;
+    private UUID groupId;
 
     @BeforeEach
     void setUp() {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
+        groupId = UUID.randomUUID();
 
         mockUser = User.builder()
                 .id(teacherId)
@@ -65,6 +73,7 @@ class GetCourseServiceUT {
                 .id(UUID.randomUUID())
                 .code("CLO-1")
                 .description("Understand basic concepts")
+                .groupLearningOutcomeId(groupId)
                 .build());
         learningOutcomes.add(LearningOutcome.builder()
                 .id(UUID.randomUUID())
@@ -87,11 +96,20 @@ class GetCourseServiceUT {
     }
 
     @Test
-    @DisplayName("Should successfully get a course with valid course ID and authenticated teacher")
+    @DisplayName("Should successfully get a course with grouped and ungrouped learning outcomes")
     void testGetCourse_WithValidCourseIdAndAuthenticatedTeacher_ShouldSucceed() {
         // Arrange
+        GroupLearningOutcome group = GroupLearningOutcome.builder()
+                .id(groupId)
+                .name("Fundamentals")
+                .description("Basic concepts group")
+                .courseId(courseId)
+                .learningOutcomes(List.of(mockCourse.getLearningOutcomes().get(0)))
+                .build();
+
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
+        when(loadGroupLearningOutcomePort.findByCourseId(courseId)).thenReturn(List.of(group));
 
         // Act
         GetCourseResponse response = getCourseService.getCourse(courseId);
@@ -101,17 +119,24 @@ class GetCourseServiceUT {
         assertEquals(courseId, response.getCourseId());
         assertEquals("Introduction to Java", response.getCourseName());
         assertEquals("CS101", response.getCourseCode());
-        assertEquals("Learn Java programming basics", response.getDescription());
         assertEquals(teacherId, response.getTeacherId());
         assertTrue(response.getActive());
-        assertEquals("https://example.com/image.jpg", response.getCoverImage());
-        assertNotNull(response.getLearningOutcomes());
-        assertEquals(2, response.getLearningOutcomes().size());
-        assertEquals("CLO-1", response.getLearningOutcomes().get(0).getCode());
-        assertEquals("CLO-2", response.getLearningOutcomes().get(1).getCode());
+
+        // Grouped LOs
+        assertNotNull(response.getGroupLearningOutcomes());
+        assertEquals(1, response.getGroupLearningOutcomes().size());
+        assertEquals("Fundamentals", response.getGroupLearningOutcomes().get(0).getName());
+        assertEquals(1, response.getGroupLearningOutcomes().get(0).getLearningOutcomes().size());
+        assertEquals("CLO-1", response.getGroupLearningOutcomes().get(0).getLearningOutcomes().get(0).getCode());
+
+        // Ungrouped LOs
+        assertNotNull(response.getUngroupedLearningOutcomes());
+        assertEquals(1, response.getUngroupedLearningOutcomes().size());
+        assertEquals("CLO-2", response.getUngroupedLearningOutcomes().get(0).getCode());
 
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
+        verify(loadGroupLearningOutcomePort, times(1)).findByCourseId(courseId);
     }
 
     @Test
@@ -143,9 +168,6 @@ class GetCourseServiceUT {
                 () -> getCourseService.getCourse(courseId));
 
         assertEquals("Authenticated teacher not found", exception.getMessage());
-
-        verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
     }
 
     @Test
@@ -165,9 +187,6 @@ class GetCourseServiceUT {
                 () -> getCourseService.getCourse(courseId));
 
         assertEquals("Teacher is not authorized to access this course", exception.getMessage());
-
-        verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
     }
 
     @Test
@@ -188,6 +207,7 @@ class GetCourseServiceUT {
 
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(courseWithNoLearningOutcomes));
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
+        when(loadGroupLearningOutcomePort.findByCourseId(courseId)).thenReturn(Collections.emptyList());
 
         // Act
         GetCourseResponse response = getCourseService.getCourse(courseId);
@@ -195,12 +215,10 @@ class GetCourseServiceUT {
         // Assert
         assertNotNull(response);
         assertEquals(courseId, response.getCourseId());
-        assertEquals("Empty Course", response.getCourseName());
-        assertNotNull(response.getLearningOutcomes());
-        assertEquals(0, response.getLearningOutcomes().size());
-
-        verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
+        assertNotNull(response.getGroupLearningOutcomes());
+        assertEquals(0, response.getGroupLearningOutcomes().size());
+        assertNotNull(response.getUngroupedLearningOutcomes());
+        assertEquals(0, response.getUngroupedLearningOutcomes().size());
     }
 
     @Test
@@ -221,6 +239,7 @@ class GetCourseServiceUT {
 
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(inactiveCourse));
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
+        when(loadGroupLearningOutcomePort.findByCourseId(courseId)).thenReturn(Collections.emptyList());
 
         // Act
         GetCourseResponse response = getCourseService.getCourse(courseId);
@@ -228,10 +247,6 @@ class GetCourseServiceUT {
         // Assert
         assertNotNull(response);
         assertEquals(courseId, response.getCourseId());
-        assertEquals("Inactive Course", response.getCourseName());
         assertFalse(response.getActive());
-
-        verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
     }
 }

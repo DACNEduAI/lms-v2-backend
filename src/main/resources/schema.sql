@@ -11,6 +11,7 @@ DROP TABLE IF EXISTS
     chapter_materials,
     chapter_learning_outcomes,
     learning_outcomes,
+    group_learning_outcomes,
     enrollments,
     ai_settings,
     quizzes,
@@ -122,14 +123,28 @@ CREATE TABLE IF NOT EXISTS chapter_materials (
 );
 
 
--- Learning outcomes table
+-- Group Learning Outcomes table (weak entity dependent on Course)
+CREATE TABLE IF NOT EXISTS group_learning_outcomes (
+    id UUID UNIQUE DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id, course_id)
+);
+
+-- Learning outcomes table (weak entity dependent on Course)
 CREATE TABLE IF NOT EXISTS learning_outcomes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID UNIQUE DEFAULT gen_random_uuid(),
     code VARCHAR(255),
     description TEXT,
-    course_id UUID REFERENCES courses(id),
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    group_learning_outcome_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id, course_id),
+    FOREIGN KEY (group_learning_outcome_id, course_id) REFERENCES group_learning_outcomes(id, course_id) ON DELETE SET NULL (group_learning_outcome_id)
 );
 
 -- Junction table for many-to-many: chapters <-> learning_outcomes

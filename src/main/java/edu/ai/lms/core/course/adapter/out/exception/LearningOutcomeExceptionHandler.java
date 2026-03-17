@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import edu.ai.lms.common.ErrorResponse;
+import edu.ai.lms.core.course.app.exception.GroupLearningOutcomeNotFoundException;
+import edu.ai.lms.core.course.app.exception.LearningOutcomeAlreadyInGroupException;
 import edu.ai.lms.core.course.app.exception.LearningOutcomeNotFoundException;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -31,5 +33,38 @@ public class LearningOutcomeExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Handles GroupLearningOutcomeNotFoundException.
+     */
+    @ApiResponse(responseCode = "404", description = "Group learning outcome not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ExceptionHandler(GroupLearningOutcomeNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleGroupLearningOutcomeNotFoundException(GroupLearningOutcomeNotFoundException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.NOT_FOUND.value())
+                .error("Group Learning Outcome Not Found")
+                .message(ex.getMessage())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Handles LearningOutcomeAlreadyInGroupException.
+     */
+    @ApiResponse(responseCode = "400", description = "Learning outcome already in a group",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ExceptionHandler(LearningOutcomeAlreadyInGroupException.class)
+    public ResponseEntity<ErrorResponse> handleLearningOutcomeAlreadyInGroupException(LearningOutcomeAlreadyInGroupException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Learning Outcome Already In Group")
+                .message(ex.getMessage())
+                .details(ex.getConflictingIds().stream().map(java.util.UUID::toString).collect(java.util.stream.Collectors.toList()))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 }
