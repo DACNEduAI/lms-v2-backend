@@ -606,7 +606,8 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                 .body("active", notNullValue())
                 .body("startDate", notNullValue())
                 .body("endDate", notNullValue())
-                .body("learningOutcomes", notNullValue());
+                .body("groupLearningOutcomes", notNullValue())
+                .body("ungroupedLearningOutcomes", notNullValue());
     }
 
     @Test
@@ -687,7 +688,8 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                 .log().all()
                 .statusCode(200)
                 .body("courseId", equalTo(createdCourseId.toString()))
-                .body("learningOutcomes", notNullValue());
+                .body("groupLearningOutcomes", notNullValue())
+                .body("ungroupedLearningOutcomes", notNullValue());
     }
 
     // ==================== GET ALL COURSES TESTS ====================

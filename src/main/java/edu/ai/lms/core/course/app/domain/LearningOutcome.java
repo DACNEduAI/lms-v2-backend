@@ -21,6 +21,8 @@ public class LearningOutcome {
 
     private UUID courseId;
 
+    private UUID groupLearningOutcomeId;
+
     private Course course;
 
     @Builder.Default

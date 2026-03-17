@@ -10,10 +10,13 @@ import org.springframework.transaction.annotation.Transactional;
 import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.course.adapter.in.response.GetCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
+import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
+import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.in.usecase.GetCourseUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
+import edu.ai.lms.core.course.app.port.out.LoadGroupLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import lombok.RequiredArgsConstructor;
 
@@ -23,6 +26,7 @@ public class GetCourseService implements GetCourseUseCase {
 
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInUserPort loadSignedInUserPort;
+    private final LoadGroupLearningOutcomePort loadGroupLearningOutcomePort;
 
     @Override
     @Transactional(readOnly = true)
@@ -40,8 +44,27 @@ public class GetCourseService implements GetCourseUseCase {
             throw new IllegalArgumentException("Teacher is not authorized to access this course");
         }
 
-        // Map learning outcomes
-        List<GetCourseResponse.LearningOutcomeDto> learningOutcomeDtos = course.getLearningOutcomes().stream()
+        // Load group learning outcomes with their nested LOs
+        List<GroupLearningOutcome> groups = loadGroupLearningOutcomePort.findByCourseId(courseId);
+
+        List<GetCourseResponse.GroupLearningOutcomeDto> groupDtos = groups.stream()
+                .map(group -> GetCourseResponse.GroupLearningOutcomeDto.builder()
+                        .id(group.getId())
+                        .name(group.getName())
+                        .description(group.getDescription())
+                        .learningOutcomes(group.getLearningOutcomes().stream()
+                                .map(lo -> GetCourseResponse.LearningOutcomeDto.builder()
+                                        .id(lo.getId())
+                                        .code(lo.getCode())
+                                        .description(lo.getDescription())
+                                        .build())
+                                .collect(Collectors.toList()))
+                        .build())
+                .collect(Collectors.toList());
+
+        // Ungrouped LOs: those without a group assignment
+        List<GetCourseResponse.LearningOutcomeDto> ungroupedDtos = course.getLearningOutcomes().stream()
+                .filter(lo -> lo.getGroupLearningOutcomeId() == null)
                 .map(lo -> GetCourseResponse.LearningOutcomeDto.builder()
                         .id(lo.getId())
                         .code(lo.getCode())
@@ -60,7 +83,8 @@ public class GetCourseService implements GetCourseUseCase {
                 .coverImage(course.getCoverImage())
                 .startDate(course.getStartDate())
                 .endDate(course.getEndDate())
-                .learningOutcomes(learningOutcomeDtos)
+                .groupLearningOutcomes(groupDtos)
+                .ungroupedLearningOutcomes(ungroupedDtos)
                 .build();
     }
 }

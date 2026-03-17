@@ -11,11 +11,13 @@ import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
+import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.database.ChapterJdbcTable;
 import edu.ai.lms.database.CourseJdbcTable;
 import edu.ai.lms.database.CourseStudentJdbcTable;
 import edu.ai.lms.database.CourseTeacherJdbcTable;
+import edu.ai.lms.database.GroupLearningOutcomeJdbcTable;
 import edu.ai.lms.database.LearningOutcomeJdbcTable;
 import lombok.RequiredArgsConstructor;
 
@@ -25,6 +27,7 @@ public class CourseJdbcMapper {
 
     private final ChapterJdbcMapper chapterJdbcMapper;
     private final LearningOutcomeJdbcMapper learningOutcomeJdbcMapper;
+    private final GroupLearningOutcomeJdbcMapper groupLearningOutcomeJdbcMapper;
 
     public CourseJdbcTable mapToCourseJdbcEntity(Course course) {
         Set<CourseTeacherJdbcTable> courseTeachers = new HashSet<>();
@@ -58,7 +61,8 @@ public class CourseJdbcMapper {
     public Course mapToCourse(
             CourseJdbcTable entity,
             List<ChapterJdbcTable> chapterEntities,
-            List<LearningOutcomeJdbcTable> learningOutcomeEntities
+            List<LearningOutcomeJdbcTable> learningOutcomeEntities,
+            List<GroupLearningOutcomeJdbcTable> groupLearningOutcomeEntities
     ) {
         List<UUID> teacherIds = entity.getCourseTeachers() != null
                 ? entity.getCourseTeachers().stream()
@@ -86,6 +90,13 @@ public class CourseJdbcMapper {
                     .collect(Collectors.toList());
         }
 
+        List<GroupLearningOutcome> groupLearningOutcomes = new ArrayList<>();
+        if (groupLearningOutcomeEntities != null) {
+            groupLearningOutcomes = groupLearningOutcomeEntities.stream()
+                    .map(groupLearningOutcomeJdbcMapper::mapToDomain)
+                    .collect(Collectors.toList());
+        }
+
         return Course.builder()
                 .id(entity.getId())
                 .courseName(entity.getCourseName())
@@ -99,6 +110,7 @@ public class CourseJdbcMapper {
                 .endDate(entity.getEndDate())
                 .chapters(chapters)
                 .learningOutcomes(learningOutcomes)
+                .groupLearningOutcomes(groupLearningOutcomes)
                 .build();
     }
 }

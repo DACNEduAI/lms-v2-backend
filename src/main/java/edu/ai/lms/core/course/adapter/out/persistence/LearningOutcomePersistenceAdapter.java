@@ -31,6 +31,16 @@ class LearningOutcomePersistenceAdapter implements SaveLearningOutcomePort, Load
     }
 
     @Override
+    public void assignToGroup(UUID learningOutcomeId, UUID courseId, UUID groupLearningOutcomeId) {
+        learningOutcomeRepository.updateGroupLearningOutcomeId(learningOutcomeId, courseId, groupLearningOutcomeId);
+    }
+
+    @Override
+    public void removeFromGroup(UUID learningOutcomeId, UUID courseId) {
+        learningOutcomeRepository.removeFromGroup(learningOutcomeId, courseId);
+    }
+
+    @Override
     public Optional<LearningOutcome> findById(UUID id) {
         return learningOutcomeRepository.findById(id)
                 .map(learningOutcomeJdbcMapper::mapToLearningOutcome);

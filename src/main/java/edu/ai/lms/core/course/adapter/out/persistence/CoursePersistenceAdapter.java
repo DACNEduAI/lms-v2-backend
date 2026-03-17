@@ -17,6 +17,7 @@ import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
 import edu.ai.lms.database.ChapterJdbcTable;
 import edu.ai.lms.database.CourseJdbcTable;
+import edu.ai.lms.database.GroupLearningOutcomeJdbcTable;
 import edu.ai.lms.database.LearningOutcomeJdbcTable;
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +28,7 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     private final CourseRepository courseRepository;
     private final ChapterRepository chapterRepository;
     private final LearningOutcomeRepository learningOutcomeRepository;
+    private final GroupLearningOutcomeRepository groupLearningOutcomeRepository;
     private final CourseJdbcMapper courseJdbcMapper;
     private final ChapterJdbcMapper chapterJdbcMapper;
     private final LearningOutcomeJdbcMapper learningOutcomeJdbcMapper;
@@ -110,7 +112,8 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     private Course loadFullCourse(CourseJdbcTable courseEntity) {
         List<ChapterJdbcTable> chapters = chapterRepository.findByCourseId(courseEntity.getId());
         List<LearningOutcomeJdbcTable> learningOutcomes = learningOutcomeRepository.findByCourseId(courseEntity.getId());
+        List<GroupLearningOutcomeJdbcTable> groupLearningOutcomes = groupLearningOutcomeRepository.findByCourseId(courseEntity.getId());
 
-        return courseJdbcMapper.mapToCourse(courseEntity, chapters, learningOutcomes);
+        return courseJdbcMapper.mapToCourse(courseEntity, chapters, learningOutcomes, groupLearningOutcomes);
     }
 }
