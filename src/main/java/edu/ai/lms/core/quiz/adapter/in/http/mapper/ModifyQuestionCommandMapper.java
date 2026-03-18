@@ -16,7 +16,7 @@ import edu.ai.lms.core.quiz.app.port.in.command.ModifyQuestionCommand;
 @Component
 public class ModifyQuestionCommandMapper {
 
-    public ModifyQuestionCommand toCommand(UUID quizId, ModifyQuestionRequest.QuestionList request) {
+    public ModifyQuestionCommand toCommand(UUID quizId, ModifyQuestionRequest.ModifyQuestionItem request) {
         List<Answer> answers = new ArrayList<>();
         if (request.getAnswers() != null) {
             answers = request.getAnswers().stream()
