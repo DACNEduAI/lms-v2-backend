@@ -20,14 +20,14 @@ public class ModifyQuestionRequest {
     @Valid
     @NotEmpty(message = "questions cannot be empty")
     @Builder.Default
-    private List<QuestionList> questions = new ArrayList<>();
+    private List<ModifyQuestionItem> questions = new ArrayList<>();
 
     @Getter
     @Setter
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
-    public static class QuestionList {
+    public static class ModifyQuestionItem {
 
         @NotNull(message = "questionId is required")
         private UUID questionId;

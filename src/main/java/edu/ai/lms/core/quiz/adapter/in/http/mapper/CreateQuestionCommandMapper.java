@@ -16,7 +16,7 @@ import edu.ai.lms.core.quiz.app.port.in.command.CreateQuestionCommand;
 @Component
 public class CreateQuestionCommandMapper {
 
-    public CreateQuestionCommand toCommand(UUID quizId, CreateQuestionRequest.QuestionList request) {
+    public CreateQuestionCommand toCommand(UUID quizId, CreateQuestionRequest.CreateQuestionItem request) {
         List<Answer> answers = new ArrayList<>();
         if (request.getAnswers() != null) {
             answers = request.getAnswers().stream()

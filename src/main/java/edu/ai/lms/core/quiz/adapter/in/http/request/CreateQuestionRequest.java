@@ -18,14 +18,16 @@ public class CreateQuestionRequest {
     @Valid
     @NotEmpty(message = "questions cannot be empty")
     @Builder.Default
-    private List<QuestionList> questions = new ArrayList<>();
+    private List<CreateQuestionItem> questions = new ArrayList<>();
+
+
 
     @Getter
     @Setter
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
-    public static class QuestionList {
+    public static class CreateQuestionItem {
 
         @NotBlank(message = "Question content cannot be blank")
         private String content;
