@@ -14,11 +14,17 @@ import edu.ai.lms.database.QuizJdbcTable;
 @Repository
 interface QuizRepository extends CrudRepository<QuizJdbcTable, UUID> {
 
+    @Query("SELECT * FROM quizzes WHERE id = :quizId")
+    Optional<QuizJdbcTable> getById(@Param("quizId") UUID quizId);
+
+    @Query("SELECT * FROM quizzes WHERE id = :quizId AND course_id = :courseId")
+    Optional<QuizJdbcTable> getByIdAndCourseId(@Param("quizId") UUID quizId, @Param("courseId") UUID courseId);
+
     @Query("SELECT * FROM quizzes WHERE course_id = :courseId ORDER BY created_at DESC")
-    List<QuizJdbcTable> findAllByCourseId(@Param("courseId") UUID courseId);
+    List<QuizJdbcTable> getAllByCourseId(@Param("courseId") UUID courseId);
 
     @Query("SELECT * FROM quizzes WHERE course_id = :courseId AND teacher_id = :teacherId ORDER BY created_at DESC")
-    List<QuizJdbcTable> findByCourseIdAndTeacherId(
+    List<QuizJdbcTable> getByCourseIdAndTeacherId(
             @Param("courseId") UUID courseId,
             @Param("teacherId") UUID teacherId);
 }

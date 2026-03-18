@@ -1,6 +1,8 @@
 package edu.ai.lms.core.quiz.adapter.in.http;
 
 import java.util.UUID;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import edu.ai.lms.core.quiz.adapter.in.http.mapper.CreateQuizCommandMapper;
 import edu.ai.lms.core.quiz.adapter.in.http.mapper.ModifyQuizCommandMapper;
 import edu.ai.lms.core.quiz.adapter.in.http.request.CreateQuizRequest;
+import edu.ai.lms.core.quiz.adapter.in.http.request.DeleteQuizzesRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.request.ModifyQuizRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuizResponse;
 import edu.ai.lms.core.quiz.adapter.in.http.response.DeleteQuizResponse;
@@ -67,13 +70,13 @@ public class QuizController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Get a specific quiz", description = "Get a quiz by its ID within a course.")
+    @Operation(summary = "Get a specific quiz", description = "Get a quiz with full questions and answers by its ID within a course.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Quiz retrieved successfully",
                     content = @Content(schema = @Schema(implementation = GetQuizResponse.class))),
             @ApiResponse(responseCode = "404", description = "Quiz not found")
     })
-    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @PreAuthorize("hasRole('TEACHER')")
     @GetMapping("/{quizId}")
     public ResponseEntity<GetQuizResponse> getQuiz(
             @PathVariable UUID courseId,
@@ -127,5 +130,22 @@ public class QuizController {
             @PathVariable UUID quizId) {
         DeleteQuizResponse response = deleteQuizUseCase.deleteQuiz(courseId, quizId);
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Delete quizzes", description = "Delete one or many quizzes.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Quizzes deleted successfully",
+                    content = @Content(schema = @Schema(implementation = DeleteQuizResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Quiz not found")
+    })
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @DeleteMapping()
+    public ResponseEntity<List<DeleteQuizResponse>> deleteQuizzes(
+            @PathVariable UUID courseId,
+            @Valid @RequestBody DeleteQuizzesRequest request) {
+        List<DeleteQuizResponse> responses = request.getQuizIds().stream()
+                .map(quizId -> deleteQuizUseCase.deleteQuiz(courseId, quizId))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
     }
 }

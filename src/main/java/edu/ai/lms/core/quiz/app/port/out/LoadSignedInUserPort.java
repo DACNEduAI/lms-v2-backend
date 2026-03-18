@@ -10,5 +10,5 @@ public interface LoadSignedInUserPort {
      * Finds the currently authenticated user.
      * @return Optional containing the authenticated User, or empty if not authenticated.
      */
-    Optional<User> findAuthenticatedUser();
+    Optional<User> getAuthenticatedUser();
 }

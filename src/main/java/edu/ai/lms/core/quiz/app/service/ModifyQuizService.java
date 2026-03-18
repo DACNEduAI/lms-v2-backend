@@ -27,10 +27,10 @@ public class ModifyQuizService implements ModifyQuizUseCase {
     @Override
     @Transactional
     public ModifyQuizResponse modifyQuiz(ModifyQuizCommand command) {
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        User user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
-        Quiz existingQuiz = loadQuizPort.findById(command.quizId())
+        Quiz existingQuiz = loadQuizPort.getById(command.quizId())
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found with id: " + command.quizId()));
 
         // Verify quiz belongs to the same course

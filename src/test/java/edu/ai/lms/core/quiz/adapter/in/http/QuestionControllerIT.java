@@ -29,6 +29,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
     private static UUID createdQuizId;
     private static UUID createdQuestionId;
     private static UUID secondQuestionId;
+    private static UUID thirdQuestionId;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     // ==================== SETUP ====================
@@ -134,13 +135,41 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(4)
-    @DisplayName("Should successfully create a question")
+    @DisplayName("Should successfully create multiple questions")
     void testCreateQuestion_ShouldSucceed() {
         String requestBody = """
                 {
-                    "content": "What is 2 + 2?",
-                    "type": "MULTIPLE_CHOICE",
-                    "points": 5.0
+                    "questions": [
+                    {
+                        "content": "What is 2 + 2?",
+                        "type": "MULTIPLE_CHOICE",
+                        "points": 5.0,
+                        "answers": [
+                            {
+                                "content": "4",
+                                "isCorrect": true,
+                                "explanation": "Correct"
+                            },
+                            {
+                                "content": "5",
+                                "isCorrect": false,
+                                "explanation": "Incorrect"
+                            }
+                        ]
+                    },
+                    {
+                        "content": "Is the Earth flat?",
+                        "type": "TRUE_FALSE",
+                        "points": 3.0,
+                        "answers": [
+                            {
+                                "content": "False",
+                                "isCorrect": true,
+                                "explanation": "Earth is not flat"
+                            }
+                        ]
+                    }
+                    ]
                 }
                 """;
 
@@ -149,30 +178,43 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .post("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question")
+                .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(201)
-                .body("questionId", notNullValue())
-                .body("content", equalTo("What is 2 + 2?"))
-                .body("type", equalTo("MULTIPLE_CHOICE"))
-                .body("points", equalTo(5.0f))
-                .body("quizId", equalTo(createdQuizId.toString()))
-                .body("createdAt", notNullValue())
+                .body("", hasSize(2))
+                .body("[0].questionId", notNullValue())
+                .body("[0].content", equalTo("What is 2 + 2?"))
+                .body("[0].answers", hasSize(2))
+                .body("[1].questionId", notNullValue())
+                .body("[1].content", equalTo("Is the Earth flat?"))
+                .body("[1].answers", hasSize(1))
                 .extract().response();
 
-        createdQuestionId = UUID.fromString(response.jsonPath().getString("questionId"));
+        createdQuestionId = UUID.fromString(response.jsonPath().getString("[0].questionId"));
+        secondQuestionId = UUID.fromString(response.jsonPath().getString("[1].questionId"));
     }
 
     @Test
     @Order(5)
-    @DisplayName("Should create a second question")
-    void testCreateSecondQuestion_ShouldSucceed() {
+    @DisplayName("Should create another question for bulk delete test")
+    void testCreateThirdQuestion_ShouldSucceed() {
         String requestBody = """
                 {
-                    "content": "Is the Earth flat?",
-                    "type": "TRUE_FALSE",
-                    "points": 3.0
+                    "questions": [
+                    {
+                        "content": "What is 10 - 4?",
+                        "type": "MULTIPLE_CHOICE",
+                        "points": 2.0,
+                        "answers": [
+                            {
+                                "content": "6",
+                                "isCorrect": true,
+                                "explanation": "Correct"
+                            }
+                        ]
+                    }
+                    ]
                 }
                 """;
 
@@ -181,16 +223,16 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .post("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question")
+                .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(201)
-                .body("questionId", notNullValue())
-                .body("content", equalTo("Is the Earth flat?"))
-                .body("type", equalTo("TRUE_FALSE"))
+                .body("", hasSize(1))
+                .body("[0].questionId", notNullValue())
+                .body("[0].content", equalTo("What is 10 - 4?"))
                 .extract().response();
 
-        secondQuestionId = UUID.fromString(response.jsonPath().getString("questionId"));
+        thirdQuestionId = UUID.fromString(response.jsonPath().getString("[0].questionId"));
     }
 
     @Test
@@ -209,7 +251,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 .contentType(ContentType.JSON)
                 .body(requestBody)
                 .when()
-                .post("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question")
+                .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -221,8 +263,12 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
     void testCreateQuestion_WithMissingContent() {
         String requestBody = """
                 {
-                    "type": "MULTIPLE_CHOICE",
-                    "points": 5.0
+                    "questions": [
+                    {
+                        "type": "MULTIPLE_CHOICE",
+                        "points": 5.0
+                    }
+                    ]
                 }
                 """;
 
@@ -231,7 +277,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .post("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question")
+                .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(400);
@@ -246,7 +292,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId)
+                .get("/api/quiz/" + createdQuizId + "/question/" + createdQuestionId)
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -265,7 +311,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
     void testGetQuestion_WithoutAuth() {
         given()
                 .when()
-                .get("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId)
+                .get("/api/quiz/" + createdQuizId + "/question/" + createdQuestionId)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -280,7 +326,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + nonExistentId)
+                .get("/api/quiz/" + createdQuizId + "/question/" + nonExistentId)
                 .then()
                 .log().all()
                 .statusCode(404);
@@ -294,27 +340,41 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
     void testModifyQuestion_ShouldSucceed() {
         String requestBody = """
                 {
-                    "content": "What is 2 + 3?",
-                    "type": "MULTIPLE_CHOICE",
-                    "points": 8.0
+                    "questions": [
+                    {
+                        "questionId": "%s",
+                        "content": "What is 2 + 3?",
+                        "type": "MULTIPLE_CHOICE",
+                        "points": 8.0,
+                        "answers": [
+                            {
+                                "content": "5",
+                                "isCorrect": true,
+                                "explanation": "Correct"
+                            }
+                        ]
+                    }
+                    ]
                 }
-                """;
+                """.formatted(createdQuestionId);
 
         given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId)
+                .put("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(200)
-                .body("questionId", equalTo(createdQuestionId.toString()))
-                .body("content", equalTo("What is 2 + 3?"))
-                .body("type", equalTo("MULTIPLE_CHOICE"))
-                .body("points", equalTo(8.0f))
-                .body("quizId", equalTo(createdQuizId.toString()))
-                .body("updatedAt", notNullValue());
+                .body("", hasSize(1))
+                .body("[0].questionId", equalTo(createdQuestionId.toString()))
+                .body("[0].content", equalTo("What is 2 + 3?"))
+                .body("[0].type", equalTo("MULTIPLE_CHOICE"))
+                .body("[0].points", equalTo(8.0f))
+                .body("[0].quizId", equalTo(createdQuizId.toString()))
+                .body("[0].answers", hasSize(1))
+                .body("[0].updatedAt", notNullValue());
     }
 
     @Test
@@ -323,17 +383,23 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
     void testModifyQuestion_WithoutAuth() {
         String requestBody = """
                 {
-                    "content": "Hacked question",
-                    "type": "ESSAY",
-                    "points": 100.0
+                    "questions": [
+                    {
+                        "questionId": "%s",
+                        "content": "Hacked question",
+                        "type": "ESSAY",
+                        "points": 100.0,
+                        "answers": []
+                    }
+                    ]
                 }
-                """;
+                """.formatted(createdQuestionId);
 
         given()
                 .contentType(ContentType.JSON)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId)
+                .put("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -347,18 +413,24 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
 
         String requestBody = """
                 {
-                    "content": "Ghost question",
-                    "type": "ESSAY",
-                    "points": 10.0
+                    "questions": [
+                    {
+                        "questionId": "%s",
+                        "content": "Ghost question",
+                        "type": "ESSAY",
+                        "points": 10.0,
+                        "answers": []
+                    }
+                    ]
                 }
-                """;
+                """.formatted(nonExistentId);
 
         given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + nonExistentId)
+                .put("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(404);
@@ -372,7 +444,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
     void testDeleteQuestion_WithoutAuth() {
         given()
                 .when()
-                .delete("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + secondQuestionId)
+                .delete("/api/quiz/" + createdQuizId + "/question/" + secondQuestionId)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -380,17 +452,26 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(15)
-    @DisplayName("Should successfully delete a question")
+    @DisplayName("Should successfully delete questions in bulk")
     void testDeleteQuestion_ShouldSucceed() {
+        String requestBody = """
+                {
+                    "questionIds": ["%s", "%s"]
+                }
+                """.formatted(secondQuestionId, thirdQuestionId);
+
         given()
+                .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
                 .when()
-                .delete("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + secondQuestionId)
+                .delete("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(200)
-                .body("questionId", equalTo(secondQuestionId.toString()))
-                .body("message", equalTo("Question deleted successfully"));
+                .body("", hasSize(2))
+                .body("[0].message", equalTo("Question deleted successfully"))
+                .body("[1].message", equalTo("Question deleted successfully"));
     }
 
     @Test
@@ -398,11 +479,18 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
     @DisplayName("Should fail to delete non-existent question")
     void testDeleteQuestion_WithNonExistentQuestion() {
         UUID nonExistentId = UUID.randomUUID();
+        String requestBody = """
+                {
+                    "questionIds": ["%s"]
+                }
+                """.formatted(nonExistentId);
 
         given()
+                .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
                 .when()
-                .delete("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + nonExistentId)
+                .delete("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(404);
@@ -417,7 +505,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId)
+                .get("/api/quiz/" + createdQuizId + "/question/" + createdQuestionId)
                 .then()
                 .log().all()
                 .statusCode(200)

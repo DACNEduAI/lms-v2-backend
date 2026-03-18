@@ -32,15 +32,15 @@ public class DeleteQuestionService implements DeleteQuestionUseCase {
     @Override
     @Transactional
     public DeleteQuestionResponse deleteQuestion(UUID quizId, UUID questionId) {
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        User user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
-        Quiz quiz = loadQuizPort.findById(quizId)
+        Quiz quiz = loadQuizPort.getById(quizId)
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found with id: " + quizId));
 
         verifyQuizOwnership(user, quiz);
 
-        Question question = loadQuestionPort.findByIdWithoutAnswers(questionId)
+        Question question = loadQuestionPort.getByIdWithoutAnswers(questionId)
                 .orElseThrow(() -> new QuestionNotFoundException("Question not found with id: " + questionId));
 
         if (!question.getQuizId().equals(quizId)) {

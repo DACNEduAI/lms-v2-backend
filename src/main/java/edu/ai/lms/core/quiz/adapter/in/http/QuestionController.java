@@ -1,6 +1,8 @@
 package edu.ai.lms.core.quiz.adapter.in.http;
 
 import java.util.UUID;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import edu.ai.lms.core.quiz.adapter.in.http.mapper.CreateQuestionCommandMapper;
 import edu.ai.lms.core.quiz.adapter.in.http.mapper.ModifyQuestionCommandMapper;
 import edu.ai.lms.core.quiz.adapter.in.http.request.CreateQuestionRequest;
+import edu.ai.lms.core.quiz.adapter.in.http.request.DeleteQuestionsRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.request.ModifyQuestionRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuestionResponse;
 import edu.ai.lms.core.quiz.adapter.in.http.response.DeleteQuestionResponse;
@@ -37,7 +40,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/{courseId}/quiz/{quizId}/question")
+@RequestMapping("/api/quiz/{quizId}/question")
 @RequiredArgsConstructor
 public class QuestionController {
 
@@ -57,45 +60,49 @@ public class QuestionController {
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
     @GetMapping("/{questionId}")
     public ResponseEntity<GetQuestionResponse> getQuestion(
-            @PathVariable UUID courseId,
             @PathVariable UUID quizId,
             @PathVariable UUID questionId) {
         GetQuestionResponse response = getQuestionUseCase.getQuestion(quizId, questionId);
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Create a new question", description = "Add a question to a quiz. Only the quiz creator can add questions.")
+    @Operation(summary = "Create questions", description = "Add one or many questions to a quiz. Only the quiz creator can add questions.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Question created successfully",
                     content = @Content(schema = @Schema(implementation = CreateQuestionResponse.class)))
     })
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
     @PostMapping()
-    public ResponseEntity<CreateQuestionResponse> createQuestion(
-            @PathVariable UUID courseId,
+    public ResponseEntity<List<CreateQuestionResponse>> createQuestion(
             @PathVariable UUID quizId,
             @Valid @RequestBody CreateQuestionRequest request) {
-        CreateQuestionCommand command = createQuestionCommandMapper.toCommand(quizId, request);
-        CreateQuestionResponse response = createQuestionUseCase.createQuestion(command);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        List<CreateQuestionResponse> responses = request.getQuestions().stream()
+                .map(questionRequest -> {
+                    CreateQuestionCommand command = createQuestionCommandMapper.toCommand(quizId, questionRequest);
+                    return createQuestionUseCase.createQuestion(command);
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.status(HttpStatus.CREATED).body(responses);
     }
 
-    @Operation(summary = "Modify a question", description = "Update a question. Only the quiz creator can modify questions.")
+    @Operation(summary = "Modify questions", description = "Update one or many questions. Only the quiz creator can modify questions.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Question modified successfully",
                     content = @Content(schema = @Schema(implementation = ModifyQuestionResponse.class))),
             @ApiResponse(responseCode = "404", description = "Question not found")
     })
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    @PutMapping("/{questionId}")
-    public ResponseEntity<ModifyQuestionResponse> modifyQuestion(
-            @PathVariable UUID courseId,
+    @PutMapping()
+    public ResponseEntity<List<ModifyQuestionResponse>> modifyQuestion(
             @PathVariable UUID quizId,
-            @PathVariable UUID questionId,
             @Valid @RequestBody ModifyQuestionRequest request) {
-        ModifyQuestionCommand command = modifyQuestionCommandMapper.toCommand(quizId, questionId, request);
-        ModifyQuestionResponse response = modifyQuestionUseCase.modifyQuestion(command);
-        return ResponseEntity.ok(response);
+        List<ModifyQuestionResponse> responses = request.getQuestions().stream()
+                .map(questionRequest -> {
+                    ModifyQuestionCommand command = modifyQuestionCommandMapper.toCommand(quizId, questionRequest);
+                    return modifyQuestionUseCase.modifyQuestion(command);
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
     }
 
     @Operation(summary = "Delete a question", description = "Delete a question from a quiz. Only the quiz creator can delete questions.")
@@ -107,10 +114,26 @@ public class QuestionController {
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
     @DeleteMapping("/{questionId}")
     public ResponseEntity<DeleteQuestionResponse> deleteQuestion(
-            @PathVariable UUID courseId,
             @PathVariable UUID quizId,
             @PathVariable UUID questionId) {
         DeleteQuestionResponse response = deleteQuestionUseCase.deleteQuestion(quizId, questionId);
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Delete questions", description = "Delete one or many questions from a quiz.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Questions deleted successfully",
+                    content = @Content(schema = @Schema(implementation = DeleteQuestionResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Question not found")
+    })
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @DeleteMapping()
+    public ResponseEntity<List<DeleteQuestionResponse>> deleteQuestions(
+            @PathVariable UUID quizId,
+            @Valid @RequestBody DeleteQuestionsRequest request) {
+        List<DeleteQuestionResponse> responses = request.getQuestionIds().stream()
+                .map(questionId -> deleteQuestionUseCase.deleteQuestion(quizId, questionId))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
     }
 }

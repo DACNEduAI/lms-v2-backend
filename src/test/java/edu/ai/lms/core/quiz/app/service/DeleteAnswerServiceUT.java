@@ -104,10 +104,10 @@ class DeleteAnswerServiceUT {
     @DisplayName("Should successfully delete an answer with valid details")
     void testDeleteAnswer_WithValidDetails_ShouldSucceed() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
-        when(loadAnswerPort.findByKey(questionId, answerNumber)).thenReturn(Optional.of(existingAnswer));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadAnswerPort.getByKey(questionId, answerNumber)).thenReturn(Optional.of(existingAnswer));
 
         // Act
         DeleteAnswerResponse response = deleteAnswerService.deleteAnswer(questionId, answerNumber);
@@ -118,10 +118,10 @@ class DeleteAnswerServiceUT {
         assertEquals(questionId, response.getQuestionId());
         assertEquals("Answer deleted successfully", response.getMessage());
 
-        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
-        verify(loadQuestionPort, times(1)).findByIdWithoutAnswers(questionId);
-        verify(loadQuizPort, times(1)).findById(quizId);
-        verify(loadAnswerPort, times(1)).findByKey(questionId, answerNumber);
+        verify(loadSignedInUserPort, times(1)).getAuthenticatedUser();
+        verify(loadQuestionPort, times(1)).getByIdWithoutAnswers(questionId);
+        verify(loadQuizPort, times(1)).getById(quizId);
+        verify(loadAnswerPort, times(1)).getByKey(questionId, answerNumber);
         verify(deleteAnswerPort, times(1)).deleteByKey(questionId, answerNumber);
     }
 
@@ -129,7 +129,7 @@ class DeleteAnswerServiceUT {
     @DisplayName("Should throw UserNotAuthenticatedException when user is not authenticated")
     void testDeleteAnswer_WithUnauthenticatedUser_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(UserNotAuthenticatedException.class,
@@ -144,8 +144,8 @@ class DeleteAnswerServiceUT {
     @DisplayName("Should throw QuestionNotFoundException when question does not exist")
     void testDeleteAnswer_WithNonExistentQuestion_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.empty());
 
         // Act & Assert
         QuestionNotFoundException exception = assertThrows(QuestionNotFoundException.class,
@@ -160,9 +160,9 @@ class DeleteAnswerServiceUT {
     @DisplayName("Should throw QuizNotFoundException when quiz does not exist")
     void testDeleteAnswer_WithNonExistentQuiz_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.empty());
 
         // Act & Assert
         QuizNotFoundException exception = assertThrows(QuizNotFoundException.class,
@@ -183,9 +183,9 @@ class DeleteAnswerServiceUT {
                 .role(Roles.TEACHER)
                 .build();
 
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -200,10 +200,10 @@ class DeleteAnswerServiceUT {
     @DisplayName("Should throw AnswerNotFoundException when answer does not exist")
     void testDeleteAnswer_WithNonExistentAnswer_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
-        when(loadAnswerPort.findByKey(questionId, answerNumber)).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadAnswerPort.getByKey(questionId, answerNumber)).thenReturn(Optional.empty());
 
         // Act & Assert
         AnswerNotFoundException exception = assertThrows(AnswerNotFoundException.class,

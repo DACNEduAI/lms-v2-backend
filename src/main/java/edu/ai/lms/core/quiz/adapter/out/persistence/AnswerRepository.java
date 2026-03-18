@@ -22,10 +22,10 @@ import edu.ai.lms.database.AnswerJdbcTable;
 interface AnswerRepository extends CrudRepository<AnswerJdbcTable, Long> {
 
     @Query("SELECT * FROM answers WHERE question_id = :questionId ORDER BY answer_number")
-    List<AnswerJdbcTable> findByQuestionId(@Param("questionId") UUID questionId);
+    List<AnswerJdbcTable> getByQuestionId(@Param("questionId") UUID questionId);
 
     @Query("SELECT * FROM answers WHERE answer_number = :answerNumber AND question_id = :questionId")
-    Optional<AnswerJdbcTable> findByAnswerNumberAndQuestionId(
+    Optional<AnswerJdbcTable> getByAnswerNumberAndQuestionId(
             @Param("answerNumber") Long answerNumber,
             @Param("questionId") UUID questionId);
 

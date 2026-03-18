@@ -16,7 +16,7 @@ class SignedInUserPersistenceAdapter implements LoadSignedInUserPort {
     private final LoadAuthenticatedUserApi loadAuthenticatedUserApi;
 
     @Override
-    public Optional<User> findAuthenticatedUser() {
+    public Optional<User> getAuthenticatedUser() {
         return loadAuthenticatedUserApi.getAuthenticatedUser();
     }
 }

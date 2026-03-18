@@ -29,6 +29,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     private static UUID createdCourseId;
     private static UUID createdQuizId;
     private static UUID secondQuizId;
+    private static UUID thirdQuizId;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     // ==================== SETUP: Register teacher and create a course ====================
@@ -169,36 +170,17 @@ class QuizControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(5)
-    @DisplayName("Should create a quiz with nested questions and answers")
-    void testCreateQuiz_WithNestedQuestionsAndAnswers() {
+    @DisplayName("Should create a third quiz for bulk delete tests")
+    void testCreateThirdQuiz_ShouldSucceed() {
         String requestBody = """
                 {
-                    "quizTitle": "Nested Quiz",
+                    "quizTitle": "Practice Quiz",
                     "timeLimitMinutes": 45,
-                    "passScore": 65.0,
-                    "questions": [
-                        {
-                            "content": "What is Java?",
-                            "type": "MULTIPLE_CHOICE",
-                            "points": 10.0,
-                            "answers": [
-                                {
-                                    "content": "A programming language",
-                                    "isCorrect": true,
-                                    "explanation": "Java is a widely-used programming language"
-                                },
-                                {
-                                    "content": "A coffee brand",
-                                    "isCorrect": false,
-                                    "explanation": "While Java is also a coffee, this is about programming"
-                                }
-                            ]
-                        }
-                    ]
+                    "passScore": 65.0
                 }
                 """;
 
-        given()
+        Response response = given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
@@ -208,10 +190,9 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .log().all()
                 .statusCode(201)
                 .body("quizId", notNullValue())
-                .body("quizTitle", equalTo("Nested Quiz"))
-                .body("questions", hasSize(1))
-                .body("questions[0].content", equalTo("What is Java?"))
-                .body("questions[0].answers", hasSize(2));
+                .body("quizTitle", equalTo("Practice Quiz"))
+                .extract().response();
+        thirdQuizId = UUID.fromString(response.jsonPath().getString("quizId"));
     }
 
     @Test
@@ -282,6 +263,21 @@ class QuizControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(9)
+    @DisplayName("Should get quiz with full aggregate shape")
+    void testGetQuiz_WithFullAggregate_ShouldSucceed() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/quiz/" + createdQuizId)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("quizId", equalTo(createdQuizId.toString()))
+                .body("questions", hasSize(0));
+    }
+
+    @Test
+    @Order(10)
     @DisplayName("Should fail to get quiz without authentication")
     void testGetQuiz_WithoutAuth() {
         given()
@@ -293,7 +289,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(10)
+    @Order(11)
     @DisplayName("Should fail to get non-existent quiz")
     void testGetQuiz_WithNonExistentQuiz() {
         UUID nonExistentQuizId = UUID.randomUUID();
@@ -310,7 +306,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     // ==================== GET ALL QUIZZES TESTS ====================
 
     @Test
-    @Order(11)
+    @Order(12)
     @DisplayName("Should successfully get all quizzes in a course")
     void testGetAllQuizzes_ShouldSucceed() {
         given()
@@ -326,7 +322,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(12)
+    @Order(13)
     @DisplayName("Should limit quizzes by pageSize")
     void testGetAllQuizzes_WithPageSize() {
         given()
@@ -341,7 +337,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(13)
+    @Order(14)
     @DisplayName("Should fail to get all quizzes without authentication")
     void testGetAllQuizzes_WithoutAuth() {
         given()
@@ -355,7 +351,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     // ==================== MODIFY QUIZ TESTS ====================
 
     @Test
-    @Order(14)
+    @Order(15)
     @DisplayName("Should successfully modify a quiz")
     void testModifyQuiz_ShouldSucceed() {
         String requestBody = """
@@ -384,7 +380,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(15)
+    @Order(16)
     @DisplayName("Should fail to modify quiz without authentication")
     void testModifyQuiz_WithoutAuth() {
         String requestBody = """
@@ -406,7 +402,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(16)
+    @Order(17)
     @DisplayName("Should fail to modify non-existent quiz")
     void testModifyQuiz_WithNonExistentQuiz() {
         UUID nonExistentQuizId = UUID.randomUUID();
@@ -432,7 +428,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     // ==================== DELETE QUIZ TESTS ====================
 
     @Test
-    @Order(17)
+    @Order(18)
     @DisplayName("Should fail to delete quiz without authentication")
     void testDeleteQuiz_WithoutAuth() {
         given()
@@ -444,22 +440,31 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(18)
-    @DisplayName("Should successfully delete a quiz")
-    void testDeleteQuiz_ShouldSucceed() {
+    @Order(19)
+    @DisplayName("Should successfully delete quizzes in bulk")
+    void testDeleteQuiz_Bulk_ShouldSucceed() {
+        String requestBody = """
+                {
+                    "quizIds": ["%s", "%s"]
+                }
+                """.formatted(secondQuizId, thirdQuizId);
+
         given()
+                .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
                 .when()
-                .delete("/api/" + createdCourseId + "/quiz/" + secondQuizId)
+                .delete("/api/" + createdCourseId + "/quiz")
                 .then()
                 .log().all()
                 .statusCode(200)
-                .body("quizId", equalTo(secondQuizId.toString()))
-                .body("message", equalTo("Quiz deleted successfully"));
+                .body("", hasSize(2))
+                .body("[0].message", equalTo("Quiz deleted successfully"))
+                .body("[1].message", equalTo("Quiz deleted successfully"));
     }
 
     @Test
-    @Order(19)
+    @Order(20)
     @DisplayName("Should fail to delete non-existent quiz")
     void testDeleteQuiz_WithNonExistentQuiz() {
         UUID nonExistentQuizId = UUID.randomUUID();
@@ -476,7 +481,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     // ==================== VERIFY STATE AFTER DELETE ====================
 
     @Test
-    @Order(20)
+    @Order(21)
     @DisplayName("Should verify the quiz was deleted from the list")
     void testGetAllQuizzes_AfterDelete() {
         given()

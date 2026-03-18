@@ -7,7 +7,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface LoadQuizPort {
-    Optional<Quiz> findById(UUID quizId);
-    List<Quiz> findAllByCourseId(UUID courseId);
-    List<Quiz> findByCourseIdAndTeacherId(UUID courseId, UUID teacherId);
+    Optional<Quiz> getById(UUID quizId);
+    Optional<Quiz> getByIdWithQuestionsAndAnswers(UUID courseId, UUID quizId);
+    List<Quiz> getAllByCourseId(UUID courseId);
+    List<Quiz> getByCourseIdAndTeacherId(UUID courseId, UUID teacherId);
 }

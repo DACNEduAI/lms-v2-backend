@@ -1,9 +1,5 @@
 package edu.ai.lms.core.quiz.adapter.in.http.request;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
@@ -20,8 +16,4 @@ public class CreateQuizRequest {
     private Integer timeLimitMinutes;
 
     private Double passScore;
-
-    @Valid
-    @Builder.Default
-    private List<CreateQuestionRequest> questions = new ArrayList<>();
 }
