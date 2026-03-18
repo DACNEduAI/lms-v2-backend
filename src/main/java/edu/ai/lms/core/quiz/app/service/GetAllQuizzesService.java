@@ -36,7 +36,7 @@ public class GetAllQuizzesService implements GetAllQuizzesUseCase {
     private class StudentQuizLoadStrategy implements QuizLoadStrategy {
         @Override
         public List<Quiz> loadQuizzes(UUID userId, UUID courseId) {
-            return loadQuizPort.findAllByCourseId(courseId);
+            return loadQuizPort.getAllByCourseId(courseId);
         }
     }
 
@@ -44,7 +44,7 @@ public class GetAllQuizzesService implements GetAllQuizzesUseCase {
     private class TeacherQuizLoadStrategy implements QuizLoadStrategy {
         @Override
         public List<Quiz> loadQuizzes(UUID userId, UUID courseId) {
-            return loadQuizPort.findByCourseIdAndTeacherId(courseId, userId);
+            return loadQuizPort.getByCourseIdAndTeacherId(courseId, userId);
         }
     }
 
@@ -59,7 +59,7 @@ public class GetAllQuizzesService implements GetAllQuizzesUseCase {
     @Override
     @Transactional(readOnly = true)
     public GetAllQuizzesResponse getAllQuizzes(UUID courseId, int pageSize, String sortDirection) {
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        User user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         // Verify user belongs to the course

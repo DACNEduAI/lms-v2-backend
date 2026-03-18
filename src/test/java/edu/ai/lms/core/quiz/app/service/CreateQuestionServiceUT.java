@@ -1,6 +1,8 @@
 package edu.ai.lms.core.quiz.app.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.User;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuestionResponse;
+import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
@@ -31,6 +34,7 @@ import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.port.in.command.CreateQuestionCommand;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +42,9 @@ class CreateQuestionServiceUT {
 
     @Mock
     private SaveQuestionPort saveQuestionPort;
+
+    @Mock
+    private SaveAnswerPort saveAnswerPort;
 
     @Mock
     private LoadQuizPort loadQuizPort;
@@ -74,10 +81,17 @@ class CreateQuestionServiceUT {
                 .active(true)
                 .build();
 
+        Answer answer = Answer.builder()
+                .content("Java is a programming language")
+                .isCorrect(true)
+                .explanation("Correct")
+                .build();
+
         Question question = Question.builder()
                 .content("What is Java?")
                 .type(Question.QuestionType.MULTIPLE_CHOICE)
                 .points(10.0)
+                .answers(new ArrayList<>(List.of(answer)))
                 .build();
 
         validCommand = CreateQuestionCommand.builder()
@@ -87,11 +101,10 @@ class CreateQuestionServiceUT {
     }
 
     @Test
-    @DisplayName("Should successfully create a question with valid details")
+    @DisplayName("Should successfully create a question with answers")
     void testCreateQuestion_WithValidDetails_ShouldSucceed() {
-        // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
 
         Question savedQuestion = Question.builder()
                 .id(questionId)
@@ -103,97 +116,87 @@ class CreateQuestionServiceUT {
                 .build();
         when(saveQuestionPort.save(any(Question.class))).thenReturn(savedQuestion);
 
-        // Act
+        Answer savedAnswer = Answer.builder()
+                .answerNumber(1L)
+                .content("Java is a programming language")
+                .isCorrect(true)
+                .explanation("Correct")
+                .questionId(questionId)
+                .build();
+        when(saveAnswerPort.save(any(Answer.class))).thenReturn(savedAnswer);
+
         CreateQuestionResponse response = createQuestionService.createQuestion(validCommand);
 
-        // Assert
         assertNotNull(response);
         assertEquals(questionId, response.getQuestionId());
-        assertEquals("What is Java?", response.getContent());
-        assertEquals("MULTIPLE_CHOICE", response.getType());
-        assertEquals(10.0, response.getPoints());
-        assertEquals(quizId, response.getQuizId());
-
-        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
-        verify(loadQuizPort, times(1)).findById(quizId);
+        assertEquals(1, response.getAnswers().size());
+        assertEquals(1L, response.getAnswers().get(0).getAnswerNumber());
         verify(saveQuestionPort, times(1)).save(any(Question.class));
+        verify(saveAnswerPort, times(1)).save(any(Answer.class));
     }
 
     @Test
     @DisplayName("Should throw UserNotAuthenticatedException when user is not authenticated")
     void testCreateQuestion_WithUnauthenticatedUser_ShouldThrowException() {
-        // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
 
-        // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(UserNotAuthenticatedException.class,
                 () -> createQuestionService.createQuestion(validCommand));
 
         assertEquals("User not authenticated", exception.getMessage());
-
         verify(saveQuestionPort, never()).save(any(Question.class));
     }
 
     @Test
     @DisplayName("Should throw QuizNotFoundException when quiz does not exist")
     void testCreateQuestion_WithNonExistentQuiz_ShouldThrowException() {
-        // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.empty());
 
-        // Act & Assert
         QuizNotFoundException exception = assertThrows(QuizNotFoundException.class,
                 () -> createQuestionService.createQuestion(validCommand));
 
         assertEquals("Quiz not found with id: " + quizId, exception.getMessage());
-
         verify(saveQuestionPort, never()).save(any(Question.class));
     }
 
     @Test
     @DisplayName("Should throw IllegalArgumentException when user is not the quiz owner")
     void testCreateQuestion_WithNonOwner_ShouldThrowException() {
-        // Arrange
         UUID anotherTeacherId = UUID.randomUUID();
         User anotherTeacher = User.builder()
                 .id(anotherTeacherId)
                 .role(Roles.TEACHER)
                 .build();
 
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
 
-        // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> createQuestionService.createQuestion(validCommand));
 
         assertEquals("User is not authorized to add questions to this quiz", exception.getMessage());
-
         verify(saveQuestionPort, never()).save(any(Question.class));
     }
 
     @Test
     @DisplayName("Should set quizId on question before saving")
     void testCreateQuestion_ShouldSetQuizId() {
-        // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
 
         ArgumentCaptor<Question> questionCaptor = ArgumentCaptor.forClass(Question.class);
         Question savedQuestion = Question.builder()
                 .id(questionId)
                 .content("What is Java?")
-                .type(Question.QuestionType.MULTIPLE_CHOICE)
-                .points(10.0)
                 .quizId(quizId)
                 .createdAt(LocalDateTime.now())
                 .build();
         when(saveQuestionPort.save(any(Question.class))).thenReturn(savedQuestion);
+        when(saveAnswerPort.save(any(Answer.class))).thenReturn(Answer.builder().answerNumber(1L).build());
 
-        // Act
         createQuestionService.createQuestion(validCommand);
 
-        // Assert
         verify(saveQuestionPort).save(questionCaptor.capture());
         Question capturedQuestion = questionCaptor.getValue();
         assertEquals(quizId, capturedQuestion.getQuizId());

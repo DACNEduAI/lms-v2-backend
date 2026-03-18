@@ -27,11 +27,11 @@ public class GetQuestionService implements GetQuestionUseCase {
     @Override
     @Transactional(readOnly = true)
     public GetQuestionResponse getQuestion(UUID quizId, UUID questionId) {
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        User user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         // Load question WITH answers (sub-aggregate root loading)
-        Question question = loadQuestionPort.findById(questionId)
+        Question question = loadQuestionPort.getById(questionId)
                 .orElseThrow(() -> new QuestionNotFoundException("Question not found with id: " + questionId));
 
         if (!question.getQuizId().equals(quizId)) {

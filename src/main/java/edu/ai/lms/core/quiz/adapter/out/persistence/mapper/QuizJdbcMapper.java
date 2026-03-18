@@ -1,7 +1,10 @@
 package edu.ai.lms.core.quiz.adapter.out.persistence.mapper;
 
+import java.util.List;
+
 import org.springframework.stereotype.Component;
 
+import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.database.QuizJdbcTable;
 
@@ -34,5 +37,11 @@ public class QuizJdbcMapper {
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
+    }
+
+    public Quiz mapToQuizWithQuestionsAndAnswers(QuizJdbcTable entity, List<Question> questions) {
+        Quiz quiz = mapToQuiz(entity);
+        quiz.setQuestions(questions);
+        return quiz;
     }
 }

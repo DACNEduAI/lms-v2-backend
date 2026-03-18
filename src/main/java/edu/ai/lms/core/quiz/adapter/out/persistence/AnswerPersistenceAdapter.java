@@ -44,7 +44,7 @@ class AnswerPersistenceAdapter implements SaveAnswerPort, LoadAnswerPort, Delete
 
             // Re-fetch the updated answer
             AnswerJdbcTable updatedEntity = answerRepository
-                    .findByAnswerNumberAndQuestionId(answer.getAnswerNumber(), questionId)
+                    .getByAnswerNumberAndQuestionId(answer.getAnswerNumber(), questionId)
                     .orElseThrow(() -> new RuntimeException("Answer not found after update"));
             return answerJdbcMapper.mapToAnswer(updatedEntity);
         } else {
@@ -57,21 +57,21 @@ class AnswerPersistenceAdapter implements SaveAnswerPort, LoadAnswerPort, Delete
 
             // Fetch the newly created answer
             AnswerJdbcTable savedEntity = answerRepository
-                    .findByAnswerNumberAndQuestionId(generatedAnswerNumber, questionId)
+                    .getByAnswerNumberAndQuestionId(generatedAnswerNumber, questionId)
                     .orElseThrow(() -> new RuntimeException("Answer not found after insert"));
             return answerJdbcMapper.mapToAnswer(savedEntity);
         }
     }
 
     @Override
-    public Optional<Answer> findByKey(UUID questionId, Long answerNumber) {
-        return answerRepository.findByAnswerNumberAndQuestionId(answerNumber, questionId)
+    public Optional<Answer> getByKey(UUID questionId, Long answerNumber) {
+        return answerRepository.getByAnswerNumberAndQuestionId(answerNumber, questionId)
                 .map(answerJdbcMapper::mapToAnswer);
     }
 
     @Override
-    public List<Answer> findByQuestionId(UUID questionId) {
-        return answerRepository.findByQuestionId(questionId).stream()
+    public List<Answer> getByQuestionId(UUID questionId) {
+        return answerRepository.getByQuestionId(questionId).stream()
                 .map(answerJdbcMapper::mapToAnswer)
                 .collect(Collectors.toList());
     }

@@ -107,9 +107,9 @@ class GetAllQuizzesServiceUT {
     @DisplayName("Should return all quizzes for a student in ascending order")
     void testGetAllQuizzes_AsStudent_ShouldReturnAllQuizzes() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
         when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
-        when(loadQuizPort.findAllByCourseId(courseId)).thenReturn(quizzes);
+        when(loadQuizPort.getAllByCourseId(courseId)).thenReturn(quizzes);
 
         // Act
         GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 10, "asc");
@@ -125,16 +125,16 @@ class GetAllQuizzesServiceUT {
         assertEquals("Beta Quiz", response.getQuizzes().get(1).getQuizTitle());
         assertEquals("Charlie Quiz", response.getQuizzes().get(2).getQuizTitle());
 
-        verify(loadQuizPort, times(1)).findAllByCourseId(courseId);
+        verify(loadQuizPort, times(1)).getAllByCourseId(courseId);
     }
 
     @Test
     @DisplayName("Should return only teacher's own quizzes for a teacher")
     void testGetAllQuizzes_AsTeacher_ShouldReturnOnlyOwnQuizzes() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
-        when(loadQuizPort.findByCourseIdAndTeacherId(courseId, teacherId)).thenReturn(quizzes);
+        when(loadQuizPort.getByCourseIdAndTeacherId(courseId, teacherId)).thenReturn(quizzes);
 
         // Act
         GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 10, "asc");
@@ -143,17 +143,17 @@ class GetAllQuizzesServiceUT {
         assertNotNull(response);
         assertEquals(3, response.getTotalQuizzes());
 
-        verify(loadQuizPort, times(1)).findByCourseIdAndTeacherId(courseId, teacherId);
-        verify(loadQuizPort, never()).findAllByCourseId(courseId);
+        verify(loadQuizPort, times(1)).getByCourseIdAndTeacherId(courseId, teacherId);
+        verify(loadQuizPort, never()).getAllByCourseId(courseId);
     }
 
     @Test
     @DisplayName("Should return quizzes in descending order when sortDirection is desc")
     void testGetAllQuizzes_WithDescSort_ShouldReturnDescending() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
         when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
-        when(loadQuizPort.findAllByCourseId(courseId)).thenReturn(quizzes);
+        when(loadQuizPort.getAllByCourseId(courseId)).thenReturn(quizzes);
 
         // Act
         GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 10, "desc");
@@ -170,9 +170,9 @@ class GetAllQuizzesServiceUT {
     @DisplayName("Should limit results by pageSize")
     void testGetAllQuizzes_WithPageSize_ShouldLimitResults() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
         when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
-        when(loadQuizPort.findAllByCourseId(courseId)).thenReturn(quizzes);
+        when(loadQuizPort.getAllByCourseId(courseId)).thenReturn(quizzes);
 
         // Act
         GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 2, "asc");
@@ -188,9 +188,9 @@ class GetAllQuizzesServiceUT {
     @DisplayName("Should return empty list when no quizzes exist")
     void testGetAllQuizzes_WithNoQuizzes_ShouldReturnEmptyList() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
         when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
-        when(loadQuizPort.findAllByCourseId(courseId)).thenReturn(Collections.emptyList());
+        when(loadQuizPort.getAllByCourseId(courseId)).thenReturn(Collections.emptyList());
 
         // Act
         GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 10, "asc");
@@ -205,7 +205,7 @@ class GetAllQuizzesServiceUT {
     @DisplayName("Should throw UserNotAuthenticatedException when user is not authenticated")
     void testGetAllQuizzes_WithUnauthenticatedUser_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(UserNotAuthenticatedException.class,
@@ -218,7 +218,7 @@ class GetAllQuizzesServiceUT {
     @DisplayName("Should throw IllegalArgumentException when user is not a member of the course")
     void testGetAllQuizzes_WithNonMember_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(false);
 
         // Act & Assert
@@ -232,9 +232,9 @@ class GetAllQuizzesServiceUT {
     @DisplayName("Should default sortDirection to asc when null")
     void testGetAllQuizzes_WithNullSortDirection_ShouldDefaultToAsc() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
         when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
-        when(loadQuizPort.findAllByCourseId(courseId)).thenReturn(quizzes);
+        when(loadQuizPort.getAllByCourseId(courseId)).thenReturn(quizzes);
 
         // Act
         GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 10, null);

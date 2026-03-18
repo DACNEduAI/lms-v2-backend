@@ -32,13 +32,13 @@ public class CreateAnswerService implements CreateAnswerUseCase {
     @Override
     @Transactional
     public CreateAnswerResponse createAnswer(CreateAnswerCommand command) {
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        User user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
-        Question question = loadQuestionPort.findByIdWithoutAnswers(command.questionId())
+        Question question = loadQuestionPort.getByIdWithoutAnswers(command.questionId())
                 .orElseThrow(() -> new QuestionNotFoundException("Question not found with id: " + command.questionId()));
 
-        Quiz quiz = loadQuizPort.findById(question.getQuizId())
+        Quiz quiz = loadQuizPort.getById(question.getQuizId())
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found"));
 
         verifyQuizOwnership(user, quiz);

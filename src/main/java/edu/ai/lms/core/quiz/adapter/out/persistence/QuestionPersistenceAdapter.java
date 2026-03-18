@@ -36,20 +36,20 @@ class QuestionPersistenceAdapter implements SaveQuestionPort, LoadQuestionPort, 
     }
 
     @Override
-    public Optional<Question> findById(UUID questionId) {
-        return questionRepository.findById(questionId)
+    public Optional<Question> getById(UUID questionId) {
+        return questionRepository.getById(questionId)
                 .map(this::loadQuestionWithAnswers);
     }
 
     @Override
-    public Optional<Question> findByIdWithoutAnswers(UUID questionId) {
-        return questionRepository.findById(questionId)
+    public Optional<Question> getByIdWithoutAnswers(UUID questionId) {
+        return questionRepository.getById(questionId)
                 .map(questionJdbcMapper::mapToQuestionWithoutAnswers);
     }
 
     @Override
-    public List<Question> findByQuizId(UUID quizId) {
-        return questionRepository.findByQuizId(quizId).stream()
+    public List<Question> getByQuizId(UUID quizId) {
+        return questionRepository.getByQuizId(quizId).stream()
                 .map(questionJdbcMapper::mapToQuestionWithoutAnswers)
                 .collect(Collectors.toList());
     }
@@ -67,7 +67,7 @@ class QuestionPersistenceAdapter implements SaveQuestionPort, LoadQuestionPort, 
      */
     private Question loadQuestionWithAnswers(QuestionJdbcTable entity) {
         Question question = questionJdbcMapper.mapToQuestionWithoutAnswers(entity);
-        List<AnswerJdbcTable> answerEntities = answerRepository.findByQuestionId(entity.getId());
+        List<AnswerJdbcTable> answerEntities = answerRepository.getByQuestionId(entity.getId());
         List<Answer> answers = answerEntities.stream()
                 .map(answerJdbcMapper::mapToAnswer)
                 .collect(Collectors.toList());

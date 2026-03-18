@@ -7,6 +7,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface LoadAnswerPort {
-    Optional<Answer> findByKey(UUID questionId, Long answerNumber);
-    List<Answer> findByQuestionId(UUID questionId);
+    Optional<Answer> getByKey(UUID questionId, Long answerNumber);
+    List<Answer> getByQuestionId(UUID questionId);
 }

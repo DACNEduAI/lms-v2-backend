@@ -36,18 +36,18 @@ public class DeleteAnswerService implements DeleteAnswerUseCase {
     @Override
     @Transactional
     public DeleteAnswerResponse deleteAnswer(UUID questionId, Long answerNumber) {
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        User user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
-        Question question = loadQuestionPort.findByIdWithoutAnswers(questionId)
+        Question question = loadQuestionPort.getByIdWithoutAnswers(questionId)
                 .orElseThrow(() -> new QuestionNotFoundException("Question not found with id: " + questionId));
 
-        Quiz quiz = loadQuizPort.findById(question.getQuizId())
+        Quiz quiz = loadQuizPort.getById(question.getQuizId())
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found"));
 
         verifyQuizOwnership(user, quiz);
 
-        Answer answer = loadAnswerPort.findByKey(questionId, answerNumber)
+        Answer answer = loadAnswerPort.getByKey(questionId, answerNumber)
                 .orElseThrow(() -> new AnswerNotFoundException("Answer not found"));
 
         deleteAnswerPort.deleteByKey(questionId, answerNumber);

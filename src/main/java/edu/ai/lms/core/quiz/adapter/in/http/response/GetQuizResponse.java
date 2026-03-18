@@ -32,5 +32,18 @@ public class GetQuizResponse {
         private String content;
         private String type;
         private Double points;
+        private List<AnswerSummary> answers;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class AnswerSummary {
+        private Long answerNumber;
+        private String content;
+        private boolean isCorrect;
+        private String explanation;
     }
 }

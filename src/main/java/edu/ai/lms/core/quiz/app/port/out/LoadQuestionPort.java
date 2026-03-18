@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface LoadQuestionPort {
-    Optional<Question> findById(UUID questionId);
-    Optional<Question> findByIdWithoutAnswers(UUID questionId);
-    List<Question> findByQuizId(UUID quizId);
+    Optional<Question> getById(UUID questionId);
+    Optional<Question> getByIdWithoutAnswers(UUID questionId);
+    List<Question> getByQuizId(UUID quizId);
 }

@@ -104,9 +104,9 @@ class CreateAnswerServiceUT {
     @DisplayName("Should successfully create an answer with valid details")
     void testCreateAnswer_WithValidDetails_ShouldSucceed() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
 
         Answer savedAnswer = Answer.builder()
                 .answerNumber(1L)
@@ -129,9 +129,9 @@ class CreateAnswerServiceUT {
         assertEquals("Java is a widely-used programming language", response.getExplanation());
         assertEquals(questionId, response.getQuestionId());
 
-        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
-        verify(loadQuestionPort, times(1)).findByIdWithoutAnswers(questionId);
-        verify(loadQuizPort, times(1)).findById(quizId);
+        verify(loadSignedInUserPort, times(1)).getAuthenticatedUser();
+        verify(loadQuestionPort, times(1)).getByIdWithoutAnswers(questionId);
+        verify(loadQuizPort, times(1)).getById(quizId);
         verify(saveAnswerPort, times(1)).save(any(Answer.class));
     }
 
@@ -139,7 +139,7 @@ class CreateAnswerServiceUT {
     @DisplayName("Should throw UserNotAuthenticatedException when user is not authenticated")
     void testCreateAnswer_WithUnauthenticatedUser_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(UserNotAuthenticatedException.class,
@@ -154,8 +154,8 @@ class CreateAnswerServiceUT {
     @DisplayName("Should throw QuestionNotFoundException when question does not exist")
     void testCreateAnswer_WithNonExistentQuestion_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.empty());
 
         // Act & Assert
         QuestionNotFoundException exception = assertThrows(QuestionNotFoundException.class,
@@ -170,9 +170,9 @@ class CreateAnswerServiceUT {
     @DisplayName("Should throw QuizNotFoundException when quiz does not exist")
     void testCreateAnswer_WithNonExistentQuiz_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.empty());
 
         // Act & Assert
         QuizNotFoundException exception = assertThrows(QuizNotFoundException.class,
@@ -193,9 +193,9 @@ class CreateAnswerServiceUT {
                 .role(Roles.TEACHER)
                 .build();
 
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -210,9 +210,9 @@ class CreateAnswerServiceUT {
     @DisplayName("Should set questionId on answer before saving")
     void testCreateAnswer_ShouldSetQuestionId() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
 
         ArgumentCaptor<Answer> answerCaptor = ArgumentCaptor.forClass(Answer.class);
         Answer savedAnswer = Answer.builder()

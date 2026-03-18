@@ -28,10 +28,10 @@ public class DeleteQuizService implements DeleteQuizUseCase {
     @Override
     @Transactional
     public DeleteQuizResponse deleteQuiz(UUID courseId, UUID quizId) {
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        User user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
-        Quiz existingQuiz = loadQuizPort.findById(quizId)
+        Quiz existingQuiz = loadQuizPort.getById(quizId)
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found with id: " + quizId));
 
         // Verify quiz belongs to the same course
