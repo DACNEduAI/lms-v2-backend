@@ -10,5 +10,6 @@ public interface LoadQuizPort {
     Optional<Quiz> getById(UUID quizId);
     Optional<Quiz> getByIdWithQuestionsAndAnswers(UUID courseId, UUID quizId);
     List<Quiz> getAllByCourseId(UUID courseId);
-    List<Quiz> getByCourseIdAndTeacherId(UUID courseId, UUID teacherId);
+    List<Quiz> getTeacherCreatedByCourseId(UUID courseId);
+    List<Quiz> getDisplayedTeacherCreatedByCourseId(UUID courseId);
 }

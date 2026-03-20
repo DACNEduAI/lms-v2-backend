@@ -36,7 +36,7 @@ interface QuizRepository {
 
     List<Quiz> getAllByCourseId(@Param("courseId") UUID courseId);
 
-    List<Quiz> getByCourseIdAndTeacherId(
-            @Param("courseId") UUID courseId,
-            @Param("teacherId") UUID teacherId);
+    List<Quiz> getTeacherCreatedByCourseId(@Param("courseId") UUID courseId);
+
+    List<Quiz> getDisplayedTeacherCreatedByCourseId(@Param("courseId") UUID courseId);
 }

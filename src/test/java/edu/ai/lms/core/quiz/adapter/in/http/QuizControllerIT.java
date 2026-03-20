@@ -115,7 +115,11 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "Midterm Quiz",
                     "timeLimitMinutes": 60,
-                    "passScore": 70.0
+                    "passScore": 70.0,
+                    "startTime": "2026-01-10T09:00:00",
+                    "dueTime": "2026-01-10T10:00:00",
+                    "attemptLimited": 2,
+                    "display": true
                 }
                 """;
 
@@ -132,8 +136,11 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .body("quizTitle", equalTo("Midterm Quiz"))
                 .body("timeLimitMinutes", equalTo(60))
                 .body("passScore", equalTo(70.0f))
+                .body("startTime", notNullValue())
+                .body("dueTime", notNullValue())
+                .body("attemptLimited", equalTo(2))
                 .body("courseId", equalTo(createdCourseId.toString()))
-                .body("active", equalTo(true))
+                .body("display", equalTo(true))
                 .body("createdAt", notNullValue())
                 .extract().response();
 
@@ -257,7 +264,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .body("timeLimitMinutes", equalTo(60))
                 .body("passScore", equalTo(70.0f))
                 .body("courseId", equalTo(createdCourseId.toString()))
-                .body("active", equalTo(true))
+                .body("display", equalTo(true))
                 .body("createdAt", notNullValue());
     }
 
@@ -312,13 +319,13 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/quiz?pageSize=10&sortDirection=asc")
+                .get("/api/" + createdCourseId + "/quiz/teacher-created?pageSize=10&lastCreated=asc")
                 .then()
                 .log().all()
                 .statusCode(200)
                 .body("quizzes", hasSize(greaterThanOrEqualTo(2)))
                 .body("totalQuizzes", greaterThanOrEqualTo(2))
-                .body("sortDirection", equalTo("asc"));
+                .body("lastCreated", equalTo("asc"));
     }
 
     @Test
@@ -328,7 +335,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/quiz?pageSize=1&sortDirection=asc")
+                .get("/api/" + createdCourseId + "/quiz/teacher-created?pageSize=1&lastCreated=asc")
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -342,7 +349,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     void testGetAllQuizzes_WithoutAuth() {
         given()
                 .when()
-                .get("/api/" + createdCourseId + "/quiz")
+                .get("/api/" + createdCourseId + "/quiz/teacher-created")
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -359,7 +366,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                     "quizTitle": "Updated Midterm Quiz",
                     "timeLimitMinutes": 90,
                     "passScore": 75.0,
-                    "active": true
+                    "display": true
                 }
                 """;
 
@@ -487,7 +494,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/quiz?pageSize=10&sortDirection=asc")
+                .get("/api/" + createdCourseId + "/quiz/teacher-created?pageSize=10&lastCreated=asc")
                 .then()
                 .log().all()
                 .statusCode(200)

@@ -1,6 +1,8 @@
 package edu.ai.lms.core.course.adapter.in.request;
 
+import edu.ai.lms.config.DatePatternConstants;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -28,12 +30,12 @@ public class ModifyCourseRequest {
 
     private String coverImage;
 
+    @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_PATTERN, example = DatePatternConstants.LOCAL_DATE_EXAMPLE)
     @NotNull(message = "Start date cannot be blank")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
     private LocalDate startDate;
 
-    @NotNull(message = "End date cannot be blank")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
+    @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_PATTERN, example = DatePatternConstants.LOCAL_DATE_EXAMPLE)
+    @NotNull(message = "Start date cannot be blank")
     private LocalDate endDate;
 
     @AssertTrue(message = "End date must be after start date")

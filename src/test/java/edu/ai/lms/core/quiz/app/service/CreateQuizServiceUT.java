@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
@@ -97,7 +98,7 @@ class CreateQuizServiceUT {
                 .passScore(70.0)
                 .courseId(courseId)
                 .teacherId(teacherId)
-                .active(true)
+                .display(true)
                 .createdAt(LocalDateTime.now())
                 .build();
         when(saveQuizPort.save(any(Quiz.class))).thenReturn(savedQuiz);
@@ -107,7 +108,7 @@ class CreateQuizServiceUT {
         assertNotNull(response);
         assertEquals(quizId, response.getQuizId());
         assertEquals(courseId, response.getCourseId());
-        assertTrue(response.getActive());
+        assertTrue(response.getDisplay());
         verify(saveQuizPort, times(1)).save(any(Quiz.class));
     }
 
@@ -117,12 +118,16 @@ class CreateQuizServiceUT {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
         when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
 
+                validCommand.quiz().setStartTime(LocalDateTime.of(2025, 1, 10, 9, 0));
+                validCommand.quiz().setDueTime(LocalDateTime.of(2025, 1, 10, 10, 0));
+                validCommand.quiz().setAttemptLimited(2);
+
         Quiz savedQuiz = Quiz.builder()
                 .id(quizId)
                 .quizTitle("Midterm Quiz")
                 .courseId(courseId)
                 .studentId(studentId)
-                .active(true)
+                .display(true)
                 .createdAt(LocalDateTime.now())
                 .build();
         when(saveQuizPort.save(any(Quiz.class))).thenReturn(savedQuiz);
@@ -172,7 +177,7 @@ class CreateQuizServiceUT {
                 .quizTitle("Midterm Quiz")
                 .courseId(courseId)
                 .teacherId(teacherId)
-                .active(true)
+                .display(true)
                 .createdAt(LocalDateTime.now())
                 .build();
         when(saveQuizPort.save(any(Quiz.class))).thenReturn(savedQuiz);
@@ -184,4 +189,27 @@ class CreateQuizServiceUT {
         assertEquals(courseId, capturedQuiz.getCourseId());
         assertEquals(teacherId, capturedQuiz.getTeacherId());
     }
+
+        @Test
+        @DisplayName("Should clear startTime, dueTime and attemptLimited for student-created quiz")
+        void testCreateQuiz_AsStudent_ShouldClearTeacherOnlyFields() {
+                when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
+                when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
+
+                validCommand.quiz().setStartTime(LocalDateTime.of(2025, 4, 1, 8, 0));
+                validCommand.quiz().setDueTime(LocalDateTime.of(2025, 4, 1, 9, 0));
+                validCommand.quiz().setAttemptLimited(3);
+
+                ArgumentCaptor<Quiz> quizCaptor = ArgumentCaptor.forClass(Quiz.class);
+                when(saveQuizPort.save(any(Quiz.class))).thenReturn(Quiz.builder().id(quizId).courseId(courseId).build());
+
+                createQuizService.createQuiz(validCommand);
+
+                verify(saveQuizPort).save(quizCaptor.capture());
+                Quiz capturedQuiz = quizCaptor.getValue();
+                assertEquals(studentId, capturedQuiz.getStudentId());
+                assertNull(capturedQuiz.getStartTime());
+                assertNull(capturedQuiz.getDueTime());
+                assertNull(capturedQuiz.getAttemptLimited());
+        }
 }

@@ -1,267 +1,191 @@
 -- 1. Insert Users
 INSERT INTO users (id, email, password, first_name, last_name, avatar_url, role)
 VALUES
-    ('11111111-1111-1111-1111-111111111111', 'student1@university.edu', '$2a$10$DummyHashForPassword1', 'John', 'Doe', 'https://example.com/avatars/john.jpg', 'STUDENT'),
-    ('11111111-2222-2222-2222-222222222222', 'student2@university.edu', '$2a$10$DummyHashForPassword2', 'Jane', 'Smith', 'https://example.com/avatars/jane.jpg', 'STUDENT'),
-    ('22222222-1111-1111-1111-111111111111', 'dr.turing@university.edu', '$2a$10$DummyHashForPassword3', 'Alan', 'Turing', 'https://example.com/avatars/alan.jpg', 'TEACHER'),
-    ('22222222-2222-2222-2222-222222222222', 'dr.lovelace@university.edu', '$2a$10$DummyHashForPassword4', 'Ada', 'Lovelace', 'https://example.com/avatars/ada.jpg', 'TEACHER');
+    ('11111111-1111-1111-1111-111111111111', 'martin.fowler@university.edu', '123456', 'Martin', 'Fowler', 'https://example.com/avatars/mf.jpg', 'TEACHER'),
+    ('22222222-2222-2222-2222-222222222222', 'andrew.ng@university.edu', '123456', 'Andrew', 'Ng', 'https://example.com/avatars/an.jpg', 'TEACHER'),
+    ('33333333-3333-3333-3333-333333333333', 'kelsey.hightower@university.edu', '123456', 'Kelsey', 'Hightower', 'https://example.com/avatars/kh.jpg', 'TEACHER'),
+    ('44444444-4444-4444-4444-444444444444', 'alice.student@university.edu', '123456', 'Alice', 'Chen', 'https://example.com/avatars/ac.jpg', 'STUDENT'),
+    ('55555555-5555-5555-5555-555555555555', 'bob.student@university.edu', '123456', 'Bob', 'Martin', 'https://example.com/avatars/bm.jpg', 'STUDENT'),
+    ('66666666-6666-6666-6666-666666666666', 'carol.student@university.edu', '123456', 'Carol', 'Danvers', 'https://example.com/avatars/cd.jpg', 'STUDENT');
 
--- 2. Insert Students
+-- 2. Insert Students (Using the valid user IDs you just inserted)
 INSERT INTO students (user_id, student_id, enrollment_year)
 VALUES
-    ('11111111-1111-1111-1111-111111111111', 'STU001', 2023),
-    ('11111111-2222-2222-2222-222222222222', 'STU002', 2024);
+    ('44444444-4444-4444-4444-444444444444', 'STU-2024-001', 2024),
+    ('55555555-5555-5555-5555-555555555555', 'STU-2024-002', 2024),
+    ('66666666-6666-6666-6666-666666666666', 'STU-2025-001', 2025);
 
 -- 3. Insert Teachers
 INSERT INTO teachers (user_id, employee_id, phone_number, department, specialization)
 VALUES
-    ('22222222-1111-1111-1111-111111111111', 'EMP001', '555-0101', 'Computer Science', 'Artificial Intelligence'),
-    ('22222222-2222-2222-2222-222222222222', 'EMP002', '555-0102', 'Mathematics', 'Algorithms');
+    ('11111111-1111-1111-1111-111111111111', 'EMP-ARCH-01', '555-0199', 'Software Engineering', 'System Architecture & DDD'),
+    ('22222222-2222-2222-2222-222222222222', 'EMP-AI-01', '555-0200', 'Computer Science', 'Machine Learning & AI'),
+    ('33333333-3333-3333-3333-333333333333', 'EMP-DEV-01', '555-0201', 'Information Technology', 'DevOps & Containerization');
 
--- 4. Insert Courses
+-- 4. Insert Courses (using valid hex 'c...')
 INSERT INTO courses (id, course_name, description, course_code, active, cover_image, start_date, end_date)
 VALUES
-    ('33333333-1111-1111-1111-111111111111', 'Introduction to Computer Science', 'A foundational course in CS.', 'CS101', true, 'https://example.com/covers/cs101.jpg', '2024-09-01 08:00:00', '2024-12-15 17:00:00'),
-    ('33333333-2222-2222-2222-222222222222', 'Data Structures and Algorithms', 'Advanced programming concepts.', 'CS201', true, 'https://example.com/covers/cs201.jpg', '2025-01-15 08:00:00', '2025-05-30 17:00:00');
+    ('c1111111-1111-1111-1111-111111111111', 'Advanced Software Architecture', 'Exploring Domain-Driven Design, Hexagonal Architecture, and Microservices.', 'SE401', true, 'https://example.com/covers/se401.jpg', TO_TIMESTAMP('01-09-2025 08:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-12-2025 17:00:00', 'DD-MM-YYYY HH24:MI:SS')),
+    ('c2222222-2222-2222-2222-222222222222', 'Applied Artificial Intelligence', 'Practical AI implementation including RAG, Vector Databases, Perceptrons, and SVMs.', 'CS502', true, 'https://example.com/covers/cs502.jpg', TO_TIMESTAMP('15-01-2026 08:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('30-05-2026 17:00:00', 'DD-MM-YYYY HH24:MI:SS')),
+    ('c3333333-3333-3333-3333-333333333333', 'Modern DevOps Practices', 'Mastering Docker, LocalStack, and GitHub Actions for CI/CD pipelines.', 'IT305', true, 'https://example.com/covers/it305.jpg', TO_TIMESTAMP('01-09-2025 08:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-12-2025 17:00:00', 'DD-MM-YYYY HH24:MI:SS'));
 
--- 5. Insert Enrollments (single table for teacher-course and student-course relationships)
+-- 5. Insert Enrollments
 INSERT INTO enrollments (course_id, user_id, enrolled_date)
 VALUES
-    -- Teacher assignments
-    ('33333333-1111-1111-1111-111111111111', '22222222-1111-1111-1111-111111111111', '2024-08-19 09:00:00'),
-    ('33333333-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', '2025-01-10 09:00:00'),
-    -- Student enrollments
-    ('33333333-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', '2024-08-20 10:00:00'),
-    ('33333333-1111-1111-1111-111111111111', '11111111-2222-2222-2222-222222222222', '2024-08-21 11:30:00'),
-    ('33333333-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', '2025-01-12 08:30:00');
+    -- Teachers assigned
+    ('c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', TO_TIMESTAMP('15-08-2025 09:00:00', 'DD-MM-YYYY HH24:MI:SS')),
+    ('c2222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', TO_TIMESTAMP('10-01-2026 09:00:00', 'DD-MM-YYYY HH24:MI:SS')),
+    ('c3333333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333', TO_TIMESTAMP('20-08-2025 09:00:00', 'DD-MM-YYYY HH24:MI:SS')),
+    -- Students
+    ('c1111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444444', TO_TIMESTAMP('20-08-2025 10:00:00', 'DD-MM-YYYY HH24:MI:SS')),
+    ('c1111111-1111-1111-1111-111111111111', '55555555-5555-5555-5555-555555555555', TO_TIMESTAMP('21-08-2025 11:30:00', 'DD-MM-YYYY HH24:MI:SS')),
+    ('c2222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555', TO_TIMESTAMP('12-01-2026 08:30:00', 'DD-MM-YYYY HH24:MI:SS')),
+    ('c2222222-2222-2222-2222-222222222222', '66666666-6666-6666-6666-666666666666', TO_TIMESTAMP('13-01-2026 14:15:00', 'DD-MM-YYYY HH24:MI:SS')),
+    ('c3333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444', TO_TIMESTAMP('22-08-2025 09:15:00', 'DD-MM-YYYY HH24:MI:SS')),
+    ('c3333333-3333-3333-3333-333333333333', '66666666-6666-6666-6666-666666666666', TO_TIMESTAMP('23-08-2025 10:00:00', 'DD-MM-YYYY HH24:MI:SS'));
 
 -- 6. Insert Chapters
 INSERT INTO chapters (chapter_number, title, description, course_id) OVERRIDING SYSTEM VALUE
 VALUES
-    (1, 'Variables and Data Types', 'Introduction to variables, primitives, and type systems.', '33333333-1111-1111-1111-111111111111'),
-    (2, 'Control Flow', 'If statements, loops, and branching logic.', '33333333-1111-1111-1111-111111111111'),
-    (3, 'Arrays and Linked Lists', 'Linear data structures and their operations.', '33333333-2222-2222-2222-222222222222'),
-    (4, 'Trees and Graphs', 'Non-linear data structures and traversals.', '33333333-2222-2222-2222-222222222222');
+    (1, 'Clean Architecture Foundations', 'Isolating domain logic from frameworks and delivery mechanisms.', 'c1111111-1111-1111-1111-111111111111'),
+    (2, 'Tactical Domain-Driven Design', 'Deep dive into Entities, Value Objects, and Aggregate Roots.', 'c1111111-1111-1111-1111-111111111111'),
+    (3, 'Strategic Design and Context Mapping', 'Defining Bounded Contexts and integrating external systems.', 'c1111111-1111-1111-1111-111111111111'),
+    (1, 'Foundational ML Algorithms', 'Understanding the math behind Perceptrons and Support Vector Machines (SVM).', 'c2222222-2222-2222-2222-222222222222'),
+    (2, 'Vector Databases and Embeddings', 'High-dimensional vector spaces and similarity search mechanisms.', 'c2222222-2222-2222-2222-222222222222'),
+    (3, 'Building Agents and RAG Pipelines', 'Integrating LangChain Agents with external knowledge bases.', 'c2222222-2222-2222-2222-222222222222'),
+    (1, 'Containerization with Docker', 'Creating Dockerfiles, managing images, and composing multi-container apps.', 'c3333333-3333-3333-3333-333333333333'),
+    (2, 'CI/CD Automation', 'Building robust deployment pipelines using GitHub Actions.', 'c3333333-3333-3333-3333-333333333333');
 
--- 7. Insert Group Learning Outcomes
+-- 7. Insert Group Learning Outcomes (using valid hex '7...')
 INSERT INTO group_learning_outcomes (id, name, description, course_id)
 VALUES
-    ('aaaaaaaa-1111-1111-1111-111111111111', 'Programming Fundamentals', 'Core programming concepts including syntax and data types.', '33333333-1111-1111-1111-111111111111'),
-    ('aaaaaaaa-2222-2222-2222-222222222222', 'Control Flow Concepts', 'Understanding iteration, conditionals, and branching.', '33333333-1111-1111-1111-111111111111'),
-    ('aaaaaaaa-3333-3333-3333-333333333333', 'Linear Data Structures', 'Arrays, linked lists, and their time complexities.', '33333333-2222-2222-2222-222222222222');
+    ('71111111-1111-1111-1111-111111111111', 'Structural Patterns', 'Mastery of backend application layering.', 'c1111111-1111-1111-1111-111111111111'),
+    ('72222222-2222-2222-2222-222222222222', 'Applied AI Integration', 'Designing applications that utilize ML models and LLMs.', 'c2222222-2222-2222-2222-222222222222'),
+    ('73333333-3333-3333-3333-333333333333', 'Infrastructure as Code', 'Managing environments through reproducible configuration.', 'c3333333-3333-3333-3333-333333333333');
 
--- 8. Insert Learning Outcomes
--- CS101 Learning Outcomes
+-- 8. Insert Learning Outcomes (using valid hex '8...')
 INSERT INTO learning_outcomes (id, code, description, course_id, group_learning_outcome_id)
 VALUES
-    ('66666666-1111-1111-1111-111111111111', 'CLO1', 'Understand basic syntax and variable usage.', '33333333-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111'),
-    ('66666666-2222-2222-2222-222222222222', 'CLO2', 'Declare and use different data types correctly.', '33333333-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111'),
-    ('66666666-3333-3333-3333-333333333333', 'CLO3', 'Implement basic iteration and conditionals.', '33333333-1111-1111-1111-111111111111', 'aaaaaaaa-2222-2222-2222-222222222222'),
-    ('66666666-4444-4444-4444-444444444444', 'CLO4', 'Use switch statements and ternary operators.', '33333333-1111-1111-1111-111111111111', 'aaaaaaaa-2222-2222-2222-222222222222'),
-    ('66666666-5555-5555-5555-555555555555', 'CLO5', 'Debug simple programs using systematic approaches.', '33333333-1111-1111-1111-111111111111', NULL);
-
--- CS201 Learning Outcomes
-INSERT INTO learning_outcomes (id, code, description, course_id, group_learning_outcome_id)
-VALUES
-    ('66666666-6666-6666-6666-666666666666', 'CLO6', 'Implement and use arrays efficiently.', '33333333-2222-2222-2222-222222222222', 'aaaaaaaa-3333-3333-3333-333333333333'),
-    ('66666666-7777-7777-7777-777777777777', 'CLO7', 'Understand linked list operations and trade-offs.', '33333333-2222-2222-2222-222222222222', 'aaaaaaaa-3333-3333-3333-333333333333'),
-    ('66666666-8888-8888-8888-888888888888', 'CLO8', 'Analyze time complexity of basic operations.', '33333333-2222-2222-2222-222222222222', NULL),
-    ('66666666-9999-9999-9999-999999999999', 'CLO9', 'Implement tree traversal algorithms.', '33333333-2222-2222-2222-222222222222', NULL);
+    ('81111111-1111-1111-1111-111111111111', 'SE401-1', 'Implement dependency inversion in a Spring Boot application.', 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
+    ('82222222-2222-2222-2222-222222222222', 'SE401-2', 'Design transactional boundaries using DDD Aggregate Roots.', 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
+    ('83333333-3333-3333-3333-333333333333', 'SE401-3', 'Identify Bounded Contexts within a complex monolithic system.', 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
+    ('84444444-4444-4444-4444-444444444444', 'CS502-1', 'Differentiate between linear and non-linear classification using SVMs.', 'c2222222-2222-2222-2222-222222222222', '72222222-2222-2222-2222-222222222222'),
+    ('85555555-5555-5555-5555-555555555555', 'CS502-2', 'Construct a Retrieval-Augmented Generation workflow using LangChain.', 'c2222222-2222-2222-2222-222222222222', '72222222-2222-2222-2222-222222222222'),
+    ('86666666-6666-6666-6666-666666666666', 'IT305-1', 'Containerize a full-stack application using Docker Compose.', 'c3333333-3333-3333-3333-333333333333', '73333333-3333-3333-3333-333333333333'),
+    ('87777777-7777-7777-7777-777777777777', 'IT305-2', 'Automate testing and deployment using GitHub Actions workflows.', 'c3333333-3333-3333-3333-333333333333', '73333333-3333-3333-3333-333333333333');
 
 -- 9. Insert Chapter-Learning Outcome Relationships
--- Ch1 (Variables): CLO1, CLO2, CLO5
 INSERT INTO chapter_learning_outcomes (chapter_number, course_id, learning_outcome_id)
 VALUES
-    (1, '33333333-1111-1111-1111-111111111111', '66666666-1111-1111-1111-111111111111'),
-    (1, '33333333-1111-1111-1111-111111111111', '66666666-2222-2222-2222-222222222222'),
-    (1, '33333333-1111-1111-1111-111111111111', '66666666-5555-5555-5555-555555555555');
+    (1, 'c1111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111'),
+    (2, 'c1111111-1111-1111-1111-111111111111', '82222222-2222-2222-2222-222222222222'),
+    (3, 'c1111111-1111-1111-1111-111111111111', '83333333-3333-3333-3333-333333333333'),
+    (1, 'c2222222-2222-2222-2222-222222222222', '84444444-4444-4444-4444-444444444444'),
+    (3, 'c2222222-2222-2222-2222-222222222222', '85555555-5555-5555-5555-555555555555'),
+    (1, 'c3333333-3333-3333-3333-333333333333', '86666666-6666-6666-6666-666666666666'),
+    (2, 'c3333333-3333-3333-3333-333333333333', '87777777-7777-7777-7777-777777777777');
 
--- Ch2 (Control Flow): CLO3, CLO4, CLO5
-INSERT INTO chapter_learning_outcomes (chapter_number, course_id, learning_outcome_id)
-VALUES
-    (2, '33333333-1111-1111-1111-111111111111', '66666666-3333-3333-3333-333333333333'),
-    (2, '33333333-1111-1111-1111-111111111111', '66666666-4444-4444-4444-444444444444'),
-    (2, '33333333-1111-1111-1111-111111111111', '66666666-5555-5555-5555-555555555555');
-
--- Ch3 (Arrays & Linked Lists): CLO6, CLO7, CLO8
-INSERT INTO chapter_learning_outcomes (chapter_number, course_id, learning_outcome_id)
-VALUES
-    (3, '33333333-2222-2222-2222-222222222222', '66666666-6666-6666-6666-666666666666'),
-    (3, '33333333-2222-2222-2222-222222222222', '66666666-7777-7777-7777-777777777777'),
-    (3, '33333333-2222-2222-2222-222222222222', '66666666-8888-8888-8888-888888888888');
-
--- Ch4 (Trees & Graphs): CLO8, CLO9
-INSERT INTO chapter_learning_outcomes (chapter_number, course_id, learning_outcome_id)
-VALUES
-    (4, '33333333-2222-2222-2222-222222222222', '66666666-8888-8888-8888-888888888888'),
-    (4, '33333333-2222-2222-2222-222222222222', '66666666-9999-9999-9999-999999999999');
-
--- 10. Insert AI Settings
+-- 10. Insert AI Settings (using valid hex 'a...')
 INSERT INTO ai_settings (id, generation_prompt, difficulty_level, focus_on_weak_areas, number_of_questions, setting_type, align_to_clo, include_answer_key, mode)
 VALUES
-    ('77777777-1111-1111-1111-111111111111', 'Generate a quiz on basic java syntax.', 'MEDIUM', true, 10, 'QUIZ_GENERATION', true, true, 'STRICT');
+    ('a1111111-1111-1111-1111-111111111111', 'Generate architecture scenario questions.', 'HARD', true, 5, 'QUIZ_GENERATION', true, true, 'STRICT'),
+    ('a2222222-2222-2222-2222-222222222222', 'Create conceptual ML questions.', 'MEDIUM', false, 10, 'QUIZ_GENERATION', true, true, 'RELAXED'),
+    ('a3333333-3333-3333-3333-333333333333', 'Generate CI/CD troubleshooting scenarios.', 'HARD', true, 8, 'QUIZ_GENERATION', true, true, 'STRICT');
 
--- 11. Insert Quizzes
--- Quiz 1: CS101 Chapter 1 Quiz (teacher-created), chapters=[1], LOs=[CLO1, CLO2] (subset of Ch1: CLO1,CLO2,CLO5)
--- Quiz 2: CS101 Midterm Practice (student-personalized), chapters=[1,2], LOs=[CLO1, CLO3, CLO4] (subset of Ch1∪Ch2)
--- Quiz 3: CS201 Arrays Quiz (teacher-created), chapters=[3], LOs=[CLO6, CLO7, CLO8] (= Ch3 LOs)
--- Quiz 4: CS201 Trees Quiz (teacher-created), chapters=[4], LOs=[CLO8, CLO9] (= Ch4 LOs)
-INSERT INTO quizzes (id, quiz_title, time_limit_minutes, pass_score, ai_settings_id, course_id, student_id, teacher_id, active)
+-- 11. Insert Quizzes (using valid hex '9...')
+INSERT INTO quizzes (id, quiz_title, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, ai_settings_id, course_id, teacher_id, display)
 VALUES
-    ('88888888-1111-1111-1111-111111111111', 'CS101 Chapter 1 Quiz', 30, 70.0, '77777777-1111-1111-1111-111111111111', '33333333-1111-1111-1111-111111111111', NULL, '22222222-1111-1111-1111-111111111111', true),
-    ('88888888-2222-2222-2222-222222222222', 'CS101 Midterm Practice', 60, 50.0, '77777777-1111-1111-1111-111111111111', '33333333-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', NULL, true),
-    ('88888888-3333-3333-3333-333333333333', 'CS201 Arrays Quiz', 45, 65.0, '77777777-1111-1111-1111-111111111111', '33333333-2222-2222-2222-222222222222', NULL, '22222222-2222-2222-2222-222222222222', true),
-    ('88888888-4444-4444-4444-444444444444', 'CS201 Trees Quiz', 40, 60.0, '77777777-1111-1111-1111-111111111111', '33333333-2222-2222-2222-222222222222', NULL, '22222222-2222-2222-2222-222222222222', true);
+    ('91111111-1111-1111-1111-111111111111', 'Arch Midterm: Clean Arch & DDD', 60, 70.0, TO_TIMESTAMP('15-10-2025 09:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2025 11:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'a1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
+    ('92222222-2222-2222-2222-222222222222', 'Arch Final: System Boundaries', 120, 75.0, TO_TIMESTAMP('10-12-2025 13:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('10-12-2025 15:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'a1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
+    ('93333333-3333-3333-3333-333333333333', 'ML Foundations Check', 30, 60.0, TO_TIMESTAMP('15-02-2026 10:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('20-02-2026 23:59:00', 'DD-MM-YYYY HH24:MI:SS'), 2, 'a2222222-2222-2222-2222-222222222222', 'c2222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', true),
+    ('94444444-4444-4444-4444-444444444444', 'Applied RAG & Agents', 45, 80.0, TO_TIMESTAMP('10-04-2026 09:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-04-2026 23:59:00', 'DD-MM-YYYY HH24:MI:SS'), 3, 'a2222222-2222-2222-2222-222222222222', 'c2222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', true),
+    ('95555555-5555-5555-5555-555555555555', 'Docker & CI/CD Practical', 90, 85.0, TO_TIMESTAMP('05-11-2025 14:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('05-11-2025 17:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'a3333333-3333-3333-3333-333333333333', 'c3333333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333', true);
 
--- 12. Insert Questions
--- Quiz 1 questions (LOs must be in {CLO1, CLO2})
+-- 12. Insert Questions (using valid hex 'd...')
 INSERT INTO questions (id, content, type, points, quiz_id)
 VALUES
-    ('99999999-1111-1111-1111-111111111111', 'What keyword is used to declare an integer variable in Java?', 'MULTIPLE_CHOICE', 10.0, '88888888-1111-1111-1111-111111111111'),
-    ('99999999-2222-2222-2222-222222222222', 'Boolean is a primitive data type in Java.', 'TRUE_FALSE', 5.0, '88888888-1111-1111-1111-111111111111'),
-    ('99999999-3333-3333-3333-333333333333', 'Explain the difference between int and Integer in Java. When would you use each?', 'ESSAY', 15.0, '88888888-1111-1111-1111-111111111111');
+    ('d1111111-1111-1111-1111-111111111111', 'In Clean Architecture, entities can depend on Use Case orchestrators.', 'TRUE_FALSE', 5.0, '91111111-1111-1111-1111-111111111111'),
+    ('d2222222-2222-2222-2222-222222222222', 'Which DDD concept ensures transactional consistency?', 'MULTIPLE_CHOICE', 10.0, '91111111-1111-1111-1111-111111111111'),
+    ('d3333333-3333-3333-3333-333333333333', 'Explain how Ports and Adapters isolate the core domain from a PostgreSQL database.', 'ESSAY', 20.0, '91111111-1111-1111-1111-111111111111'),
+    ('d4444444-4444-4444-4444-444444444444', 'An Anti-Corruption Layer (ACL) is used to translate models between two bounded contexts.', 'TRUE_FALSE', 10.0, '92222222-2222-2222-2222-222222222222'),
+    ('d5555555-5555-5555-5555-555555555555', 'A single-layer perceptron can perfectly classify XOR data.', 'TRUE_FALSE', 5.0, '93333333-3333-3333-3333-333333333333'),
+    ('d6666666-6666-6666-6666-666666666666', 'What technique does an SVM use to handle non-linearly separable data?', 'MULTIPLE_CHOICE', 10.0, '93333333-3333-3333-3333-333333333333'),
+    ('d7777777-7777-7777-7777-777777777777', 'Which LangChain component is responsible for dynamically deciding the next action step?', 'MULTIPLE_CHOICE', 10.0, '94444444-4444-4444-4444-444444444444'),
+    ('d8888888-8888-8888-8888-888888888888', 'In a RAG pipeline, semantic search is performed over the raw text strings rather than vector embeddings.', 'TRUE_FALSE', 5.0, '94444444-4444-4444-4444-444444444444'),
+    ('d9999999-9999-9999-9999-999999999999', 'What instruction in a Dockerfile defines the base image?', 'MULTIPLE_CHOICE', 5.0, '95555555-5555-5555-5555-555555555555'),
+    ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A GitHub Action Workflow must be placed in the `.github/workflows` directory.', 'TRUE_FALSE', 5.0, '95555555-5555-5555-5555-555555555555'),
+    ('dbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Describe the steps to configure a multi-stage Docker build to optimize the final image size of a Spring Boot application.', 'ESSAY', 25.0, '95555555-5555-5555-5555-555555555555');
 
--- Quiz 2 questions (LOs must be in {CLO1, CLO3, CLO4})
-INSERT INTO questions (id, content, type, points, quiz_id)
-VALUES
-    ('99999999-4444-4444-4444-444444444444', 'What is the output of: int x = 5; System.out.println(x++);', 'MULTIPLE_CHOICE', 10.0, '88888888-2222-2222-2222-222222222222'),
-    ('99999999-5555-5555-5555-555555555555', 'Which loop structure guarantees at least one iteration?', 'MULTIPLE_CHOICE', 10.0, '88888888-2222-2222-2222-222222222222'),
-    ('99999999-6666-6666-6666-666666666666', 'A switch statement in Java can only use integer values as cases.', 'TRUE_FALSE', 5.0, '88888888-2222-2222-2222-222222222222');
-
--- Quiz 3 questions (LOs must be in {CLO6, CLO7, CLO8})
-INSERT INTO questions (id, content, type, points, quiz_id)
-VALUES
-    ('99999999-7777-7777-7777-777777777777', 'Arrays provide O(1) random access time.', 'TRUE_FALSE', 5.0, '88888888-3333-3333-3333-333333333333'),
-    ('99999999-8888-8888-8888-888888888888', 'What is the time complexity of inserting an element at the head of a singly linked list?', 'MULTIPLE_CHOICE', 10.0, '88888888-3333-3333-3333-333333333333'),
-    ('99999999-9999-9999-9999-999999999999', 'Explain Big-O notation and provide examples for O(1), O(n), and O(n^2) operations.', 'ESSAY', 20.0, '88888888-3333-3333-3333-333333333333');
-
--- Quiz 4 questions (LOs must be in {CLO8, CLO9})
-INSERT INTO questions (id, content, type, points, quiz_id)
-VALUES
-    ('99999999-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Which tree traversal method visits the root node first?', 'MULTIPLE_CHOICE', 10.0, '88888888-4444-4444-4444-444444444444'),
-    ('99999999-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Binary search on a sorted array has O(log n) time complexity.', 'TRUE_FALSE', 5.0, '88888888-4444-4444-4444-444444444444');
-
--- 13. Insert Answers (for MULTIPLE_CHOICE and TRUE_FALSE questions; ESSAY questions have no answers)
--- Q1: What keyword declares an integer?
+-- 13. Insert Answers
 INSERT INTO answers (content, is_correct, explanation, question_id)
 VALUES
-    ('int', true, 'The int keyword declares a 32-bit integer primitive.', '99999999-1111-1111-1111-111111111111'),
-    ('integer', false, 'integer is not a keyword; Integer is a wrapper class.', '99999999-1111-1111-1111-111111111111'),
-    ('number', false, 'number is not a valid Java keyword.', '99999999-1111-1111-1111-111111111111'),
-    ('var', false, 'var is for type inference, not specifically for integers.', '99999999-1111-1111-1111-111111111111');
+    ('True', false, 'Dependencies must point inward. Entities are at the center and depend on nothing.', 'd1111111-1111-1111-1111-111111111111'),
+    ('False', true, 'The Dependency Rule dictates that core entities cannot depend on outer layers like Use Cases.', 'd1111111-1111-1111-1111-111111111111'),
+    ('Value Object', false, 'Value objects describe characteristics but do not manage boundaries.', 'd2222222-2222-2222-2222-222222222222'),
+    ('Aggregate Root', true, 'Aggregates enforce invariants and serve as transactional boundaries.', 'd2222222-2222-2222-2222-222222222222'),
+    ('Domain Service', false, 'Services encapsulate logic that doesn''t naturally fit an entity.', 'd2222222-2222-2222-2222-222222222222'),
+    ('True', true, 'ACL acts as a buffer/translator to prevent a downstream context from being polluted by upstream models.', 'd4444444-4444-4444-4444-444444444444'),
+    ('False', false, 'This is exactly the purpose of an Anti-Corruption Layer.', 'd4444444-4444-4444-4444-444444444444'),
+    ('True', false, 'XOR is not linearly separable; a single perceptron cannot solve it.', 'd5555555-5555-5555-5555-555555555555'),
+    ('False', true, 'XOR requires a multi-layer network (MLP) due to its non-linear separability.', 'd5555555-5555-5555-5555-555555555555'),
+    ('Gradient Descent', false, 'Gradient descent is an optimization algorithm, not specific to non-linear mapping.', 'd6666666-6666-6666-6666-666666666666'),
+    ('The Kernel Trick', true, 'The Kernel Trick implicitly maps inputs into high-dimensional feature spaces.', 'd6666666-6666-6666-6666-666666666666'),
+    ('Sigmoid Activation', false, 'Common in Neural Networks, but not the primary mechanism of standard SVMs.', 'd6666666-6666-6666-6666-666666666666'),
+    ('Memory', false, 'Memory persists state between conversational turns.', 'd7777777-7777-7777-7777-777777777777'),
+    ('Agent', true, 'Agents use LLMs as reasoning engines to determine which tools to call and in what order.', 'd7777777-7777-7777-7777-777777777777'),
+    ('Chain', false, 'Chains are hardcoded sequences of calls, not dynamic reasoning loops.', 'd7777777-7777-7777-7777-777777777777'),
+    ('True', false, 'Semantic search relies on comparing mathematical vector representations, not raw strings.', 'd8888888-8888-8888-8888-888888888888'),
+    ('False', true, 'RAG retrieves context by comparing the query''s embedding vector against the database vectors.', 'd8888888-8888-8888-8888-888888888888'),
+    ('FROM', true, 'FROM initializes a new build stage and sets the Base Image.', 'd9999999-9999-9999-9999-999999999999'),
+    ('BASE', false, 'There is no BASE instruction in Dockerfiles.', 'd9999999-9999-9999-9999-999999999999'),
+    ('ENV', false, 'ENV sets environment variables.', 'd9999999-9999-9999-9999-999999999999'),
+    ('True', true, 'GitHub automatically detects and runs YAML workflows placed exactly in this directory.', 'daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+    ('False', false, 'Workflows placed outside `.github/workflows` will not be recognized by GitHub Actions.', 'daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
--- Q2: Boolean is a primitive data type
-INSERT INTO answers (content, is_correct, explanation, question_id)
-VALUES
-    ('True', false, 'boolean (lowercase) is primitive; Boolean (uppercase) is a wrapper class.', '99999999-2222-2222-2222-222222222222'),
-    ('False', true, 'Boolean is a wrapper class. boolean (lowercase) is the primitive type.', '99999999-2222-2222-2222-222222222222');
-
--- Q4: Output of x++
-INSERT INTO answers (content, is_correct, explanation, question_id)
-VALUES
-    ('5', true, 'Post-increment returns the value before incrementing.', '99999999-4444-4444-4444-444444444444'),
-    ('6', false, 'Pre-increment (++x) would output 6, not post-increment.', '99999999-4444-4444-4444-444444444444'),
-    ('Compilation Error', false, 'This is valid Java syntax.', '99999999-4444-4444-4444-444444444444');
-
--- Q5: Which loop guarantees at least one iteration?
-INSERT INTO answers (content, is_correct, explanation, question_id)
-VALUES
-    ('do-while', true, 'The do-while loop executes the body first, then checks the condition.', '99999999-5555-5555-5555-555555555555'),
-    ('for', false, 'A for loop may never execute if the condition is initially false.', '99999999-5555-5555-5555-555555555555'),
-    ('while', false, 'A while loop may never execute if the condition is initially false.', '99999999-5555-5555-5555-555555555555');
-
--- Q6: Switch only uses integers
-INSERT INTO answers (content, is_correct, explanation, question_id)
-VALUES
-    ('True', false, 'Switch also supports String, char, byte, short, and enum types.', '99999999-6666-6666-6666-666666666666'),
-    ('False', true, 'Java switch supports int, String, char, byte, short, and enum types.', '99999999-6666-6666-6666-666666666666');
-
--- Q7: Arrays have O(1) access
-INSERT INTO answers (content, is_correct, explanation, question_id)
-VALUES
-    ('True', true, 'Arrays use contiguous memory, allowing direct index-based access in O(1).', '99999999-7777-7777-7777-777777777777'),
-    ('False', false, 'Arrays do provide O(1) random access via index calculation.', '99999999-7777-7777-7777-777777777777');
-
--- Q8: Time complexity of linked list head insert
-INSERT INTO answers (content, is_correct, explanation, question_id)
-VALUES
-    ('O(1)', true, 'Inserting at the head only requires updating the head pointer.', '99999999-8888-8888-8888-888888888888'),
-    ('O(n)', false, 'O(n) applies to inserting at the tail without a tail pointer.', '99999999-8888-8888-8888-888888888888'),
-    ('O(log n)', false, 'Linked list operations are not logarithmic.', '99999999-8888-8888-8888-888888888888');
-
--- Q10: Which traversal visits root first?
-INSERT INTO answers (content, is_correct, explanation, question_id)
-VALUES
-    ('Pre-order', true, 'Pre-order visits root, then left subtree, then right subtree.', '99999999-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
-    ('In-order', false, 'In-order visits left subtree, then root, then right subtree.', '99999999-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
-    ('Post-order', false, 'Post-order visits left, right, then root last.', '99999999-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
-    ('Level-order', false, 'Level-order visits nodes level by level, but pre-order visits root first in DFS.', '99999999-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-
--- Q11: Binary search is O(log n)
-INSERT INTO answers (content, is_correct, explanation, question_id)
-VALUES
-    ('True', true, 'Binary search halves the search space each step, giving O(log n).', '99999999-bbbb-bbbb-bbbb-bbbbbbbbbbbb'),
-    ('False', false, 'Binary search is indeed O(log n) on a sorted array.', '99999999-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
-
--- 14. Insert Attempts
+-- 14. Insert Attempts (using valid hex 'e...')
 INSERT INTO attempts (id, student_id, quiz_id, score, start_time, end_time, status)
 VALUES
-    ('bbbbbbbb-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', '88888888-1111-1111-1111-111111111111', 85.0, '2024-09-15 14:00:00', '2024-09-15 14:25:00', 'COMPLETED');
+    ('e1111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444444', '91111111-1111-1111-1111-111111111111', 85.0, TO_TIMESTAMP('15-10-2025 09:10:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2025 10:05:00', 'DD-MM-YYYY HH24:MI:SS'), 'COMPLETED'),
+    ('e2222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555', '93333333-3333-3333-3333-333333333333', 90.0, TO_TIMESTAMP('16-02-2026 14:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('16-02-2026 14:28:00', 'DD-MM-YYYY HH24:MI:SS'), 'COMPLETED'),
+    ('e3333333-3333-3333-3333-333333333333', '66666666-6666-6666-6666-666666666666', '95555555-5555-5555-5555-555555555555', NULL, TO_TIMESTAMP('05-11-2025 14:15:00', 'DD-MM-YYYY HH24:MI:SS'), NULL, 'IN_PROGRESS');
 
--- 15. Insert Quiz-Chapter Relationships
+-- 15. Insert Junction Tables
 INSERT INTO quiz_chapters (quiz_id, chapter_number, chapter_course_id)
 VALUES
-    ('88888888-1111-1111-1111-111111111111', 1, '33333333-1111-1111-1111-111111111111'),
-    ('88888888-2222-2222-2222-222222222222', 1, '33333333-1111-1111-1111-111111111111'),
-    ('88888888-2222-2222-2222-222222222222', 2, '33333333-1111-1111-1111-111111111111'),
-    ('88888888-3333-3333-3333-333333333333', 3, '33333333-2222-2222-2222-222222222222'),
-    ('88888888-4444-4444-4444-444444444444', 4, '33333333-2222-2222-2222-222222222222');
+    ('91111111-1111-1111-1111-111111111111', 1, 'c1111111-1111-1111-1111-111111111111'),
+    ('91111111-1111-1111-1111-111111111111', 2, 'c1111111-1111-1111-1111-111111111111'),
+    ('92222222-2222-2222-2222-222222222222', 3, 'c1111111-1111-1111-1111-111111111111'),
+    ('93333333-3333-3333-3333-333333333333', 1, 'c2222222-2222-2222-2222-222222222222'),
+    ('94444444-4444-4444-4444-444444444444', 3, 'c2222222-2222-2222-2222-222222222222'),
+    ('95555555-5555-5555-5555-555555555555', 1, 'c3333333-3333-3333-3333-333333333333'),
+    ('95555555-5555-5555-5555-555555555555', 2, 'c3333333-3333-3333-3333-333333333333');
 
--- 16. Insert Quiz-Learning Outcome Relationships
--- Quiz 1 LOs: CLO1, CLO2 (from Ch1: CLO1, CLO2, CLO5)
 INSERT INTO quiz_learning_outcomes (quiz_id, learning_outcome_id)
 VALUES
-    ('88888888-1111-1111-1111-111111111111', '66666666-1111-1111-1111-111111111111'),
-    ('88888888-1111-1111-1111-111111111111', '66666666-2222-2222-2222-222222222222');
+    ('91111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111'),
+    ('91111111-1111-1111-1111-111111111111', '82222222-2222-2222-2222-222222222222'),
+    ('92222222-2222-2222-2222-222222222222', '83333333-3333-3333-3333-333333333333'),
+    ('93333333-3333-3333-3333-333333333333', '84444444-4444-4444-4444-444444444444'),
+    ('94444444-4444-4444-4444-444444444444', '85555555-5555-5555-5555-555555555555'),
+    ('95555555-5555-5555-5555-555555555555', '86666666-6666-6666-6666-666666666666'),
+    ('95555555-5555-5555-5555-555555555555', '87777777-7777-7777-7777-777777777777');
 
--- Quiz 2 LOs: CLO1, CLO3, CLO4 (from Ch1∪Ch2: CLO1,CLO2,CLO3,CLO4,CLO5)
-INSERT INTO quiz_learning_outcomes (quiz_id, learning_outcome_id)
-VALUES
-    ('88888888-2222-2222-2222-222222222222', '66666666-1111-1111-1111-111111111111'),
-    ('88888888-2222-2222-2222-222222222222', '66666666-3333-3333-3333-333333333333'),
-    ('88888888-2222-2222-2222-222222222222', '66666666-4444-4444-4444-444444444444');
-
--- Quiz 3 LOs: CLO6, CLO7, CLO8 (from Ch3: CLO6, CLO7, CLO8)
-INSERT INTO quiz_learning_outcomes (quiz_id, learning_outcome_id)
-VALUES
-    ('88888888-3333-3333-3333-333333333333', '66666666-6666-6666-6666-666666666666'),
-    ('88888888-3333-3333-3333-333333333333', '66666666-7777-7777-7777-777777777777'),
-    ('88888888-3333-3333-3333-333333333333', '66666666-8888-8888-8888-888888888888');
-
--- Quiz 4 LOs: CLO8, CLO9 (from Ch4: CLO8, CLO9)
-INSERT INTO quiz_learning_outcomes (quiz_id, learning_outcome_id)
-VALUES
-    ('88888888-4444-4444-4444-444444444444', '66666666-8888-8888-8888-888888888888'),
-    ('88888888-4444-4444-4444-444444444444', '66666666-9999-9999-9999-999999999999');
-
--- 17. Insert Question-Learning Outcome Relationships
--- Each question's LO must exist in its quiz's LOs
 INSERT INTO question_learning_outcomes (question_id, learning_outcome_id)
 VALUES
-    ('99999999-1111-1111-1111-111111111111', '66666666-1111-1111-1111-111111111111'),
-    ('99999999-2222-2222-2222-222222222222', '66666666-2222-2222-2222-222222222222'),
-    ('99999999-3333-3333-3333-333333333333', '66666666-1111-1111-1111-111111111111'),
-    ('99999999-4444-4444-4444-444444444444', '66666666-1111-1111-1111-111111111111'),
-    ('99999999-5555-5555-5555-555555555555', '66666666-3333-3333-3333-333333333333'),
-    ('99999999-6666-6666-6666-666666666666', '66666666-4444-4444-4444-444444444444'),
-    ('99999999-7777-7777-7777-777777777777', '66666666-6666-6666-6666-666666666666'),
-    ('99999999-8888-8888-8888-888888888888', '66666666-7777-7777-7777-777777777777'),
-    ('99999999-9999-9999-9999-999999999999', '66666666-8888-8888-8888-888888888888'),
-    ('99999999-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '66666666-9999-9999-9999-999999999999'),
-    ('99999999-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '66666666-8888-8888-8888-888888888888');
+    ('d1111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111'),
+    ('d2222222-2222-2222-2222-222222222222', '82222222-2222-2222-2222-222222222222'),
+    ('d3333333-3333-3333-3333-333333333333', '81111111-1111-1111-1111-111111111111'),
+    ('d4444444-4444-4444-4444-444444444444', '83333333-3333-3333-3333-333333333333'),
+    ('d5555555-5555-5555-5555-555555555555', '84444444-4444-4444-4444-444444444444'),
+    ('d6666666-6666-6666-6666-666666666666', '84444444-4444-4444-4444-444444444444'),
+    ('d7777777-7777-7777-7777-777777777777', '85555555-5555-5555-5555-555555555555'),
+    ('d8888888-8888-8888-8888-888888888888', '85555555-5555-5555-5555-555555555555'),
+    ('d9999999-9999-9999-9999-999999999999', '86666666-6666-6666-6666-666666666666'),
+    ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '87777777-7777-7777-7777-777777777777'),
+    ('dbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '86666666-6666-6666-6666-666666666666');
 
--- 18. Insert Student Learning Outcomes
 INSERT INTO student_learning_outcomes (student_id, learning_outcome_id)
 VALUES
-    ('11111111-1111-1111-1111-111111111111', '66666666-1111-1111-1111-111111111111'),
-    ('11111111-1111-1111-1111-111111111111', '66666666-2222-2222-2222-222222222222');
+    ('44444444-4444-4444-4444-444444444444', '81111111-1111-1111-1111-111111111111'),
+    ('44444444-4444-4444-4444-444444444444', '82222222-2222-2222-2222-222222222222'),
+    ('55555555-5555-5555-5555-555555555555', '84444444-4444-4444-4444-444444444444');

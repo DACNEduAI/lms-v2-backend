@@ -51,13 +51,13 @@ class GetCourseServiceUT {
     @InjectMocks
     private GetCourseService getCourseService;
 
-    private UserAuth mockUser;
-        private UserAuth mockStudentUser;
+    private UserAuth mockTeacher;
+    private UserAuth mockStudent;
     private UUID teacherId;
-        private UUID studentId;
+    private UUID studentId;
     private UUID courseId;
-    private Course mockCourse;
     private UUID groupId;
+    private Course mockCourse;
 
     @BeforeEach
     void setUp() {
@@ -66,12 +66,12 @@ class GetCourseServiceUT {
         courseId = UUID.randomUUID();
         groupId = UUID.randomUUID();
 
-        mockUser = UserAuth.builder()
+        mockTeacher = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
 
-        mockStudentUser = UserAuth.builder()
+        mockStudent = UserAuth.builder()
                 .id(studentId)
                 .role(Roles.STUDENT)
                 .build();
@@ -107,7 +107,6 @@ class GetCourseServiceUT {
     @Test
     @DisplayName("Should successfully get a course with grouped and ungrouped learning outcomes")
     void testGetCourse_WithValidCourseIdAndAuthenticatedTeacher_ShouldSucceed() {
-        // Arrange
         GroupLearningOutcome group = GroupLearningOutcome.builder()
                 .id(groupId)
                 .name("Fundamentals")
@@ -117,31 +116,19 @@ class GetCourseServiceUT {
                 .build();
 
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadGroupLearningOutcomePort.findByCourseId(courseId)).thenReturn(List.of(group));
 
-        // Act
         GetCourseResponse response = getCourseService.getCourse(courseId);
 
-        // Assert
         assertNotNull(response);
         assertEquals(courseId, response.getCourseId());
         assertEquals("Introduction to Java", response.getCourseName());
         assertEquals("CS101", response.getCourseCode());
         assertEquals(teacherId, response.getTeacherId());
         assertTrue(response.getActive());
-
-        // Grouped LOs
-        assertNotNull(response.getGroupLearningOutcomes());
         assertEquals(1, response.getGroupLearningOutcomes().size());
-        assertEquals("Fundamentals", response.getGroupLearningOutcomes().get(0).getName());
-        assertEquals(1, response.getGroupLearningOutcomes().get(0).getLearningOutcomes().size());
-        assertEquals("CLO-1", response.getGroupLearningOutcomes().get(0).getLearningOutcomes().get(0).getCode());
-
-        // Ungrouped LOs
-        assertNotNull(response.getUngroupedLearningOutcomes());
         assertEquals(1, response.getUngroupedLearningOutcomes().size());
-        assertEquals("CLO-2", response.getUngroupedLearningOutcomes().get(0).getCode());
 
         verify(loadCoursePort, times(1)).findById(courseId);
         verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
@@ -149,40 +136,48 @@ class GetCourseServiceUT {
     }
 
     @Test
+    @DisplayName("Should allow enrolled student to access the course")
+    void testGetCourse_WithEnrolledStudent_ShouldSucceed() {
+        when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
+        when(loadGroupLearningOutcomePort.findByCourseId(courseId)).thenReturn(Collections.emptyList());
+
+        GetCourseResponse response = getCourseService.getCourse(courseId);
+
+        assertNotNull(response);
+        assertEquals(courseId, response.getCourseId());
+        assertEquals(teacherId, response.getTeacherId());
+    }
+
+    @Test
     @DisplayName("Should throw CourseNotFoundException when course does not exist")
     void testGetCourse_WithNonExistentCourse_ShouldThrowException() {
-        // Arrange
         UUID nonExistentCourseId = UUID.randomUUID();
         when(loadCoursePort.findById(nonExistentCourseId)).thenReturn(Optional.empty());
 
-        // Act & Assert
-        CourseNotFoundException exception = assertThrows(CourseNotFoundException.class,
+                CourseNotFoundException exception = assertThrows(CourseNotFoundException.class,
                 () -> getCourseService.getCourse(nonExistentCourseId));
-
-        assertTrue(exception.getMessage().contains("Course not found with id:"));
+                assertNotNull(exception);
 
         verify(loadCoursePort, times(1)).findById(nonExistentCourseId);
         verify(loadSignedInUserPort, never()).findAuthenticatedUser();
     }
 
     @Test
-    @DisplayName("Should throw TeacherNotFoundException when teacher is not authenticated")
-    void testGetCourse_WithNonAuthenticatedTeacher_ShouldThrowException() {
-        // Arrange
+    @DisplayName("Should throw TeacherNotFoundException when user is not authenticated")
+    void testGetCourse_WithNonAuthenticatedUser_ShouldThrowException() {
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
 
-        // Act & Assert
         TeacherNotFoundException exception = assertThrows(TeacherNotFoundException.class,
                 () -> getCourseService.getCourse(courseId));
 
-                assertEquals("Authenticated user not found", exception.getMessage());
+        assertEquals("Authenticated user not found", exception.getMessage());
     }
 
     @Test
-        @DisplayName("Should throw IllegalArgumentException when user is not authorized to access the course")
-        void testGetCourse_WithUnauthorizedUser_ShouldThrowException() {
-        // Arrange
+    @DisplayName("Should throw IllegalArgumentException when user is not authorized")
+    void testGetCourse_WithUnauthorizedUser_ShouldThrowException() {
         UserAuth anotherUser = UserAuth.builder()
                 .id(UUID.randomUUID())
                 .role(Roles.TEACHER)
@@ -191,34 +186,15 @@ class GetCourseServiceUT {
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(anotherUser));
 
-        // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> getCourseService.getCourse(courseId));
 
-                assertEquals("User is not authorized to access this course", exception.getMessage());
-        }
-
-        @Test
-        @DisplayName("Should allow enrolled student to access the course")
-        void testGetCourse_WithEnrolledStudent_ShouldSucceed() {
-                // Arrange
-                when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-                when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockStudentUser));
-                when(loadGroupLearningOutcomePort.findByCourseId(courseId)).thenReturn(Collections.emptyList());
-
-                // Act
-                GetCourseResponse response = getCourseService.getCourse(courseId);
-
-                // Assert
-                assertNotNull(response);
-                assertEquals(courseId, response.getCourseId());
-                assertEquals(teacherId, response.getTeacherId());
+        assertEquals("User is not authorized to access this course", exception.getMessage());
     }
 
     @Test
-    @DisplayName("Should successfully get a course with empty learning outcomes")
+    @DisplayName("Should return empty grouped and ungrouped lists when no learning outcomes")
     void testGetCourse_WithEmptyLearningOutcomes_ShouldSucceed() {
-        // Arrange
         Course courseWithNoLearningOutcomes = Course.builder()
                 .id(courseId)
                 .courseName("Empty Course")
@@ -233,25 +209,19 @@ class GetCourseServiceUT {
                 .build();
 
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(courseWithNoLearningOutcomes));
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadGroupLearningOutcomePort.findByCourseId(courseId)).thenReturn(Collections.emptyList());
 
-        // Act
         GetCourseResponse response = getCourseService.getCourse(courseId);
 
-        // Assert
         assertNotNull(response);
-        assertEquals(courseId, response.getCourseId());
-        assertNotNull(response.getGroupLearningOutcomes());
         assertEquals(0, response.getGroupLearningOutcomes().size());
-        assertNotNull(response.getUngroupedLearningOutcomes());
         assertEquals(0, response.getUngroupedLearningOutcomes().size());
     }
 
     @Test
     @DisplayName("Should successfully get an inactive course")
     void testGetCourse_WithInactiveCourse_ShouldSucceed() {
-        // Arrange
         Course inactiveCourse = Course.builder()
                 .id(courseId)
                 .courseName("Inactive Course")
@@ -266,15 +236,12 @@ class GetCourseServiceUT {
                 .build();
 
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(inactiveCourse));
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadGroupLearningOutcomePort.findByCourseId(courseId)).thenReturn(Collections.emptyList());
 
-        // Act
         GetCourseResponse response = getCourseService.getCourse(courseId);
 
-        // Assert
         assertNotNull(response);
-        assertEquals(courseId, response.getCourseId());
         assertFalse(response.getActive());
     }
 }

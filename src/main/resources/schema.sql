@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS courses (
 -- Chapters table (weak entity dependent on Course)
 CREATE TABLE IF NOT EXISTS chapters (
     -- No UNIQUE constraint here because a single course can have many chapters starting from 1
-    chapter_number BIGINT UNIQUE GENERATED ALWAYS AS IDENTITY,
+    chapter_number BIGINT GENERATED ALWAYS AS IDENTITY,
     title VARCHAR(255),
     description TEXT,
     course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE, -- khong co UNIQUE o day
@@ -171,11 +171,14 @@ CREATE TABLE IF NOT EXISTS quizzes (
     quiz_title VARCHAR(255) NOT NULL,
     time_limit_minutes INTEGER,
     pass_score DOUBLE PRECISION,
+    start_time TIMESTAMP,
+    due_time TIMESTAMP,
+    attempt_limited INTEGER,
     ai_settings_id UUID REFERENCES ai_settings(id),
     course_id UUID NOT NULL REFERENCES courses(id),
     student_id UUID REFERENCES students(user_id),
     teacher_id UUID REFERENCES teachers(user_id),
-    active BOOLEAN NOT NULL DEFAULT true,
+    display BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

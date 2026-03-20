@@ -1,5 +1,8 @@
 package edu.ai.lms.core.quiz.adapter.in.http.response;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.v3.oas.annotations.media.Schema;
+import edu.ai.lms.config.DatePatternConstants;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -16,7 +19,7 @@ public class GetAllQuizzesResponse {
     private List<QuizSummary> quizzes;
     private int totalQuizzes;
     private int pageSize;
-    private String sortDirection;
+    private String lastCreated;
 
     @Getter
     @Setter
@@ -28,7 +31,16 @@ public class GetAllQuizzesResponse {
         private String quizTitle;
         private Integer timeLimitMinutes;
         private Double passScore;
-        private Boolean active;
+    @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN)
+        private LocalDateTime startTime;
+    @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN)
+        private LocalDateTime dueTime;
+        private Integer attemptLimited;
+        private Boolean display;
+    @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN)
         private LocalDateTime createdAt;
     }
 }

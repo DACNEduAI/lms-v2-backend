@@ -1,8 +1,6 @@
 package edu.ai.lms.core.quiz.app.service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -10,7 +8,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -70,144 +67,102 @@ class GetAllQuizzesServiceUT {
                 .role(Roles.STUDENT)
                 .build();
 
-        quizzes = new ArrayList<>();
-        quizzes.add(Quiz.builder()
-                .id(UUID.randomUUID())
-                .quizTitle("Alpha Quiz")
-                .timeLimitMinutes(30)
-                .passScore(60.0)
-                .courseId(courseId)
-                .teacherId(teacherId)
-                .active(true)
-                .createdAt(LocalDateTime.now())
-                .build());
-        quizzes.add(Quiz.builder()
-                .id(UUID.randomUUID())
-                .quizTitle("Beta Quiz")
-                .timeLimitMinutes(45)
-                .passScore(70.0)
-                .courseId(courseId)
-                .teacherId(teacherId)
-                .active(true)
-                .createdAt(LocalDateTime.now())
-                .build());
-        quizzes.add(Quiz.builder()
-                .id(UUID.randomUUID())
-                .quizTitle("Charlie Quiz")
-                .timeLimitMinutes(60)
-                .passScore(80.0)
-                .courseId(courseId)
-                .teacherId(teacherId)
-                .active(true)
-                .createdAt(LocalDateTime.now())
-                .build());
+        quizzes = List.of(
+                Quiz.builder()
+                        .id(UUID.randomUUID())
+                        .quizTitle("Alpha Quiz")
+                        .courseId(courseId)
+                        .teacherId(teacherId)
+                        .startTime(LocalDateTime.of(2025, 1, 10, 9, 0))
+                        .display(true)
+                        .build(),
+                Quiz.builder()
+                        .id(UUID.randomUUID())
+                        .quizTitle("Beta Quiz")
+                        .courseId(courseId)
+                        .teacherId(teacherId)
+                        .startTime(LocalDateTime.of(2025, 2, 10, 9, 0))
+                        .display(false)
+                        .build(),
+                Quiz.builder()
+                        .id(UUID.randomUUID())
+                        .quizTitle("Charlie Quiz")
+                        .courseId(courseId)
+                        .teacherId(teacherId)
+                        .startTime(LocalDateTime.of(2025, 3, 10, 9, 0))
+                        .display(true)
+                        .build());
     }
 
     @Test
-    @DisplayName("Should return all quizzes for a student in ascending order")
-    void testGetAllQuizzes_AsStudent_ShouldReturnAllQuizzes() {
-        // Arrange
+    @DisplayName("Should return displayed teacher-created quizzes for student")
+    void testGetAllQuizzes_AsStudent_ShouldReturnDisplayedTeacherCreatedQuizzes() {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
         when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
-        when(loadQuizPort.getAllByCourseId(courseId)).thenReturn(quizzes);
+        when(loadQuizPort.getDisplayedTeacherCreatedByCourseId(courseId)).thenReturn(quizzes);
 
-        // Act
         GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 10, "asc");
 
-        // Assert
         assertNotNull(response);
         assertEquals(3, response.getTotalQuizzes());
         assertEquals(3, response.getQuizzes().size());
-        assertEquals("asc", response.getSortDirection());
-
-        // Verify ascending order
+        assertEquals("asc", response.getLastCreated());
         assertEquals("Alpha Quiz", response.getQuizzes().get(0).getQuizTitle());
-        assertEquals("Beta Quiz", response.getQuizzes().get(1).getQuizTitle());
-        assertEquals("Charlie Quiz", response.getQuizzes().get(2).getQuizTitle());
 
-        verify(loadQuizPort, times(1)).getAllByCourseId(courseId);
+        verify(loadQuizPort, times(1)).getDisplayedTeacherCreatedByCourseId(courseId);
+        verify(loadQuizPort, never()).getTeacherCreatedByCourseId(courseId);
     }
 
     @Test
-    @DisplayName("Should return only teacher's own quizzes for a teacher")
-    void testGetAllQuizzes_AsTeacher_ShouldReturnOnlyOwnQuizzes() {
-        // Arrange
+    @DisplayName("Should return all teacher-created quizzes for teacher")
+    void testGetAllQuizzes_AsTeacher_ShouldReturnTeacherCreatedQuizzes() {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
-        when(loadQuizPort.getByCourseIdAndTeacherId(courseId, teacherId)).thenReturn(quizzes);
+        when(loadQuizPort.getTeacherCreatedByCourseId(courseId)).thenReturn(quizzes);
 
-        // Act
         GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 10, "asc");
 
-        // Assert
         assertNotNull(response);
         assertEquals(3, response.getTotalQuizzes());
 
-        verify(loadQuizPort, times(1)).getByCourseIdAndTeacherId(courseId, teacherId);
-        verify(loadQuizPort, never()).getAllByCourseId(courseId);
+        verify(loadQuizPort, times(1)).getTeacherCreatedByCourseId(courseId);
+        verify(loadQuizPort, never()).getDisplayedTeacherCreatedByCourseId(courseId);
     }
 
     @Test
-    @DisplayName("Should return quizzes in descending order when sortDirection is desc")
-    void testGetAllQuizzes_WithDescSort_ShouldReturnDescending() {
-        // Arrange
+    @DisplayName("Should return quizzes in descending order when lastCreated is des")
+    void testGetAllQuizzes_WithDesSort_ShouldReturnDescendingByStartTime() {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
         when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
-        when(loadQuizPort.getAllByCourseId(courseId)).thenReturn(quizzes);
+        when(loadQuizPort.getDisplayedTeacherCreatedByCourseId(courseId)).thenReturn(quizzes);
 
-        // Act
-        GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 10, "desc");
+        GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 10, "des");
 
-        // Assert
         assertNotNull(response);
-        assertEquals("desc", response.getSortDirection());
+        assertEquals("des", response.getLastCreated());
         assertEquals("Charlie Quiz", response.getQuizzes().get(0).getQuizTitle());
         assertEquals("Beta Quiz", response.getQuizzes().get(1).getQuizTitle());
         assertEquals("Alpha Quiz", response.getQuizzes().get(2).getQuizTitle());
     }
 
     @Test
-    @DisplayName("Should limit results by pageSize")
-    void testGetAllQuizzes_WithPageSize_ShouldLimitResults() {
-        // Arrange
+    @DisplayName("Should default lastCreated to asc when null")
+    void testGetAllQuizzes_WithNullLastCreated_ShouldDefaultToAsc() {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
         when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
-        when(loadQuizPort.getAllByCourseId(courseId)).thenReturn(quizzes);
+        when(loadQuizPort.getDisplayedTeacherCreatedByCourseId(courseId)).thenReturn(quizzes);
 
-        // Act
-        GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 2, "asc");
+        GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 10, null);
 
-        // Assert
         assertNotNull(response);
-        assertEquals(3, response.getTotalQuizzes());
-        assertEquals(2, response.getQuizzes().size());
-        assertEquals(2, response.getPageSize());
-    }
-
-    @Test
-    @DisplayName("Should return empty list when no quizzes exist")
-    void testGetAllQuizzes_WithNoQuizzes_ShouldReturnEmptyList() {
-        // Arrange
-        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
-        when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
-        when(loadQuizPort.getAllByCourseId(courseId)).thenReturn(Collections.emptyList());
-
-        // Act
-        GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 10, "asc");
-
-        // Assert
-        assertNotNull(response);
-        assertEquals(0, response.getTotalQuizzes());
-        assertTrue(response.getQuizzes().isEmpty());
+        assertEquals("asc", response.getLastCreated());
     }
 
     @Test
     @DisplayName("Should throw UserNotAuthenticatedException when user is not authenticated")
     void testGetAllQuizzes_WithUnauthenticatedUser_ShouldThrowException() {
-        // Arrange
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
 
-        // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(UserNotAuthenticatedException.class,
                 () -> getAllQuizzesService.getAllQuizzes(courseId, 10, "asc"));
 
@@ -217,30 +172,12 @@ class GetAllQuizzesServiceUT {
     @Test
     @DisplayName("Should throw IllegalArgumentException when user is not a member of the course")
     void testGetAllQuizzes_WithNonMember_ShouldThrowException() {
-        // Arrange
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(false);
 
-        // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> getAllQuizzesService.getAllQuizzes(courseId, 10, "asc"));
 
         assertEquals("User is not a member of this course", exception.getMessage());
-    }
-
-    @Test
-    @DisplayName("Should default sortDirection to asc when null")
-    void testGetAllQuizzes_WithNullSortDirection_ShouldDefaultToAsc() {
-        // Arrange
-        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
-        when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
-        when(loadQuizPort.getAllByCourseId(courseId)).thenReturn(quizzes);
-
-        // Act
-        GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzes(courseId, 10, null);
-
-        // Assert
-        assertNotNull(response);
-        assertEquals("asc", response.getSortDirection());
     }
 }

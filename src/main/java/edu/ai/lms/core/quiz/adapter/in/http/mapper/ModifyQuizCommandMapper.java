@@ -16,7 +16,10 @@ public class ModifyQuizCommandMapper {
                 .quizTitle(request.getQuizTitle())
                 .timeLimitMinutes(request.getTimeLimitMinutes())
                 .passScore(request.getPassScore())
-                .active(request.getActive())
+                .startTime(request.getStartTime())
+                .dueTime(request.getDueTime())
+                .attemptLimited(request.getAttemptLimited())
+                .display(request.getDisplay())
                 .build();
 
         return ModifyQuizCommand.builder()
