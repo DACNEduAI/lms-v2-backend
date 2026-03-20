@@ -36,11 +36,17 @@ public class CreateQuizService implements CreateQuizUseCase {
         // Set quiz properties
         Quiz quiz = command.quiz();
         quiz.setCourseId(command.courseId());
+        if (quiz.getDisplay() == null) {
+            quiz.setDisplay(true);
+        }
 
         if (user.getRole() == Roles.TEACHER) {
             quiz.setTeacherId(user.getId());
         } else {
             quiz.setStudentId(user.getId());
+            quiz.setStartTime(null);
+            quiz.setDueTime(null);
+            quiz.setAttemptLimited(null);
         }
 
         // Save quiz
@@ -51,8 +57,11 @@ public class CreateQuizService implements CreateQuizUseCase {
                 .quizTitle(savedQuiz.getQuizTitle())
                 .timeLimitMinutes(savedQuiz.getTimeLimitMinutes())
                 .passScore(savedQuiz.getPassScore())
+                .startTime(savedQuiz.getStartTime())
+                .dueTime(savedQuiz.getDueTime())
+                .attemptLimited(savedQuiz.getAttemptLimited())
                 .courseId(savedQuiz.getCourseId())
-                .active(savedQuiz.getActive())
+                .display(savedQuiz.getDisplay())
                 .createdAt(savedQuiz.getCreatedAt())
                 .build();
     }

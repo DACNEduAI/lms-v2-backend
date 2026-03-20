@@ -67,7 +67,7 @@ class DeleteQuizServiceUT {
                 .quizTitle("Quiz to Delete")
                 .courseId(courseId)
                 .teacherId(teacherId)
-                .active(true)
+                .display(true)
                 .createdAt(LocalDateTime.now())
                 .build();
     }

@@ -74,7 +74,7 @@ class DeleteQuestionServiceUT {
                 .quizTitle("Midterm Quiz")
                 .courseId(UUID.randomUUID())
                 .teacherId(teacherId)
-                .active(true)
+                .display(true)
                 .build();
 
         existingQuestion = Question.builder()

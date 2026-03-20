@@ -72,7 +72,7 @@ class ModifyQuizServiceUT {
                 .passScore(70.0)
                 .courseId(courseId)
                 .teacherId(teacherId)
-                .active(true)
+                .display(true)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -80,7 +80,7 @@ class ModifyQuizServiceUT {
                 .quizTitle("Updated Title")
                 .timeLimitMinutes(90)
                 .passScore(80.0)
-                .active(true)
+                .display(true)
                 .build();
 
         validCommand = ModifyQuizCommand.builder()
@@ -104,7 +104,7 @@ class ModifyQuizServiceUT {
                 .passScore(80.0)
                 .courseId(courseId)
                 .teacherId(teacherId)
-                .active(true)
+                .display(true)
                 .updatedAt(LocalDateTime.now())
                 .build();
         when(saveQuizPort.save(any(Quiz.class))).thenReturn(savedQuiz);
@@ -209,7 +209,7 @@ class ModifyQuizServiceUT {
                 .quizTitle("Updated Title")
                 .courseId(courseId)
                 .teacherId(teacherId)
-                .active(true)
+                .display(true)
                 .updatedAt(LocalDateTime.now())
                 .build();
         when(saveQuizPort.save(any(Quiz.class))).thenReturn(savedQuiz);

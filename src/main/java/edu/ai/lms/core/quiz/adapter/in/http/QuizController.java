@@ -55,18 +55,18 @@ public class QuizController {
     private final CreateQuizCommandMapper createQuizCommandMapper;
     private final ModifyQuizCommandMapper modifyQuizCommandMapper;
 
-    @Operation(summary = "Get all quizzes in a course", description = "Students see all quizzes; teachers see only their own quizzes.")
+        @Operation(summary = "Get teacher-created quizzes in a course", description = "Students see only displayed teacher-created quizzes; teachers see all teacher-created quizzes.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Quizzes retrieved successfully",
                     content = @Content(schema = @Schema(implementation = GetAllQuizzesResponse.class)))
     })
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    @GetMapping()
+        @GetMapping("/teacher-created")
     public ResponseEntity<GetAllQuizzesResponse> getAllQuizzes(
             @PathVariable UUID courseId,
             @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(defaultValue = "asc") String sortDirection) {
-        GetAllQuizzesResponse response = getAllQuizzesUseCase.getAllQuizzes(courseId, pageSize, sortDirection);
+                        @RequestParam(defaultValue = "asc") String lastCreated) {
+                GetAllQuizzesResponse response = getAllQuizzesUseCase.getAllQuizzes(courseId, pageSize, lastCreated);
         return ResponseEntity.ok(response);
     }
 

@@ -78,7 +78,7 @@ class CreateQuestionServiceUT {
                 .quizTitle("Midterm Quiz")
                 .courseId(UUID.randomUUID())
                 .teacherId(teacherId)
-                .active(true)
+                .display(true)
                 .build();
 
         Answer answer = Answer.builder()

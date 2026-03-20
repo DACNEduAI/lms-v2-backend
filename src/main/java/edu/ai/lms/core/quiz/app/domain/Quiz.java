@@ -22,6 +22,12 @@ public class Quiz {
 
     private Double passScore;
 
+    private LocalDateTime startTime;
+
+    private LocalDateTime dueTime;
+
+    private Integer attemptLimited;
+
     private UUID courseId;
 
     private UUID studentId;
@@ -29,7 +35,7 @@ public class Quiz {
     private UUID teacherId;
 
     @Builder.Default
-    private Boolean active = true;
+    private Boolean display = true;
 
     @Builder.Default
     private List<Question> questions = new ArrayList<>();

@@ -16,6 +16,10 @@ public class CreateQuizCommandMapper {
                 .quizTitle(request.getQuizTitle())
                 .timeLimitMinutes(request.getTimeLimitMinutes())
                 .passScore(request.getPassScore())
+                .startTime(request.getStartTime())
+                .dueTime(request.getDueTime())
+                .attemptLimited(request.getAttemptLimited())
+                .display(request.getDisplay())
                 .build();
 
         return CreateQuizCommand.builder()

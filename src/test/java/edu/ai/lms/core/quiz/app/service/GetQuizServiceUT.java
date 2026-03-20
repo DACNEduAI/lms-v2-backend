@@ -98,7 +98,7 @@ class GetQuizServiceUT {
                 .passScore(70.0)
                 .courseId(courseId)
                 .teacherId(teacherId)
-                .active(true)
+                .display(true)
                 .questions(new ArrayList<>(List.of(question)))
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())

@@ -47,6 +47,9 @@ public class ModifyQuizService implements ModifyQuizUseCase {
         updatedQuiz.setCourseId(existingQuiz.getCourseId());
         updatedQuiz.setTeacherId(existingQuiz.getTeacherId());
         updatedQuiz.setStudentId(existingQuiz.getStudentId());
+        if (updatedQuiz.getDisplay() == null) {
+            updatedQuiz.setDisplay(existingQuiz.getDisplay());
+        }
 
         Quiz savedQuiz = saveQuizPort.save(updatedQuiz);
 
@@ -55,8 +58,11 @@ public class ModifyQuizService implements ModifyQuizUseCase {
                 .quizTitle(savedQuiz.getQuizTitle())
                 .timeLimitMinutes(savedQuiz.getTimeLimitMinutes())
                 .passScore(savedQuiz.getPassScore())
+                .startTime(savedQuiz.getStartTime())
+                .dueTime(savedQuiz.getDueTime())
+                .attemptLimited(savedQuiz.getAttemptLimited())
                 .courseId(savedQuiz.getCourseId())
-                .active(savedQuiz.getActive())
+                .display(savedQuiz.getDisplay())
                 .updatedAt(savedQuiz.getUpdatedAt())
                 .build();
     }

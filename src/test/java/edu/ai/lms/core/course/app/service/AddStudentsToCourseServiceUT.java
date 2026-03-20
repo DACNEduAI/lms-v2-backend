@@ -243,11 +243,13 @@ class AddStudentsToCourseServiceUT {
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
         when(loadStudentsByEmailPort.findStudentIdsByEmails(List.of(email))).thenReturn(emailToIdMap);
-        AddStudentsToCourseResponse response = addStudentsToCourseService.addStudentsToCourse(command);
 
-        assertNotNull(response);
-        assertEquals(courseId, response.getCourseId());
-        assertEquals(1, response.getTotalAdded());
-        assertEquals("Students added to course successfully", response.getMessage());
+                AddStudentsToCourseResponse response = addStudentsToCourseService.addStudentsToCourse(command);
+
+                assertNotNull(response);
+                assertEquals(courseId, response.getCourseId());
+                assertEquals(1, response.getTotalAdded());
+                assertTrue(response.getAddedStudentEmails().contains(email));
+                verify(saveCourseEnrollmentPort).addStudentsToCourse(any(UUID.class), any(List.class));
     }
 }
