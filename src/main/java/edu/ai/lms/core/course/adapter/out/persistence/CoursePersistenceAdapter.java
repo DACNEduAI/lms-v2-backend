@@ -1,61 +1,57 @@
 package edu.ai.lms.core.course.adapter.out.persistence;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.course.adapter.out.persistence.mapper.ChapterJdbcMapper;
-import edu.ai.lms.core.course.adapter.out.persistence.mapper.CourseJdbcMapper;
-import edu.ai.lms.core.course.adapter.out.persistence.mapper.LearningOutcomeJdbcMapper;
-import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.port.out.DeleteCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
-import edu.ai.lms.database.ChapterJdbcTable;
-import edu.ai.lms.database.CourseJdbcTable;
-import edu.ai.lms.database.GroupLearningOutcomeJdbcTable;
-import edu.ai.lms.database.LearningOutcomeJdbcTable;
+import edu.ai.lms.core.course.app.port.out.SaveCourseEnrollmentPort;
 import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
-class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, DeleteCoursePort {
+class CoursePersistenceAdapter implements SaveCoursePort, SaveCourseEnrollmentPort, LoadCoursePort, DeleteCoursePort {
 
     private final CourseRepository courseRepository;
-    private final ChapterRepository chapterRepository;
-    private final LearningOutcomeRepository learningOutcomeRepository;
-    private final GroupLearningOutcomeRepository groupLearningOutcomeRepository;
-    private final CourseJdbcMapper courseJdbcMapper;
-    private final ChapterJdbcMapper chapterJdbcMapper;
-    private final LearningOutcomeJdbcMapper learningOutcomeJdbcMapper;
+    private final LearningOutcomePersistenceAdapter learningOutcomePersistenceAdapter;
+    private final GroupLearningOutcomePersistenceAdapter groupLearningOutcomePersistenceAdapter;
+    private final ChapterPersistenceAdapter chapterPersistenceAdapter;
 
     @Override
     public Course save(Course course) {
 
-        ///  The mechanism of saving a Course will be frequently reviewed later on
+        boolean isExistingCourse = course.getId() != null
+                && courseRepository.findById(course.getId()).isPresent();
+        Course savedCourse = Objects.requireNonNull(courseRepository.save(course));
 
-        // Save the course entity (junction table refs are managed via @MappedCollection)
-        CourseJdbcTable courseEntity = courseJdbcMapper.mapToCourseJdbcEntity(course);
-        CourseJdbcTable savedCourse = courseRepository.save(courseEntity);
-
-        // Save chapters
-        if (course.getChapters() != null) {
-            for (Chapter chapter : course.getChapters()) {
-                ChapterJdbcTable chapterEntity = chapterJdbcMapper.mapToChapterJdbcEntity(chapter, savedCourse.getId());
-                ChapterJdbcTable savedChapter = chapterRepository.save(chapterEntity);
-
+        // Relationship persistence is currently create-only.
+        // For updates (e.g. modify-course), only course table fields are updated.
+        UUID courseId = savedCourse.getId();
+        if (!isExistingCourse) {
+            if (course.getTeacherIds() != null) {
+                for (UUID teacherId : course.getTeacherIds()) {
+                    courseRepository.insertCourseTeacher(courseId, teacherId);
+                }
             }
-        }
 
-        // Save learning outcomes
-        if (course.getLearningOutcomes() != null) {
-            for (LearningOutcome lo : course.getLearningOutcomes()) {
-                LearningOutcomeJdbcTable loEntity = learningOutcomeJdbcMapper.mapToEntity(lo, savedCourse.getId());
-                learningOutcomeRepository.save(loEntity);
+            if (course.getStudentIds() != null) {
+                for (UUID studentId : course.getStudentIds()) {
+                    courseRepository.insertCourseStudent(courseId, studentId);
+                }
+            }
+
+            if (course.getLearningOutcomes() != null) {
+                for (LearningOutcome lo : course.getLearningOutcomes()) {
+                    lo.setCourseId(courseId);
+                    learningOutcomePersistenceAdapter.save(lo);
+                }
             }
         }
 
@@ -64,22 +60,42 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     }
 
     @Override
+    public void addStudentsToCourse(UUID courseId, List<UUID> studentIds) {
+        if (studentIds == null || studentIds.isEmpty()) {
+            return;
+        }
+
+        for (UUID studentId : studentIds) {
+            courseRepository.insertCourseStudent(courseId, studentId);
+        }
+    }
+
+    @Override
+    public void removeStudentsFromCourse(UUID courseId, List<UUID> studentIds) {
+        if (studentIds == null || studentIds.isEmpty()) {
+            return;
+        }
+
+        courseRepository.deleteCourseStudentsByCourseIdAndStudentIds(courseId, studentIds);
+    }
+
+    @Override
     public Optional<Course> findById(UUID courseId) {
-        return courseRepository.findById(courseId)
+        return courseRepository.findById(Objects.requireNonNull(courseId))
                 .map(this::loadFullCourse);
     }
 
     @Override
     public Optional<Course> findByCourseCode(String courseCode) {
         return courseRepository.findByCourseCode(courseCode)
-                .flatMap(entity -> courseRepository.findById(entity.getId()))
+                .flatMap(entity -> courseRepository.findById(Objects.requireNonNull(entity.getId())))
                 .map(this::loadFullCourse);
     }
 
     @Override
     public List<Course> findAllByTeacherId(UUID teacherId) {
         return courseRepository.findAllByTeacherId(teacherId).stream()
-                .map(entity -> courseRepository.findById(entity.getId()))
+                .map(entity -> courseRepository.findById(Objects.requireNonNull(entity.getId())))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .map(this::loadFullCourse)
@@ -89,7 +105,7 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     @Override
     public List<Course> findAllByStudentId(UUID studentId) {
         return courseRepository.findAllByStudentId(studentId).stream()
-                .map(entity -> courseRepository.findById(entity.getId()))
+                .map(entity -> courseRepository.findById(Objects.requireNonNull(entity.getId())))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .map(this::loadFullCourse)
@@ -100,20 +116,21 @@ class CoursePersistenceAdapter implements SaveCoursePort, LoadCoursePort, Delete
     public void deleteById(UUID courseId) {
         // All child entities (chapters, learning outcomes, materials, junction tables)
         // are cascade-deleted by the database via ON DELETE CASCADE.
-        courseRepository.deleteById(courseId);
+        courseRepository.deleteById(Objects.requireNonNull(courseId));
     }
 
     /**
      * Loads a full Course aggregate by explicitly fetching related entities.
-     * Teacher/student IDs are extracted from the entity's @MappedCollection sets
-     * (populated automatically by Spring Data JDBC when loading via findById).
-     * Chapters and learning outcomes are loaded manually.
      */
-    private Course loadFullCourse(CourseJdbcTable courseEntity) {
-        List<ChapterJdbcTable> chapters = chapterRepository.findByCourseId(courseEntity.getId());
-        List<LearningOutcomeJdbcTable> learningOutcomes = learningOutcomeRepository.findByCourseId(courseEntity.getId());
-        List<GroupLearningOutcomeJdbcTable> groupLearningOutcomes = groupLearningOutcomeRepository.findByCourseId(courseEntity.getId());
+    private Course loadFullCourse(Course course) {
+        List<UUID> teacherIds = courseRepository.findTeacherIdsByCourseId(course.getId());
+        List<UUID> studentIds = courseRepository.findStudentIdsByCourseId(course.getId());
 
-        return courseJdbcMapper.mapToCourse(courseEntity, chapters, learningOutcomes, groupLearningOutcomes);
+        course.setTeacherIds(teacherIds);
+        course.setStudentIds(studentIds);
+        course.setChapters(chapterPersistenceAdapter.findAllByCourseId(course.getId()));
+        course.setLearningOutcomes(learningOutcomePersistenceAdapter.findByCourseId(course.getId()));
+        course.setGroupLearningOutcomes(groupLearningOutcomePersistenceAdapter.findByCourseId(course.getId()));
+        return course;
     }
 }

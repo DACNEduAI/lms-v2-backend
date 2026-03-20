@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.course.adapter.out.persistence.StudentLookupRepository">
+
+  <resultMap id="StudentLookupResultMap" type="edu.ai.lms.core.course.app.domain.Student">
+    <id property="id" column="id" />
+    <result property="email" column="email" />
+    <result property="firstName" column="first_name" />
+    <result property="lastName" column="last_name" />
+    <result property="avatarUrl" column="avatar_url" />
+    <result property="password" column="password" />
+    <result property="role" column="role" javaType="edu.ai.lms.common.Roles" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="enrollmentYear" column="enrollment_year" />
+  </resultMap>
+
+  <select id="findStudentsByEmailIn" resultMap="StudentLookupResultMap">
+    SELECT u.id, u.email, u.password, u.first_name, u.last_name, u.avatar_url, u.role, s.enrollment_year
+    FROM users u
+    INNER JOIN students s ON u.id = s.user_id
+    WHERE u.email IN
+    <foreach collection="emails" item="email" open="(" separator="," close=")">
+      #{email}
+    </foreach>
+  </select>
+
+</mapper>

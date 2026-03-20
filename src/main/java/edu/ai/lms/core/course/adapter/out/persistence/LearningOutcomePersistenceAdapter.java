@@ -7,12 +7,10 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.course.adapter.out.persistence.mapper.LearningOutcomeJdbcMapper;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.port.out.DeleteLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.LoadLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.SaveLearningOutcomePort;
-import edu.ai.lms.database.LearningOutcomeJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -20,14 +18,10 @@ import lombok.RequiredArgsConstructor;
 class LearningOutcomePersistenceAdapter implements SaveLearningOutcomePort, LoadLearningOutcomePort, DeleteLearningOutcomePort {
 
     private final LearningOutcomeRepository learningOutcomeRepository;
-    private final LearningOutcomeJdbcMapper learningOutcomeJdbcMapper;
 
     @Override
     public LearningOutcome save(LearningOutcome learningOutcome) {
-        LearningOutcomeJdbcTable entity = learningOutcomeJdbcMapper.mapToEntity(
-                learningOutcome, learningOutcome.getCourseId());
-        LearningOutcomeJdbcTable saved = learningOutcomeRepository.save(entity);
-        return learningOutcomeJdbcMapper.mapToLearningOutcome(saved);
+    return learningOutcomeRepository.save(learningOutcome);
     }
 
     @Override
@@ -42,15 +36,12 @@ class LearningOutcomePersistenceAdapter implements SaveLearningOutcomePort, Load
 
     @Override
     public Optional<LearningOutcome> findById(UUID id) {
-        return learningOutcomeRepository.findById(id)
-                .map(learningOutcomeJdbcMapper::mapToLearningOutcome);
+        return learningOutcomeRepository.findById(id);
     }
 
     @Override
     public List<LearningOutcome> findByCourseId(UUID courseId) {
-        return learningOutcomeRepository.findByCourseId(courseId).stream()
-                .map(learningOutcomeJdbcMapper::mapToLearningOutcome)
-                .collect(Collectors.toList());
+        return learningOutcomeRepository.findByCourseId(courseId).stream().collect(Collectors.toList());
     }
 
     @Override

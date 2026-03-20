@@ -16,7 +16,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-public class User implements UserDetails {
+public class UserAuth implements UserDetails {
     private UUID id;
     private String password;
     private String email;

@@ -4,26 +4,53 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.data.jdbc.repository.query.Query;
-import org.springframework.data.repository.CrudRepository;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
-import edu.ai.lms.database.CourseJdbcTable;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import edu.ai.lms.core.course.app.domain.Course;
 
 /**
  * Package-private repository interface for courses.
  * Only classes within the persistence package can access this repository.
  */
-@Repository
-interface CourseRepository extends CrudRepository<CourseJdbcTable, UUID> {
+@Mapper
+interface CourseRepository {
 
-    @Query("SELECT * FROM courses WHERE course_code = :courseCode")
-    Optional<CourseJdbcTable> findByCourseCode(@Param("courseCode") String courseCode);
+    Optional<Course> findById(@Param("id") UUID id);
 
-    @Query("SELECT c.* FROM courses c INNER JOIN course_teachers ct ON c.id = ct.course_id WHERE ct.teacher_id = :teacherId")
-    List<CourseJdbcTable> findAllByTeacherId(@Param("teacherId") UUID teacherId);
+    int insert(Course course);
 
-    @Query("SELECT c.* FROM courses c INNER JOIN course_students cs ON c.id = cs.course_id WHERE cs.student_id = :studentId")
-    List<CourseJdbcTable> findAllByStudentId(@Param("studentId") UUID studentId);
+    int update(Course course);
+
+    default Course save(Course course) {
+        if (course.getId() == null) {
+            course.setId(java.util.UUID.randomUUID());
+            insert(course);
+        } else {
+            int updated = update(course);
+            if (updated == 0) {
+                insert(course);
+            }
+        }
+        return findById(course.getId()).orElseThrow();
+    }
+
+    void deleteById(@Param("id") UUID id);
+
+    Optional<Course> findByCourseCode(@Param("courseCode") String courseCode);
+
+    List<Course> findAllByTeacherId(@Param("teacherId") UUID teacherId);
+
+    List<Course> findAllByStudentId(@Param("studentId") UUID studentId);
+
+    List<UUID> findTeacherIdsByCourseId(@Param("courseId") UUID courseId);
+
+    List<UUID> findStudentIdsByCourseId(@Param("courseId") UUID courseId);
+
+    void deleteCourseStudentsByCourseIdAndStudentIds(
+            @Param("courseId") UUID courseId,
+            @Param("studentIds") List<UUID> studentIds);
+
+    void insertCourseTeacher(@Param("courseId") UUID courseId, @Param("teacherId") UUID teacherId);
+
+    void insertCourseStudent(@Param("courseId") UUID courseId, @Param("studentId") UUID studentId);
 }

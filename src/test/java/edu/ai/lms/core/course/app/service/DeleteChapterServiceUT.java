@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.DeleteChapterResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
@@ -54,7 +54,7 @@ class DeleteChapterServiceUT {
     @InjectMocks
     private DeleteChapterService deleteChapterService;
 
-    private User mockUser;
+    private UserAuth mockUser;
     private UUID teacherId;
     private UUID courseId;
     private Long chapterNumber;
@@ -67,7 +67,7 @@ class DeleteChapterServiceUT {
         courseId = UUID.randomUUID();
         chapterNumber = 1L;
 
-        mockUser = User.builder()
+        mockUser = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -158,7 +158,7 @@ class DeleteChapterServiceUT {
     @DisplayName("Should throw IllegalArgumentException when teacher is not authorized for the course")
     void testDeleteChapter_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
-        User anotherUser = User.builder()
+        UserAuth anotherUser = UserAuth.builder()
                 .id(UUID.randomUUID())
                 .role(Roles.TEACHER)
                 .build();

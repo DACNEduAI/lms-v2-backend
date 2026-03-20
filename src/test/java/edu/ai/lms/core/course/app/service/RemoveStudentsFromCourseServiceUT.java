@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.RemoveStudentsFromCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -35,13 +35,13 @@ import edu.ai.lms.core.course.app.port.in.command.RemoveStudentsFromCourseComman
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.LoadStudentsByEmailPort;
-import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
+import edu.ai.lms.core.course.app.port.out.SaveCourseEnrollmentPort;
 
 @ExtendWith(MockitoExtension.class)
 class RemoveStudentsFromCourseServiceUT {
 
     @Mock
-    private SaveCoursePort saveCoursePort;
+        private SaveCourseEnrollmentPort saveCourseEnrollmentPort;
 
     @Mock
     private LoadCoursePort loadCoursePort;
@@ -57,7 +57,7 @@ class RemoveStudentsFromCourseServiceUT {
 
     private UUID teacherId;
     private UUID courseId;
-    private User mockTeacher;
+    private UserAuth mockTeacher;
     private Course mockCourse;
     private UUID student1Id;
     private UUID student2Id;
@@ -69,7 +69,7 @@ class RemoveStudentsFromCourseServiceUT {
         student1Id = UUID.randomUUID();
         student2Id = UUID.randomUUID();
 
-        mockTeacher = User.builder()
+        mockTeacher = UserAuth.builder()
                 .id(teacherId)
                 .email("teacher@example.com")
                 .role(Roles.TEACHER)
@@ -102,15 +102,13 @@ class RemoveStudentsFromCourseServiceUT {
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
         when(loadStudentsByEmailPort.findStudentIdsByEmails(List.of(email1, email2))).thenReturn(emailToIdMap);
-        when(saveCoursePort.save(any(Course.class))).thenReturn(mockCourse);
-
         RemoveStudentsFromCourseResponse response = removeStudentsFromCourseService.removeStudentsFromCourse(command);
 
         assertNotNull(response);
         assertEquals(courseId, response.getCourseId());
         assertEquals(2, response.getTotalRemoved());
         assertEquals(2, response.getRemovedStudentEmails().size());
-        verify(saveCoursePort).save(any(Course.class));
+        verify(saveCourseEnrollmentPort).removeStudentsFromCourse(any(UUID.class), any(List.class));
     }
 
     @Test
@@ -129,8 +127,6 @@ class RemoveStudentsFromCourseServiceUT {
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
         when(loadStudentsByEmailPort.findStudentIdsByEmails(List.of(email1))).thenReturn(emailToIdMap);
-        when(saveCoursePort.save(any(Course.class))).thenReturn(mockCourse);
-
         RemoveStudentsFromCourseResponse response = removeStudentsFromCourseService.removeStudentsFromCourse(command);
 
         assertNotNull(response);
@@ -151,7 +147,7 @@ class RemoveStudentsFromCourseServiceUT {
         assertThrows(TeacherNotFoundException.class,
                 () -> removeStudentsFromCourseService.removeStudentsFromCourse(command));
 
-        verify(saveCoursePort, never()).save(any(Course.class));
+        verify(saveCourseEnrollmentPort, never()).removeStudentsFromCourse(any(UUID.class), any(List.class));
     }
 
     @Test
@@ -168,14 +164,14 @@ class RemoveStudentsFromCourseServiceUT {
         assertThrows(CourseNotFoundException.class,
                 () -> removeStudentsFromCourseService.removeStudentsFromCourse(command));
 
-        verify(saveCoursePort, never()).save(any(Course.class));
+        verify(saveCourseEnrollmentPort, never()).removeStudentsFromCourse(any(UUID.class), any(List.class));
     }
 
     @Test
     @DisplayName("Should throw IllegalArgumentException when teacher does not own the course")
     void testRemoveStudentsFromCourse_UnauthorizedTeacher() {
         UUID anotherTeacherId = UUID.randomUUID();
-        User anotherTeacher = User.builder()
+        UserAuth anotherTeacher = UserAuth.builder()
                 .id(anotherTeacherId)
                 .email("other@example.com")
                 .role(Roles.TEACHER)
@@ -192,7 +188,7 @@ class RemoveStudentsFromCourseServiceUT {
         assertThrows(IllegalArgumentException.class,
                 () -> removeStudentsFromCourseService.removeStudentsFromCourse(command));
 
-        verify(saveCoursePort, never()).save(any(Course.class));
+        verify(saveCourseEnrollmentPort, never()).removeStudentsFromCourse(any(UUID.class), any(List.class));
     }
 
     @Test
@@ -218,7 +214,7 @@ class RemoveStudentsFromCourseServiceUT {
 
         assertTrue(ex.getMissingEmails().contains(missingEmail));
         assertEquals(1, ex.getMissingEmails().size());
-        verify(saveCoursePort, never()).save(any(Course.class));
+        verify(saveCourseEnrollmentPort, never()).removeStudentsFromCourse(any(UUID.class), any(List.class));
     }
 
     @Test
@@ -246,6 +242,6 @@ class RemoveStudentsFromCourseServiceUT {
 
         assertTrue(ex.getNotEnrolledEmails().contains(notEnrolledEmail));
         assertEquals(1, ex.getNotEnrolledEmails().size());
-        verify(saveCoursePort, never()).save(any(Course.class));
+        verify(saveCourseEnrollmentPort, never()).removeStudentsFromCourse(any(UUID.class), any(List.class));
     }
 }

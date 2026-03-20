@@ -7,9 +7,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 @Getter
 @Setter
@@ -17,9 +14,6 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class ModifyCourseRequest {
-    
-    @NotNull(message = "Course ID cannot be null")
-    private UUID courseId;
 
     @NotBlank(message = "Course name cannot be blank")
     private String courseName;
@@ -46,7 +40,4 @@ public class ModifyCourseRequest {
     private boolean isValidDateRange() {
         return startDate == null || endDate == null || endDate.isAfter(startDate);
     }
-
-    @Builder.Default
-    private List<CreateLearningOutcomeRequest> learningOutcomes = new ArrayList<>();
 }

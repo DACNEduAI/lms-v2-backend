@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.DeleteQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
@@ -45,7 +45,7 @@ class DeleteQuizServiceUT {
     @InjectMocks
     private DeleteQuizService deleteQuizService;
 
-    private User mockTeacher;
+    private UserAuth mockTeacher;
     private UUID teacherId;
     private UUID courseId;
     private UUID quizId;
@@ -57,7 +57,7 @@ class DeleteQuizServiceUT {
         courseId = UUID.randomUUID();
         quizId = UUID.randomUUID();
 
-        mockTeacher = User.builder()
+        mockTeacher = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -147,7 +147,7 @@ class DeleteQuizServiceUT {
     void testDeleteQuiz_WithNonOwner_ShouldThrowException() {
         // Arrange
         UUID anotherTeacherId = UUID.randomUUID();
-        User anotherTeacher = User.builder()
+        UserAuth anotherTeacher = UserAuth.builder()
                 .id(anotherTeacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -169,7 +169,7 @@ class DeleteQuizServiceUT {
     void testDeleteQuiz_AsStudentOwner_ShouldSucceed() {
         // Arrange
         UUID studentId = UUID.randomUUID();
-        User mockStudent = User.builder()
+        UserAuth mockStudent = UserAuth.builder()
                 .id(studentId)
                 .role(Roles.STUDENT)
                 .build();

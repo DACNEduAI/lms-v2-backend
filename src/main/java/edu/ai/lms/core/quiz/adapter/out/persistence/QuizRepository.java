@@ -4,27 +4,39 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.data.jdbc.repository.query.Query;
-import org.springframework.data.repository.CrudRepository;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import edu.ai.lms.core.quiz.app.domain.Quiz;
 
-import edu.ai.lms.database.QuizJdbcTable;
+@Mapper
+interface QuizRepository {
 
-@Repository
-interface QuizRepository extends CrudRepository<QuizJdbcTable, UUID> {
+    int insert(Quiz entity);
 
-    @Query("SELECT * FROM quizzes WHERE id = :quizId")
-    Optional<QuizJdbcTable> getById(@Param("quizId") UUID quizId);
+    int update(Quiz entity);
 
-    @Query("SELECT * FROM quizzes WHERE id = :quizId AND course_id = :courseId")
-    Optional<QuizJdbcTable> getByIdAndCourseId(@Param("quizId") UUID quizId, @Param("courseId") UUID courseId);
+    default Quiz save(Quiz entity) {
+        if (entity.getId() == null) {
+            entity.setId(java.util.UUID.randomUUID());
+            insert(entity);
+        } else {
+            int updated = update(entity);
+            if (updated == 0) {
+                insert(entity);
+            }
+        }
+        return getById(entity.getId()).orElseThrow();
+    }
 
-    @Query("SELECT * FROM quizzes WHERE course_id = :courseId ORDER BY created_at DESC")
-    List<QuizJdbcTable> getAllByCourseId(@Param("courseId") UUID courseId);
+    void deleteById(@Param("quizId") UUID quizId);
 
-    @Query("SELECT * FROM quizzes WHERE course_id = :courseId AND teacher_id = :teacherId ORDER BY created_at DESC")
-    List<QuizJdbcTable> getByCourseIdAndTeacherId(
+    Optional<Quiz> getById(@Param("quizId") UUID quizId);
+
+    Optional<Quiz> getByIdAndCourseId(@Param("quizId") UUID quizId, @Param("courseId") UUID courseId);
+
+    List<Quiz> getAllByCourseId(@Param("courseId") UUID courseId);
+
+    List<Quiz> getByCourseIdAndTeacherId(
             @Param("courseId") UUID courseId,
             @Param("teacherId") UUID teacherId);
 }

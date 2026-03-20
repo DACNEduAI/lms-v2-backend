@@ -24,25 +24,18 @@ VALUES
     ('33333333-1111-1111-1111-111111111111', 'Introduction to Computer Science', 'A foundational course in CS.', 'CS101', true, 'https://example.com/covers/cs101.jpg', '2024-09-01 08:00:00', '2024-12-15 17:00:00'),
     ('33333333-2222-2222-2222-222222222222', 'Data Structures and Algorithms', 'Advanced programming concepts.', 'CS201', true, 'https://example.com/covers/cs201.jpg', '2025-01-15 08:00:00', '2025-05-30 17:00:00');
 
--- 5. Insert Course-Teacher & Course-Student Relationships
-INSERT INTO course_teachers (course_id, teacher_id)
+-- 5. Insert Enrollments (single table for teacher-course and student-course relationships)
+INSERT INTO enrollments (course_id, user_id, enrolled_date)
 VALUES
-    ('33333333-1111-1111-1111-111111111111', '22222222-1111-1111-1111-111111111111'),
-    ('33333333-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222');
+    -- Teacher assignments
+    ('33333333-1111-1111-1111-111111111111', '22222222-1111-1111-1111-111111111111', '2024-08-19 09:00:00'),
+    ('33333333-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', '2025-01-10 09:00:00'),
+    -- Student enrollments
+    ('33333333-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', '2024-08-20 10:00:00'),
+    ('33333333-1111-1111-1111-111111111111', '11111111-2222-2222-2222-222222222222', '2024-08-21 11:30:00'),
+    ('33333333-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', '2025-01-12 08:30:00');
 
-INSERT INTO course_students (course_id, student_id)
-VALUES
-    ('33333333-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111'),
-    ('33333333-1111-1111-1111-111111111111', '11111111-2222-2222-2222-222222222222'),
-    ('33333333-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111');
-
--- 6. Insert Enrollments
-INSERT INTO enrollments (id, student_id, course_id, enrolled_date)
-VALUES
-    ('44444444-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', '33333333-1111-1111-1111-111111111111', '2024-08-20 10:00:00'),
-    ('44444444-2222-2222-2222-222222222222', '11111111-2222-2222-2222-222222222222', '33333333-1111-1111-1111-111111111111', '2024-08-21 11:30:00');
-
--- 7. Insert Chapters
+-- 6. Insert Chapters
 INSERT INTO chapters (chapter_number, title, description, course_id) OVERRIDING SYSTEM VALUE
 VALUES
     (1, 'Variables and Data Types', 'Introduction to variables, primitives, and type systems.', '33333333-1111-1111-1111-111111111111'),
@@ -50,14 +43,14 @@ VALUES
     (3, 'Arrays and Linked Lists', 'Linear data structures and their operations.', '33333333-2222-2222-2222-222222222222'),
     (4, 'Trees and Graphs', 'Non-linear data structures and traversals.', '33333333-2222-2222-2222-222222222222');
 
--- 8. Insert Group Learning Outcomes
+-- 7. Insert Group Learning Outcomes
 INSERT INTO group_learning_outcomes (id, name, description, course_id)
 VALUES
     ('aaaaaaaa-1111-1111-1111-111111111111', 'Programming Fundamentals', 'Core programming concepts including syntax and data types.', '33333333-1111-1111-1111-111111111111'),
     ('aaaaaaaa-2222-2222-2222-222222222222', 'Control Flow Concepts', 'Understanding iteration, conditionals, and branching.', '33333333-1111-1111-1111-111111111111'),
     ('aaaaaaaa-3333-3333-3333-333333333333', 'Linear Data Structures', 'Arrays, linked lists, and their time complexities.', '33333333-2222-2222-2222-222222222222');
 
--- 9. Insert Learning Outcomes
+-- 8. Insert Learning Outcomes
 -- CS101 Learning Outcomes
 INSERT INTO learning_outcomes (id, code, description, course_id, group_learning_outcome_id)
 VALUES
@@ -75,7 +68,7 @@ VALUES
     ('66666666-8888-8888-8888-888888888888', 'CLO8', 'Analyze time complexity of basic operations.', '33333333-2222-2222-2222-222222222222', NULL),
     ('66666666-9999-9999-9999-999999999999', 'CLO9', 'Implement tree traversal algorithms.', '33333333-2222-2222-2222-222222222222', NULL);
 
--- 10. Insert Chapter-Learning Outcome Relationships
+-- 9. Insert Chapter-Learning Outcome Relationships
 -- Ch1 (Variables): CLO1, CLO2, CLO5
 INSERT INTO chapter_learning_outcomes (chapter_number, course_id, learning_outcome_id)
 VALUES
@@ -103,12 +96,12 @@ VALUES
     (4, '33333333-2222-2222-2222-222222222222', '66666666-8888-8888-8888-888888888888'),
     (4, '33333333-2222-2222-2222-222222222222', '66666666-9999-9999-9999-999999999999');
 
--- 11. Insert AI Settings
+-- 10. Insert AI Settings
 INSERT INTO ai_settings (id, generation_prompt, difficulty_level, focus_on_weak_areas, number_of_questions, setting_type, align_to_clo, include_answer_key, mode)
 VALUES
     ('77777777-1111-1111-1111-111111111111', 'Generate a quiz on basic java syntax.', 'MEDIUM', true, 10, 'QUIZ_GENERATION', true, true, 'STRICT');
 
--- 12. Insert Quizzes
+-- 11. Insert Quizzes
 -- Quiz 1: CS101 Chapter 1 Quiz (teacher-created), chapters=[1], LOs=[CLO1, CLO2] (subset of Ch1: CLO1,CLO2,CLO5)
 -- Quiz 2: CS101 Midterm Practice (student-personalized), chapters=[1,2], LOs=[CLO1, CLO3, CLO4] (subset of Ch1∪Ch2)
 -- Quiz 3: CS201 Arrays Quiz (teacher-created), chapters=[3], LOs=[CLO6, CLO7, CLO8] (= Ch3 LOs)
@@ -120,7 +113,7 @@ VALUES
     ('88888888-3333-3333-3333-333333333333', 'CS201 Arrays Quiz', 45, 65.0, '77777777-1111-1111-1111-111111111111', '33333333-2222-2222-2222-222222222222', NULL, '22222222-2222-2222-2222-222222222222', true),
     ('88888888-4444-4444-4444-444444444444', 'CS201 Trees Quiz', 40, 60.0, '77777777-1111-1111-1111-111111111111', '33333333-2222-2222-2222-222222222222', NULL, '22222222-2222-2222-2222-222222222222', true);
 
--- 13. Insert Questions
+-- 12. Insert Questions
 -- Quiz 1 questions (LOs must be in {CLO1, CLO2})
 INSERT INTO questions (id, content, type, points, quiz_id)
 VALUES
@@ -148,7 +141,7 @@ VALUES
     ('99999999-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Which tree traversal method visits the root node first?', 'MULTIPLE_CHOICE', 10.0, '88888888-4444-4444-4444-444444444444'),
     ('99999999-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Binary search on a sorted array has O(log n) time complexity.', 'TRUE_FALSE', 5.0, '88888888-4444-4444-4444-444444444444');
 
--- 14. Insert Answers (for MULTIPLE_CHOICE and TRUE_FALSE questions; ESSAY questions have no answers)
+-- 13. Insert Answers (for MULTIPLE_CHOICE and TRUE_FALSE questions; ESSAY questions have no answers)
 -- Q1: What keyword declares an integer?
 INSERT INTO answers (content, is_correct, explanation, question_id)
 VALUES
@@ -210,12 +203,12 @@ VALUES
     ('True', true, 'Binary search halves the search space each step, giving O(log n).', '99999999-bbbb-bbbb-bbbb-bbbbbbbbbbbb'),
     ('False', false, 'Binary search is indeed O(log n) on a sorted array.', '99999999-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
 
--- 15. Insert Attempts
+-- 14. Insert Attempts
 INSERT INTO attempts (id, student_id, quiz_id, score, start_time, end_time, status)
 VALUES
     ('bbbbbbbb-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', '88888888-1111-1111-1111-111111111111', 85.0, '2024-09-15 14:00:00', '2024-09-15 14:25:00', 'COMPLETED');
 
--- 16. Insert Quiz-Chapter Relationships
+-- 15. Insert Quiz-Chapter Relationships
 INSERT INTO quiz_chapters (quiz_id, chapter_number, chapter_course_id)
 VALUES
     ('88888888-1111-1111-1111-111111111111', 1, '33333333-1111-1111-1111-111111111111'),
@@ -224,7 +217,7 @@ VALUES
     ('88888888-3333-3333-3333-333333333333', 3, '33333333-2222-2222-2222-222222222222'),
     ('88888888-4444-4444-4444-444444444444', 4, '33333333-2222-2222-2222-222222222222');
 
--- 17. Insert Quiz-Learning Outcome Relationships
+-- 16. Insert Quiz-Learning Outcome Relationships
 -- Quiz 1 LOs: CLO1, CLO2 (from Ch1: CLO1, CLO2, CLO5)
 INSERT INTO quiz_learning_outcomes (quiz_id, learning_outcome_id)
 VALUES
@@ -251,7 +244,7 @@ VALUES
     ('88888888-4444-4444-4444-444444444444', '66666666-8888-8888-8888-888888888888'),
     ('88888888-4444-4444-4444-444444444444', '66666666-9999-9999-9999-999999999999');
 
--- 18. Insert Question-Learning Outcome Relationships
+-- 17. Insert Question-Learning Outcome Relationships
 -- Each question's LO must exist in its quiz's LOs
 INSERT INTO question_learning_outcomes (question_id, learning_outcome_id)
 VALUES
@@ -267,7 +260,7 @@ VALUES
     ('99999999-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '66666666-9999-9999-9999-999999999999'),
     ('99999999-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '66666666-8888-8888-8888-888888888888');
 
--- 19. Insert Student Learning Outcomes
+-- 18. Insert Student Learning Outcomes
 INSERT INTO student_learning_outcomes (student_id, learning_outcome_id)
 VALUES
     ('11111111-1111-1111-1111-111111111111', '66666666-1111-1111-1111-111111111111'),

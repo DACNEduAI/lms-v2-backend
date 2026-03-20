@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.ModifyQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
@@ -27,7 +27,7 @@ public class ModifyQuizService implements ModifyQuizUseCase {
     @Override
     @Transactional
     public ModifyQuizResponse modifyQuiz(ModifyQuizCommand command) {
-        User user = loadSignedInUserPort.getAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         Quiz existingQuiz = loadQuizPort.getById(command.quizId())
@@ -61,7 +61,7 @@ public class ModifyQuizService implements ModifyQuizUseCase {
                 .build();
     }
 
-    private void verifyQuizOwnership(User user, Quiz quiz) {
+    private void verifyQuizOwnership(UserAuth user, Quiz quiz) {
         boolean isOwner = (user.getRole() == Roles.TEACHER && user.getId().equals(quiz.getTeacherId()))
                 || (user.getRole() == Roles.STUDENT && user.getId().equals(quiz.getStudentId()));
 

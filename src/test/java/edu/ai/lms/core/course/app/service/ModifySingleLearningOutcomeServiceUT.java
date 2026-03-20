@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.ModifyLearningOutcomeResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
@@ -55,7 +55,7 @@ class ModifySingleLearningOutcomeServiceUT {
     @InjectMocks
     private ModifySingleLearningOutcomeService modifySingleLearningOutcomeService;
 
-    private User mockUser;
+    private UserAuth mockUser;
     private UUID teacherId;
     private UUID courseId;
     private UUID learningOutcomeId;
@@ -68,7 +68,7 @@ class ModifySingleLearningOutcomeServiceUT {
         courseId = UUID.randomUUID();
         learningOutcomeId = UUID.randomUUID();
 
-        mockUser = User.builder()
+        mockUser = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -189,7 +189,7 @@ class ModifySingleLearningOutcomeServiceUT {
     void testModifyLearningOutcome_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
         UUID anotherTeacherId = UUID.randomUUID();
-        User anotherUser = User.builder().id(anotherTeacherId).role(Roles.TEACHER).build();
+        UserAuth anotherUser = UserAuth.builder().id(anotherTeacherId).role(Roles.TEACHER).build();
 
         LearningOutcome updateData = LearningOutcome.builder().code("CLO-1-UPDATED").description("Updated").build();
         ModifySingleLearningOutcomeCommand command = ModifySingleLearningOutcomeCommand.builder()

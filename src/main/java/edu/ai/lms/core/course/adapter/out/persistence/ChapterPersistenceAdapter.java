@@ -6,14 +6,12 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.course.adapter.out.persistence.mapper.ChapterJdbcMapper;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.port.out.DeleteChapterLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.DeleteChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
 import edu.ai.lms.core.course.app.port.out.SaveChapterLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.SaveChapterPort;
-import edu.ai.lms.database.ChapterJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -22,14 +20,13 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
         SaveChapterLearningOutcomePort, DeleteChapterLearningOutcomePort {
 
     private final ChapterRepository chapterRepository;
-    private final ChapterJdbcMapper chapterJdbcMapper;
 
     @Override
     public Chapter save(Chapter chapter) {
         UUID courseId = chapter.getCourseId();
         boolean isUpdate = chapter.getChapterNumber() != null;
 
-        ChapterJdbcTable savedChapter;
+        Chapter savedChapter;
 
         if (isUpdate) {
             chapterRepository.updateByCompositeKey(
@@ -51,8 +48,9 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
         }
 
         List<UUID> loIds = chapterRepository.findLearningOutcomeIdsByChapterKey(
-                savedChapter.getChapterNumber(), savedChapter.getCourseId());
-        return chapterJdbcMapper.mapToChapter(savedChapter, loIds);
+            savedChapter.getChapterNumber(), savedChapter.getCourseId());
+        savedChapter.setLearningOutcomeIds(loIds);
+        return savedChapter;
     }
 
     @Override
@@ -60,7 +58,8 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
         return chapterRepository.findByChapterNumberAndCourseId(chapterNumber, courseId)
                 .map(entity -> {
                     List<UUID> loIds = chapterRepository.findLearningOutcomeIdsByChapterKey(chapterNumber, courseId);
-                    return chapterJdbcMapper.mapToChapter(entity, loIds);
+                    entity.setLearningOutcomeIds(loIds);
+                    return entity;
                 });
     }
 
@@ -70,7 +69,8 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
                 .map(entity -> {
                     List<UUID> loIds = chapterRepository.findLearningOutcomeIdsByChapterKey(
                             entity.getChapterNumber(), entity.getCourseId());
-                    return chapterJdbcMapper.mapToChapter(entity, loIds);
+                entity.setLearningOutcomeIds(loIds);
+                return entity;
                 })
                 .toList();
     }

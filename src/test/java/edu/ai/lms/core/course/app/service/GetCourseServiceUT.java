@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.GetCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
@@ -51,7 +51,7 @@ class GetCourseServiceUT {
     @InjectMocks
     private GetCourseService getCourseService;
 
-    private User mockUser;
+    private UserAuth mockUser;
     private UUID teacherId;
     private UUID courseId;
     private Course mockCourse;
@@ -63,7 +63,7 @@ class GetCourseServiceUT {
         courseId = UUID.randomUUID();
         groupId = UUID.randomUUID();
 
-        mockUser = User.builder()
+        mockUser = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -174,7 +174,7 @@ class GetCourseServiceUT {
     @DisplayName("Should throw IllegalArgumentException when teacher is not authorized to access the course")
     void testGetCourse_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
-        User anotherUser = User.builder()
+        UserAuth anotherUser = UserAuth.builder()
                 .id(UUID.randomUUID())
                 .role(Roles.TEACHER)
                 .build();

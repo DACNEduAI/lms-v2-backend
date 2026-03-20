@@ -3,7 +3,7 @@ package edu.ai.lms.core.course.app.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.CreateChapterResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
@@ -28,7 +28,7 @@ public class CreateChapterService implements TeacherCreateChapterUseCase {
     @Transactional
     public CreateChapterResponse createChapter(CreateChapterCommand command) {
         // Verify teacher is authenticated
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         // Verify course exists and belongs to the authenticated teacher

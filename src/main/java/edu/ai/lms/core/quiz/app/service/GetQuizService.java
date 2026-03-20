@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
@@ -30,7 +30,7 @@ public class GetQuizService implements GetQuizUseCase {
     @Override
     @Transactional(readOnly = true)
     public GetQuizResponse getQuiz(UUID courseId, UUID quizId) {
-        User user = loadSignedInUserPort.getAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         if (user.getRole() != Roles.TEACHER) {
@@ -76,7 +76,7 @@ public class GetQuizService implements GetQuizUseCase {
                 .build();
     }
 
-    private void verifyTeacherInCourse(User user, UUID courseId) {
+    private void verifyTeacherInCourse(UserAuth user, UUID courseId) {
         if (!loadCourseMembershipPort.isTeacherInCourse(user.getId(), courseId)) {
             throw new IllegalArgumentException("User is not a member of this course");
         }

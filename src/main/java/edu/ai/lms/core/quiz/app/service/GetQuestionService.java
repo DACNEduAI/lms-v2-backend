@@ -7,7 +7,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuestionResponse;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.exception.QuestionNotFoundException;
@@ -27,7 +27,7 @@ public class GetQuestionService implements GetQuestionUseCase {
     @Override
     @Transactional(readOnly = true)
     public GetQuestionResponse getQuestion(UUID quizId, UUID questionId) {
-        User user = loadSignedInUserPort.getAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         // Load question WITH answers (sub-aggregate root loading)
