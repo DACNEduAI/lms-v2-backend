@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.DeleteCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -51,7 +51,7 @@ class DeleteCourseServiceUT {
     @InjectMocks
     private DeleteCourseService deleteCourseService;
 
-    private User mockUser;
+    private UserAuth mockUser;
     private Course existingCourse;
     private UUID teacherId;
     private UUID courseId;
@@ -61,7 +61,7 @@ class DeleteCourseServiceUT {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
 
-        mockUser = User.builder()
+        mockUser = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -123,7 +123,7 @@ class DeleteCourseServiceUT {
     void testDeleteCourse_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
         UUID differentTeacherId = UUID.randomUUID();
-        User differentUser = User.builder()
+        UserAuth differentUser = UserAuth.builder()
                 .id(differentTeacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -183,7 +183,7 @@ class DeleteCourseServiceUT {
     @DisplayName("Should verify course ownership before deletion")
     void testDeleteCourse_ShouldVerifyCourseOwnership() {
         // Arrange
-        User courseOwner = User.builder()
+        UserAuth courseOwner = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();

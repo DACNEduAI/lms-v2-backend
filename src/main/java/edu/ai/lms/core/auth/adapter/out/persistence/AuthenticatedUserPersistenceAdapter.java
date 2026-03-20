@@ -8,8 +8,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.auth.adapter.in.internal.LoadAuthenticatedUserApi;
-import edu.ai.lms.core.auth.adapter.out.persistence.mapper.UserJdbcMapper;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -19,25 +18,26 @@ class AuthenticatedUserPersistenceAdapter implements LoadAuthenticatedUserApi {
     private final UserRepository userRepository;
     private final TeacherRepository teacherRepository;
     private final StudentRepository studentRepository;
-    private final UserJdbcMapper userJdbcMapper;
 
     @Override
-    public Optional<User> getAuthenticatedUser() {
+    public Optional<UserAuth> getAuthenticatedUser() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        if (principal instanceof UserAuth user) {
+            return Optional.of(user);
+        }
 
         if (principal instanceof UserDetails userDetails) {
             String email = userDetails.getUsername();
 
             return userRepository.findByEmail(email)
-                    .flatMap(userEntity -> {
-                        if (userEntity.getRole() == Roles.TEACHER) {
-                            return teacherRepository.findById(userEntity.getId())
-                                    .map(teacher -> (User) userJdbcMapper.mapToTeacher(userEntity, teacher));
-                        } else if (userEntity.getRole() == Roles.STUDENT) {
-                            return studentRepository.findById(userEntity.getId())
-                                    .map(student -> (User) userJdbcMapper.mapToStudent(userEntity, student));
+                    .flatMap(user -> {
+                        if (user.getRole() == Roles.TEACHER) {
+                            return teacherRepository.findById(user.getId()).map(teacher -> (UserAuth) teacher);
+                        } else if (user.getRole() == Roles.STUDENT) {
+                            return studentRepository.findById(user.getId()).map(student -> (UserAuth) student);
                         }
-                        return Optional.<User>empty();
+                        return Optional.<UserAuth>empty();
                     });
         }
 

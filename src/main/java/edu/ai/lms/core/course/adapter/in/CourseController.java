@@ -2,7 +2,6 @@ package edu.ai.lms.core.course.adapter.in;
 
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -107,9 +106,11 @@ public class CourseController {
     })
 
     @PreAuthorize("hasRole('TEACHER')")
-    @PutMapping()
-    public ResponseEntity<ModifyCourseResponse> modifyCourse(@Valid @RequestBody ModifyCourseRequest request) {
-        ModifyCourseCommand command = modifyCourseCommandMapper.toCommand(request);
+        @PutMapping("/{courseId}")
+        public ResponseEntity<ModifyCourseResponse> modifyCourse(
+                        @PathVariable UUID courseId,
+                        @Valid @RequestBody ModifyCourseRequest request) {
+                ModifyCourseCommand command = modifyCourseCommandMapper.toCommand(courseId, request);
         ModifyCourseResponse response = teacherModifyCourseUseCase.modifyCourse(command);
         return ResponseEntity.ok(response);
     }

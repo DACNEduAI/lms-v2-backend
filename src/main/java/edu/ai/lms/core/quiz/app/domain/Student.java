@@ -1,7 +1,7 @@
 package edu.ai.lms.core.quiz.app.domain;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
@@ -10,7 +10,7 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-public class Student extends User {
+public class Student extends UserAuth {
 
     private Long enrollmentYear;
 

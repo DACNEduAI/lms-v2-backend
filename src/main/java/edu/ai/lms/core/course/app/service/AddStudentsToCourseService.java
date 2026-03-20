@@ -8,7 +8,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.AddStudentsToCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -19,14 +19,14 @@ import edu.ai.lms.core.course.app.port.in.usecase.TeacherAddStudentsToCourseUseC
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.LoadStudentsByEmailPort;
-import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
+import edu.ai.lms.core.course.app.port.out.SaveCourseEnrollmentPort;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class AddStudentsToCourseService implements TeacherAddStudentsToCourseUseCase {
 
-    private final SaveCoursePort saveCoursePort;
+    private final SaveCourseEnrollmentPort saveCourseEnrollmentPort;
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadStudentsByEmailPort loadStudentsByEmailPort;
@@ -35,7 +35,7 @@ public class AddStudentsToCourseService implements TeacherAddStudentsToCourseUse
     @Transactional
     public AddStudentsToCourseResponse addStudentsToCourse(AddStudentsToCourseCommand command) {
         // Verify teacher is authenticated
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         // Verify course exists
@@ -71,8 +71,13 @@ public class AddStudentsToCourseService implements TeacherAddStudentsToCourseUse
             }
         }
 
-        course.setStudentIds(currentStudentIds);
-        saveCoursePort.save(course);
+        List<UUID> idsToAdd = actuallyAddedEmails.stream()
+            .map(emailToIdMap::get)
+            .toList();
+
+        if (!idsToAdd.isEmpty()) {
+            saveCourseEnrollmentPort.addStudentsToCourse(course.getId(), idsToAdd);
+        }
 
         return AddStudentsToCourseResponse.builder()
                 .courseId(course.getId())

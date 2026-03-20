@@ -4,8 +4,6 @@ DROP TABLE IF EXISTS
     students,
     teachers,
     courses,
-    course_teachers,
-    course_students,
     chapters,
     materials,
     chapter_materials,
@@ -67,20 +65,6 @@ CREATE TABLE IF NOT EXISTS courses (
     end_date TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Junction table for many-to-many: courses <-> teachers
-CREATE TABLE IF NOT EXISTS course_teachers (
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    teacher_id UUID NOT NULL REFERENCES teachers(user_id) ON DELETE CASCADE,
-    PRIMARY KEY (course_id, teacher_id)
-);
-
--- Junction table for many-to-many: courses <-> students
-CREATE TABLE IF NOT EXISTS course_students (
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    student_id UUID NOT NULL REFERENCES students(user_id) ON DELETE CASCADE,
-    PRIMARY KEY (course_id, student_id)
 );
 
 -- Chapters table (weak entity dependent on Course)
@@ -158,12 +142,12 @@ CREATE TABLE IF NOT EXISTS chapter_learning_outcomes (
 
 -- Enrollments table
 CREATE TABLE IF NOT EXISTS enrollments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    student_id UUID REFERENCES students(user_id),
-    course_id UUID REFERENCES courses(id),
-    enrolled_date TIMESTAMP,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    enrolled_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (course_id, user_id)
 );
 
 -- AI Settings table (single table for both student and teacher settings)

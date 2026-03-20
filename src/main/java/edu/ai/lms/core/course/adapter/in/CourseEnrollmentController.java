@@ -2,9 +2,9 @@ package edu.ai.lms.core.course.adapter.in;
 
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,10 +16,12 @@ import edu.ai.lms.core.course.adapter.in.mapper.RemoveStudentsFromCourseCommandM
 import edu.ai.lms.core.course.adapter.in.request.AddStudentsToCourseRequest;
 import edu.ai.lms.core.course.adapter.in.request.RemoveStudentsFromCourseRequest;
 import edu.ai.lms.core.course.adapter.in.response.AddStudentsToCourseResponse;
+import edu.ai.lms.core.course.adapter.in.response.GetCourseEnrollmentsResponse;
 import edu.ai.lms.core.course.adapter.in.response.RemoveStudentsFromCourseResponse;
 import edu.ai.lms.core.course.app.port.in.command.AddStudentsToCourseCommand;
 import edu.ai.lms.core.course.app.port.in.command.RemoveStudentsFromCourseCommand;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherAddStudentsToCourseUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherGetCourseEnrollmentsUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherRemoveStudentsFromCourseUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -36,8 +38,23 @@ public class CourseEnrollmentController {
 
     private final TeacherAddStudentsToCourseUseCase teacherAddStudentsToCourseUseCase;
     private final TeacherRemoveStudentsFromCourseUseCase teacherRemoveStudentsFromCourseUseCase;
+    private final TeacherGetCourseEnrollmentsUseCase teacherGetCourseEnrollmentsUseCase;
     private final AddStudentsToCourseCommandMapper addStudentsToCourseCommandMapper;
     private final RemoveStudentsFromCourseCommandMapper removeStudentsFromCourseCommandMapper;
+
+    @Operation(summary = "Get course enrollments", description = "Get all teachers and students participating in a course. Only the course owner (teacher) can access this endpoint.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Course enrollments retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = GetCourseEnrollmentsResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Course not found"),
+            @ApiResponse(responseCode = "403", description = "Not authorized to view course enrollments")
+    })
+    @PreAuthorize("hasRole('TEACHER')")
+    @GetMapping("/{courseId}/enrollments")
+    public ResponseEntity<GetCourseEnrollmentsResponse> getCourseEnrollments(@PathVariable UUID courseId) {
+        GetCourseEnrollmentsResponse response = teacherGetCourseEnrollmentsUseCase.getCourseEnrollments(courseId);
+        return ResponseEntity.ok(response);
+    }
 
     @Operation(summary = "Add students to a course", description = "Add students to a course by their email addresses. Only the course owner (teacher) can add students.")
     @ApiResponses(value = {

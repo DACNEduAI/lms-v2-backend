@@ -21,7 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuestionResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
@@ -43,7 +43,7 @@ class GetQuestionServiceUT {
     @InjectMocks
     private GetQuestionService getQuestionService;
 
-    private User mockTeacher;
+    private UserAuth mockTeacher;
     private UUID teacherId;
     private UUID quizId;
     private UUID questionId;
@@ -55,7 +55,7 @@ class GetQuestionServiceUT {
         quizId = UUID.randomUUID();
         questionId = UUID.randomUUID();
 
-        mockTeacher = User.builder()
+        mockTeacher = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();

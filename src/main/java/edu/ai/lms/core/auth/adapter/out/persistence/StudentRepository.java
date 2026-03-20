@@ -1,23 +1,22 @@
 package edu.ai.lms.core.auth.adapter.out.persistence;
 
+import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.data.jdbc.repository.query.Modifying;
-import org.springframework.data.jdbc.repository.query.Query;
-import org.springframework.data.repository.CrudRepository;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
-import edu.ai.lms.database.StudentJdbcTable;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import edu.ai.lms.core.auth.app.domain.Student;
 
 /**
  * Package-private repository interface for students.
  * Only classes within the persistence package can access this repository.
  */
-@Repository
-interface StudentRepository extends CrudRepository<StudentJdbcTable, UUID> {
+@Mapper
+interface StudentRepository {
 
-    @Modifying
-    @Query("INSERT INTO students (user_id, student_id, enrollment_year) VALUES (:userId, :studentId, :enrollmentYear)")
-    void insertStudent(@Param("userId") UUID userId, @Param("studentId") String studentId, @Param("enrollmentYear") Long enrollmentYear);
+    Optional<Student> findById(@Param("userId") UUID userId);
+
+    Optional<Student> findByEmail(@Param("email") String email);
+
+    void insertStudent(Student student);
 }

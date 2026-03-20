@@ -3,6 +3,7 @@ package edu.ai.lms.core.auth.adapter.in.http.mapper;
 import edu.ai.lms.core.auth.adapter.in.http.request.TeacherRegisterRequest;
 import edu.ai.lms.core.auth.app.domain.Teacher;
 import edu.ai.lms.core.auth.app.port.in.command.TeacherRegisterCommand;
+import edu.ai.lms.common.Roles;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,6 +19,7 @@ public class TeacherRegisterCommandMapper {
                 .phoneNumber(request.getPhoneNumber())
                 .department(request.getDepartment())
                 .specialization(request.getSpecialization())
+            .role(Roles.TEACHER)
                 .build();
 
         return TeacherRegisterCommand.builder()

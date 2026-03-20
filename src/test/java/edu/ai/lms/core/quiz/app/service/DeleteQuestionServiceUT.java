@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.DeleteQuestionResponse;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
@@ -51,7 +51,7 @@ class DeleteQuestionServiceUT {
     @InjectMocks
     private DeleteQuestionService deleteQuestionService;
 
-    private User mockTeacher;
+    private UserAuth mockTeacher;
     private UUID teacherId;
     private UUID quizId;
     private UUID questionId;
@@ -64,7 +64,7 @@ class DeleteQuestionServiceUT {
         quizId = UUID.randomUUID();
         questionId = UUID.randomUUID();
 
-        mockTeacher = User.builder()
+        mockTeacher = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -145,7 +145,7 @@ class DeleteQuestionServiceUT {
     void testDeleteQuestion_WithNonOwner_ShouldThrowException() {
         // Arrange
         UUID anotherTeacherId = UUID.randomUUID();
-        User anotherTeacher = User.builder()
+        UserAuth anotherTeacher = UserAuth.builder()
                 .id(anotherTeacherId)
                 .role(Roles.TEACHER)
                 .build();

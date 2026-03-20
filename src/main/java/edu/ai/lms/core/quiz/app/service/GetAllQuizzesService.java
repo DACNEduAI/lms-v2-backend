@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetAllQuizzesResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
@@ -59,7 +59,7 @@ public class GetAllQuizzesService implements GetAllQuizzesUseCase {
     @Override
     @Transactional(readOnly = true)
     public GetAllQuizzesResponse getAllQuizzes(UUID courseId, int pageSize, String sortDirection) {
-        User user = loadSignedInUserPort.getAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         // Verify user belongs to the course
@@ -100,7 +100,7 @@ public class GetAllQuizzesService implements GetAllQuizzesUseCase {
                 .build();
     }
 
-    private void verifyCourseMembership(User user, UUID courseId) {
+    private void verifyCourseMembership(UserAuth user, UUID courseId) {
         boolean isMember = user.getRole() == Roles.TEACHER
                 ? loadCourseMembershipPort.isTeacherInCourse(user.getId(), courseId)
                 : loadCourseMembershipPort.isStudentInCourse(user.getId(), courseId);

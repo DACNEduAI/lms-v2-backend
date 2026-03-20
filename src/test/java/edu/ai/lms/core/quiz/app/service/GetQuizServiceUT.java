@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
@@ -49,8 +49,8 @@ class GetQuizServiceUT {
     @InjectMocks
     private GetQuizService getQuizService;
 
-    private User mockTeacher;
-    private User mockStudent;
+    private UserAuth mockTeacher;
+    private UserAuth mockStudent;
     private UUID teacherId;
     private UUID studentId;
     private UUID courseId;
@@ -64,12 +64,12 @@ class GetQuizServiceUT {
         courseId = UUID.randomUUID();
         quizId = UUID.randomUUID();
 
-        mockTeacher = User.builder()
+        mockTeacher = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
 
-        mockStudent = User.builder()
+        mockStudent = UserAuth.builder()
                 .id(studentId)
                 .role(Roles.STUDENT)
                 .build();
@@ -198,7 +198,7 @@ class GetQuizServiceUT {
     void testGetQuiz_AsNonOwnerTeacher_ShouldThrowException() {
         // Arrange
         UUID anotherTeacherId = UUID.randomUUID();
-        User anotherTeacher = User.builder()
+        UserAuth anotherTeacher = UserAuth.builder()
                 .id(anotherTeacherId)
                 .role(Roles.TEACHER)
                 .build();

@@ -1,15 +1,12 @@
 package edu.ai.lms.core.course.app.service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.AddLearningOutcomesToChapterResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
@@ -38,7 +35,7 @@ public class AddLearningOutcomesToChapterService implements TeacherAddLearningOu
     @Override
     @Transactional
     public AddLearningOutcomesToChapterResponse addLearningOutcomesToChapter(AddLearningOutcomesToChapterCommand command) {
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         Course course = loadCoursePort.findById(command.courseId())
@@ -67,7 +64,7 @@ public class AddLearningOutcomesToChapterService implements TeacherAddLearningOu
         }
 
         // Add LOs to chapter, skipping duplicates
-        Set<UUID> currentLOIds = new java.util.HashSet<>(chapter.getLearningOutcomeIds());
+        Set<UUID> currentLOIds = new HashSet<>(chapter.getLearningOutcomeIds());
         List<UUID> actuallyAdded = new ArrayList<>();
 
         for (UUID loId : command.learningOutcomeIds()) {

@@ -7,14 +7,10 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.course.adapter.out.persistence.mapper.GroupLearningOutcomeJdbcMapper;
-import edu.ai.lms.core.course.adapter.out.persistence.mapper.LearningOutcomeJdbcMapper;
 import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.port.out.LoadGroupLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.SaveGroupLearningOutcomePort;
-import edu.ai.lms.database.GroupLearningOutcomeJdbcTable;
-import edu.ai.lms.database.LearningOutcomeJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -23,14 +19,10 @@ class GroupLearningOutcomePersistenceAdapter implements SaveGroupLearningOutcome
 
     private final GroupLearningOutcomeRepository groupLearningOutcomeRepository;
     private final LearningOutcomeRepository learningOutcomeRepository;
-    private final GroupLearningOutcomeJdbcMapper groupLearningOutcomeJdbcMapper;
-    private final LearningOutcomeJdbcMapper learningOutcomeJdbcMapper;
 
     @Override
     public GroupLearningOutcome save(GroupLearningOutcome groupLearningOutcome) {
-        GroupLearningOutcomeJdbcTable entity = groupLearningOutcomeJdbcMapper.mapToEntity(
-                groupLearningOutcome, groupLearningOutcome.getCourseId());
-        GroupLearningOutcomeJdbcTable saved = groupLearningOutcomeRepository.save(entity);
+    GroupLearningOutcome saved = groupLearningOutcomeRepository.save(groupLearningOutcome);
         return loadWithLearningOutcomes(saved);
     }
 
@@ -47,15 +39,10 @@ class GroupLearningOutcomePersistenceAdapter implements SaveGroupLearningOutcome
                 .collect(Collectors.toList());
     }
 
-    private GroupLearningOutcome loadWithLearningOutcomes(GroupLearningOutcomeJdbcTable entity) {
-        List<LearningOutcomeJdbcTable> loEntities =
+    private GroupLearningOutcome loadWithLearningOutcomes(GroupLearningOutcome entity) {
+        List<LearningOutcome> learningOutcomes =
                 learningOutcomeRepository.findByGroupLearningOutcomeId(entity.getId());
-        List<LearningOutcome> learningOutcomes = loEntities.stream()
-                .map(learningOutcomeJdbcMapper::mapToLearningOutcome)
-                .collect(Collectors.toList());
-
-        GroupLearningOutcome domain = groupLearningOutcomeJdbcMapper.mapToDomain(entity);
-        domain.setLearningOutcomes(learningOutcomes);
-        return domain;
+        entity.setLearningOutcomes(learningOutcomes.stream().collect(Collectors.toList()));
+        return entity;
     }
 }

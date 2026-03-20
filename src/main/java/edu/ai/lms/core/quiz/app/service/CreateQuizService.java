@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
@@ -27,7 +27,7 @@ public class CreateQuizService implements CreateQuizUseCase {
     @Transactional
     public CreateQuizResponse createQuiz(CreateQuizCommand command) {
         // Verify user is authenticated
-        User user = loadSignedInUserPort.getAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         // Verify user belongs to the course
@@ -57,7 +57,7 @@ public class CreateQuizService implements CreateQuizUseCase {
                 .build();
     }
 
-    private void verifyCourseMembership(User user, java.util.UUID courseId) {
+    private void verifyCourseMembership(UserAuth user, java.util.UUID courseId) {
         boolean isMember = user.getRole() == Roles.TEACHER
                 ? loadCourseMembershipPort.isTeacherInCourse(user.getId(), courseId)
                 : loadCourseMembershipPort.isStudentInCourse(user.getId(), courseId);

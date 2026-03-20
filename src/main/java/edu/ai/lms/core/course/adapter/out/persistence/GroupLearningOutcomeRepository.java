@@ -4,24 +4,33 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.data.jdbc.repository.query.Modifying;
-import org.springframework.data.jdbc.repository.query.Query;
-import org.springframework.data.repository.CrudRepository;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
 
-import edu.ai.lms.database.GroupLearningOutcomeJdbcTable;
+@Mapper
+interface GroupLearningOutcomeRepository {
 
-@Repository
-interface GroupLearningOutcomeRepository extends CrudRepository<GroupLearningOutcomeJdbcTable, UUID> {
+    int insert(GroupLearningOutcome entity);
 
-    @Query("SELECT * FROM group_learning_outcomes WHERE course_id = :courseId")
-    List<GroupLearningOutcomeJdbcTable> findByCourseId(@Param("courseId") UUID courseId);
+    int update(GroupLearningOutcome entity);
 
-    @Query("SELECT * FROM group_learning_outcomes WHERE id = :id")
-    Optional<GroupLearningOutcomeJdbcTable> findById(@Param("id") UUID id);
+    default GroupLearningOutcome save(GroupLearningOutcome entity) {
+        if (entity.getId() == null) {
+            entity.setId(java.util.UUID.randomUUID());
+            insert(entity);
+        } else {
+            int updated = update(entity);
+            if (updated == 0) {
+                insert(entity);
+            }
+        }
+        return findById(entity.getId()).orElseThrow();
+    }
 
-    @Modifying
-    @Query("DELETE FROM group_learning_outcomes WHERE course_id = :courseId")
+    List<GroupLearningOutcome> findByCourseId(@Param("courseId") UUID courseId);
+
+    Optional<GroupLearningOutcome> findById(@Param("id") UUID id);
+
     void deleteByCourseId(@Param("courseId") UUID courseId);
 }

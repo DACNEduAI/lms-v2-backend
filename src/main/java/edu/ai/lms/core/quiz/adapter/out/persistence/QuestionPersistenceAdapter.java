@@ -8,15 +8,11 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.quiz.adapter.out.persistence.mapper.AnswerJdbcMapper;
-import edu.ai.lms.core.quiz.adapter.out.persistence.mapper.QuestionJdbcMapper;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.port.out.DeleteQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
-import edu.ai.lms.database.AnswerJdbcTable;
-import edu.ai.lms.database.QuestionJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -25,14 +21,10 @@ class QuestionPersistenceAdapter implements SaveQuestionPort, LoadQuestionPort, 
 
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
-    private final QuestionJdbcMapper questionJdbcMapper;
-    private final AnswerJdbcMapper answerJdbcMapper;
 
     @Override
     public Question save(Question question) {
-        QuestionJdbcTable entity = questionJdbcMapper.mapToQuestionJdbcEntity(question);
-        QuestionJdbcTable savedEntity = questionRepository.save(entity);
-        return questionJdbcMapper.mapToQuestionWithoutAnswers(savedEntity);
+        return questionRepository.save(question);
     }
 
     @Override
@@ -43,15 +35,12 @@ class QuestionPersistenceAdapter implements SaveQuestionPort, LoadQuestionPort, 
 
     @Override
     public Optional<Question> getByIdWithoutAnswers(UUID questionId) {
-        return questionRepository.getById(questionId)
-                .map(questionJdbcMapper::mapToQuestionWithoutAnswers);
+        return questionRepository.getById(questionId);
     }
 
     @Override
     public List<Question> getByQuizId(UUID quizId) {
-        return questionRepository.getByQuizId(quizId).stream()
-                .map(questionJdbcMapper::mapToQuestionWithoutAnswers)
-                .collect(Collectors.toList());
+        return questionRepository.getByQuizId(quizId).stream().collect(Collectors.toList());
     }
 
     @Override
@@ -65,12 +54,8 @@ class QuestionPersistenceAdapter implements SaveQuestionPort, LoadQuestionPort, 
     /**
      * Loads a question with its answers (sub-aggregate).
      */
-    private Question loadQuestionWithAnswers(QuestionJdbcTable entity) {
-        Question question = questionJdbcMapper.mapToQuestionWithoutAnswers(entity);
-        List<AnswerJdbcTable> answerEntities = answerRepository.getByQuestionId(entity.getId());
-        List<Answer> answers = answerEntities.stream()
-                .map(answerJdbcMapper::mapToAnswer)
-                .collect(Collectors.toList());
+    private Question loadQuestionWithAnswers(Question question) {
+        List<Answer> answers = answerRepository.getByQuestionId(question.getId()).stream().collect(Collectors.toList());
         question.setAnswers(answers);
         return question;
     }

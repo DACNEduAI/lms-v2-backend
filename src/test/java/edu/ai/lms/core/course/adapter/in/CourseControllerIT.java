@@ -1,8 +1,5 @@
 package edu.ai.lms.core.course.adapter.in;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -14,7 +11,6 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -228,22 +224,15 @@ class CourseControllerIT extends IntegrationTestConfiguration {
 
         String requestBody = """
                 {
-                    "courseId": "%s",
                     "courseName": "Advanced Java Programming",
                     "description": "Updated course description with advanced topics",
                     "courseCode": "CS101",
                     "active": true,
                     "coverImage": "https://example.com/advanced-java.jpg",
                     "startDate": [%d, %d, %d],
-                    "endDate": [%d, %d, %d],
-                    "learningOutcomes": [
-                        {
-                            "code": "CLO-1",
-                            "description": "Master advanced Java concepts"
-                        }
-                    ]
+                    "endDate": [%d, %d, %d]
                 }
-                """.formatted(createdCourseId,
+                """.formatted(
                 newStartDate.getYear(), newStartDate.getMonthValue(), newStartDate.getDayOfMonth(),
                 newEndDate.getYear(), newEndDate.getMonthValue(), newEndDate.getDayOfMonth());
 
@@ -252,7 +241,7 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/course")
+                .put("/api/course/" + createdCourseId)
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -273,16 +262,14 @@ class CourseControllerIT extends IntegrationTestConfiguration {
 
         String requestBody = """
                 {
-                    "courseId": "%s",
                     "courseName": "Unauthorized Modification",
                     "description": "This should fail",
                     "courseCode": "CS101",
                     "active": false,
                     "startDate": [%d, %d, %d],
-                    "endDate": [%d, %d, %d],
-                    "learningOutcomes": []
+                    "endDate": [%d, %d, %d]
                 }
-                """.formatted(createdCourseId,
+                """.formatted(
                 startDate.getYear(), startDate.getMonthValue(), startDate.getDayOfMonth(),
                 endDate.getYear(), endDate.getMonthValue(), endDate.getDayOfMonth());
 
@@ -290,7 +277,7 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                 .contentType(ContentType.JSON)
                 .body(requestBody)
                 .when()
-                .put("/api/course")
+                .put("/api/course/" + createdCourseId)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -306,16 +293,14 @@ class CourseControllerIT extends IntegrationTestConfiguration {
 
         String requestBody = """
                 {
-                    "courseId": "%s",
                     "courseName": "Non-existent Course",
                     "description": "This should fail",
                     "courseCode": "CS999",
                     "active": true,
                     "startDate": [%d, %d, %d],
-                    "endDate": [%d, %d, %d],
-                    "learningOutcomes": []
+                    "endDate": [%d, %d, %d]
                 }
-                """.formatted(nonExistentCourseId,
+                """.formatted(
                 startDate.getYear(), startDate.getMonthValue(), startDate.getDayOfMonth(),
                 endDate.getYear(), endDate.getMonthValue(), endDate.getDayOfMonth());
 
@@ -324,7 +309,7 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/course")
+                .put("/api/course/" + nonExistentCourseId)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(404)));
@@ -365,16 +350,14 @@ class CourseControllerIT extends IntegrationTestConfiguration {
         // Try to modify the course created by the first teacher
         String modifyBody = """
                 {
-                    "courseId": "%s",
                     "courseName": "Hijacked Course",
                     "description": "This should fail",
                     "courseCode": "CS101",
                     "active": false,
                     "startDate": [%d, %d, %d],
-                    "endDate": [%d, %d, %d],
-                    "learningOutcomes": []
+                    "endDate": [%d, %d, %d]
                 }
-                """.formatted(createdCourseId,
+                """.formatted(
                 startDate.getYear(), startDate.getMonthValue(), startDate.getDayOfMonth(),
                 endDate.getYear(), endDate.getMonthValue(), endDate.getDayOfMonth());
 
@@ -383,7 +366,7 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + anotherTeacherToken)
                 .body(modifyBody)
                 .when()
-                .put("/api/course")
+                .put("/api/course/" + createdCourseId)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(403), is(400), is(500)));

@@ -7,12 +7,10 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.quiz.adapter.out.persistence.mapper.AnswerJdbcMapper;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.port.out.DeleteAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
-import edu.ai.lms.database.AnswerJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -26,7 +24,6 @@ import lombok.RequiredArgsConstructor;
 class AnswerPersistenceAdapter implements SaveAnswerPort, LoadAnswerPort, DeleteAnswerPort {
 
     private final AnswerRepository answerRepository;
-    private final AnswerJdbcMapper answerJdbcMapper;
 
     @Override
     public Answer save(Answer answer) {
@@ -43,10 +40,10 @@ class AnswerPersistenceAdapter implements SaveAnswerPort, LoadAnswerPort, Delete
                     answer.getExplanation());
 
             // Re-fetch the updated answer
-            AnswerJdbcTable updatedEntity = answerRepository
+                Answer updatedEntity = answerRepository
                     .getByAnswerNumberAndQuestionId(answer.getAnswerNumber(), questionId)
                     .orElseThrow(() -> new RuntimeException("Answer not found after update"));
-            return answerJdbcMapper.mapToAnswer(updatedEntity);
+                return updatedEntity;
         } else {
             // INSERT new answer using custom method that returns generated answer_number
             Long generatedAnswerNumber = answerRepository.insertAndReturnAnswerNumber(
@@ -56,24 +53,21 @@ class AnswerPersistenceAdapter implements SaveAnswerPort, LoadAnswerPort, Delete
                     answer.getExplanation());
 
             // Fetch the newly created answer
-            AnswerJdbcTable savedEntity = answerRepository
+                Answer savedEntity = answerRepository
                     .getByAnswerNumberAndQuestionId(generatedAnswerNumber, questionId)
                     .orElseThrow(() -> new RuntimeException("Answer not found after insert"));
-            return answerJdbcMapper.mapToAnswer(savedEntity);
+                return savedEntity;
         }
     }
 
     @Override
     public Optional<Answer> getByKey(UUID questionId, Long answerNumber) {
-        return answerRepository.getByAnswerNumberAndQuestionId(answerNumber, questionId)
-                .map(answerJdbcMapper::mapToAnswer);
+        return answerRepository.getByAnswerNumberAndQuestionId(answerNumber, questionId);
     }
 
     @Override
     public List<Answer> getByQuestionId(UUID questionId) {
-        return answerRepository.getByQuestionId(questionId).stream()
-                .map(answerJdbcMapper::mapToAnswer)
-                .collect(Collectors.toList());
+        return answerRepository.getByQuestionId(questionId).stream().collect(Collectors.toList());
     }
 
     @Override

@@ -7,13 +7,11 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.material.adapter.out.persistence.mapper.MaterialJdbcMapper;
 import edu.ai.lms.core.material.app.domain.Material;
 import edu.ai.lms.core.material.app.port.out.persistence.CreateMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.DeleteMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
-import edu.ai.lms.database.MaterialJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -21,61 +19,57 @@ import lombok.RequiredArgsConstructor;
 class MaterialPersistenceAdapter implements CreateMaterialPort, GetMaterialPort, ModifyMaterialPort, DeleteMaterialPort {
 
     private final MaterialRepository materialRepository;
-    private final MaterialJdbcMapper materialJdbcMapper;
 
     // ─── CreateMaterialPort ────────────────────────────────────────────────────
 
     @Override
     public Material createForCourse(UUID courseId, Material material) {
-        MaterialJdbcTable entity = materialJdbcMapper.toEntity(material, courseId);
-        MaterialJdbcTable saved = materialRepository.save(entity);
-        return materialJdbcMapper.toDomain(saved);
+        material.setCourseId(courseId);
+        if (material.getStatus() == null) {
+            material.setStatus(Material.MaterialStatus.PENDING);
+        }
+        return materialRepository.save(material);
     }
 
     @Override
     public Material createForChapter(UUID courseId, Long chapterNumber, Material material) {
-        // 1. Save the material row (linked to course via course_id FK)
-        MaterialJdbcTable entity = materialJdbcMapper.toEntity(material, courseId);
-        MaterialJdbcTable saved = materialRepository.save(entity);
+        material.setCourseId(courseId);
+        if (material.getStatus() == null) {
+            material.setStatus(Material.MaterialStatus.PENDING);
+        }
+        Material saved = materialRepository.save(material);
 
         // 2. Insert the junction row into chapter_materials
         materialRepository.insertChapterMaterial(saved.getId(), chapterNumber, courseId);
 
-        return materialJdbcMapper.toDomain(saved);
+        return saved;
     }
 
     // ─── GetMaterialPort ───────────────────────────────────────────────────────
 
     @Override
     public Optional<Material> findById(UUID materialId) {
-        return materialRepository.findById(materialId)
-                .map(materialJdbcMapper::toDomain);
+        return materialRepository.findById(materialId);
     }
 
     @Override
     public Optional<Material> findByIdAndCourseId(UUID materialId, UUID courseId) {
-        return materialRepository.findByIdAndCourseId(materialId, courseId)
-                .map(materialJdbcMapper::toDomain);
+        return materialRepository.findByIdAndCourseId(materialId, courseId);
     }
 
     @Override
     public Optional<Material> findByFileKey(String fileKey) {
-        return materialRepository.findByFileKey(fileKey)
-                .map(materialJdbcMapper::toDomain);
+        return materialRepository.findByFileKey(fileKey);
     }
 
     @Override
     public List<Material> findByCourseId(UUID courseId) {
-        return materialRepository.findByCourseId(courseId).stream()
-                .map(materialJdbcMapper::toDomain)
-                .collect(Collectors.toList());
+        return materialRepository.findByCourseId(courseId).stream().collect(Collectors.toList());
     }
 
     @Override
     public List<Material> findByChapter(Long chapterNumber, UUID courseId) {
-        return materialRepository.findByChapterKey(chapterNumber, courseId).stream()
-                .map(materialJdbcMapper::toDomain)
-                .collect(Collectors.toList());
+        return materialRepository.findByChapterKey(chapterNumber, courseId).stream().collect(Collectors.toList());
     }
 
     @Override
@@ -83,18 +77,14 @@ class MaterialPersistenceAdapter implements CreateMaterialPort, GetMaterialPort,
         List<String> statusStrings = statuses.stream()
                 .map(Enum::name)
                 .collect(Collectors.toList());
-        return materialRepository.findByStatusIn(statusStrings).stream()
-                .map(materialJdbcMapper::toDomain)
-                .collect(Collectors.toList());
+        return materialRepository.findByStatusIn(statusStrings).stream().collect(Collectors.toList());
     }
 
     // ─── ModifyMaterialPort ────────────────────────────────────────────────────
 
     @Override
     public Material update(Material material) {
-        MaterialJdbcTable entity = materialJdbcMapper.toEntity(material, material.getCourseId());
-        MaterialJdbcTable saved = materialRepository.save(entity);
-        return materialJdbcMapper.toDomain(saved);
+        return materialRepository.save(material);
     }
 
     // ─── DeleteMaterialPort ────────────────────────────────────────────────────

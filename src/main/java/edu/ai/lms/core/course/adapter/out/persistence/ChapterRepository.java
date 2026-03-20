@@ -4,13 +4,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.data.jdbc.repository.query.Modifying;
-import org.springframework.data.jdbc.repository.query.Query;
-import org.springframework.data.repository.CrudRepository;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
-import edu.ai.lms.database.ChapterJdbcTable;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import edu.ai.lms.core.course.app.domain.Chapter;
 
 /**
  * Package-private repository interface for chapters.
@@ -18,23 +14,17 @@ import edu.ai.lms.database.ChapterJdbcTable;
  * We use Long as the ID type (chapter_number) but handle updates via custom queries
  * because the actual primary key is composite and includes course_id.
  */
-@Repository
-interface ChapterRepository extends CrudRepository<ChapterJdbcTable, Long> {
+@Mapper
+interface ChapterRepository {
 
-    @Query("SELECT * FROM chapters WHERE course_id = :courseId ORDER BY chapter_number")
-    List<ChapterJdbcTable> findByCourseId(@Param("courseId") UUID courseId);
+        List<Chapter> findByCourseId(@Param("courseId") UUID courseId);
 
-    @Query("SELECT * FROM chapters WHERE chapter_number = :chapterNumber AND course_id = :courseId")
-    Optional<ChapterJdbcTable> findByChapterNumberAndCourseId(
+        Optional<Chapter> findByChapterNumberAndCourseId(
             @Param("chapterNumber") Long chapterNumber,
             @Param("courseId") UUID courseId);
 
-    @Modifying
-    @Query("DELETE FROM chapters WHERE course_id = :courseId")
     void deleteByCourseId(@Param("courseId") UUID courseId);
 
-    @Modifying
-    @Query("DELETE FROM chapters WHERE chapter_number = :chapterNumber AND course_id = :courseId")
     void deleteByChapterNumberAndCourseId(
             @Param("chapterNumber") Long chapterNumber,
             @Param("courseId") UUID courseId);
@@ -43,9 +33,6 @@ interface ChapterRepository extends CrudRepository<ChapterJdbcTable, Long> {
      * Custom INSERT that returns the auto-generated chapter_number.
      * Used for creating new chapters since chapter_number is GENERATED ALWAYS AS IDENTITY.
      */
-    @Query("INSERT INTO chapters (course_id, title, description, created_at, updated_at) " +
-           "VALUES (:courseId, :title, :description, NOW(), NOW()) " +
-           "RETURNING chapter_number")
     Long insertAndReturnChapterNumber(
             @Param("courseId") UUID courseId,
             @Param("title") String title,
@@ -55,32 +42,21 @@ interface ChapterRepository extends CrudRepository<ChapterJdbcTable, Long> {
      * Custom UPDATE by composite key (chapter_number, course_id).
      * Standard save() doesn't work properly with composite keys that have auto-generated parts.
      */
-    @Modifying
-    @Query("UPDATE chapters SET title = :title, description = :description, updated_at = NOW() " +
-           "WHERE chapter_number = :chapterNumber AND course_id = :courseId")
     void updateByCompositeKey(
             @Param("chapterNumber") Long chapterNumber,
             @Param("courseId") UUID courseId,
             @Param("title") String title,
             @Param("description") String description);
 
-    @Query("SELECT learning_outcome_id FROM chapter_learning_outcomes " +
-           "WHERE chapter_number = :chapterNumber AND course_id = :courseId")
     List<UUID> findLearningOutcomeIdsByChapterKey(
             @Param("chapterNumber") Long chapterNumber,
             @Param("courseId") UUID courseId);
 
-    @Modifying
-    @Query("INSERT INTO chapter_learning_outcomes (chapter_number, course_id, learning_outcome_id) " +
-           "VALUES (:chapterNumber, :courseId, :learningOutcomeId) ON CONFLICT DO NOTHING")
     void insertChapterLearningOutcome(
             @Param("chapterNumber") Long chapterNumber,
             @Param("courseId") UUID courseId,
             @Param("learningOutcomeId") UUID learningOutcomeId);
 
-    @Modifying
-    @Query("DELETE FROM chapter_learning_outcomes " +
-           "WHERE chapter_number = :chapterNumber AND course_id = :courseId AND learning_outcome_id = :learningOutcomeId")
     void deleteChapterLearningOutcome(
             @Param("chapterNumber") Long chapterNumber,
             @Param("courseId") UUID courseId,

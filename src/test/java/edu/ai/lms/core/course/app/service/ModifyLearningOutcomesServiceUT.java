@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.ModifyLearningOutcomesResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
@@ -55,7 +55,7 @@ class ModifyLearningOutcomesServiceUT {
     @InjectMocks
     private ModifyLearningOutcomesService modifyLearningOutcomesService;
 
-    private User mockUser;
+    private UserAuth mockUser;
     private UUID teacherId;
     private UUID courseId;
     private UUID loId1;
@@ -71,7 +71,7 @@ class ModifyLearningOutcomesServiceUT {
         loId1 = UUID.randomUUID();
         loId2 = UUID.randomUUID();
 
-        mockUser = User.builder()
+        mockUser = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -184,7 +184,7 @@ class ModifyLearningOutcomesServiceUT {
     void testModifyLearningOutcomes_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
         UUID anotherTeacherId = UUID.randomUUID();
-        User anotherUser = User.builder().id(anotherTeacherId).role(Roles.TEACHER).build();
+        UserAuth anotherUser = UserAuth.builder().id(anotherTeacherId).role(Roles.TEACHER).build();
 
         LearningOutcome update = LearningOutcome.builder().id(loId1).code("CLO-1-UPD").description("Updated").build();
         ModifyLearningOutcomesCommand command = ModifyLearningOutcomesCommand.builder()
