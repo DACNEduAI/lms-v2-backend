@@ -832,4 +832,50 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                 .statusCode(200)
                 .body("totalCourses", greaterThanOrEqualTo(1)); // Verify at least 1 course exists
     }
+
+    @Test
+    @Order(30)
+    @DisplayName("Should allow teacher to modify existing course via PUT and persist changes")
+    void testTeacherModifyCourseViaPutAndVerifyPersisted() {
+        LocalDate newStartDate = LocalDate.now().plusDays(9);
+        LocalDate newEndDate = LocalDate.now().plusMonths(7);
+
+        String requestBody = """
+                {
+                    "courseName": "Java Mastery for Professionals",
+                    "description": "Deep dive update through PUT endpoint",
+                    "courseCode": "CS101",
+                    "active": true,
+                    "coverImage": "https://example.com/java-mastery.jpg",
+                    "startDate": [%d, %d, %d],
+                    "endDate": [%d, %d, %d]
+                }
+                """.formatted(
+                newStartDate.getYear(), newStartDate.getMonthValue(), newStartDate.getDayOfMonth(),
+                newEndDate.getYear(), newEndDate.getMonthValue(), newEndDate.getDayOfMonth());
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .put("/api/course/" + createdCourseId)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("courseId", equalTo(createdCourseId.toString()))
+                .body("courseName", equalTo("Java Mastery for Professionals"))
+                .body("description", equalTo("Deep dive update through PUT endpoint"))
+                .body("coverImage", equalTo("https://example.com/java-mastery.jpg"));
+
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/course/" + createdCourseId)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("courseName", equalTo("Java Mastery for Professionals"))
+                .body("description", equalTo("Deep dive update through PUT endpoint"));
+    }
 }

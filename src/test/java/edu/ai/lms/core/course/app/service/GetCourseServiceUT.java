@@ -52,7 +52,9 @@ class GetCourseServiceUT {
     private GetCourseService getCourseService;
 
     private UserAuth mockUser;
+        private UserAuth mockStudentUser;
     private UUID teacherId;
+        private UUID studentId;
     private UUID courseId;
     private Course mockCourse;
     private UUID groupId;
@@ -60,12 +62,18 @@ class GetCourseServiceUT {
     @BeforeEach
     void setUp() {
         teacherId = UUID.randomUUID();
+        studentId = UUID.randomUUID();
         courseId = UUID.randomUUID();
         groupId = UUID.randomUUID();
 
         mockUser = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
+                .build();
+
+        mockStudentUser = UserAuth.builder()
+                .id(studentId)
+                .role(Roles.STUDENT)
                 .build();
 
         List<LearningOutcome> learningOutcomes = new ArrayList<>();
@@ -91,6 +99,7 @@ class GetCourseServiceUT {
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(3))
                 .teacherIds(List.of(teacherId))
+                .studentIds(List.of(studentId))
                 .learningOutcomes(learningOutcomes)
                 .build();
     }
@@ -167,12 +176,12 @@ class GetCourseServiceUT {
         TeacherNotFoundException exception = assertThrows(TeacherNotFoundException.class,
                 () -> getCourseService.getCourse(courseId));
 
-        assertEquals("Authenticated teacher not found", exception.getMessage());
+                assertEquals("Authenticated user not found", exception.getMessage());
     }
 
     @Test
-    @DisplayName("Should throw IllegalArgumentException when teacher is not authorized to access the course")
-    void testGetCourse_WithUnauthorizedTeacher_ShouldThrowException() {
+        @DisplayName("Should throw IllegalArgumentException when user is not authorized to access the course")
+        void testGetCourse_WithUnauthorizedUser_ShouldThrowException() {
         // Arrange
         UserAuth anotherUser = UserAuth.builder()
                 .id(UUID.randomUUID())
@@ -186,7 +195,24 @@ class GetCourseServiceUT {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> getCourseService.getCourse(courseId));
 
-        assertEquals("Teacher is not authorized to access this course", exception.getMessage());
+                assertEquals("User is not authorized to access this course", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should allow enrolled student to access the course")
+        void testGetCourse_WithEnrolledStudent_ShouldSucceed() {
+                // Arrange
+                when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
+                when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockStudentUser));
+                when(loadGroupLearningOutcomePort.findByCourseId(courseId)).thenReturn(Collections.emptyList());
+
+                // Act
+                GetCourseResponse response = getCourseService.getCourse(courseId);
+
+                // Assert
+                assertNotNull(response);
+                assertEquals(courseId, response.getCourseId());
+                assertEquals(teacherId, response.getTeacherId());
     }
 
     @Test
@@ -202,6 +228,7 @@ class GetCourseServiceUT {
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(1))
                 .teacherIds(List.of(teacherId))
+                .studentIds(List.of(studentId))
                 .learningOutcomes(new ArrayList<>())
                 .build();
 
@@ -234,6 +261,7 @@ class GetCourseServiceUT {
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(1))
                 .teacherIds(List.of(teacherId))
+                .studentIds(List.of(studentId))
                 .learningOutcomes(new ArrayList<>())
                 .build();
 
