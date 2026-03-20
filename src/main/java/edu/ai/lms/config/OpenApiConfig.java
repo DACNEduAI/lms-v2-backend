@@ -2,6 +2,8 @@ package edu.ai.lms.config;
 
 import java.util.List;
 
+import io.swagger.v3.oas.models.Operation;
+import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +16,8 @@ import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.method.HandlerMethod;
 
 @Configuration
 public class OpenApiConfig {
@@ -49,6 +53,29 @@ public class OpenApiConfig {
                                         .bearerFormat("JWT")
                                         .description("Enter JWT token obtained from login endpoint. " +
                                                 "Example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")));
+    }
+
+    @Bean
+    public OperationCustomizer customizePreAuthorize() {
+        return (Operation operation, HandlerMethod handlerMethod) -> {
+            // Check if the method has a @PreAuthorize annotation
+            PreAuthorize preAuthorize = handlerMethod.getMethodAnnotation(PreAuthorize.class);
+
+            if (preAuthorize != null) {
+                // Get the existing description or start with an empty string
+                String currentDescription = operation.getDescription() != null ? operation.getDescription() : "";
+
+                // Append the security rule in a formatted HTML block
+                String securityRuleHtml = String.format(
+                        "<br/><br/>🛡️ <b>Roles allowed</b> <code>%s</code>",
+                        preAuthorize.value()
+                );
+
+                operation.setDescription(currentDescription + securityRuleHtml);
+            }
+
+            return operation;
+        };
     }
 }
 
