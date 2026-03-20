@@ -116,8 +116,8 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                     "quizTitle": "Midterm Quiz",
                     "timeLimitMinutes": 60,
                     "passScore": 70.0,
-                    "startTime": "2026-01-10T09:00:00",
-                    "dueTime": "2026-01-10T10:00:00",
+                    "startTime": "10-01-2026 09:00:00",
+                    "dueTime": "10-01-2026 10:00:00",
                     "attemptLimited": 2,
                     "display": true
                 }
