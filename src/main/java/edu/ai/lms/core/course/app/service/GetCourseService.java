@@ -34,13 +34,16 @@ public class GetCourseService implements GetCourseUseCase {
         Course course = loadCoursePort.findById(courseId)
                 .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + courseId));
 
-        // Validate teacher exists and get authenticated teacher
+        // Validate authenticated user exists
         UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
-                .orElseThrow(() -> new TeacherNotFoundException("Authenticated teacher not found"));
+                .orElseThrow(() -> new TeacherNotFoundException("Authenticated user not found"));
 
-        // Business rule: Validate that the teacher is associated with the course
-        if (!course.getTeacherIds().contains(user.getId())) {
-            throw new IllegalArgumentException("Teacher is not authorized to access this course");
+        boolean teacherInCourse = course.getTeacherIds() != null && course.getTeacherIds().contains(user.getId());
+        boolean studentInCourse = course.getStudentIds() != null && course.getStudentIds().contains(user.getId());
+
+        // Business rule: only teachers/students participating in the course can view it
+        if (!teacherInCourse && !studentInCourse) {
+            throw new IllegalArgumentException("User is not authorized to access this course");
         }
 
         // Load group learning outcomes with their nested LOs
@@ -77,7 +80,9 @@ public class GetCourseService implements GetCourseUseCase {
                 .courseName(course.getCourseName())
                 .courseCode(course.getCourseCode())
                 .description(course.getDescription())
-                .teacherId(user.getId())
+                .teacherId(course.getTeacherIds() != null && !course.getTeacherIds().isEmpty()
+                        ? course.getTeacherIds().get(0)
+                        : null)
                 .active(course.getActive())
                 .coverImage(course.getCoverImage())
                 .startDate(course.getStartDate())
