@@ -22,18 +22,24 @@ import edu.ai.lms.core.quiz.adapter.in.http.mapper.ModifyQuizCommandMapper;
 import edu.ai.lms.core.quiz.adapter.in.http.request.CreateQuizRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.request.DeleteQuizzesRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.request.ModifyQuizRequest;
+import edu.ai.lms.core.quiz.adapter.in.http.request.QuizLearningOutcomeOperationRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuizResponse;
 import edu.ai.lms.core.quiz.adapter.in.http.response.DeleteQuizResponse;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetAllQuizzesResponse;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuizResponse;
 import edu.ai.lms.core.quiz.adapter.in.http.response.ModifyQuizResponse;
+import edu.ai.lms.core.quiz.adapter.in.http.response.QuizLearningOutcomeOperationResponse;
+import edu.ai.lms.core.quiz.app.port.in.command.AddQuizLearningOutcomesCommand;
 import edu.ai.lms.core.quiz.app.port.in.command.CreateQuizCommand;
 import edu.ai.lms.core.quiz.app.port.in.command.ModifyQuizCommand;
+import edu.ai.lms.core.quiz.app.port.in.command.RemoveQuizLearningOutcomesCommand;
+import edu.ai.lms.core.quiz.app.port.in.usecase.AddQuizLearningOutcomesUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.CreateQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.DeleteQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.GetAllQuizzesUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.GetQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.ModifyQuizUseCase;
+import edu.ai.lms.core.quiz.app.port.in.usecase.RemoveQuizLearningOutcomesUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -52,6 +58,8 @@ public class QuizController {
     private final DeleteQuizUseCase deleteQuizUseCase;
     private final GetQuizUseCase getQuizUseCase;
     private final GetAllQuizzesUseCase getAllQuizzesUseCase;
+        private final AddQuizLearningOutcomesUseCase addQuizLearningOutcomesUseCase;
+        private final RemoveQuizLearningOutcomesUseCase removeQuizLearningOutcomesUseCase;
     private final CreateQuizCommandMapper createQuizCommandMapper;
     private final ModifyQuizCommandMapper modifyQuizCommandMapper;
 
@@ -147,5 +155,53 @@ public class QuizController {
                 .map(quizId -> deleteQuizUseCase.deleteQuiz(courseId, quizId))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
+    }
+
+    @Operation(summary = "Add learning outcomes to a quiz",
+            description = "Adds learning outcomes by explicit ids and/or group ids. Group ids are expanded to child learning outcomes and overlaps are deduplicated.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Learning outcomes added successfully",
+                    content = @Content(schema = @Schema(implementation = QuizLearningOutcomeOperationResponse.class)))
+    })
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @PostMapping("/{quizId}/learning-outcomes")
+    public ResponseEntity<QuizLearningOutcomeOperationResponse> addLearningOutcomes(
+            @PathVariable UUID courseId,
+            @PathVariable UUID quizId,
+            @Valid @RequestBody QuizLearningOutcomeOperationRequest request) {
+
+        AddQuizLearningOutcomesCommand command = AddQuizLearningOutcomesCommand.builder()
+                .courseId(courseId)
+                .quizId(quizId)
+                .learningOutcomeIds(request.getLearningOutcomeIds())
+                .groupLearningOutcomeIds(request.getGroupLearningOutcomeIds())
+                .build();
+
+        QuizLearningOutcomeOperationResponse response = addQuizLearningOutcomesUseCase.addLearningOutcomes(command);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Remove learning outcomes from a quiz",
+            description = "Removes learning outcomes by explicit ids and/or group ids. Group ids are expanded to child learning outcomes and overlaps are deduplicated.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Learning outcomes removed successfully",
+                    content = @Content(schema = @Schema(implementation = QuizLearningOutcomeOperationResponse.class)))
+    })
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @DeleteMapping("/{quizId}/learning-outcomes")
+    public ResponseEntity<QuizLearningOutcomeOperationResponse> removeLearningOutcomes(
+            @PathVariable UUID courseId,
+            @PathVariable UUID quizId,
+            @Valid @RequestBody QuizLearningOutcomeOperationRequest request) {
+
+        RemoveQuizLearningOutcomesCommand command = RemoveQuizLearningOutcomesCommand.builder()
+                .courseId(courseId)
+                .quizId(quizId)
+                .learningOutcomeIds(request.getLearningOutcomeIds())
+                .groupLearningOutcomeIds(request.getGroupLearningOutcomeIds())
+                .build();
+
+        QuizLearningOutcomeOperationResponse response = removeQuizLearningOutcomesUseCase.removeLearningOutcomes(command);
+        return ResponseEntity.ok(response);
     }
 }

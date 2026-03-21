@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import edu.ai.lms.core.quiz.app.domain.QuizLearningOutcomeView;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizLearningOutcomePort;
@@ -62,5 +63,10 @@ class QuizLearningOutcomePersistenceAdapter implements SaveQuizLearningOutcomePo
             return List.of();
         }
         return learningOutcomeLookupRepository.findLearningOutcomeIdsByCourseIdAndGroupIds(courseId, groupLearningOutcomeIds);
+    }
+
+    @Override
+    public List<QuizLearningOutcomeView> findQuizLearningOutcomes(UUID courseId, UUID quizId) {
+        return learningOutcomeLookupRepository.findQuizLearningOutcomes(courseId, quizId);
     }
 }

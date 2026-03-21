@@ -25,14 +25,24 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.core.course.adapter.in.response.GetChapterResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
+import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
+import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.exception.ChapterNotFoundException;
 import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
+import edu.ai.lms.core.course.app.port.out.LoadGroupLearningOutcomePort;
+import edu.ai.lms.core.course.app.port.out.LoadLearningOutcomePort;
 
 @ExtendWith(MockitoExtension.class)
 class GetChapterServiceUT {
 
     @Mock
     private LoadChapterPort loadChapterPort;
+
+    @Mock
+    private LoadLearningOutcomePort loadLearningOutcomePort;
+
+    @Mock
+    private LoadGroupLearningOutcomePort loadGroupLearningOutcomePort;
 
     @InjectMocks
     private GetChapterService getChapterService;
@@ -51,6 +61,7 @@ class GetChapterServiceUT {
                 .title("Chapter 1: Introduction")
                 .description("Introduction to Java programming")
                 .courseId(courseId)
+                .learningOutcomeIds(List.of(UUID.randomUUID()))
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -71,6 +82,8 @@ class GetChapterServiceUT {
         assertEquals("Chapter 1: Introduction", response.getTitle());
         assertEquals("Introduction to Java programming", response.getDescription());
         assertEquals(courseId, response.getCourseId());
+        assertNotNull(response.getUngroupedLearningOutcomes());
+        assertNotNull(response.getGroupedLearningOutcomes());
         assertNotNull(response.getCreatedAt());
         assertNotNull(response.getUpdatedAt());
 
@@ -163,6 +176,7 @@ class GetChapterServiceUT {
                     .title("Chapter 2: Variables")
                     .description("Understanding variables in Java")
                     .courseId(courseId)
+                    .learningOutcomeIds(List.of())
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
@@ -173,6 +187,7 @@ class GetChapterServiceUT {
                     .title("Chapter 3: Control Flow")
                     .description("If-else and switch statements")
                     .courseId(courseId)
+                    .learningOutcomeIds(List.of())
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
@@ -253,6 +268,7 @@ class GetChapterServiceUT {
                     .title("Specific Chapter")
                     .description("Detailed description")
                     .courseId(courseId)
+                    .learningOutcomeIds(List.of())
                     .createdAt(createdAt)
                     .updatedAt(updatedAt)
                     .build();
@@ -304,6 +320,58 @@ class GetChapterServiceUT {
             // Assert
             verify(loadChapterPort, times(1)).findAllByCourseId(courseId);
             verify(loadChapterPort, never()).findByKey(courseId, chapterId);
+        }
+
+        @Test
+        @DisplayName("Should return grouped and ungrouped chapter learning outcomes")
+        void testGetChapter_WithGroupedAndUngroupedLearningOutcomes_ShouldReturnBothSections() {
+            UUID ungroupedId = UUID.randomUUID();
+            UUID groupedId = UUID.randomUUID();
+            UUID groupId = UUID.randomUUID();
+
+            Chapter chapter = Chapter.builder()
+                .chapterId(chapterId)
+                .title("Chapter with LO")
+                .description("Contains grouped and ungrouped LOs")
+                .courseId(courseId)
+                .learningOutcomeIds(List.of(ungroupedId, groupedId))
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+            LearningOutcome ungrouped = LearningOutcome.builder()
+                .id(ungroupedId)
+                .code("CLO-U")
+                .description("Ungrouped LO")
+                .courseId(courseId)
+                .build();
+
+            LearningOutcome grouped = LearningOutcome.builder()
+                .id(groupedId)
+                .code("CLO-G")
+                .description("Grouped LO")
+                .courseId(courseId)
+                .groupLearningOutcomeId(groupId)
+                .build();
+
+            GroupLearningOutcome group = GroupLearningOutcome.builder()
+                .id(groupId)
+                .name("Group 1")
+                .description("Group description")
+                .build();
+
+            when(loadChapterPort.findByKey(courseId, chapterId)).thenReturn(Optional.of(chapter));
+            when(loadLearningOutcomePort.findByCourseId(courseId)).thenReturn(List.of(ungrouped, grouped));
+            when(loadGroupLearningOutcomePort.findByCourseId(courseId)).thenReturn(List.of(group));
+
+            GetChapterResponse response = getChapterService.getChapter(courseId, chapterId);
+
+            assertEquals(1, response.getUngroupedLearningOutcomes().size());
+            assertEquals("CLO-U", response.getUngroupedLearningOutcomes().get(0).getCode());
+            assertEquals(1, response.getGroupedLearningOutcomes().size());
+            assertEquals(groupId, response.getGroupedLearningOutcomes().get(0).getId());
+            assertEquals(1, response.getGroupedLearningOutcomes().get(0).getLearningOutcomes().size());
+            assertEquals("CLO-G", response.getGroupedLearningOutcomes().get(0).getLearningOutcomes().get(0).getCode());
         }
     }
 }
