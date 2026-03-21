@@ -1496,4 +1496,104 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .body("[0].learningOutcomeIds", notNullValue())
                 .body("[1].learningOutcomeIds", notNullValue());
     }
+
+    @Test
+    @Order(55)
+    @DisplayName("Should get a single learning outcome by id")
+    void testGetLearningOutcomeById_ShouldSucceed() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/learning-outcome/" + createdLoId1)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("id", equalTo(createdLoId1.toString()))
+                .body("code", notNullValue())
+                .body("description", notNullValue());
+    }
+
+    @Test
+    @Order(56)
+    @DisplayName("Should get learning outcomes by ids")
+    void testGetLearningOutcomesByIds_ShouldSucceed() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .queryParam("ids", createdLoId1, createdLoId2)
+                .when()
+                .get("/api/" + createdCourseId + "/learning-outcome")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("$", hasSize(2));
+    }
+
+    @Test
+    @Order(57)
+    @DisplayName("Should get grouped learning outcomes with children")
+    void testGetGroupedLearningOutcomes_ShouldSucceed() {
+        String createLoBody = """
+                {
+                    "learningOutcomes": [
+                        {"code": "CLO-G-1", "description": "Group GET child 1"},
+                        {"code": "CLO-G-2", "description": "Group GET child 2"}
+                    ]
+                }
+                """;
+
+        Response createLoResponse = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(createLoBody)
+                .when()
+                .post("/api/" + createdCourseId + "/learning-outcome")
+                .then()
+                .statusCode(201)
+                .extract().response();
+
+        UUID groupLo1 = UUID.fromString(createLoResponse.jsonPath().getString("learningOutcomes[0].id"));
+        UUID groupLo2 = UUID.fromString(createLoResponse.jsonPath().getString("learningOutcomes[1].id"));
+
+        String createGroupBody = """
+                {
+                    "name": "Grouping for GET",
+                    "description": "Group for read endpoint",
+                    "learningOutcomeIds": ["%s", "%s"]
+                }
+                """.formatted(groupLo1, groupLo2);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(createGroupBody)
+                .when()
+                .post("/api/" + createdCourseId + "/group-learning-outcome")
+                .then()
+                .statusCode(201);
+
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/learning-outcome/grouped")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("$", hasSize(greaterThanOrEqualTo(1)))
+                .body("[0].learningOutcomes", notNullValue());
+    }
+
+    @Test
+    @Order(58)
+    @DisplayName("Should return grouped and ungrouped learning outcomes in chapter get")
+    void testGetChapter_WithGroupedAndUngroupedLearningOutcomes_ShouldSucceed() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/chapter/" + createdChapterId1)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("groupedLearningOutcomes", notNullValue())
+                .body("ungroupedLearningOutcomes", notNullValue());
+    }
 }

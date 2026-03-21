@@ -6,6 +6,7 @@ import edu.ai.lms.config.DatePatternConstants;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,10 +21,38 @@ public class GetChapterResponse {
     private String description;
     private UUID courseId;
     private List<UUID> learningOutcomeIds;
+    @Builder.Default
+    private List<LearningOutcomeSummary> ungroupedLearningOutcomes = new ArrayList<>();
+    @Builder.Default
+    private List<GroupLearningOutcomeSummary> groupedLearningOutcomes = new ArrayList<>();
     @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN)
     private LocalDateTime createdAt;
     @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN)
     private LocalDateTime updatedAt;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class LearningOutcomeSummary {
+        private UUID id;
+        private String code;
+        private String description;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class GroupLearningOutcomeSummary {
+        private UUID id;
+        private String name;
+        private String description;
+        @Builder.Default
+        private List<LearningOutcomeSummary> learningOutcomes = new ArrayList<>();
+    }
 }

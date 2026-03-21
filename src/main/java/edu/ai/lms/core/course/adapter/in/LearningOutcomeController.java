@@ -1,6 +1,7 @@
 package edu.ai.lms.core.course.adapter.in;
 
 import java.util.UUID;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import edu.ai.lms.core.course.adapter.in.mapper.AddLearningOutcomesToChapterCommandMapper;
@@ -27,6 +30,8 @@ import edu.ai.lms.core.course.adapter.in.request.RemoveLearningOutcomesFromChapt
 import edu.ai.lms.core.course.adapter.in.response.AddLearningOutcomesToChapterResponse;
 import edu.ai.lms.core.course.adapter.in.response.CreateLearningOutcomesResponse;
 import edu.ai.lms.core.course.adapter.in.response.DeleteLearningOutcomesResponse;
+import edu.ai.lms.core.course.adapter.in.response.GetGroupLearningOutcomeResponse;
+import edu.ai.lms.core.course.adapter.in.response.GetLearningOutcomeResponse;
 import edu.ai.lms.core.course.adapter.in.response.ModifyLearningOutcomeResponse;
 import edu.ai.lms.core.course.adapter.in.response.ModifyLearningOutcomesResponse;
 import edu.ai.lms.core.course.adapter.in.response.RemoveLearningOutcomesFromChapterResponse;
@@ -42,6 +47,8 @@ import edu.ai.lms.core.course.app.port.in.usecase.TeacherDeleteLearningOutcomesU
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifyLearningOutcomesUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifySingleLearningOutcomeUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherRemoveLearningOutcomesFromChapterUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.GetGroupLearningOutcomeUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.GetLearningOutcomeUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -58,8 +65,10 @@ public class LearningOutcomeController {
     private final TeacherModifySingleLearningOutcomeUseCase teacherModifySingleLearningOutcomeUseCase;
     private final TeacherModifyLearningOutcomesUseCase teacherModifyLearningOutcomesUseCase;
     private final TeacherDeleteLearningOutcomesUseCase teacherDeleteLearningOutcomesUseCase;
-    private final TeacherAddLearningOutcomesToChapterUseCase teacherAddLearningOutcomesToChapterUseCase;
-    private final TeacherRemoveLearningOutcomesFromChapterUseCase teacherRemoveLearningOutcomesFromChapterUseCase;
+        private final TeacherAddLearningOutcomesToChapterUseCase teacherAddLearningOutcomesToChapterUseCase;
+        private final TeacherRemoveLearningOutcomesFromChapterUseCase teacherRemoveLearningOutcomesFromChapterUseCase;
+        private final GetLearningOutcomeUseCase getLearningOutcomeUseCase;
+        private final GetGroupLearningOutcomeUseCase getGroupLearningOutcomeUseCase;
     private final CreateLearningOutcomesCommandMapper createLearningOutcomesCommandMapper;
     private final ModifySingleLearningOutcomeCommandMapper modifySingleLearningOutcomeCommandMapper;
     private final ModifyLearningOutcomesCommandMapper modifyLearningOutcomesCommandMapper;
@@ -84,6 +93,47 @@ public class LearningOutcomeController {
         CreateLearningOutcomesCommand command = createLearningOutcomesCommandMapper.toCommand(courseId, request);
         CreateLearningOutcomesResponse response = teacherCreateLearningOutcomesUseCase.createLearningOutcomes(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @Operation(summary = "Get a single learning outcome", description = "Get a learning outcome by its ID in a course.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Learning outcome retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = GetLearningOutcomeResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Learning outcome not found")
+    })
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @GetMapping("/api/{courseId}/learning-outcome/{learningOutcomeId}")
+    public ResponseEntity<GetLearningOutcomeResponse> getLearningOutcome(
+            @PathVariable UUID courseId,
+            @PathVariable UUID learningOutcomeId) {
+        GetLearningOutcomeResponse response = getLearningOutcomeUseCase.getLearningOutcome(courseId, learningOutcomeId);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Get learning outcomes by IDs", description = "Get learning outcomes in a course by providing a list of learning outcome IDs.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Learning outcomes retrieved successfully"),
+            @ApiResponse(responseCode = "404", description = "One or more learning outcomes not found")
+    })
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @GetMapping("/api/{courseId}/learning-outcome")
+    public ResponseEntity<List<GetLearningOutcomeResponse>> getLearningOutcomesByIds(
+            @PathVariable UUID courseId,
+            @RequestParam("ids") List<UUID> learningOutcomeIds) {
+        List<GetLearningOutcomeResponse> response = getLearningOutcomeUseCase.getLearningOutcomesByIds(courseId, learningOutcomeIds);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Get grouped learning outcomes", description = "Get all group learning outcomes in a course with their child learning outcomes.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Grouped learning outcomes retrieved successfully")
+    })
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @GetMapping("/api/{courseId}/learning-outcome/grouped")
+    public ResponseEntity<List<GetGroupLearningOutcomeResponse>> getGroupedLearningOutcomes(
+            @PathVariable UUID courseId) {
+        List<GetGroupLearningOutcomeResponse> response = getGroupLearningOutcomeUseCase.getGroupedLearningOutcomes(courseId);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Modify a single learning outcome", description = "Modify a specific learning outcome by its ID. Only the course owner (teacher) can modify learning outcomes.")

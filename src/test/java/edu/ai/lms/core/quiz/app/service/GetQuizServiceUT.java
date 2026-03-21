@@ -28,8 +28,10 @@ import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.domain.QuizLearningOutcomeView;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
+import edu.ai.lms.core.quiz.app.port.out.LoadCourseLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
@@ -45,6 +47,9 @@ class GetQuizServiceUT {
 
     @Mock
     private LoadCourseMembershipPort loadCourseMembershipPort;
+
+        @Mock
+        private LoadCourseLearningOutcomePort loadCourseLearningOutcomePort;
 
     @InjectMocks
     private GetQuizService getQuizService;
@@ -112,6 +117,20 @@ class GetQuizServiceUT {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
         when(loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadCourseLearningOutcomePort.findQuizLearningOutcomes(courseId, quizId)).thenReturn(List.of(
+                QuizLearningOutcomeView.builder()
+                        .learningOutcomeId(UUID.randomUUID())
+                        .learningOutcomeCode("CLO-1")
+                        .learningOutcomeDescription("Group child")
+                        .groupLearningOutcomeId(UUID.randomUUID())
+                        .groupLearningOutcomeName("Group A")
+                        .groupLearningOutcomeDescription("Group description")
+                        .build(),
+                QuizLearningOutcomeView.builder()
+                        .learningOutcomeId(UUID.randomUUID())
+                        .learningOutcomeCode("CLO-2")
+                        .learningOutcomeDescription("Ungrouped child")
+                        .build()));
 
         // Act
         GetQuizResponse response = getQuizService.getQuiz(courseId, quizId);
@@ -128,9 +147,12 @@ class GetQuizServiceUT {
         assertEquals("Sample Question", response.getQuestions().get(0).getContent());
         assertEquals(1, response.getQuestions().get(0).getAnswers().size());
         assertEquals("Sample Answer", response.getQuestions().get(0).getAnswers().get(0).getContent());
+        assertEquals(1, response.getGroupedLearningOutcomes().size());
+        assertEquals(1, response.getUngroupedLearningOutcomes().size());
 
         verify(loadSignedInUserPort, times(1)).getAuthenticatedUser();
         verify(loadQuizPort, times(1)).getByIdWithQuestionsAndAnswers(courseId, quizId);
+        verify(loadCourseLearningOutcomePort, times(1)).findQuizLearningOutcomes(courseId, quizId);
     }
 
     @Test

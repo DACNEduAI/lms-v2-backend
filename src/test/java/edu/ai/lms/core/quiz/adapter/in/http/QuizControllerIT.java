@@ -7,6 +7,7 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -30,6 +31,12 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     private static UUID createdQuizId;
     private static UUID secondQuizId;
     private static UUID thirdQuizId;
+    private static UUID lo1;
+    private static UUID lo2;
+    private static UUID lo3;
+    private static UUID lo4;
+    private static UUID group1;
+    private static UUID group2;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     // ==================== SETUP: Register teacher and create a course ====================
@@ -499,5 +506,150 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .log().all()
                 .statusCode(200)
                 .body("quizzes", notNullValue());
+    }
+
+    @Test
+    @Order(22)
+    @DisplayName("Should create additional learning outcomes for quiz mapping")
+    void testCreateLearningOutcomesForQuizMapping() {
+        String requestBody = """
+                {
+                    "learningOutcomes": [
+                        {"code": "CLO-Q1", "description": "Understand fundamentals"},
+                        {"code": "CLO-Q2", "description": "Apply fundamentals"},
+                        {"code": "CLO-Q3", "description": "Analyze scenarios"},
+                        {"code": "CLO-Q4", "description": "Evaluate solutions"}
+                    ]
+                }
+                """;
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/learning-outcome")
+                .then()
+                .statusCode(201)
+                .body("totalCreated", equalTo(4))
+                .extract().response();
+
+        lo1 = UUID.fromString(response.jsonPath().getString("learningOutcomes[0].id"));
+        lo2 = UUID.fromString(response.jsonPath().getString("learningOutcomes[1].id"));
+        lo3 = UUID.fromString(response.jsonPath().getString("learningOutcomes[2].id"));
+        lo4 = UUID.fromString(response.jsonPath().getString("learningOutcomes[3].id"));
+    }
+
+    @Test
+    @Order(23)
+    @DisplayName("Should create group one with two learning outcomes")
+    void testCreateGroupOne() {
+        String requestBody = """
+                {
+                    "name": "Group One",
+                    "description": "First group",
+                    "learningOutcomeIds": ["%s", "%s"]
+                }
+                """.formatted(lo1, lo2);
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/group-learning-outcome")
+                .then()
+                .statusCode(201)
+                .extract().response();
+
+        group1 = UUID.fromString(response.jsonPath().getString("id"));
+    }
+
+    @Test
+    @Order(24)
+    @DisplayName("Should create group two with one learning outcome")
+    void testCreateGroupTwo() {
+        String requestBody = """
+                {
+                    "name": "Group Two",
+                    "description": "Second group",
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(lo3);
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/group-learning-outcome")
+                .then()
+                .statusCode(201)
+                .extract().response();
+
+        group2 = UUID.fromString(response.jsonPath().getString("id"));
+    }
+
+    @Test
+    @Order(25)
+    @DisplayName("Should add direct and grouped learning outcomes with overlap deduplicated")
+    void testAddLearningOutcomesToQuiz_Success() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s", "%s"],
+                    "groupLearningOutcomeIds": ["%s", "%s"]
+                }
+                """.formatted(lo2, lo4, group1, group2);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/learning-outcomes")
+                .then()
+                .statusCode(200)
+                .body("operation", equalTo("ADD"))
+                .body("totalAffected", equalTo(4))
+                .body("learningOutcomeIds", hasSize(4));
+    }
+
+    @Test
+    @Order(26)
+    @DisplayName("Should get quiz with grouped and ungrouped learning outcomes")
+    void testGetQuiz_WithGroupedLearningOutcomes_ShouldSucceed() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/quiz/" + createdQuizId)
+                .then()
+                .statusCode(200)
+                .body("groupedLearningOutcomes", hasSize(2))
+                .body("ungroupedLearningOutcomes", hasSize(1))
+                .body("ungroupedLearningOutcomes.code", hasItem("CLO-Q4"));
+    }
+
+    @Test
+    @Order(27)
+    @DisplayName("Should remove learning outcomes from quiz using direct and grouped ids")
+    void testRemoveLearningOutcomesFromQuiz_Success() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"],
+                    "groupLearningOutcomeIds": ["%s"]
+                }
+                """.formatted(lo1, group2);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .delete("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/learning-outcomes")
+                .then()
+                .statusCode(200)
+                .body("operation", equalTo("REMOVE"))
+                .body("totalAffected", equalTo(2))
+                .body("learningOutcomeIds", hasSize(2));
     }
 }
