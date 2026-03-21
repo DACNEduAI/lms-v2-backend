@@ -117,4 +117,26 @@ class AddQuizLearningOutcomesServiceUT {
 
         verify(saveQuizLearningOutcomePort, never()).addLearningOutcomes(quizId, List.of(lo1, lo2, lo3));
     }
+
+    @Test
+    @DisplayName("Should fail when any learning outcome belongs to another course")
+    void testAddLearningOutcomes_LearningOutcomeFromAnotherCourse() {
+        UserAuth teacher = UserAuth.builder().id(teacherId).role(Roles.TEACHER).build();
+        Quiz quiz = Quiz.builder().id(quizId).courseId(courseId).teacherId(teacherId).build();
+
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(teacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(quiz));
+        when(loadCourseLearningOutcomePort.findExistingGroupLearningOutcomeIdsByCourseIdAndIds(courseId, List.of(group1)))
+                .thenReturn(List.of(group1));
+        when(loadCourseLearningOutcomePort.findLearningOutcomeIdsByCourseIdAndGroupIds(courseId, List.of(group1)))
+                .thenReturn(List.of(lo2, lo3));
+        when(loadCourseLearningOutcomePort.findExistingLearningOutcomeIdsByCourseIdAndIds(courseId, List.of(lo1, lo2, lo3)))
+                .thenReturn(List.of(lo1, lo2));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> service.addLearningOutcomes(command));
+
+        assertEquals("Some learning outcomes do not belong to this course", exception.getMessage());
+        verify(saveQuizLearningOutcomePort, never()).addLearningOutcomes(quizId, List.of(lo1, lo2, lo3));
+    }
 }
