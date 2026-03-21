@@ -12,7 +12,7 @@ import lombok.*;
 @Builder
 public class RemoveLearningOutcomesFromChapterResponse {
     private UUID courseId;
-    private Long chapterNumber;
+    private UUID chapterId;
     private List<UUID> removedLearningOutcomeIds;
     private int totalRemoved;
     private String message;

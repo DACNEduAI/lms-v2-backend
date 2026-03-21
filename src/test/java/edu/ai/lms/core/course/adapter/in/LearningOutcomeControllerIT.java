@@ -33,8 +33,8 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
     private static UUID createdLoId1;
     private static UUID createdLoId2;
     private static UUID createdLoId3;
-    private static Long createdChapterNumber1;
-    private static Long createdChapterNumber2;
+    private static UUID createdChapterId1;
+    private static UUID createdChapterId2;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     // ==================== SETUP: Register teacher and create a course ====================
@@ -986,7 +986,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .statusCode(201)
                 .extract().response();
 
-        createdChapterNumber1 = response1.jsonPath().getLong("chapterNumber");
+        createdChapterId1 = UUID.fromString(response1.jsonPath().getString("chapterId"));
 
         String requestBody2 = """
                 {
@@ -1006,7 +1006,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .statusCode(201)
                 .extract().response();
 
-        createdChapterNumber2 = response2.jsonPath().getLong("chapterNumber");
+        createdChapterId2 = UUID.fromString(response2.jsonPath().getString("chapterId"));
     }
 
     // ==================== CHAPTER-LEVEL: ADD LEARNING OUTCOMES TO CHAPTER ====================
@@ -1026,12 +1026,12 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/add")
                 .then()
                 .log().all()
                 .statusCode(200)
                 .body("courseId", equalTo(createdCourseId.toString()))
-                .body("chapterNumber", equalTo(createdChapterNumber1.intValue()))
+                .body("chapterId", equalTo(createdChapterId1.toString()))
                 .body("totalAdded", equalTo(2))
                 .body("addedLearningOutcomeIds", hasSize(2))
                 .body("message", equalTo("Learning outcomes added to chapter successfully"));
@@ -1052,12 +1052,12 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/add")
                 .then()
                 .log().all()
                 .statusCode(200)
                 .body("courseId", equalTo(createdCourseId.toString()))
-                .body("chapterNumber", equalTo(createdChapterNumber1.intValue()))
+                .body("chapterId", equalTo(createdChapterId1.toString()))
                 .body("totalAdded", equalTo(1))
                 .body("addedLearningOutcomeIds", hasSize(1))
                 .body("addedLearningOutcomeIds", hasItem(createdLoId3.toString()));
@@ -1070,11 +1070,11 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1)
+                .get("/api/" + createdCourseId + "/chapter/" + createdChapterId1)
                 .then()
                 .log().all()
                 .statusCode(200)
-                .body("chapterNumber", equalTo(createdChapterNumber1.intValue()))
+                .body("chapterId", equalTo(createdChapterId1.toString()))
                 .body("learningOutcomeIds", notNullValue())
                 .body("learningOutcomeIds", hasSize(3))
                 .body("learningOutcomeIds", hasItem(createdLoId1.toString()))
@@ -1089,11 +1089,11 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/chapter/" + createdChapterNumber2)
+                .get("/api/" + createdCourseId + "/chapter/" + createdChapterId2)
                 .then()
                 .log().all()
                 .statusCode(200)
-                .body("chapterNumber", equalTo(createdChapterNumber2.intValue()))
+                .body("chapterId", equalTo(createdChapterId2.toString()))
                 .body("learningOutcomeIds", notNullValue())
                 .body("learningOutcomeIds", hasSize(0));
     }
@@ -1112,7 +1112,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .contentType(ContentType.JSON)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/add")
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -1133,7 +1133,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/add")
                 .then()
                 .log().all()
                 .statusCode(400);
@@ -1156,7 +1156,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + nonExistentCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .put("/api/" + nonExistentCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/add")
                 .then()
                 .log().all()
                 .statusCode(404);
@@ -1166,7 +1166,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
     @Order(40)
     @DisplayName("Should fail to add learning outcomes to non-existent chapter")
     void testAddLearningOutcomesToChapter_ChapterNotFound() {
-        Long nonExistentChapterNumber = 99999L;
+        UUID nonExistentChapterId = UUID.randomUUID();
 
         String requestBody = """
                 {
@@ -1179,7 +1179,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + nonExistentChapterNumber + "/learning-outcomes/add")
+                .put("/api/" + createdCourseId + "/chapter/" + nonExistentChapterId + "/learning-outcomes/add")
                 .then()
                 .log().all()
                 .statusCode(404);
@@ -1200,7 +1200,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + anotherTeacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/add")
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(403), is(400), is(500)));
@@ -1223,7 +1223,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/add")
                 .then()
                 .log().all()
                 .statusCode(404);
@@ -1244,7 +1244,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber2 + "/learning-outcomes/add")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId2 + "/learning-outcomes/add")
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -1270,12 +1270,12 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/remove")
                 .then()
                 .log().all()
                 .statusCode(200)
                 .body("courseId", equalTo(createdCourseId.toString()))
-                .body("chapterNumber", equalTo(createdChapterNumber1.intValue()))
+                .body("chapterId", equalTo(createdChapterId1.toString()))
                 .body("totalRemoved", equalTo(1))
                 .body("removedLearningOutcomeIds", hasSize(1))
                 .body("removedLearningOutcomeIds", hasItem(createdLoId3.toString()))
@@ -1289,7 +1289,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1)
+                .get("/api/" + createdCourseId + "/chapter/" + createdChapterId1)
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -1313,7 +1313,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/remove")
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -1328,7 +1328,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1)
+                .get("/api/" + createdCourseId + "/chapter/" + createdChapterId1)
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -1349,7 +1349,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .contentType(ContentType.JSON)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/remove")
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -1370,7 +1370,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/remove")
                 .then()
                 .log().all()
                 .statusCode(400);
@@ -1393,7 +1393,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + nonExistentCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .put("/api/" + nonExistentCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/remove")
                 .then()
                 .log().all()
                 .statusCode(404);
@@ -1403,7 +1403,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
     @Order(51)
     @DisplayName("Should fail to remove learning outcomes from non-existent chapter")
     void testRemoveLearningOutcomesFromChapter_ChapterNotFound() {
-        Long nonExistentChapterNumber = 99999L;
+        UUID nonExistentChapterId = UUID.randomUUID();
 
         String requestBody = """
                 {
@@ -1416,7 +1416,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + nonExistentChapterNumber + "/learning-outcomes/remove")
+                .put("/api/" + createdCourseId + "/chapter/" + nonExistentChapterId + "/learning-outcomes/remove")
                 .then()
                 .log().all()
                 .statusCode(404);
@@ -1438,7 +1438,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(addBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/add")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/add")
                 .then()
                 .statusCode(200);
 
@@ -1454,7 +1454,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + anotherTeacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/remove")
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(403), is(400), is(500)));
@@ -1475,7 +1475,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber1 + "/learning-outcomes/remove")
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId1 + "/learning-outcomes/remove")
                 .then()
                 .log().all()
                 .statusCode(404);

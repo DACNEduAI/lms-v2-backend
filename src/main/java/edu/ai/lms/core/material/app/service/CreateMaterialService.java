@@ -45,7 +45,7 @@ public class CreateMaterialService implements CreateMaterialUseCase {
 
         Material saved = createMaterialPort.createForChapter(
                 command.courseId(),
-                command.chapterNumber(),
+                command.chapterId(),
                 command.material());
 
         String presignedUploadUrl = createUploadLinkPort.createUploadLink(

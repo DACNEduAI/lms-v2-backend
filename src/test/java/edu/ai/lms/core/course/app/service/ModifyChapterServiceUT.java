@@ -59,7 +59,7 @@ class ModifyChapterServiceUT {
     private UserAuth mockUser;
     private UUID teacherId;
     private UUID courseId;
-    private Long chapterNumber;
+    private UUID chapterId;
     private Course mockCourse;
     private Chapter existingChapter;
     private ModifyChapterCommand validCommand;
@@ -68,7 +68,7 @@ class ModifyChapterServiceUT {
     void setUp() {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
-        chapterNumber = 1L;
+        chapterId = UUID.randomUUID();
 
         mockUser = UserAuth.builder()
                 .id(teacherId)
@@ -87,7 +87,7 @@ class ModifyChapterServiceUT {
                 .build();
 
         existingChapter = Chapter.builder()
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .title("Chapter 1: Introduction")
                 .description("Introduction to Java programming")
                 .courseId(courseId)
@@ -102,7 +102,7 @@ class ModifyChapterServiceUT {
 
         validCommand = ModifyChapterCommand.builder()
                 .courseId(courseId)
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .chapter(updatedChapterData)
                 .build();
     }
@@ -113,10 +113,10 @@ class ModifyChapterServiceUT {
         // Arrange
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.of(existingChapter));
+        when(loadChapterPort.findByKey(courseId, chapterId)).thenReturn(Optional.of(existingChapter));
 
         Chapter savedChapter = Chapter.builder()
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .title("Chapter 1: Updated Introduction")
                 .description("Updated introduction to Java programming")
                 .courseId(courseId)
@@ -130,7 +130,7 @@ class ModifyChapterServiceUT {
 
         // Assert
         assertNotNull(response);
-        assertEquals(chapterNumber, response.getChapterNumber());
+        assertEquals(chapterId, response.getChapterId());
         assertEquals("Chapter 1: Updated Introduction", response.getTitle());
         assertEquals("Updated introduction to Java programming", response.getDescription());
         assertEquals(courseId, response.getCourseId());
@@ -138,7 +138,7 @@ class ModifyChapterServiceUT {
 
         verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadChapterPort, times(1)).findByKey(courseId, chapterNumber);
+        verify(loadChapterPort, times(1)).findByKey(courseId, chapterId);
         verify(saveChapterPort, times(1)).save(any(Chapter.class));
     }
 
@@ -209,7 +209,7 @@ class ModifyChapterServiceUT {
         // Arrange
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.empty());
+        when(loadChapterPort.findByKey(courseId, chapterId)).thenReturn(Optional.empty());
 
         // Act & Assert
         ChapterNotFoundException exception = assertThrows(ChapterNotFoundException.class,
@@ -219,21 +219,21 @@ class ModifyChapterServiceUT {
 
         verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
         verify(loadCoursePort, times(1)).findById(courseId);
-        verify(loadChapterPort, times(1)).findByKey(courseId, chapterNumber);
+        verify(loadChapterPort, times(1)).findByKey(courseId, chapterId);
         verify(saveChapterPort, never()).save(any(Chapter.class));
     }
 
     @Test
-    @DisplayName("Should preserve chapterNumber, courseId, and createdAt when modifying")
+    @DisplayName("Should preserve chapterId, courseId, and createdAt when modifying")
     void testModifyChapter_ShouldPreserveExistingFields() {
         // Arrange
         ArgumentCaptor<Chapter> chapterCaptor = ArgumentCaptor.forClass(Chapter.class);
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.of(existingChapter));
+        when(loadChapterPort.findByKey(courseId, chapterId)).thenReturn(Optional.of(existingChapter));
 
         Chapter savedChapter = Chapter.builder()
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .title("Chapter 1: Updated Introduction")
                 .description("Updated introduction to Java programming")
                 .courseId(courseId)
@@ -249,7 +249,7 @@ class ModifyChapterServiceUT {
         verify(saveChapterPort, times(1)).save(chapterCaptor.capture());
         Chapter capturedChapter = chapterCaptor.getValue();
 
-        assertEquals(chapterNumber, capturedChapter.getChapterNumber());
+        assertEquals(chapterId, capturedChapter.getChapterId());
         assertEquals(courseId, capturedChapter.getCourseId());
         assertEquals(existingChapter.getCreatedAt(), capturedChapter.getCreatedAt());
         assertEquals("Chapter 1: Updated Introduction", capturedChapter.getTitle());
@@ -267,16 +267,16 @@ class ModifyChapterServiceUT {
 
         ModifyChapterCommand commandNullDesc = ModifyChapterCommand.builder()
                 .courseId(courseId)
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .chapter(chapterNullDescription)
                 .build();
 
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.of(existingChapter));
+        when(loadChapterPort.findByKey(courseId, chapterId)).thenReturn(Optional.of(existingChapter));
 
         Chapter savedChapter = Chapter.builder()
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .title("Updated Title Only")
                 .description(null)
                 .courseId(courseId)

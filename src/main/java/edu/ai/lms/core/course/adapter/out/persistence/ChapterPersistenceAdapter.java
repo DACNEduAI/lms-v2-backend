@@ -24,40 +24,40 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
     @Override
     public Chapter save(Chapter chapter) {
         UUID courseId = chapter.getCourseId();
-        boolean isUpdate = chapter.getChapterNumber() != null;
+        boolean isUpdate = chapter.getChapterId() != null;
 
         Chapter savedChapter;
 
         if (isUpdate) {
             chapterRepository.updateByCompositeKey(
-                    chapter.getChapterNumber(),
+                    chapter.getChapterId(),
                     courseId,
                     chapter.getTitle(),
                     chapter.getDescription());
 
-            savedChapter = chapterRepository.findByChapterNumberAndCourseId(chapter.getChapterNumber(), courseId)
+            savedChapter = chapterRepository.findByChapterIdAndCourseId(chapter.getChapterId(), courseId)
                     .orElseThrow(() -> new RuntimeException("Chapter not found after update"));
         } else {
-            Long generatedChapterNumber = chapterRepository.insertAndReturnChapterNumber(
+            UUID generatedChapterId = chapterRepository.insertAndReturnChapterId(
                     courseId,
                     chapter.getTitle(),
                     chapter.getDescription());
 
-            savedChapter = chapterRepository.findByChapterNumberAndCourseId(generatedChapterNumber, courseId)
+            savedChapter = chapterRepository.findByChapterIdAndCourseId(generatedChapterId, courseId)
                     .orElseThrow(() -> new RuntimeException("Chapter not found after insert"));
         }
 
         List<UUID> loIds = chapterRepository.findLearningOutcomeIdsByChapterKey(
-            savedChapter.getChapterNumber(), savedChapter.getCourseId());
+            savedChapter.getChapterId(), savedChapter.getCourseId());
         savedChapter.setLearningOutcomeIds(loIds);
         return savedChapter;
     }
 
     @Override
-    public Optional<Chapter> findByKey(UUID courseId, Long chapterNumber) {
-        return chapterRepository.findByChapterNumberAndCourseId(chapterNumber, courseId)
+    public Optional<Chapter> findByKey(UUID courseId, UUID chapterId) {
+        return chapterRepository.findByChapterIdAndCourseId(chapterId, courseId)
                 .map(entity -> {
-                    List<UUID> loIds = chapterRepository.findLearningOutcomeIdsByChapterKey(chapterNumber, courseId);
+                    List<UUID> loIds = chapterRepository.findLearningOutcomeIdsByChapterKey(chapterId, courseId);
                     entity.setLearningOutcomeIds(loIds);
                     return entity;
                 });
@@ -68,7 +68,7 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
         return chapterRepository.findByCourseId(courseId).stream()
                 .map(entity -> {
                     List<UUID> loIds = chapterRepository.findLearningOutcomeIdsByChapterKey(
-                            entity.getChapterNumber(), entity.getCourseId());
+                            entity.getChapterId(), entity.getCourseId());
                 entity.setLearningOutcomeIds(loIds);
                 return entity;
                 })
@@ -76,17 +76,17 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
     }
 
     @Override
-    public void deleteByKey(UUID courseId, Long chapterNumber) {
-        chapterRepository.deleteByChapterNumberAndCourseId(chapterNumber, courseId);
+    public void deleteByKey(UUID courseId, UUID chapterId) {
+        chapterRepository.deleteByChapterIdAndCourseId(chapterId, courseId);
     }
 
     @Override
-    public void addLearningOutcomeToChapter(Long chapterNumber, UUID courseId, UUID learningOutcomeId) {
-        chapterRepository.insertChapterLearningOutcome(chapterNumber, courseId, learningOutcomeId);
+    public void addLearningOutcomeToChapter(UUID chapterId, UUID courseId, UUID learningOutcomeId) {
+        chapterRepository.insertChapterLearningOutcome(chapterId, courseId, learningOutcomeId);
     }
 
     @Override
-    public void removeLearningOutcomeFromChapter(Long chapterNumber, UUID courseId, UUID learningOutcomeId) {
-        chapterRepository.deleteChapterLearningOutcome(chapterNumber, courseId, learningOutcomeId);
+    public void removeLearningOutcomeFromChapter(UUID chapterId, UUID courseId, UUID learningOutcomeId) {
+        chapterRepository.deleteChapterLearningOutcome(chapterId, courseId, learningOutcomeId);
     }
 }

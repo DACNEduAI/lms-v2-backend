@@ -45,16 +45,16 @@ VALUES
     ('c3333333-3333-3333-3333-333333333333', '66666666-6666-6666-6666-666666666666', TO_TIMESTAMP('23-08-2025 10:00:00', 'DD-MM-YYYY HH24:MI:SS'));
 
 -- 6. Insert Chapters
-INSERT INTO chapters (chapter_number, title, description, course_id) OVERRIDING SYSTEM VALUE
+INSERT INTO chapters (chapter_id, title, description, course_id)
 VALUES
-    (1, 'Clean Architecture Foundations', 'Isolating domain logic from frameworks and delivery mechanisms.', 'c1111111-1111-1111-1111-111111111111'),
-    (2, 'Tactical Domain-Driven Design', 'Deep dive into Entities, Value Objects, and Aggregate Roots.', 'c1111111-1111-1111-1111-111111111111'),
-    (3, 'Strategic Design and Context Mapping', 'Defining Bounded Contexts and integrating external systems.', 'c1111111-1111-1111-1111-111111111111'),
-    (1, 'Foundational ML Algorithms', 'Understanding the math behind Perceptrons and Support Vector Machines (SVM).', 'c2222222-2222-2222-2222-222222222222'),
-    (2, 'Vector Databases and Embeddings', 'High-dimensional vector spaces and similarity search mechanisms.', 'c2222222-2222-2222-2222-222222222222'),
-    (3, 'Building Agents and RAG Pipelines', 'Integrating LangChain Agents with external knowledge bases.', 'c2222222-2222-2222-2222-222222222222'),
-    (1, 'Containerization with Docker', 'Creating Dockerfiles, managing images, and composing multi-container apps.', 'c3333333-3333-3333-3333-333333333333'),
-    (2, 'CI/CD Automation', 'Building robust deployment pipelines using GitHub Actions.', 'c3333333-3333-3333-3333-333333333333');
+    ('f1111111-1111-1111-1111-111111111111', 'Clean Architecture Foundations', 'Isolating domain logic from frameworks and delivery mechanisms.', 'c1111111-1111-1111-1111-111111111111'),
+    ('f1222222-2222-2222-2222-222222222222', 'Tactical Domain-Driven Design', 'Deep dive into Entities, Value Objects, and Aggregate Roots.', 'c1111111-1111-1111-1111-111111111111'),
+    ('f1333333-3333-3333-3333-333333333333', 'Strategic Design and Context Mapping', 'Defining Bounded Contexts and integrating external systems.', 'c1111111-1111-1111-1111-111111111111'),
+    ('f2111111-1111-1111-1111-111111111111', 'Foundational ML Algorithms', 'Understanding the math behind Perceptrons and Support Vector Machines (SVM).', 'c2222222-2222-2222-2222-222222222222'),
+    ('f2222222-2222-2222-2222-222222222222', 'Vector Databases and Embeddings', 'High-dimensional vector spaces and similarity search mechanisms.', 'c2222222-2222-2222-2222-222222222222'),
+    ('f2333333-3333-3333-3333-333333333333', 'Building Agents and RAG Pipelines', 'Integrating LangChain Agents with external knowledge bases.', 'c2222222-2222-2222-2222-222222222222'),
+    ('f3111111-1111-1111-1111-111111111111', 'Containerization with Docker', 'Creating Dockerfiles, managing images, and composing multi-container apps.', 'c3333333-3333-3333-3333-333333333333'),
+    ('f3222222-2222-2222-2222-222222222222', 'CI/CD Automation', 'Building robust deployment pipelines using GitHub Actions.', 'c3333333-3333-3333-3333-333333333333');
 
 -- 7. Insert Group Learning Outcomes (using valid hex '7...')
 INSERT INTO group_learning_outcomes (id, name, description, course_id)
@@ -75,15 +75,15 @@ VALUES
     ('87777777-7777-7777-7777-777777777777', 'IT305-2', 'Automate testing and deployment using GitHub Actions workflows.', 'c3333333-3333-3333-3333-333333333333', '73333333-3333-3333-3333-333333333333');
 
 -- 9. Insert Chapter-Learning Outcome Relationships
-INSERT INTO chapter_learning_outcomes (chapter_number, course_id, learning_outcome_id)
+INSERT INTO chapter_learning_outcomes (chapter_id, learning_outcome_id)
 VALUES
-    (1, 'c1111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111'),
-    (2, 'c1111111-1111-1111-1111-111111111111', '82222222-2222-2222-2222-222222222222'),
-    (3, 'c1111111-1111-1111-1111-111111111111', '83333333-3333-3333-3333-333333333333'),
-    (1, 'c2222222-2222-2222-2222-222222222222', '84444444-4444-4444-4444-444444444444'),
-    (3, 'c2222222-2222-2222-2222-222222222222', '85555555-5555-5555-5555-555555555555'),
-    (1, 'c3333333-3333-3333-3333-333333333333', '86666666-6666-6666-6666-666666666666'),
-    (2, 'c3333333-3333-3333-3333-333333333333', '87777777-7777-7777-7777-777777777777');
+    ('f1111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111'),
+    ('f1222222-2222-2222-2222-222222222222', '82222222-2222-2222-2222-222222222222'),
+    ('f1333333-3333-3333-3333-333333333333', '83333333-3333-3333-3333-333333333333'),
+    ('f2111111-1111-1111-1111-111111111111', '84444444-4444-4444-4444-444444444444'),
+    ('f2333333-3333-3333-3333-333333333333', '85555555-5555-5555-5555-555555555555'),
+    ('f3111111-1111-1111-1111-111111111111', '86666666-6666-6666-6666-666666666666'),
+    ('f3222222-2222-2222-2222-222222222222', '87777777-7777-7777-7777-777777777777');
 
 -- 10. Insert AI Settings (using valid hex 'a...')
 INSERT INTO ai_settings (id, generation_prompt, difficulty_level, focus_on_weak_areas, number_of_questions, setting_type, align_to_clo, include_answer_key, mode)
@@ -150,15 +150,15 @@ VALUES
     ('e3333333-3333-3333-3333-333333333333', '66666666-6666-6666-6666-666666666666', '95555555-5555-5555-5555-555555555555', NULL, TO_TIMESTAMP('05-11-2025 14:15:00', 'DD-MM-YYYY HH24:MI:SS'), NULL, 'IN_PROGRESS');
 
 -- 15. Insert Junction Tables
-INSERT INTO quiz_chapters (quiz_id, chapter_number, chapter_course_id)
+INSERT INTO quiz_chapters (quiz_id, chapter_id)
 VALUES
-    ('91111111-1111-1111-1111-111111111111', 1, 'c1111111-1111-1111-1111-111111111111'),
-    ('91111111-1111-1111-1111-111111111111', 2, 'c1111111-1111-1111-1111-111111111111'),
-    ('92222222-2222-2222-2222-222222222222', 3, 'c1111111-1111-1111-1111-111111111111'),
-    ('93333333-3333-3333-3333-333333333333', 1, 'c2222222-2222-2222-2222-222222222222'),
-    ('94444444-4444-4444-4444-444444444444', 3, 'c2222222-2222-2222-2222-222222222222'),
-    ('95555555-5555-5555-5555-555555555555', 1, 'c3333333-3333-3333-3333-333333333333'),
-    ('95555555-5555-5555-5555-555555555555', 2, 'c3333333-3333-3333-3333-333333333333');
+    ('91111111-1111-1111-1111-111111111111', 'f1111111-1111-1111-1111-111111111111'),
+    ('91111111-1111-1111-1111-111111111111', 'f1222222-2222-2222-2222-222222222222'),
+    ('92222222-2222-2222-2222-222222222222', 'f1333333-3333-3333-3333-333333333333'),
+    ('93333333-3333-3333-3333-333333333333', 'f2111111-1111-1111-1111-111111111111'),
+    ('94444444-4444-4444-4444-444444444444', 'f2333333-3333-3333-3333-333333333333'),
+    ('95555555-5555-5555-5555-555555555555', 'f3111111-1111-1111-1111-111111111111'),
+    ('95555555-5555-5555-5555-555555555555', 'f3222222-2222-2222-2222-222222222222');
 
 INSERT INTO quiz_learning_outcomes (quiz_id, learning_outcome_id)
 VALUES

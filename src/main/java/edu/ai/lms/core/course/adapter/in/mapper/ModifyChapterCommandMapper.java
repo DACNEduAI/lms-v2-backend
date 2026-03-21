@@ -11,7 +11,7 @@ import edu.ai.lms.core.course.app.port.in.command.ModifyChapterCommand;
 @Component
 public class ModifyChapterCommandMapper {
 
-    public ModifyChapterCommand toCommand(UUID courseId, Long chapterNumber, ModifyChapterRequest request) {
+    public ModifyChapterCommand toCommand(UUID courseId, UUID chapterId, ModifyChapterRequest request) {
         Chapter chapter = Chapter.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
@@ -19,7 +19,7 @@ public class ModifyChapterCommandMapper {
 
         return ModifyChapterCommand.builder()
                 .courseId(courseId)
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .chapter(chapter)
                 .build();
     }

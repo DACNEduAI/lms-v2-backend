@@ -5,5 +5,5 @@ import java.util.UUID;
 import edu.ai.lms.core.course.adapter.in.response.GetChapterResponse;
 
 public interface GetChapterUseCase {
-    GetChapterResponse getChapter(UUID courseId, Long chapterNumber);
+    GetChapterResponse getChapter(UUID courseId, UUID chapterId);
 }

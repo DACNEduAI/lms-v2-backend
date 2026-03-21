@@ -184,12 +184,12 @@ public class LearningOutcomeController {
             @ApiResponse(responseCode = "403", description = "Not authorized to modify this course")
     })
     @PreAuthorize("hasRole('TEACHER')")
-    @PutMapping("/api/{courseId}/chapter/{chapterNumber}/learning-outcomes/add")
+    @PutMapping("/api/{courseId}/chapter/{chapterId}/learning-outcomes/add")
     public ResponseEntity<AddLearningOutcomesToChapterResponse> addLearningOutcomesToChapter(
             @PathVariable UUID courseId,
-            @PathVariable Long chapterNumber,
+            @PathVariable UUID chapterId,
             @Valid @RequestBody AddLearningOutcomesToChapterRequest request) {
-        AddLearningOutcomesToChapterCommand command = addLearningOutcomesToChapterCommandMapper.toCommand(courseId, chapterNumber, request);
+        AddLearningOutcomesToChapterCommand command = addLearningOutcomesToChapterCommandMapper.toCommand(courseId, chapterId, request);
         AddLearningOutcomesToChapterResponse response = teacherAddLearningOutcomesToChapterUseCase.addLearningOutcomesToChapter(command);
         return ResponseEntity.ok(response);
     }
@@ -203,12 +203,12 @@ public class LearningOutcomeController {
             @ApiResponse(responseCode = "403", description = "Not authorized to modify this course")
     })
     @PreAuthorize("hasRole('TEACHER')")
-    @PutMapping("/api/{courseId}/chapter/{chapterNumber}/learning-outcomes/remove")
+    @PutMapping("/api/{courseId}/chapter/{chapterId}/learning-outcomes/remove")
     public ResponseEntity<RemoveLearningOutcomesFromChapterResponse> removeLearningOutcomesFromChapter(
             @PathVariable UUID courseId,
-            @PathVariable Long chapterNumber,
+            @PathVariable UUID chapterId,
             @Valid @RequestBody RemoveLearningOutcomesFromChapterRequest request) {
-        RemoveLearningOutcomesFromChapterCommand command = removeLearningOutcomesFromChapterCommandMapper.toCommand(courseId, chapterNumber, request);
+        RemoveLearningOutcomesFromChapterCommand command = removeLearningOutcomesFromChapterCommandMapper.toCommand(courseId, chapterId, request);
         RemoveLearningOutcomesFromChapterResponse response = teacherRemoveLearningOutcomesFromChapterUseCase.removeLearningOutcomesFromChapter(command);
         return ResponseEntity.ok(response);
     }

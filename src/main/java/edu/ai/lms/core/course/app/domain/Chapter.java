@@ -14,8 +14,8 @@ import java.util.UUID;
 @Builder
 public class Chapter {
 
-    // Chapter is a weak entity - its identity is (chapterNumber, courseId)
-    private Long chapterNumber; // Auto-increment within the course context
+    // Chapter is a weak entity - its identity is (chapterId, courseId)
+    private UUID chapterId; // Auto-increment within the course context
 
     private String title;
     private String description;

@@ -46,13 +46,13 @@ public class ModifyChapterService implements TeacherModifyChapterUseCase {
         }
 
         // Verify chapter exists
-        Chapter existingChapter = loadChapterPort.findByKey(command.courseId(), command.chapterNumber())
+        Chapter existingChapter = loadChapterPort.findByKey(command.courseId(), command.chapterId())
                 .orElseThrow(() -> new ChapterNotFoundException(
-                        "Chapter not found with number: " + command.chapterNumber() + " in course: " + command.courseId()));
+                        "Chapter not found with number: " + command.chapterId() + " in course: " + command.courseId()));
 
         // Update chapter with new data
         Chapter updatedChapter = Chapter.builder()
-                .chapterNumber(existingChapter.getChapterNumber())
+                .chapterId(existingChapter.getChapterId())
                 .courseId(existingChapter.getCourseId())
                 .title(command.chapter().getTitle())
                 .description(command.chapter().getDescription())
@@ -63,7 +63,7 @@ public class ModifyChapterService implements TeacherModifyChapterUseCase {
         Chapter savedChapter = saveChapterPort.save(updatedChapter);
 
         return ModifyChapterResponse.builder()
-                .chapterNumber(savedChapter.getChapterNumber())
+                .chapterId(savedChapter.getChapterId())
                 .title(savedChapter.getTitle())
                 .description(savedChapter.getDescription())
                 .courseId(savedChapter.getCourseId())

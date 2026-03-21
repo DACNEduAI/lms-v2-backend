@@ -10,7 +10,7 @@ import edu.ai.lms.core.quiz.app.domain.Answer;
 
 /**
  * Repository for answers. Answer is a weak entity with composite primary key
- * (answer_number, question_id), similar to how chapters use (chapter_number, course_id).
+ * (answer_number, question_id), similar to how chapters use (chapter_id, course_id).
  * We use Long as the CrudRepository ID type (answer_number) but handle lookups
  * and deletes via custom queries that include question_id.
  */

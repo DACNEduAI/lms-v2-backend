@@ -5,7 +5,7 @@
 <mapper namespace="edu.ai.lms.core.course.adapter.out.persistence.ChapterRepository">
 
   <resultMap id="ChapterResultMap" type="edu.ai.lms.core.course.app.domain.Chapter">
-    <id property="chapterNumber" column="chapter_number" />
+    <id property="chapterId" column="chapter_id" />
     <result property="title" column="title" />
     <result property="description" column="description" />
     <result property="courseId" column="course_id" />
@@ -14,16 +14,16 @@
   </resultMap>
 
   <select id="findByCourseId" resultMap="ChapterResultMap">
-    SELECT chapter_number, title, description, course_id, created_at, updated_at
+    SELECT chapter_id, title, description, course_id, created_at, updated_at
     FROM chapters
     WHERE course_id = #{courseId}
-    ORDER BY chapter_number
+    ORDER BY chapter_id
   </select>
 
-  <select id="findByChapterNumberAndCourseId" resultMap="ChapterResultMap">
-    SELECT chapter_number, title, description, course_id, created_at, updated_at
+  <select id="findByChapterIdAndCourseId" resultMap="ChapterResultMap">
+    SELECT chapter_id, title, description, course_id, created_at, updated_at
     FROM chapters
-    WHERE chapter_number = #{chapterNumber}
+    WHERE chapter_id = #{chapterId}
       AND course_id = #{courseId}
   </select>
 
@@ -31,16 +31,16 @@
     DELETE FROM chapters WHERE course_id = #{courseId}
   </delete>
 
-  <delete id="deleteByChapterNumberAndCourseId">
+  <delete id="deleteByChapterIdAndCourseId">
     DELETE FROM chapters
-    WHERE chapter_number = #{chapterNumber}
+    WHERE chapter_id = #{chapterId}
       AND course_id = #{courseId}
   </delete>
 
-  <select id="insertAndReturnChapterNumber" resultType="java.lang.Long">
+  <select id="insertAndReturnChapterId" resultType="java.util.UUID">
     INSERT INTO chapters (course_id, title, description, created_at, updated_at)
     VALUES (#{courseId}, #{title}, #{description}, NOW(), NOW())
-    RETURNING chapter_number
+    RETURNING chapter_id
   </select>
 
   <update id="updateByCompositeKey">
@@ -48,27 +48,25 @@
     SET title = #{title},
         description = #{description},
         updated_at = NOW()
-    WHERE chapter_number = #{chapterNumber}
+    WHERE chapter_id = #{chapterId}
       AND course_id = #{courseId}
   </update>
 
   <select id="findLearningOutcomeIdsByChapterKey" resultType="java.util.UUID">
     SELECT learning_outcome_id
     FROM chapter_learning_outcomes
-    WHERE chapter_number = #{chapterNumber}
-      AND course_id = #{courseId}
+    WHERE chapter_id = #{chapterId}
   </select>
 
   <insert id="insertChapterLearningOutcome">
-    INSERT INTO chapter_learning_outcomes (chapter_number, course_id, learning_outcome_id)
-    VALUES (#{chapterNumber}, #{courseId}, #{learningOutcomeId})
+    INSERT INTO chapter_learning_outcomes (chapter_id, learning_outcome_id)
+    VALUES (#{chapterId}, #{learningOutcomeId})
     ON CONFLICT DO NOTHING
   </insert>
 
   <delete id="deleteChapterLearningOutcome">
     DELETE FROM chapter_learning_outcomes
-    WHERE chapter_number = #{chapterNumber}
-      AND course_id = #{courseId}
+    WHERE chapter_id = #{chapterId}
       AND learning_outcome_id = #{learningOutcomeId}
   </delete>
 

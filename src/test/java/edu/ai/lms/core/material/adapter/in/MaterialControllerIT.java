@@ -519,7 +519,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
     //                  CHAPTER MATERIAL TESTS
     // ══════════════════════════════════════════════════════════════════════
 
-    private static Long chapterNumber;
+    private static UUID chapterId;
     private static UUID chapterMaterialId;
     private static String chapterPresignedUrl;
 
@@ -543,10 +543,10 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .log().all()
                 .statusCode(201)
-                .body("chapterNumber", notNullValue())
+                .body("chapterId", notNullValue())
                 .extract().response();
 
-        chapterNumber = response.jsonPath().getLong("chapterNumber");
+        chapterId = UUID.fromString(response.jsonPath().getString("chapterId"));
     }
 
     @Test
@@ -566,7 +566,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(body)
                 .when()
-                .post("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .post("/api/" + courseId + "/material/chapter/" + chapterId)
                 .then()
                 .log().all()
                 .statusCode(201)
@@ -676,7 +676,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(body)
                 .when()
-                .post("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .post("/api/" + courseId + "/material/chapter/" + chapterId)
                 .then()
                 .log().all()
                 .statusCode(201)
@@ -726,7 +726,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
                 .contentType(ContentType.JSON)
                 .body(body)
                 .when()
-                .post("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .post("/api/" + courseId + "/material/chapter/" + chapterId)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -861,7 +861,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
     //                  GET CHAPTER MATERIALS TESTS
     // ══════════════════════════════════════════════════════
 
-    // chapterNumber is already set from the chapter material tests (Order 16)
+    // chapterId is already set from the chapter material tests (Order 16)
 
     @Test
     @Order(30)
@@ -870,7 +870,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .get("/api/" + courseId + "/material/chapter/" + chapterId)
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -884,7 +884,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .get("/api/" + courseId + "/material/chapter/" + chapterId)
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -904,7 +904,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .get("/api/" + courseId + "/material/chapter/" + chapterId)
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -916,7 +916,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
     @DisplayName("Should return empty list for a chapter with no materials")
     void testGetChapterMaterials_EmptyChapter() {
         // Create a second chapter with no materials
-        Long emptyChapterNumber = given()
+        UUID emptyChapterId = given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + teacherToken)
                 .body("""
@@ -929,12 +929,12 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
                 .post("/api/" + courseId + "/chapter")
                 .then()
                 .statusCode(201)
-                .extract().jsonPath().getLong("chapterNumber");
+                .extract().jsonPath().getObject("chapterId", java.util.UUID.class);
 
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + courseId + "/material/chapter/" + emptyChapterNumber)
+                .get("/api/" + courseId + "/material/chapter/" + emptyChapterId)
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -947,7 +947,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
     void testGetChapterMaterials_WithoutAuth() {
         given()
                 .when()
-                .get("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .get("/api/" + courseId + "/material/chapter/" + chapterId)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -971,7 +971,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(body)
                 .when()
-                .post("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .post("/api/" + courseId + "/material/chapter/" + chapterId)
                 .then()
                 .statusCode(201);
 
@@ -979,7 +979,7 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + courseId + "/material/chapter/" + chapterNumber)
+                .get("/api/" + courseId + "/material/chapter/" + chapterId)
                 .then()
                 .log().all()
                 .statusCode(200)

@@ -6,5 +6,5 @@ import lombok.Builder;
 import java.util.UUID;
 
 @Builder
-public record CreateMaterialForChapterCommand(UUID courseId, Long chapterNumber, Material material) {
+public record CreateMaterialForChapterCommand(UUID courseId, UUID chapterId, Material material) {
 }

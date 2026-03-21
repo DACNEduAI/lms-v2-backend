@@ -67,16 +67,15 @@ CREATE TABLE IF NOT EXISTS courses (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Chapters table (weak entity dependent on Course)
+-- Chapters table
 CREATE TABLE IF NOT EXISTS chapters (
-    -- No UNIQUE constraint here because a single course can have many chapters starting from 1
-    chapter_number BIGINT GENERATED ALWAYS AS IDENTITY,
+    chapter_id UUID DEFAULT gen_random_uuid() UNIQUE,
     title VARCHAR(255),
     description TEXT,
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE, -- khong co UNIQUE o day
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (chapter_number, course_id)
+    PRIMARY KEY (chapter_id)
 );
 
 -- Materials table
@@ -94,16 +93,12 @@ CREATE TABLE IF NOT EXISTS materials (
 );
 
 CREATE TABLE IF NOT EXISTS chapter_materials (
-    -- Composite foreign key (because chapter is a weak entity)
-    chapter_number BIGINT NOT NULL,
-    course_id UUID NOT NULL,
-    FOREIGN KEY (chapter_number, course_id) REFERENCES chapters(chapter_number, course_id) ON DELETE CASCADE,
+    chapter_id UUID NOT NULL REFERENCES chapters(chapter_id) ON DELETE CASCADE,
 
     -- Reference to material table
     material_id UUID NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
 
-    -- Create the composite Primary Key
-    PRIMARY KEY (material_id, chapter_number, course_id)
+    PRIMARY KEY (material_id, chapter_id)
 );
 
 
@@ -133,11 +128,9 @@ CREATE TABLE IF NOT EXISTS learning_outcomes (
 
 -- Junction table for many-to-many: chapters <-> learning_outcomes
 CREATE TABLE IF NOT EXISTS chapter_learning_outcomes (
-    chapter_number BIGINT NOT NULL,
-    course_id UUID NOT NULL,
+    chapter_id UUID NOT NULL REFERENCES chapters(chapter_id) ON DELETE CASCADE,
     learning_outcome_id UUID NOT NULL REFERENCES learning_outcomes(id) ON DELETE CASCADE,
-    FOREIGN KEY (chapter_number, course_id) REFERENCES chapters(chapter_number, course_id) ON DELETE CASCADE,
-    PRIMARY KEY (chapter_number, course_id, learning_outcome_id)
+    PRIMARY KEY (chapter_id, learning_outcome_id)
 );
 
 -- Enrollments table
@@ -222,10 +215,8 @@ CREATE TABLE IF NOT EXISTS attempts (
 -- Join tables for many-to-many relationships
 CREATE TABLE IF NOT EXISTS quiz_chapters (
     quiz_id UUID REFERENCES quizzes(id),
-    chapter_number BIGINT,
-    chapter_course_id UUID,
-    PRIMARY KEY (quiz_id, chapter_number, chapter_course_id),
-    FOREIGN KEY (chapter_number, chapter_course_id) REFERENCES chapters(chapter_number, course_id)
+    chapter_id UUID REFERENCES chapters(chapter_id),
+    PRIMARY KEY (quiz_id, chapter_id)
 );
 
 CREATE TABLE IF NOT EXISTS quiz_learning_outcomes (

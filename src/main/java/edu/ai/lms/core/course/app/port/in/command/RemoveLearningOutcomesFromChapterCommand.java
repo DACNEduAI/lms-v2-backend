@@ -6,5 +6,5 @@ import java.util.UUID;
 import lombok.Builder;
 
 @Builder
-public record RemoveLearningOutcomesFromChapterCommand(UUID courseId, Long chapterNumber, List<UUID> learningOutcomeIds) {
+public record RemoveLearningOutcomesFromChapterCommand(UUID courseId, UUID chapterId, List<UUID> learningOutcomeIds) {
 }

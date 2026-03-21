@@ -32,7 +32,7 @@ class MaterialPersistenceAdapter implements CreateMaterialPort, GetMaterialPort,
     }
 
     @Override
-    public Material createForChapter(UUID courseId, Long chapterNumber, Material material) {
+    public Material createForChapter(UUID courseId, UUID chapterId, Material material) {
         material.setCourseId(courseId);
         if (material.getStatus() == null) {
             material.setStatus(Material.MaterialStatus.PENDING);
@@ -40,7 +40,7 @@ class MaterialPersistenceAdapter implements CreateMaterialPort, GetMaterialPort,
         Material saved = materialRepository.save(material);
 
         // 2. Insert the junction row into chapter_materials
-        materialRepository.insertChapterMaterial(saved.getId(), chapterNumber, courseId);
+        materialRepository.insertChapterMaterial(saved.getId(), chapterId);
 
         return saved;
     }
@@ -68,8 +68,8 @@ class MaterialPersistenceAdapter implements CreateMaterialPort, GetMaterialPort,
     }
 
     @Override
-    public List<Material> findByChapter(Long chapterNumber, UUID courseId) {
-        return materialRepository.findByChapterKey(chapterNumber, courseId).stream().collect(Collectors.toList());
+    public List<Material> findByChapter(UUID chapterId, UUID courseId) {
+        return materialRepository.findByChapterKey(chapterId, courseId).stream().collect(Collectors.toList());
     }
 
     @Override

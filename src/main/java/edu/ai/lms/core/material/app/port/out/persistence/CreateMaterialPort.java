@@ -14,5 +14,5 @@ public interface CreateMaterialPort {
     /**
      * Saves a new material linked to both a course and a specific chapter.
      */
-    Material createForChapter(UUID courseId, Long chapterNumber, Material material);
+    Material createForChapter(UUID courseId, UUID chapterId, Material material);
 }
