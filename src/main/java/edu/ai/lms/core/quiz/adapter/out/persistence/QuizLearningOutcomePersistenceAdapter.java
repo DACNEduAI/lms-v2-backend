@@ -18,7 +18,6 @@ class QuizLearningOutcomePersistenceAdapter implements SaveQuizLearningOutcomePo
         LoadCourseLearningOutcomePort {
 
     private final QuizLearningOutcomeRepository quizLearningOutcomeRepository;
-    private final LearningOutcomeLookupRepository learningOutcomeLookupRepository;
 
     @Override
     public void addLearningOutcomes(UUID quizId, List<UUID> learningOutcomeIds) {
@@ -46,7 +45,7 @@ class QuizLearningOutcomePersistenceAdapter implements SaveQuizLearningOutcomePo
         if (learningOutcomeIds == null || learningOutcomeIds.isEmpty()) {
             return List.of();
         }
-        return learningOutcomeLookupRepository.findExistingLearningOutcomeIdsByCourseIdAndIds(courseId, learningOutcomeIds);
+        return quizLearningOutcomeRepository.findExistingLearningOutcomeIdsByCourseIdAndIds(courseId, learningOutcomeIds);
     }
 
     @Override
@@ -54,7 +53,7 @@ class QuizLearningOutcomePersistenceAdapter implements SaveQuizLearningOutcomePo
         if (groupLearningOutcomeIds == null || groupLearningOutcomeIds.isEmpty()) {
             return List.of();
         }
-        return learningOutcomeLookupRepository.findExistingGroupLearningOutcomeIdsByCourseIdAndIds(courseId, groupLearningOutcomeIds);
+        return quizLearningOutcomeRepository.findExistingGroupLearningOutcomeIdsByCourseIdAndIds(courseId, groupLearningOutcomeIds);
     }
 
     @Override
@@ -62,11 +61,11 @@ class QuizLearningOutcomePersistenceAdapter implements SaveQuizLearningOutcomePo
         if (groupLearningOutcomeIds == null || groupLearningOutcomeIds.isEmpty()) {
             return List.of();
         }
-        return learningOutcomeLookupRepository.findLearningOutcomeIdsByCourseIdAndGroupIds(courseId, groupLearningOutcomeIds);
+        return quizLearningOutcomeRepository.findLearningOutcomeIdsByCourseIdAndGroupIds(courseId, groupLearningOutcomeIds);
     }
 
     @Override
     public List<QuizLearningOutcomeView> findQuizLearningOutcomes(UUID courseId, UUID quizId) {
-        return learningOutcomeLookupRepository.findQuizLearningOutcomes(courseId, quizId);
+        return quizLearningOutcomeRepository.findQuizLearningOutcomes(courseId, quizId);
     }
 }

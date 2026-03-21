@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.attempt.adapter.out.persistence.QuizAttemptPolicyRepository">
+
+  <resultMap id="QuizAttemptPolicyResultMap" type="edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy">
+    <id property="quizId" column="quiz_id" />
+    <result property="courseId" column="course_id" />
+    <result property="timeLimitMinutes" column="time_limit_minutes" />
+    <result property="quizDueTime" column="quiz_due_time" />
+    <result property="attemptLimited" column="attempt_limited" />
+  </resultMap>
+
+  <resultMap id="QuestionAnswerKeyResultMap" type="edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey">
+    <id property="questionId" column="question_id" />
+    <result property="questionType" column="question_type" javaType="edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey$QuestionType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="points" column="points" />
+    <result property="correctAnswerNumber" column="correct_answer_number" />
+  </resultMap>
+
+  <select id="getQuizAttemptPolicy" resultMap="QuizAttemptPolicyResultMap">
+    SELECT id AS quiz_id,
+           course_id,
+           time_limit_minutes,
+           due_time AS quiz_due_time,
+           attempt_limited
+    FROM quizzes
+    WHERE id = #{quizId}
+      AND course_id = #{courseId}
+  </select>
+
+  <select id="getQuizAttemptPolicyByQuizId" resultMap="QuizAttemptPolicyResultMap">
+    SELECT id AS quiz_id,
+           course_id,
+           time_limit_minutes,
+           due_time AS quiz_due_time,
+           attempt_limited
+    FROM quizzes
+    WHERE id = #{quizId}
+  </select>
+
+  <select id="getQuestionAnswerKeys" resultMap="QuestionAnswerKeyResultMap">
+    SELECT q.id AS question_id,
+           q.type AS question_type,
+           q.points AS points,
+           a.answer_number AS correct_answer_number
+    FROM questions q
+    LEFT JOIN answers a ON a.question_id = q.id AND a.is_correct = true
+    WHERE q.quiz_id = #{quizId}
+    ORDER BY q.created_at, a.answer_number
+  </select>
+
+  <select id="isStudentInCourse" resultType="boolean">
+    SELECT EXISTS (
+      SELECT 1
+      FROM enrollments
+      WHERE course_id = #{courseId}
+        AND user_id = #{studentId}
+    )
+  </select>
+
+  <select id="quizHasTimer" resultType="boolean">
+    SELECT COALESCE(time_limit_minutes IS NOT NULL, false)
+    FROM quizzes
+    WHERE id = #{quizId}
+  </select>
+
+</mapper>

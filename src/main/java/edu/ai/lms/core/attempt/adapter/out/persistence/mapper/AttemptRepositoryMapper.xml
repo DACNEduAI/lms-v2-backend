@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.attempt.adapter.out.persistence.AttemptRepository">
+
+  <resultMap id="AttemptResultMap" type="edu.ai.lms.core.attempt.app.domain.Attempt">
+    <id property="id" column="id" />
+    <result property="studentId" column="student_id" />
+    <result property="quizId" column="quiz_id" />
+    <result property="score" column="score" />
+    <result property="startTime" column="start_time" />
+    <result property="dueTime" column="due_time" />
+    <result property="submittedTime" column="submitted_time" />
+    <result property="timeSpentSeconds" column="time_spent_seconds" />
+    <result property="status" column="status" javaType="edu.ai.lms.core.attempt.app.domain.Attempt$AttemptStatus" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="errorReason" column="error_reason" />
+    <result property="createdAt" column="created_at" />
+    <result property="updatedAt" column="updated_at" />
+  </resultMap>
+
+  <insert id="insert" parameterType="edu.ai.lms.core.attempt.app.domain.Attempt">
+    INSERT INTO attempts (
+      id, student_id, quiz_id, score, start_time, due_time, submitted_time,
+      time_spent_seconds, status, error_reason, created_at, updated_at
+    )
+    VALUES (
+      #{id}, #{studentId}, #{quizId}, #{score}, #{startTime}, #{dueTime}, #{submittedTime},
+      #{timeSpentSeconds}, #{status, javaType=edu.ai.lms.core.attempt.app.domain.Attempt$AttemptStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, #{errorReason}, NOW(), NOW()
+    )
+  </insert>
+
+  <update id="update" parameterType="edu.ai.lms.core.attempt.app.domain.Attempt">
+    UPDATE attempts
+    SET student_id = #{studentId},
+        quiz_id = #{quizId},
+        score = #{score},
+        start_time = #{startTime},
+        due_time = #{dueTime},
+        submitted_time = #{submittedTime},
+        time_spent_seconds = #{timeSpentSeconds},
+        status = #{status, javaType=edu.ai.lms.core.attempt.app.domain.Attempt$AttemptStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        error_reason = #{errorReason},
+        updated_at = NOW()
+    WHERE id = #{id}
+  </update>
+
+  <select id="getById" resultMap="AttemptResultMap">
+    SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
+           time_spent_seconds, status, error_reason, created_at, updated_at
+    FROM attempts
+    WHERE id = #{attemptId}
+  </select>
+
+  <select id="getByIdAndStudentId" resultMap="AttemptResultMap">
+    SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
+           time_spent_seconds, status, error_reason, created_at, updated_at
+    FROM attempts
+    WHERE id = #{attemptId}
+      AND student_id = #{studentId}
+  </select>
+
+  <select id="getLatestStartedAttempt" resultMap="AttemptResultMap">
+    SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
+           time_spent_seconds, status, error_reason, created_at, updated_at
+    FROM attempts
+    WHERE student_id = #{studentId}
+      AND quiz_id = #{quizId}
+      AND status = 'STARTED'
+    ORDER BY start_time DESC
+    LIMIT 1
+  </select>
+
+  <select id="countFinishedAttempts" resultType="long">
+    SELECT COUNT(*)
+    FROM attempts
+    WHERE student_id = #{studentId}
+      AND quiz_id = #{quizId}
+      AND status IN ('FINISHED', 'ERROR')
+  </select>
+
+  <select id="getByStudentAndQuiz" resultMap="AttemptResultMap">
+    SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
+           time_spent_seconds, status, error_reason, created_at, updated_at
+    FROM attempts
+    WHERE student_id = #{studentId}
+      AND quiz_id = #{quizId}
+    ORDER BY created_at DESC
+  </select>
+
+  <select id="getExpiredStartedAttempts" resultMap="AttemptResultMap">
+    SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
+           time_spent_seconds, status, error_reason, created_at, updated_at
+    FROM attempts
+    WHERE status = 'STARTED'
+      AND due_time IS NOT NULL
+      AND due_time &lt; #{threshold}
+  </select>
+
+</mapper>
