@@ -37,6 +37,8 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     private static UUID lo4;
     private static UUID group1;
     private static UUID group2;
+    private static UUID otherCourseId;
+    private static UUID foreignLearningOutcomeId;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     // ==================== SETUP: Register teacher and create a course ====================
@@ -616,6 +618,78 @@ class QuizControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(26)
+    @DisplayName("Should fail to add learning outcomes from a different course")
+    void testAddLearningOutcomesToQuiz_FromDifferentCourse_ShouldFail() {
+        String startDate = LocalDate.now().plusDays(2).format(DATE_FORMATTER);
+        String endDate = LocalDate.now().plusMonths(4).format(DATE_FORMATTER);
+
+        String createOtherCourseRequest = """
+                {
+                    "courseName": "Foreign Course For Quiz Mapping",
+                    "description": "Course used to validate LO course mismatch",
+                    "courseCode": "QUIZ-FOREIGN-101",
+                    "active": true,
+                    "coverImage": "https://example.com/foreign-course.jpg",
+                    "startDate": "%s",
+                    "endDate": "%s",
+                    "learningOutcomes": []
+                }
+                """.formatted(startDate, endDate);
+
+        Response createOtherCourseResponse = given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + teacherToken)
+            .body(createOtherCourseRequest)
+            .when()
+            .post("/api/course")
+            .then()
+            .statusCode(201)
+            .extract().response();
+
+        otherCourseId = UUID.fromString(createOtherCourseResponse.jsonPath().getString("courseId"));
+
+        String createForeignLearningOutcomeRequest = """
+                {
+                    "learningOutcomes": [
+                        {"code": "CLO-FOREIGN-1", "description": "Foreign course learning outcome"}
+                    ]
+                }
+                """;
+
+        Response createForeignLearningOutcomeResponse = given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + teacherToken)
+            .body(createForeignLearningOutcomeRequest)
+            .when()
+            .post("/api/" + otherCourseId + "/learning-outcome")
+            .then()
+            .statusCode(201)
+            .body("totalCreated", equalTo(1))
+            .extract().response();
+
+        foreignLearningOutcomeId = UUID.fromString(
+                createForeignLearningOutcomeResponse.jsonPath().getString("learningOutcomes[0].id"));
+
+        String addRequestBody = """
+                {
+                    "learningOutcomeIds": ["%s"],
+                    "groupLearningOutcomeIds": []
+                }
+                """.formatted(foreignLearningOutcomeId);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(addRequestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/learning-outcomes")
+                .then()
+                .statusCode(403)
+                .body("message", equalTo("Some learning outcomes do not belong to this course"));
+    }
+
+    @Test
+    @Order(27)
     @DisplayName("Should get quiz with grouped and ungrouped learning outcomes")
     void testGetQuiz_WithGroupedLearningOutcomes_ShouldSucceed() {
         given()
@@ -630,7 +704,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(27)
+    @Order(28)
     @DisplayName("Should remove learning outcomes from quiz using direct and grouped ids")
     void testRemoveLearningOutcomesFromQuiz_Success() {
         String requestBody = """

@@ -11,16 +11,15 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 class CourseMembershipPersistenceAdapter implements LoadCourseMembershipPort {
 
-    private final CourseTeacherRepository courseTeacherRepository;
-    private final CourseStudentRepository courseStudentRepository;
+    private final CourseRepository courseRepository;
 
     @Override
     public boolean isTeacherInCourse(UUID teacherId, UUID courseId) {
-        return courseTeacherRepository.existsByCourseIdAndTeacherId(courseId, teacherId);
+        return courseRepository.existsByCourseIdAndTeacherId(courseId, teacherId);
     }
 
     @Override
     public boolean isStudentInCourse(UUID studentId, UUID courseId) {
-        return courseStudentRepository.existsByCourseIdAndStudentId(courseId, studentId);
+        return courseRepository.existsByCourseIdAndStudentId(courseId, studentId);
     }
 }

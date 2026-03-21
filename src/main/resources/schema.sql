@@ -202,15 +202,21 @@ CREATE TABLE IF NOT EXISTS answers (
 -- Attempts table
 CREATE TABLE IF NOT EXISTS attempts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    student_id UUID REFERENCES students(user_id),
-    quiz_id UUID REFERENCES quizzes(id),
+    student_id UUID NOT NULL REFERENCES students(user_id),
+    quiz_id UUID NOT NULL REFERENCES quizzes(id),
     score DOUBLE PRECISION,
     start_time TIMESTAMP,
-    end_time TIMESTAMP,
-    status VARCHAR(50),
+    due_time TIMESTAMP,
+    submitted_time TIMESTAMP,
+    time_spent_seconds INTEGER,
+    status VARCHAR(50) NOT NULL CHECK (status IN ('STARTED', 'FINISHED', 'ERROR')),
+    error_reason VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_attempts_student_quiz_status ON attempts(student_id, quiz_id, status);
+CREATE INDEX IF NOT EXISTS idx_attempts_due_time ON attempts(due_time);
 
 -- Join tables for many-to-many relationships
 CREATE TABLE IF NOT EXISTS quiz_chapters (

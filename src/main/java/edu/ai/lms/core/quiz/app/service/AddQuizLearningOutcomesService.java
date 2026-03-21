@@ -45,8 +45,10 @@ public class AddQuizLearningOutcomesService implements AddQuizLearningOutcomesUs
 
         validateQuizOwnershipAndCourse(user, quiz, command.courseId(), "modify");
 
+        UUID quizCourseId = quiz.getCourseId();
+
         List<UUID> resolvedLearningOutcomeIds = resolveLearningOutcomeIds(
-                command.courseId(),
+            quizCourseId,
                 command.learningOutcomeIds(),
                 command.groupLearningOutcomeIds());
 
@@ -56,7 +58,7 @@ public class AddQuizLearningOutcomesService implements AddQuizLearningOutcomesUs
 
         return QuizLearningOutcomeOperationResponse.builder()
                 .quizId(quiz.getId())
-                .courseId(command.courseId())
+            .courseId(quizCourseId)
                 .operation("ADD")
                 .totalAffected(resolvedLearningOutcomeIds.size())
                 .learningOutcomeIds(finalLearningOutcomeIds)

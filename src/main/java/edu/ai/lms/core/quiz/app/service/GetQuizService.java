@@ -81,7 +81,7 @@ public class GetQuizService implements GetQuizUseCase {
 
         List<GetQuizResponse.GroupLearningOutcomeSummary> groupedLearningOutcomes = groupedLearningOutcomesMap.values().stream()
                 .map(groupRows -> {
-                    QuizLearningOutcomeView groupHeader = groupRows.get(0);
+                    QuizLearningOutcomeView groupHeader = groupRows.getFirst();
                     return GetQuizResponse.GroupLearningOutcomeSummary.builder()
                             .id(groupHeader.getGroupLearningOutcomeId())
                             .name(groupHeader.getGroupLearningOutcomeName())

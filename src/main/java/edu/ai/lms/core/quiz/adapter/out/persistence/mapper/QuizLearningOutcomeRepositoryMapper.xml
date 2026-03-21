@@ -29,4 +29,58 @@
     ORDER BY learning_outcome_id
   </select>
 
+  <select id="findExistingLearningOutcomeIdsByCourseIdAndIds" resultType="java.util.UUID">
+    SELECT id
+    FROM learning_outcomes
+    WHERE course_id = #{courseId}
+      AND id IN
+      <foreach collection="learningOutcomeIds" item="learningOutcomeId" open="(" separator="," close=")">
+        #{learningOutcomeId}
+      </foreach>
+  </select>
+
+  <select id="findExistingGroupLearningOutcomeIdsByCourseIdAndIds" resultType="java.util.UUID">
+    SELECT id
+    FROM group_learning_outcomes
+    WHERE course_id = #{courseId}
+      AND id IN
+      <foreach collection="groupLearningOutcomeIds" item="groupLearningOutcomeId" open="(" separator="," close=")">
+        #{groupLearningOutcomeId}
+      </foreach>
+  </select>
+
+  <select id="findLearningOutcomeIdsByCourseIdAndGroupIds" resultType="java.util.UUID">
+    SELECT id
+    FROM learning_outcomes
+    WHERE course_id = #{courseId}
+      AND group_learning_outcome_id IN
+      <foreach collection="groupLearningOutcomeIds" item="groupLearningOutcomeId" open="(" separator="," close=")">
+        #{groupLearningOutcomeId}
+      </foreach>
+  </select>
+
+  <resultMap id="QuizLearningOutcomeViewMap" type="edu.ai.lms.core.quiz.app.domain.QuizLearningOutcomeView">
+    <result property="learningOutcomeId" column="learning_outcome_id" />
+    <result property="learningOutcomeCode" column="learning_outcome_code" />
+    <result property="learningOutcomeDescription" column="learning_outcome_description" />
+    <result property="groupLearningOutcomeId" column="group_learning_outcome_id" />
+    <result property="groupLearningOutcomeName" column="group_learning_outcome_name" />
+    <result property="groupLearningOutcomeDescription" column="group_learning_outcome_description" />
+  </resultMap>
+
+  <select id="findQuizLearningOutcomes" resultMap="QuizLearningOutcomeViewMap">
+    SELECT lo.id AS learning_outcome_id,
+           lo.code AS learning_outcome_code,
+           lo.description AS learning_outcome_description,
+           glo.id AS group_learning_outcome_id,
+           glo.name AS group_learning_outcome_name,
+           glo.description AS group_learning_outcome_description
+    FROM quiz_learning_outcomes qlo
+    JOIN learning_outcomes lo ON lo.id = qlo.learning_outcome_id
+    LEFT JOIN group_learning_outcomes glo ON glo.id = lo.group_learning_outcome_id
+    WHERE qlo.quiz_id = #{quizId}
+      AND lo.course_id = #{courseId}
+    ORDER BY glo.name NULLS FIRST, lo.code
+  </select>
+
 </mapper>
