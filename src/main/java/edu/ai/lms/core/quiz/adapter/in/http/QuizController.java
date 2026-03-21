@@ -53,155 +53,161 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class QuizController {
 
-    private final CreateQuizUseCase createQuizUseCase;
-    private final ModifyQuizUseCase modifyQuizUseCase;
-    private final DeleteQuizUseCase deleteQuizUseCase;
-    private final GetQuizUseCase getQuizUseCase;
-    private final GetAllQuizzesUseCase getAllQuizzesUseCase;
+        private final CreateQuizUseCase createQuizUseCase;
+        private final ModifyQuizUseCase modifyQuizUseCase;
+        private final DeleteQuizUseCase deleteQuizUseCase;
+        private final GetQuizUseCase getQuizUseCase;
+        private final GetAllQuizzesUseCase getAllQuizzesUseCase;
         private final AddQuizLearningOutcomesUseCase addQuizLearningOutcomesUseCase;
         private final RemoveQuizLearningOutcomesUseCase removeQuizLearningOutcomesUseCase;
-    private final CreateQuizCommandMapper createQuizCommandMapper;
-    private final ModifyQuizCommandMapper modifyQuizCommandMapper;
+        private final CreateQuizCommandMapper createQuizCommandMapper;
+        private final ModifyQuizCommandMapper modifyQuizCommandMapper;
 
         @Operation(summary = "Get teacher-created quizzes in a course", description = "Students see only displayed teacher-created quizzes; teachers see all teacher-created quizzes.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Quizzes retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = GetAllQuizzesResponse.class)))
-    })
-    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Quizzes retrieved successfully", content = @Content(schema = @Schema(implementation = GetAllQuizzesResponse.class)))
+        })
+        @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
         @GetMapping("/teacher-created")
-    public ResponseEntity<GetAllQuizzesResponse> getAllQuizzes(
-            @PathVariable UUID courseId,
-            @RequestParam(defaultValue = "10") int pageSize,
+        public ResponseEntity<GetAllQuizzesResponse> getAllQuizzes(
+                        @PathVariable UUID courseId,
+                        @RequestParam(defaultValue = "10") int pageSize,
                         @RequestParam(defaultValue = "asc") String lastCreated) {
                 GetAllQuizzesResponse response = getAllQuizzesUseCase.getAllQuizzes(courseId, pageSize, lastCreated);
-        return ResponseEntity.ok(response);
-    }
+                return ResponseEntity.ok(response);
+        }
 
-    @Operation(summary = "Get a specific quiz", description = "Get a quiz with full questions and answers by its ID within a course.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Quiz retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = GetQuizResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Quiz not found")
-    })
-    @PreAuthorize("hasRole('TEACHER')")
-    @GetMapping("/{quizId}")
-    public ResponseEntity<GetQuizResponse> getQuiz(
-            @PathVariable UUID courseId,
-            @PathVariable UUID quizId) {
-        GetQuizResponse response = getQuizUseCase.getQuiz(courseId, quizId);
-        return ResponseEntity.ok(response);
-    }
+        @Operation(summary = "Get teacher-created quizzes in a course (legacy route)", description = "Backward-compatible route for older frontend using /api/{courseId}/quiz.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Quizzes retrieved successfully", content = @Content(schema = @Schema(implementation = GetAllQuizzesResponse.class)))
+        })
+        @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+        @GetMapping()
+        public ResponseEntity<GetAllQuizzesResponse> getAllQuizzesLegacy(
+                        @PathVariable UUID courseId,
+                        @RequestParam(defaultValue = "10") int pageSize,
+                        @RequestParam(defaultValue = "asc") String sortDirection) {
+                GetAllQuizzesResponse response = getAllQuizzesUseCase.getAllQuizzes(courseId, pageSize, sortDirection);
+                return ResponseEntity.ok(response);
+        }
 
-    @Operation(summary = "Create a new quiz", description = "Create a new quiz in a course.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Quiz created successfully",
-                    content = @Content(schema = @Schema(implementation = CreateQuizResponse.class)))
-    })
-    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    @PostMapping()
-    public ResponseEntity<CreateQuizResponse> createQuiz(
-            @PathVariable UUID courseId,
-            @Valid @RequestBody CreateQuizRequest request) {
-        CreateQuizCommand command = createQuizCommandMapper.toCommand(courseId, request);
-        CreateQuizResponse response = createQuizUseCase.createQuiz(command);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
+        @Operation(summary = "Get a specific quiz", description = "Get a quiz with full questions and answers by its ID within a course.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Quiz retrieved successfully", content = @Content(schema = @Schema(implementation = GetQuizResponse.class))),
+                        @ApiResponse(responseCode = "404", description = "Quiz not found")
+        })
+        @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+        @GetMapping("/{quizId}")
+        public ResponseEntity<GetQuizResponse> getQuiz(
+                        @PathVariable UUID courseId,
+                        @PathVariable UUID quizId) {
+                GetQuizResponse response = getQuizUseCase.getQuiz(courseId, quizId);
+                return ResponseEntity.ok(response);
+        }
 
-    @Operation(summary = "Modify an existing quiz", description = "Update quiz details. Only the quiz creator can modify.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Quiz modified successfully",
-                    content = @Content(schema = @Schema(implementation = ModifyQuizResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Quiz not found")
-    })
-    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    @PutMapping("/{quizId}")
-    public ResponseEntity<ModifyQuizResponse> modifyQuiz(
-            @PathVariable UUID courseId,
-            @PathVariable UUID quizId,
-            @Valid @RequestBody ModifyQuizRequest request) {
-        ModifyQuizCommand command = modifyQuizCommandMapper.toCommand(courseId, quizId, request);
-        ModifyQuizResponse response = modifyQuizUseCase.modifyQuiz(command);
-        return ResponseEntity.ok(response);
-    }
+        @Operation(summary = "Create a new quiz", description = "Create a new quiz in a course.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "201", description = "Quiz created successfully", content = @Content(schema = @Schema(implementation = CreateQuizResponse.class)))
+        })
+        @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+        @PostMapping()
+        public ResponseEntity<CreateQuizResponse> createQuiz(
+                        @PathVariable UUID courseId,
+                        @Valid @RequestBody CreateQuizRequest request) {
+                CreateQuizCommand command = createQuizCommandMapper.toCommand(courseId, request);
+                CreateQuizResponse response = createQuizUseCase.createQuiz(command);
+                return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        }
 
-    @Operation(summary = "Delete a quiz", description = "Delete a quiz. Only the quiz creator can delete.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Quiz deleted successfully",
-                    content = @Content(schema = @Schema(implementation = DeleteQuizResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Quiz not found")
-    })
-    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    @DeleteMapping("/{quizId}")
-    public ResponseEntity<DeleteQuizResponse> deleteQuiz(
-            @PathVariable UUID courseId,
-            @PathVariable UUID quizId) {
-        DeleteQuizResponse response = deleteQuizUseCase.deleteQuiz(courseId, quizId);
-        return ResponseEntity.ok(response);
-    }
+        @Operation(summary = "Modify an existing quiz", description = "Update quiz details. Only the quiz creator can modify.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Quiz modified successfully", content = @Content(schema = @Schema(implementation = ModifyQuizResponse.class))),
+                        @ApiResponse(responseCode = "404", description = "Quiz not found")
+        })
+        @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+        @PutMapping("/{quizId}")
+        public ResponseEntity<ModifyQuizResponse> modifyQuiz(
+                        @PathVariable UUID courseId,
+                        @PathVariable UUID quizId,
+                        @Valid @RequestBody ModifyQuizRequest request) {
+                ModifyQuizCommand command = modifyQuizCommandMapper.toCommand(courseId, quizId, request);
+                ModifyQuizResponse response = modifyQuizUseCase.modifyQuiz(command);
+                return ResponseEntity.ok(response);
+        }
 
-    @Operation(summary = "Delete quizzes", description = "Delete one or many quizzes.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Quizzes deleted successfully",
-                    content = @Content(schema = @Schema(implementation = DeleteQuizResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Quiz not found")
-    })
-    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    @DeleteMapping()
-    public ResponseEntity<List<DeleteQuizResponse>> deleteQuizzes(
-            @PathVariable UUID courseId,
-            @Valid @RequestBody DeleteQuizzesRequest request) {
-        List<DeleteQuizResponse> responses = request.getQuizIds().stream()
-                .map(quizId -> deleteQuizUseCase.deleteQuiz(courseId, quizId))
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(responses);
-    }
+        @Operation(summary = "Delete a quiz", description = "Delete a quiz. Only the quiz creator can delete.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Quiz deleted successfully", content = @Content(schema = @Schema(implementation = DeleteQuizResponse.class))),
+                        @ApiResponse(responseCode = "404", description = "Quiz not found")
+        })
+        @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+        @DeleteMapping("/{quizId}")
+        public ResponseEntity<DeleteQuizResponse> deleteQuiz(
+                        @PathVariable UUID courseId,
+                        @PathVariable UUID quizId) {
+                DeleteQuizResponse response = deleteQuizUseCase.deleteQuiz(courseId, quizId);
+                return ResponseEntity.ok(response);
+        }
 
-    @Operation(summary = "Add learning outcomes to a quiz",
-            description = "Adds learning outcomes by explicit ids and/or group ids. Group ids are expanded to child learning outcomes and overlaps are deduplicated.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Learning outcomes added successfully",
-                    content = @Content(schema = @Schema(implementation = QuizLearningOutcomeOperationResponse.class)))
-    })
-    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    @PostMapping("/{quizId}/learning-outcomes")
-    public ResponseEntity<QuizLearningOutcomeOperationResponse> addLearningOutcomes(
-            @PathVariable UUID courseId,
-            @PathVariable UUID quizId,
-            @Valid @RequestBody QuizLearningOutcomeOperationRequest request) {
+        @Operation(summary = "Delete quizzes", description = "Delete one or many quizzes.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Quizzes deleted successfully", content = @Content(schema = @Schema(implementation = DeleteQuizResponse.class))),
+                        @ApiResponse(responseCode = "404", description = "Quiz not found")
+        })
+        @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+        @DeleteMapping()
+        public ResponseEntity<List<DeleteQuizResponse>> deleteQuizzes(
+                        @PathVariable UUID courseId,
+                        @Valid @RequestBody DeleteQuizzesRequest request) {
+                List<DeleteQuizResponse> responses = request.getQuizIds().stream()
+                                .map(quizId -> deleteQuizUseCase.deleteQuiz(courseId, quizId))
+                                .collect(Collectors.toList());
+                return ResponseEntity.ok(responses);
+        }
 
-        AddQuizLearningOutcomesCommand command = AddQuizLearningOutcomesCommand.builder()
-                .courseId(courseId)
-                .quizId(quizId)
-                .learningOutcomeIds(request.getLearningOutcomeIds())
-                .groupLearningOutcomeIds(request.getGroupLearningOutcomeIds())
-                .build();
+        @Operation(summary = "Add learning outcomes to a quiz", description = "Adds learning outcomes by explicit ids and/or group ids. Group ids are expanded to child learning outcomes and overlaps are deduplicated.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Learning outcomes added successfully", content = @Content(schema = @Schema(implementation = QuizLearningOutcomeOperationResponse.class)))
+        })
+        @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+        @PostMapping("/{quizId}/learning-outcomes")
+        public ResponseEntity<QuizLearningOutcomeOperationResponse> addLearningOutcomes(
+                        @PathVariable UUID courseId,
+                        @PathVariable UUID quizId,
+                        @Valid @RequestBody QuizLearningOutcomeOperationRequest request) {
 
-        QuizLearningOutcomeOperationResponse response = addQuizLearningOutcomesUseCase.addLearningOutcomes(command);
-        return ResponseEntity.ok(response);
-    }
+                AddQuizLearningOutcomesCommand command = AddQuizLearningOutcomesCommand.builder()
+                                .courseId(courseId)
+                                .quizId(quizId)
+                                .learningOutcomeIds(request.getLearningOutcomeIds())
+                                .groupLearningOutcomeIds(request.getGroupLearningOutcomeIds())
+                                .build();
 
-    @Operation(summary = "Remove learning outcomes from a quiz",
-            description = "Removes learning outcomes by explicit ids and/or group ids. Group ids are expanded to child learning outcomes and overlaps are deduplicated.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Learning outcomes removed successfully",
-                    content = @Content(schema = @Schema(implementation = QuizLearningOutcomeOperationResponse.class)))
-    })
-    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    @DeleteMapping("/{quizId}/learning-outcomes")
-    public ResponseEntity<QuizLearningOutcomeOperationResponse> removeLearningOutcomes(
-            @PathVariable UUID courseId,
-            @PathVariable UUID quizId,
-            @Valid @RequestBody QuizLearningOutcomeOperationRequest request) {
+                QuizLearningOutcomeOperationResponse response = addQuizLearningOutcomesUseCase
+                                .addLearningOutcomes(command);
+                return ResponseEntity.ok(response);
+        }
 
-        RemoveQuizLearningOutcomesCommand command = RemoveQuizLearningOutcomesCommand.builder()
-                .courseId(courseId)
-                .quizId(quizId)
-                .learningOutcomeIds(request.getLearningOutcomeIds())
-                .groupLearningOutcomeIds(request.getGroupLearningOutcomeIds())
-                .build();
+        @Operation(summary = "Remove learning outcomes from a quiz", description = "Removes learning outcomes by explicit ids and/or group ids. Group ids are expanded to child learning outcomes and overlaps are deduplicated.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Learning outcomes removed successfully", content = @Content(schema = @Schema(implementation = QuizLearningOutcomeOperationResponse.class)))
+        })
+        @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+        @DeleteMapping("/{quizId}/learning-outcomes")
+        public ResponseEntity<QuizLearningOutcomeOperationResponse> removeLearningOutcomes(
+                        @PathVariable UUID courseId,
+                        @PathVariable UUID quizId,
+                        @Valid @RequestBody QuizLearningOutcomeOperationRequest request) {
 
-        QuizLearningOutcomeOperationResponse response = removeQuizLearningOutcomesUseCase.removeLearningOutcomes(command);
-        return ResponseEntity.ok(response);
-    }
+                RemoveQuizLearningOutcomesCommand command = RemoveQuizLearningOutcomesCommand.builder()
+                                .courseId(courseId)
+                                .quizId(quizId)
+                                .learningOutcomeIds(request.getLearningOutcomeIds())
+                                .groupLearningOutcomeIds(request.getGroupLearningOutcomeIds())
+                                .build();
+
+                QuizLearningOutcomeOperationResponse response = removeQuizLearningOutcomesUseCase
+                                .removeLearningOutcomes(command);
+                return ResponseEntity.ok(response);
+        }
 }
