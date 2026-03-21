@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.DeleteQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
@@ -45,7 +45,7 @@ class DeleteQuizServiceUT {
     @InjectMocks
     private DeleteQuizService deleteQuizService;
 
-    private User mockTeacher;
+    private UserAuth mockTeacher;
     private UUID teacherId;
     private UUID courseId;
     private UUID quizId;
@@ -57,7 +57,7 @@ class DeleteQuizServiceUT {
         courseId = UUID.randomUUID();
         quizId = UUID.randomUUID();
 
-        mockTeacher = User.builder()
+        mockTeacher = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -67,7 +67,7 @@ class DeleteQuizServiceUT {
                 .quizTitle("Quiz to Delete")
                 .courseId(courseId)
                 .teacherId(teacherId)
-                .active(true)
+                .display(true)
                 .createdAt(LocalDateTime.now())
                 .build();
     }
@@ -76,8 +76,8 @@ class DeleteQuizServiceUT {
     @DisplayName("Should successfully delete a quiz with valid details")
     void testDeleteQuiz_WithValidDetails_ShouldSucceed() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
 
         // Act
         DeleteQuizResponse response = deleteQuizService.deleteQuiz(courseId, quizId);
@@ -87,8 +87,8 @@ class DeleteQuizServiceUT {
         assertEquals(quizId, response.getQuizId());
         assertEquals("Quiz deleted successfully", response.getMessage());
 
-        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
-        verify(loadQuizPort, times(1)).findById(quizId);
+        verify(loadSignedInUserPort, times(1)).getAuthenticatedUser();
+        verify(loadQuizPort, times(1)).getById(quizId);
         verify(deleteQuizPort, times(1)).deleteById(quizId);
     }
 
@@ -96,7 +96,7 @@ class DeleteQuizServiceUT {
     @DisplayName("Should throw UserNotAuthenticatedException when user is not authenticated")
     void testDeleteQuiz_WithUnauthenticatedUser_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(UserNotAuthenticatedException.class,
@@ -111,8 +111,8 @@ class DeleteQuizServiceUT {
     @DisplayName("Should throw QuizNotFoundException when quiz does not exist")
     void testDeleteQuiz_WithNonExistentQuiz_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.empty());
 
         // Act & Assert
         QuizNotFoundException exception = assertThrows(QuizNotFoundException.class,
@@ -130,8 +130,8 @@ class DeleteQuizServiceUT {
         UUID differentCourseId = UUID.randomUUID();
         existingQuiz.setCourseId(differentCourseId);
 
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -147,13 +147,13 @@ class DeleteQuizServiceUT {
     void testDeleteQuiz_WithNonOwner_ShouldThrowException() {
         // Arrange
         UUID anotherTeacherId = UUID.randomUUID();
-        User anotherTeacher = User.builder()
+        UserAuth anotherTeacher = UserAuth.builder()
                 .id(anotherTeacherId)
                 .role(Roles.TEACHER)
                 .build();
 
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -169,7 +169,7 @@ class DeleteQuizServiceUT {
     void testDeleteQuiz_AsStudentOwner_ShouldSucceed() {
         // Arrange
         UUID studentId = UUID.randomUUID();
-        User mockStudent = User.builder()
+        UserAuth mockStudent = UserAuth.builder()
                 .id(studentId)
                 .role(Roles.STUDENT)
                 .build();
@@ -177,8 +177,8 @@ class DeleteQuizServiceUT {
         existingQuiz.setTeacherId(null);
         existingQuiz.setStudentId(studentId);
 
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
 
         // Act
         DeleteQuizResponse response = deleteQuizService.deleteQuiz(courseId, quizId);

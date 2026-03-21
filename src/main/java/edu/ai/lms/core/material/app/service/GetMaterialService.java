@@ -71,8 +71,8 @@ public class GetMaterialService implements GetMaterialUseCase, GetUploadedMateri
 
     @Override
     @Transactional(readOnly = true)
-    public List<GetMaterialResponse> getChapterMaterials(UUID courseId, Long chapterNumber) {
-        return getMaterialPort.findByChapter(chapterNumber, courseId)
+    public List<GetMaterialResponse> getChapterMaterials(UUID courseId, UUID chapterId) {
+        return getMaterialPort.findByChapter(chapterId, courseId)
                 .stream()
                 .map(m -> GetMaterialResponse.builder()
                         .id(m.getId())

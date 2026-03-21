@@ -4,12 +4,12 @@ DROP TABLE IF EXISTS
     students,
     teachers,
     courses,
-    course_teachers,
-    course_students,
     chapters,
     materials,
     chapter_materials,
+    chapter_learning_outcomes,
     learning_outcomes,
+    group_learning_outcomes,
     enrollments,
     ai_settings,
     quizzes,
@@ -67,30 +67,15 @@ CREATE TABLE IF NOT EXISTS courses (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Junction table for many-to-many: courses <-> teachers
-CREATE TABLE IF NOT EXISTS course_teachers (
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    teacher_id UUID NOT NULL REFERENCES teachers(user_id) ON DELETE CASCADE,
-    PRIMARY KEY (course_id, teacher_id)
-);
-
--- Junction table for many-to-many: courses <-> students
-CREATE TABLE IF NOT EXISTS course_students (
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    student_id UUID NOT NULL REFERENCES students(user_id) ON DELETE CASCADE,
-    PRIMARY KEY (course_id, student_id)
-);
-
--- Chapters table (weak entity dependent on Course)
+-- Chapters table
 CREATE TABLE IF NOT EXISTS chapters (
-    -- No UNIQUE constraint here because a single course can have many chapters starting from 1
-    chapter_number BIGINT UNIQUE GENERATED ALWAYS AS IDENTITY,
+    chapter_id UUID DEFAULT gen_random_uuid() UNIQUE,
     title VARCHAR(255),
     description TEXT,
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE, -- khong co UNIQUE o day
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (chapter_number, course_id)
+    PRIMARY KEY (chapter_id)
 );
 
 -- Materials table
@@ -104,41 +89,58 @@ CREATE TABLE IF NOT EXISTS materials (
     course_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS chapter_materials (
-    -- Composite foreign key (because chapter is a weak entity)
-    chapter_number BIGINT NOT NULL,
-    course_id UUID NOT NULL,
-    FOREIGN KEY (chapter_number, course_id) REFERENCES chapters(chapter_number, course_id) ON DELETE CASCADE,
+    chapter_id UUID NOT NULL REFERENCES chapters(chapter_id) ON DELETE CASCADE,
 
     -- Reference to material table
     material_id UUID NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
 
-    -- Create the composite Primary Key
-    PRIMARY KEY (material_id, chapter_number, course_id)
+    PRIMARY KEY (material_id, chapter_id)
 );
 
 
--- Learning outcomes table
+-- Group Learning Outcomes table (weak entity dependent on Course)
+CREATE TABLE IF NOT EXISTS group_learning_outcomes (
+    id UUID UNIQUE DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id, course_id)
+);
+
+-- Learning outcomes table (weak entity dependent on Course)
 CREATE TABLE IF NOT EXISTS learning_outcomes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID UNIQUE DEFAULT gen_random_uuid(),
     code VARCHAR(255),
     description TEXT,
-    course_id UUID REFERENCES courses(id),
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    group_learning_outcome_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id, course_id),
+    FOREIGN KEY (group_learning_outcome_id, course_id) REFERENCES group_learning_outcomes(id, course_id) ON DELETE SET NULL (group_learning_outcome_id)
+);
+
+-- Junction table for many-to-many: chapters <-> learning_outcomes
+CREATE TABLE IF NOT EXISTS chapter_learning_outcomes (
+    chapter_id UUID NOT NULL REFERENCES chapters(chapter_id) ON DELETE CASCADE,
+    learning_outcome_id UUID NOT NULL REFERENCES learning_outcomes(id) ON DELETE CASCADE,
+    PRIMARY KEY (chapter_id, learning_outcome_id)
 );
 
 -- Enrollments table
 CREATE TABLE IF NOT EXISTS enrollments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    student_id UUID REFERENCES students(user_id),
-    course_id UUID REFERENCES courses(id),
-    enrolled_date TIMESTAMP,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    enrolled_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (course_id, user_id)
 );
 
 -- AI Settings table (single table for both student and teacher settings)
@@ -162,11 +164,14 @@ CREATE TABLE IF NOT EXISTS quizzes (
     quiz_title VARCHAR(255) NOT NULL,
     time_limit_minutes INTEGER,
     pass_score DOUBLE PRECISION,
+    start_time TIMESTAMP,
+    due_time TIMESTAMP,
+    attempt_limited INTEGER,
     ai_settings_id UUID REFERENCES ai_settings(id),
     course_id UUID NOT NULL REFERENCES courses(id),
     student_id UUID REFERENCES students(user_id),
     teacher_id UUID REFERENCES teachers(user_id),
-    active BOOLEAN NOT NULL DEFAULT true,
+    display BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -210,10 +215,8 @@ CREATE TABLE IF NOT EXISTS attempts (
 -- Join tables for many-to-many relationships
 CREATE TABLE IF NOT EXISTS quiz_chapters (
     quiz_id UUID REFERENCES quizzes(id),
-    chapter_number BIGINT,
-    chapter_course_id UUID,
-    PRIMARY KEY (quiz_id, chapter_number, chapter_course_id),
-    FOREIGN KEY (chapter_number, chapter_course_id) REFERENCES chapters(chapter_number, course_id)
+    chapter_id UUID REFERENCES chapters(chapter_id),
+    PRIMARY KEY (quiz_id, chapter_id)
 );
 
 CREATE TABLE IF NOT EXISTS quiz_learning_outcomes (

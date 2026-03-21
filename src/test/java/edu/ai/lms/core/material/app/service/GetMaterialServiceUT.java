@@ -331,7 +331,7 @@ class GetMaterialServiceUT {
     @DisplayName("Should return all materials for a chapter regardless of status")
     void testGetChapterMaterials_ShouldReturnAllStatuses() {
         // Arrange
-        Long chapterNumber = 1L;
+        UUID chapterId = UUID.randomUUID();
         Material uploaded = Material.builder()
                 .id(UUID.randomUUID()).title("Uploaded PDF")
                 .type(MaterialType.PDF).fileKey("courses/" + courseId + "/doc.pdf")
@@ -345,17 +345,17 @@ class GetMaterialServiceUT {
                 .courseId(courseId).createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
                 .build();
 
-        when(getMaterialPort.findByChapter(chapterNumber, courseId))
+        when(getMaterialPort.findByChapter(chapterId, courseId))
                 .thenReturn(List.of(uploaded, pending));
 
         // Act
-        List<GetMaterialResponse> results = getMaterialService.getChapterMaterials(courseId, chapterNumber);
+        List<GetMaterialResponse> results = getMaterialService.getChapterMaterials(courseId, chapterId);
 
         // Assert
         assertEquals(2, results.size());
         assertTrue(results.stream().anyMatch(r -> "UPLOADED".equals(r.getStatus())));
         assertTrue(results.stream().anyMatch(r -> "PENDING".equals(r.getStatus())));
-        verify(getMaterialPort, times(1)).findByChapter(chapterNumber, courseId);
+        verify(getMaterialPort, times(1)).findByChapter(chapterId, courseId);
         verify(createDownloadLinkPort, never()).createDownloadLink(any());
     }
 
@@ -363,11 +363,11 @@ class GetMaterialServiceUT {
     @DisplayName("Should return empty list when chapter has no materials")
     void testGetChapterMaterials_EmptyChapter_ShouldReturnEmptyList() {
         // Arrange
-        Long chapterNumber = 99L;
-        when(getMaterialPort.findByChapter(chapterNumber, courseId)).thenReturn(List.of());
+        UUID chapterId = UUID.randomUUID();
+        when(getMaterialPort.findByChapter(chapterId, courseId)).thenReturn(List.of());
 
         // Act
-        List<GetMaterialResponse> results = getMaterialService.getChapterMaterials(courseId, chapterNumber);
+        List<GetMaterialResponse> results = getMaterialService.getChapterMaterials(courseId, chapterId);
 
         // Assert
         assertNotNull(results);
@@ -379,7 +379,7 @@ class GetMaterialServiceUT {
     @DisplayName("Should not include presigned URL in chapter materials list")
     void testGetChapterMaterials_ShouldNotIncludePresignedUrl() {
         // Arrange
-        Long chapterNumber = 2L;
+        UUID chapterId = UUID.randomUUID();
         Material material = Material.builder()
                 .id(UUID.randomUUID()).title("Downloadable Lecture")
                 .type(MaterialType.PDF).fileKey("courses/" + courseId + "/lecture.pdf")
@@ -387,10 +387,10 @@ class GetMaterialServiceUT {
                 .courseId(courseId).createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
                 .build();
 
-        when(getMaterialPort.findByChapter(chapterNumber, courseId)).thenReturn(List.of(material));
+        when(getMaterialPort.findByChapter(chapterId, courseId)).thenReturn(List.of(material));
 
         // Act
-        List<GetMaterialResponse> results = getMaterialService.getChapterMaterials(courseId, chapterNumber);
+        List<GetMaterialResponse> results = getMaterialService.getChapterMaterials(courseId, chapterId);
 
         // Assert
         assertEquals(1, results.size());
@@ -403,7 +403,7 @@ class GetMaterialServiceUT {
     @DisplayName("Should map all fields correctly in chapter materials list")
     void testGetChapterMaterials_ShouldMapFieldsCorrectly() {
         // Arrange
-        Long chapterNumber = 3L;
+        UUID chapterId = UUID.randomUUID();
         UUID id = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.now();
         Material material = Material.builder()
@@ -413,10 +413,10 @@ class GetMaterialServiceUT {
                 .courseId(courseId).createdAt(now).updatedAt(now)
                 .build();
 
-        when(getMaterialPort.findByChapter(chapterNumber, courseId)).thenReturn(List.of(material));
+        when(getMaterialPort.findByChapter(chapterId, courseId)).thenReturn(List.of(material));
 
         // Act
-        GetMaterialResponse response = getMaterialService.getChapterMaterials(courseId, chapterNumber).get(0);
+        GetMaterialResponse response = getMaterialService.getChapterMaterials(courseId, chapterId).get(0);
 
         // Assert
         assertEquals(id, response.getId());

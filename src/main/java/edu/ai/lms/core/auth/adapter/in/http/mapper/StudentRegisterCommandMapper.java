@@ -3,6 +3,7 @@ package edu.ai.lms.core.auth.adapter.in.http.mapper;
 import edu.ai.lms.core.auth.adapter.in.http.request.StudentRegisterRequest;
 import edu.ai.lms.core.auth.app.domain.Student;
 import edu.ai.lms.core.auth.app.port.in.command.StudentRegisterCommand;
+import edu.ai.lms.common.Roles;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,6 +17,7 @@ public class StudentRegisterCommandMapper {
                 .lastName(request.getLastName())
                 .studentId(request.getStudentId())
                 .enrollmentYear(request.getEnrollmentYear())
+            .role(Roles.STUDENT)
                 .build();
 
         return StudentRegisterCommand.builder()

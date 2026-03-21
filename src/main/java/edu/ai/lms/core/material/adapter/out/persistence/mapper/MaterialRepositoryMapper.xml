@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.material.adapter.out.persistence.MaterialRepository">
+
+  <resultMap id="MaterialResultMap" type="edu.ai.lms.core.material.app.domain.Material">
+    <id property="id" column="id" />
+    <result property="title" column="title" />
+    <result property="type" column="type" javaType="edu.ai.lms.core.material.app.domain.Material$MaterialType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="fileKey" column="file_key" />
+    <result property="downloadable" column="is_downloadable" />
+    <result property="status" column="status" javaType="edu.ai.lms.core.material.app.domain.Material$MaterialStatus" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="courseId" column="course_id" />
+    <result property="createdAt" column="created_at" />
+    <result property="updatedAt" column="updated_at" />
+  </resultMap>
+
+  <select id="findById" resultMap="MaterialResultMap">
+    SELECT id, title, type, file_key, is_downloadable, status, course_id, created_at, updated_at
+    FROM materials
+    WHERE id = #{id}
+  </select>
+
+  <insert id="insert" parameterType="edu.ai.lms.core.material.app.domain.Material">
+    INSERT INTO materials (id, title, type, file_key, is_downloadable, status, course_id, created_at, updated_at)
+    VALUES (#{id}, #{title}, #{type, javaType=edu.ai.lms.core.material.app.domain.Material$MaterialType, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, #{fileKey}, #{downloadable}, #{status, javaType=edu.ai.lms.core.material.app.domain.Material$MaterialStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, #{courseId}, NOW(), NOW())
+  </insert>
+
+  <update id="update" parameterType="edu.ai.lms.core.material.app.domain.Material">
+    UPDATE materials
+    SET title = #{title},
+        type = #{type, javaType=edu.ai.lms.core.material.app.domain.Material$MaterialType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        file_key = #{fileKey},
+        is_downloadable = #{downloadable},
+        status = #{status, javaType=edu.ai.lms.core.material.app.domain.Material$MaterialStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        course_id = #{courseId},
+        updated_at = NOW()
+    WHERE id = #{id}
+  </update>
+
+  <delete id="deleteById">
+    DELETE FROM materials WHERE id = #{id}
+  </delete>
+
+  <select id="findByIdAndCourseId" resultMap="MaterialResultMap">
+    SELECT id, title, type, file_key, is_downloadable, status, course_id, created_at, updated_at
+    FROM materials
+    WHERE id = #{id}
+      AND course_id = #{courseId}
+  </select>
+
+  <select id="findByFileKey" resultMap="MaterialResultMap">
+    SELECT id, title, type, file_key, is_downloadable, status, course_id, created_at, updated_at
+    FROM materials
+    WHERE file_key = #{fileKey}
+  </select>
+
+  <select id="findByCourseId" resultMap="MaterialResultMap">
+    SELECT id, title, type, file_key, is_downloadable, status, course_id, created_at, updated_at
+    FROM materials
+    WHERE course_id = #{courseId}
+  </select>
+
+  <select id="findByStatusIn" resultMap="MaterialResultMap">
+    SELECT id, title, type, file_key, is_downloadable, status, course_id, created_at, updated_at
+    FROM materials
+    WHERE status IN
+    <foreach collection="statuses" item="status" open="(" separator="," close=")">
+      #{status}
+    </foreach>
+  </select>
+
+  <select id="findByChapterKey" resultMap="MaterialResultMap">
+    SELECT m.id, m.title, m.type, m.file_key, m.is_downloadable, m.status, m.course_id, m.created_at, m.updated_at
+    FROM materials m
+    INNER JOIN chapter_materials cm ON m.id = cm.material_id
+    WHERE cm.chapter_id = #{chapterId}
+      AND m.course_id = #{courseId}
+  </select>
+
+  <insert id="insertChapterMaterial">
+    INSERT INTO chapter_materials (material_id, chapter_id)
+    VALUES (#{materialId}, #{chapterId})
+  </insert>
+
+  <delete id="deleteChapterMaterialLinks">
+    DELETE FROM chapter_materials WHERE material_id = #{materialId}
+  </delete>
+
+  <delete id="deleteByCourseId">
+    DELETE FROM materials WHERE course_id = #{courseId}
+  </delete>
+
+</mapper>

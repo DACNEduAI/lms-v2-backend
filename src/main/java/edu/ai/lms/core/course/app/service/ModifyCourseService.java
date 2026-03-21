@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.ModifyCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -35,7 +35,7 @@ public class ModifyCourseService implements TeacherModifyCourseUseCase {
                 .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + command.courseId()));
 
         // Validate teacher exists and get authenticated teacher
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Authenticated teacher not found"));
 
         // Business rule: Validate that the teacher is associated with the course
@@ -55,7 +55,6 @@ public class ModifyCourseService implements TeacherModifyCourseUseCase {
                 .coverImage(course.getCoverImage())
                 .startDate(course.getStartDate())
                 .endDate(course.getEndDate())
-                .learningOutcomes(course.getLearningOutcomes())
                 .build();
 
         // Save the updated course

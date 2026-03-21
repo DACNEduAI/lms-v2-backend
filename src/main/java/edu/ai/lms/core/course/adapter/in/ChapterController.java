@@ -1,5 +1,6 @@
 package edu.ai.lms.core.course.adapter.in;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -24,6 +25,7 @@ import edu.ai.lms.core.course.adapter.in.response.GetChapterResponse;
 import edu.ai.lms.core.course.adapter.in.response.ModifyChapterResponse;
 import edu.ai.lms.core.course.app.port.in.command.CreateChapterCommand;
 import edu.ai.lms.core.course.app.port.in.command.ModifyChapterCommand;
+import edu.ai.lms.core.course.app.port.in.usecase.GetAllChaptersUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.GetChapterUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateChapterUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherDeleteChapterUseCase;
@@ -45,8 +47,22 @@ public class ChapterController {
     private final TeacherModifyChapterUseCase teacherModifyChapterUseCase;
     private final TeacherDeleteChapterUseCase teacherDeleteChapterUseCase;
     private final GetChapterUseCase getChapterUseCase;
+    private final GetAllChaptersUseCase getAllChaptersUseCase;
     private final CreateChapterCommandMapper createChapterCommandMapper;
     private final ModifyChapterCommandMapper modifyChapterCommandMapper;
+
+    @Operation(summary = "Get all chapters for a course", description = "Returns all chapters belonging to a specific course, ordered by chapter number.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Chapters retrieved successfully"),
+            @ApiResponse(responseCode = "403", description = "Not authorized to access this course")
+    })
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @GetMapping
+    public ResponseEntity<List<GetChapterResponse>> getAllChapters(
+            @PathVariable UUID courseId) {
+        List<GetChapterResponse> response = getAllChaptersUseCase.getAllChapters(courseId);
+        return ResponseEntity.ok(response);
+    }
 
     @Operation(summary = "Get a specific chapter", description = "Get a chapter by its course ID and chapter number. The chapter's course must belong to the authenticated teacher.")
     @ApiResponses(value = {
@@ -56,11 +72,11 @@ public class ChapterController {
             @ApiResponse(responseCode = "403", description = "Not authorized to access this chapter")
     })
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    @GetMapping("/{chapterNumber}")
+    @GetMapping("/{chapterId}")
     public ResponseEntity<GetChapterResponse> getChapter(
             @PathVariable UUID courseId,
-            @PathVariable Long chapterNumber) {
-        GetChapterResponse response = getChapterUseCase.getChapter(courseId, chapterNumber);
+            @PathVariable UUID chapterId) {
+        GetChapterResponse response = getChapterUseCase.getChapter(courseId, chapterId);
         return ResponseEntity.ok(response);
     }
 
@@ -89,12 +105,12 @@ public class ChapterController {
             @ApiResponse(responseCode = "403", description = "Not authorized to modify chapters in this course")
     })
     @PreAuthorize("hasRole('TEACHER')")
-    @PutMapping("/{chapterNumber}")
+    @PutMapping("/{chapterId}")
     public ResponseEntity<ModifyChapterResponse> modifyChapter(
             @PathVariable UUID courseId,
-            @PathVariable Long chapterNumber,
+            @PathVariable UUID chapterId,
             @Valid @RequestBody ModifyChapterRequest request) {
-        ModifyChapterCommand command = modifyChapterCommandMapper.toCommand(courseId, chapterNumber, request);
+        ModifyChapterCommand command = modifyChapterCommandMapper.toCommand(courseId, chapterId, request);
         ModifyChapterResponse response = teacherModifyChapterUseCase.modifyChapter(command);
         return ResponseEntity.ok(response);
     }
@@ -107,11 +123,11 @@ public class ChapterController {
             @ApiResponse(responseCode = "403", description = "Not authorized to delete chapters in this course")
     })
     @PreAuthorize("hasRole('TEACHER')")
-    @DeleteMapping("/{chapterNumber}")
+    @DeleteMapping("/{chapterId}")
     public ResponseEntity<DeleteChapterResponse> deleteChapter(
             @PathVariable UUID courseId,
-            @PathVariable Long chapterNumber) {
-        DeleteChapterResponse response = teacherDeleteChapterUseCase.deleteChapter(courseId, chapterNumber);
+            @PathVariable UUID chapterId) {
+        DeleteChapterResponse response = teacherDeleteChapterUseCase.deleteChapter(courseId, chapterId);
         return ResponseEntity.ok(response);
     }
 }

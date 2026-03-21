@@ -6,5 +6,5 @@ import java.util.UUID;
 import edu.ai.lms.core.material.adapter.in.response.GetMaterialResponse;
 
 public interface GetChapterMaterialsUseCase {
-    List<GetMaterialResponse> getChapterMaterials(UUID courseId, Long chapterNumber);
+    List<GetMaterialResponse> getChapterMaterials(UUID courseId, UUID chapterId);
 }

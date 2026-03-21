@@ -1,9 +1,11 @@
 package edu.ai.lms.core.quiz.adapter.in.http.response;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.v3.oas.annotations.media.Schema;
+import edu.ai.lms.config.DatePatternConstants;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -16,33 +18,16 @@ public class CreateQuizResponse {
     private String quizTitle;
     private Integer timeLimitMinutes;
     private Double passScore;
+    @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN)
+    private LocalDateTime startTime;
+    @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN)
+    private LocalDateTime dueTime;
+    private Integer attemptLimited;
     private UUID courseId;
-    private Boolean active;
-    private List<CreatedQuestion> questions;
+    private Boolean display;
+    @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN)
     private LocalDateTime createdAt;
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class CreatedQuestion {
-        private UUID questionId;
-        private String content;
-        private String type;
-        private Double points;
-        private List<CreatedAnswer> answers;
-    }
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class CreatedAnswer {
-        private Long answerNumber;
-        private String content;
-        private boolean isCorrect;
-        private String explanation;
-    }
 }

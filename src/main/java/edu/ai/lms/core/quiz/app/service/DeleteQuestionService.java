@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.DeleteQuestionResponse;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
@@ -32,15 +32,15 @@ public class DeleteQuestionService implements DeleteQuestionUseCase {
     @Override
     @Transactional
     public DeleteQuestionResponse deleteQuestion(UUID quizId, UUID questionId) {
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
-        Quiz quiz = loadQuizPort.findById(quizId)
+        Quiz quiz = loadQuizPort.getById(quizId)
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found with id: " + quizId));
 
         verifyQuizOwnership(user, quiz);
 
-        Question question = loadQuestionPort.findByIdWithoutAnswers(questionId)
+        Question question = loadQuestionPort.getByIdWithoutAnswers(questionId)
                 .orElseThrow(() -> new QuestionNotFoundException("Question not found with id: " + questionId));
 
         if (!question.getQuizId().equals(quizId)) {
@@ -55,7 +55,7 @@ public class DeleteQuestionService implements DeleteQuestionUseCase {
                 .build();
     }
 
-    private void verifyQuizOwnership(User user, Quiz quiz) {
+    private void verifyQuizOwnership(UserAuth user, Quiz quiz) {
         boolean isOwner = (user.getRole() == Roles.TEACHER && user.getId().equals(quiz.getTeacherId()))
                 || (user.getRole() == Roles.STUDENT && user.getId().equals(quiz.getStudentId()));
 

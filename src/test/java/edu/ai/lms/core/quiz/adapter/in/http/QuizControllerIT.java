@@ -7,6 +7,7 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -29,6 +30,13 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     private static UUID createdCourseId;
     private static UUID createdQuizId;
     private static UUID secondQuizId;
+    private static UUID thirdQuizId;
+    private static UUID lo1;
+    private static UUID lo2;
+    private static UUID lo3;
+    private static UUID lo4;
+    private static UUID group1;
+    private static UUID group2;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     // ==================== SETUP: Register teacher and create a course ====================
@@ -114,7 +122,11 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "Midterm Quiz",
                     "timeLimitMinutes": 60,
-                    "passScore": 70.0
+                    "passScore": 70.0,
+                    "startTime": "10-01-2026 09:00:00",
+                    "dueTime": "10-01-2026 10:00:00",
+                    "attemptLimited": 2,
+                    "display": true
                 }
                 """;
 
@@ -131,8 +143,11 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .body("quizTitle", equalTo("Midterm Quiz"))
                 .body("timeLimitMinutes", equalTo(60))
                 .body("passScore", equalTo(70.0f))
+                .body("startTime", notNullValue())
+                .body("dueTime", notNullValue())
+                .body("attemptLimited", equalTo(2))
                 .body("courseId", equalTo(createdCourseId.toString()))
-                .body("active", equalTo(true))
+                .body("display", equalTo(true))
                 .body("createdAt", notNullValue())
                 .extract().response();
 
@@ -169,36 +184,17 @@ class QuizControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(5)
-    @DisplayName("Should create a quiz with nested questions and answers")
-    void testCreateQuiz_WithNestedQuestionsAndAnswers() {
+    @DisplayName("Should create a third quiz for bulk delete tests")
+    void testCreateThirdQuiz_ShouldSucceed() {
         String requestBody = """
                 {
-                    "quizTitle": "Nested Quiz",
+                    "quizTitle": "Practice Quiz",
                     "timeLimitMinutes": 45,
-                    "passScore": 65.0,
-                    "questions": [
-                        {
-                            "content": "What is Java?",
-                            "type": "MULTIPLE_CHOICE",
-                            "points": 10.0,
-                            "answers": [
-                                {
-                                    "content": "A programming language",
-                                    "isCorrect": true,
-                                    "explanation": "Java is a widely-used programming language"
-                                },
-                                {
-                                    "content": "A coffee brand",
-                                    "isCorrect": false,
-                                    "explanation": "While Java is also a coffee, this is about programming"
-                                }
-                            ]
-                        }
-                    ]
+                    "passScore": 65.0
                 }
                 """;
 
-        given()
+        Response response = given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
@@ -208,10 +204,9 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .log().all()
                 .statusCode(201)
                 .body("quizId", notNullValue())
-                .body("quizTitle", equalTo("Nested Quiz"))
-                .body("questions", hasSize(1))
-                .body("questions[0].content", equalTo("What is Java?"))
-                .body("questions[0].answers", hasSize(2));
+                .body("quizTitle", equalTo("Practice Quiz"))
+                .extract().response();
+        thirdQuizId = UUID.fromString(response.jsonPath().getString("quizId"));
     }
 
     @Test
@@ -276,12 +271,27 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .body("timeLimitMinutes", equalTo(60))
                 .body("passScore", equalTo(70.0f))
                 .body("courseId", equalTo(createdCourseId.toString()))
-                .body("active", equalTo(true))
+                .body("display", equalTo(true))
                 .body("createdAt", notNullValue());
     }
 
     @Test
     @Order(9)
+    @DisplayName("Should get quiz with full aggregate shape")
+    void testGetQuiz_WithFullAggregate_ShouldSucceed() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/quiz/" + createdQuizId)
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("quizId", equalTo(createdQuizId.toString()))
+                .body("questions", hasSize(0));
+    }
+
+    @Test
+    @Order(10)
     @DisplayName("Should fail to get quiz without authentication")
     void testGetQuiz_WithoutAuth() {
         given()
@@ -293,7 +303,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(10)
+    @Order(11)
     @DisplayName("Should fail to get non-existent quiz")
     void testGetQuiz_WithNonExistentQuiz() {
         UUID nonExistentQuizId = UUID.randomUUID();
@@ -310,29 +320,29 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     // ==================== GET ALL QUIZZES TESTS ====================
 
     @Test
-    @Order(11)
+    @Order(12)
     @DisplayName("Should successfully get all quizzes in a course")
     void testGetAllQuizzes_ShouldSucceed() {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/quiz?pageSize=10&sortDirection=asc")
+                .get("/api/" + createdCourseId + "/quiz/teacher-created?pageSize=10&lastCreated=asc")
                 .then()
                 .log().all()
                 .statusCode(200)
                 .body("quizzes", hasSize(greaterThanOrEqualTo(2)))
                 .body("totalQuizzes", greaterThanOrEqualTo(2))
-                .body("sortDirection", equalTo("asc"));
+                .body("lastCreated", equalTo("asc"));
     }
 
     @Test
-    @Order(12)
+    @Order(13)
     @DisplayName("Should limit quizzes by pageSize")
     void testGetAllQuizzes_WithPageSize() {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/quiz?pageSize=1&sortDirection=asc")
+                .get("/api/" + createdCourseId + "/quiz/teacher-created?pageSize=1&lastCreated=asc")
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -341,12 +351,12 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(13)
+    @Order(14)
     @DisplayName("Should fail to get all quizzes without authentication")
     void testGetAllQuizzes_WithoutAuth() {
         given()
                 .when()
-                .get("/api/" + createdCourseId + "/quiz")
+                .get("/api/" + createdCourseId + "/quiz/teacher-created")
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -355,7 +365,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     // ==================== MODIFY QUIZ TESTS ====================
 
     @Test
-    @Order(14)
+    @Order(15)
     @DisplayName("Should successfully modify a quiz")
     void testModifyQuiz_ShouldSucceed() {
         String requestBody = """
@@ -363,7 +373,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                     "quizTitle": "Updated Midterm Quiz",
                     "timeLimitMinutes": 90,
                     "passScore": 75.0,
-                    "active": true
+                    "display": true
                 }
                 """;
 
@@ -384,7 +394,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(15)
+    @Order(16)
     @DisplayName("Should fail to modify quiz without authentication")
     void testModifyQuiz_WithoutAuth() {
         String requestBody = """
@@ -406,7 +416,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(16)
+    @Order(17)
     @DisplayName("Should fail to modify non-existent quiz")
     void testModifyQuiz_WithNonExistentQuiz() {
         UUID nonExistentQuizId = UUID.randomUUID();
@@ -432,7 +442,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     // ==================== DELETE QUIZ TESTS ====================
 
     @Test
-    @Order(17)
+    @Order(18)
     @DisplayName("Should fail to delete quiz without authentication")
     void testDeleteQuiz_WithoutAuth() {
         given()
@@ -444,22 +454,31 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(18)
-    @DisplayName("Should successfully delete a quiz")
-    void testDeleteQuiz_ShouldSucceed() {
+    @Order(19)
+    @DisplayName("Should successfully delete quizzes in bulk")
+    void testDeleteQuiz_Bulk_ShouldSucceed() {
+        String requestBody = """
+                {
+                    "quizIds": ["%s", "%s"]
+                }
+                """.formatted(secondQuizId, thirdQuizId);
+
         given()
+                .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
                 .when()
-                .delete("/api/" + createdCourseId + "/quiz/" + secondQuizId)
+                .delete("/api/" + createdCourseId + "/quiz")
                 .then()
                 .log().all()
                 .statusCode(200)
-                .body("quizId", equalTo(secondQuizId.toString()))
-                .body("message", equalTo("Quiz deleted successfully"));
+                .body("", hasSize(2))
+                .body("[0].message", equalTo("Quiz deleted successfully"))
+                .body("[1].message", equalTo("Quiz deleted successfully"));
     }
 
     @Test
-    @Order(19)
+    @Order(20)
     @DisplayName("Should fail to delete non-existent quiz")
     void testDeleteQuiz_WithNonExistentQuiz() {
         UUID nonExistentQuizId = UUID.randomUUID();
@@ -476,16 +495,161 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     // ==================== VERIFY STATE AFTER DELETE ====================
 
     @Test
-    @Order(20)
+    @Order(21)
     @DisplayName("Should verify the quiz was deleted from the list")
     void testGetAllQuizzes_AfterDelete() {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/quiz?pageSize=10&sortDirection=asc")
+                .get("/api/" + createdCourseId + "/quiz/teacher-created?pageSize=10&lastCreated=asc")
                 .then()
                 .log().all()
                 .statusCode(200)
                 .body("quizzes", notNullValue());
+    }
+
+    @Test
+    @Order(22)
+    @DisplayName("Should create additional learning outcomes for quiz mapping")
+    void testCreateLearningOutcomesForQuizMapping() {
+        String requestBody = """
+                {
+                    "learningOutcomes": [
+                        {"code": "CLO-Q1", "description": "Understand fundamentals"},
+                        {"code": "CLO-Q2", "description": "Apply fundamentals"},
+                        {"code": "CLO-Q3", "description": "Analyze scenarios"},
+                        {"code": "CLO-Q4", "description": "Evaluate solutions"}
+                    ]
+                }
+                """;
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/learning-outcome")
+                .then()
+                .statusCode(201)
+                .body("totalCreated", equalTo(4))
+                .extract().response();
+
+        lo1 = UUID.fromString(response.jsonPath().getString("learningOutcomes[0].id"));
+        lo2 = UUID.fromString(response.jsonPath().getString("learningOutcomes[1].id"));
+        lo3 = UUID.fromString(response.jsonPath().getString("learningOutcomes[2].id"));
+        lo4 = UUID.fromString(response.jsonPath().getString("learningOutcomes[3].id"));
+    }
+
+    @Test
+    @Order(23)
+    @DisplayName("Should create group one with two learning outcomes")
+    void testCreateGroupOne() {
+        String requestBody = """
+                {
+                    "name": "Group One",
+                    "description": "First group",
+                    "learningOutcomeIds": ["%s", "%s"]
+                }
+                """.formatted(lo1, lo2);
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/group-learning-outcome")
+                .then()
+                .statusCode(201)
+                .extract().response();
+
+        group1 = UUID.fromString(response.jsonPath().getString("id"));
+    }
+
+    @Test
+    @Order(24)
+    @DisplayName("Should create group two with one learning outcome")
+    void testCreateGroupTwo() {
+        String requestBody = """
+                {
+                    "name": "Group Two",
+                    "description": "Second group",
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(lo3);
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/group-learning-outcome")
+                .then()
+                .statusCode(201)
+                .extract().response();
+
+        group2 = UUID.fromString(response.jsonPath().getString("id"));
+    }
+
+    @Test
+    @Order(25)
+    @DisplayName("Should add direct and grouped learning outcomes with overlap deduplicated")
+    void testAddLearningOutcomesToQuiz_Success() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s", "%s"],
+                    "groupLearningOutcomeIds": ["%s", "%s"]
+                }
+                """.formatted(lo2, lo4, group1, group2);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/learning-outcomes")
+                .then()
+                .statusCode(200)
+                .body("operation", equalTo("ADD"))
+                .body("totalAffected", equalTo(4))
+                .body("learningOutcomeIds", hasSize(4));
+    }
+
+    @Test
+    @Order(26)
+    @DisplayName("Should get quiz with grouped and ungrouped learning outcomes")
+    void testGetQuiz_WithGroupedLearningOutcomes_ShouldSucceed() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/quiz/" + createdQuizId)
+                .then()
+                .statusCode(200)
+                .body("groupedLearningOutcomes", hasSize(2))
+                .body("ungroupedLearningOutcomes", hasSize(1))
+                .body("ungroupedLearningOutcomes.code", hasItem("CLO-Q4"));
+    }
+
+    @Test
+    @Order(27)
+    @DisplayName("Should remove learning outcomes from quiz using direct and grouped ids")
+    void testRemoveLearningOutcomesFromQuiz_Success() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"],
+                    "groupLearningOutcomeIds": ["%s"]
+                }
+                """.formatted(lo1, group2);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .delete("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/learning-outcomes")
+                .then()
+                .statusCode(200)
+                .body("operation", equalTo("REMOVE"))
+                .body("totalAffected", equalTo(2))
+                .body("learningOutcomeIds", hasSize(2));
     }
 }

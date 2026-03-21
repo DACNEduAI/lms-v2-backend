@@ -23,12 +23,15 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuizResponse;
+import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.domain.QuizLearningOutcomeView;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
+import edu.ai.lms.core.quiz.app.port.out.LoadCourseLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
@@ -45,11 +48,14 @@ class GetQuizServiceUT {
     @Mock
     private LoadCourseMembershipPort loadCourseMembershipPort;
 
+        @Mock
+        private LoadCourseLearningOutcomePort loadCourseLearningOutcomePort;
+
     @InjectMocks
     private GetQuizService getQuizService;
 
-    private User mockTeacher;
-    private User mockStudent;
+    private UserAuth mockTeacher;
+    private UserAuth mockStudent;
     private UUID teacherId;
     private UUID studentId;
     private UUID courseId;
@@ -63,14 +69,22 @@ class GetQuizServiceUT {
         courseId = UUID.randomUUID();
         quizId = UUID.randomUUID();
 
-        mockTeacher = User.builder()
+        mockTeacher = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
 
-        mockStudent = User.builder()
+        mockStudent = UserAuth.builder()
                 .id(studentId)
                 .role(Roles.STUDENT)
+                .build();
+
+        Answer answer = Answer.builder()
+                .answerNumber(1L)
+                .content("Sample Answer")
+                .isCorrect(true)
+                .explanation("Sample Explanation")
+                .questionId(UUID.randomUUID())
                 .build();
 
         Question question = Question.builder()
@@ -79,7 +93,7 @@ class GetQuizServiceUT {
                 .type(Question.QuestionType.MULTIPLE_CHOICE)
                 .points(10.0)
                 .quizId(quizId)
-                .answers(new ArrayList<>())
+                .answers(new ArrayList<>(List.of(answer)))
                 .build();
 
         existingQuiz = Quiz.builder()
@@ -89,7 +103,7 @@ class GetQuizServiceUT {
                 .passScore(70.0)
                 .courseId(courseId)
                 .teacherId(teacherId)
-                .active(true)
+                .display(true)
                 .questions(new ArrayList<>(List.of(question)))
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -100,9 +114,23 @@ class GetQuizServiceUT {
     @DisplayName("Should successfully get a quiz as the teacher owner")
     void testGetQuiz_AsTeacherOwner_ShouldSucceed() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadCourseLearningOutcomePort.findQuizLearningOutcomes(courseId, quizId)).thenReturn(List.of(
+                QuizLearningOutcomeView.builder()
+                        .learningOutcomeId(UUID.randomUUID())
+                        .learningOutcomeCode("CLO-1")
+                        .learningOutcomeDescription("Group child")
+                        .groupLearningOutcomeId(UUID.randomUUID())
+                        .groupLearningOutcomeName("Group A")
+                        .groupLearningOutcomeDescription("Group description")
+                        .build(),
+                QuizLearningOutcomeView.builder()
+                        .learningOutcomeId(UUID.randomUUID())
+                        .learningOutcomeCode("CLO-2")
+                        .learningOutcomeDescription("Ungrouped child")
+                        .build()));
 
         // Act
         GetQuizResponse response = getQuizService.getQuiz(courseId, quizId);
@@ -117,32 +145,35 @@ class GetQuizServiceUT {
         assertNotNull(response.getQuestions());
         assertEquals(1, response.getQuestions().size());
         assertEquals("Sample Question", response.getQuestions().get(0).getContent());
+        assertEquals(1, response.getQuestions().get(0).getAnswers().size());
+        assertEquals("Sample Answer", response.getQuestions().get(0).getAnswers().get(0).getContent());
+        assertEquals(1, response.getGroupedLearningOutcomes().size());
+        assertEquals(1, response.getUngroupedLearningOutcomes().size());
 
-        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
-        verify(loadQuizPort, times(1)).findById(quizId);
+        verify(loadSignedInUserPort, times(1)).getAuthenticatedUser();
+        verify(loadQuizPort, times(1)).getByIdWithQuestionsAndAnswers(courseId, quizId);
+        verify(loadCourseLearningOutcomePort, times(1)).findQuizLearningOutcomes(courseId, quizId);
     }
 
     @Test
-    @DisplayName("Should successfully get a quiz as a student member")
-    void testGetQuiz_AsStudentMember_ShouldSucceed() {
+    @DisplayName("Should throw IllegalArgumentException when user is a student")
+    void testGetQuiz_AsStudent_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
-        when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
 
-        // Act
-        GetQuizResponse response = getQuizService.getQuiz(courseId, quizId);
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> getQuizService.getQuiz(courseId, quizId));
 
-        // Assert
-        assertNotNull(response);
-        assertEquals(quizId, response.getQuizId());
+        assertEquals("Only teachers can access this quiz", exception.getMessage());
+        verify(loadQuizPort, never()).getByIdWithQuestionsAndAnswers(any(UUID.class), any(UUID.class));
     }
 
     @Test
     @DisplayName("Should throw UserNotAuthenticatedException when user is not authenticated")
     void testGetQuiz_WithUnauthenticatedUser_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(UserNotAuthenticatedException.class,
@@ -150,14 +181,14 @@ class GetQuizServiceUT {
 
         assertEquals("User not authenticated", exception.getMessage());
 
-        verify(loadQuizPort, never()).findById(any(UUID.class));
+        verify(loadQuizPort, never()).getByIdWithQuestionsAndAnswers(any(UUID.class), any(UUID.class));
     }
 
     @Test
     @DisplayName("Should throw IllegalArgumentException when user is not a member of the course")
     void testGetQuiz_WithNonMember_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(false);
 
         // Act & Assert
@@ -166,16 +197,16 @@ class GetQuizServiceUT {
 
         assertEquals("User is not a member of this course", exception.getMessage());
 
-        verify(loadQuizPort, never()).findById(any(UUID.class));
+        verify(loadQuizPort, never()).getByIdWithQuestionsAndAnswers(any(UUID.class), any(UUID.class));
     }
 
     @Test
     @DisplayName("Should throw QuizNotFoundException when quiz does not exist")
     void testGetQuiz_WithNonExistentQuiz_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.empty());
+        when(loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)).thenReturn(Optional.empty());
 
         // Act & Assert
         QuizNotFoundException exception = assertThrows(QuizNotFoundException.class,
@@ -185,36 +216,18 @@ class GetQuizServiceUT {
     }
 
     @Test
-    @DisplayName("Should throw IllegalArgumentException when quiz does not belong to the course")
-    void testGetQuiz_WithCourseMismatch_ShouldThrowException() {
-        // Arrange
-        UUID differentCourseId = UUID.randomUUID();
-        existingQuiz.setCourseId(differentCourseId);
-
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
-
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> getQuizService.getQuiz(courseId, quizId));
-
-        assertEquals("Quiz does not belong to this course", exception.getMessage());
-    }
-
-    @Test
     @DisplayName("Should throw IllegalArgumentException when teacher tries to access another teacher's quiz")
     void testGetQuiz_AsNonOwnerTeacher_ShouldThrowException() {
         // Arrange
         UUID anotherTeacherId = UUID.randomUUID();
-        User anotherTeacher = User.builder()
+        UserAuth anotherTeacher = UserAuth.builder()
                 .id(anotherTeacherId)
                 .role(Roles.TEACHER)
                 .build();
 
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
         when(loadCourseMembershipPort.isTeacherInCourse(anotherTeacherId, courseId)).thenReturn(true);
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)).thenReturn(Optional.of(existingQuiz));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,

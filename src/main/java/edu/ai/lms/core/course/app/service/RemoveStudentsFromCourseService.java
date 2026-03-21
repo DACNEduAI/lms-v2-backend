@@ -1,6 +1,5 @@
 package edu.ai.lms.core.course.app.service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -8,7 +7,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.RemoveStudentsFromCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -20,14 +19,14 @@ import edu.ai.lms.core.course.app.port.in.usecase.TeacherRemoveStudentsFromCours
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.LoadStudentsByEmailPort;
-import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
+import edu.ai.lms.core.course.app.port.out.SaveCourseEnrollmentPort;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class RemoveStudentsFromCourseService implements TeacherRemoveStudentsFromCourseUseCase {
 
-    private final SaveCoursePort saveCoursePort;
+        private final SaveCourseEnrollmentPort saveCourseEnrollmentPort;
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadStudentsByEmailPort loadStudentsByEmailPort;
@@ -36,7 +35,7 @@ public class RemoveStudentsFromCourseService implements TeacherRemoveStudentsFro
     @Transactional
     public RemoveStudentsFromCourseResponse removeStudentsFromCourse(RemoveStudentsFromCourseCommand command) {
         // Verify teacher is authenticated
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         // Verify course exists
@@ -74,11 +73,7 @@ public class RemoveStudentsFromCourseService implements TeacherRemoveStudentsFro
                 .map(emailToIdMap::get)
                 .toList();
 
-        List<UUID> updatedStudentIds = new ArrayList<>(course.getStudentIds());
-        updatedStudentIds.removeAll(idsToRemove);
-        course.setStudentIds(updatedStudentIds);
-
-        saveCoursePort.save(course);
+        saveCourseEnrollmentPort.removeStudentsFromCourse(course.getId(), idsToRemove);
 
         return RemoveStudentsFromCourseResponse.builder()
                 .courseId(course.getId())

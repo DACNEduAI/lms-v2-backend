@@ -33,10 +33,18 @@ build/
 .vscode/
 
 .fake
-.env
+.env.dev
+.env.prod
 
 ### Local overrides ###
 src/main/resources/application-local.properties
 
 ### Local Stack storage development ###
 /storage
+<<<<<<< HEAD
+=======
+
+### postman
+postman/**
+.postman/**
+>>>>>>> 5f49e4cccd7b8caef3d8f265023953513c58937f

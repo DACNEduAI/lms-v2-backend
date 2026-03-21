@@ -1,6 +1,8 @@
 package edu.ai.lms.core.quiz.adapter.in.http;
 
 import java.util.UUID;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,19 +20,26 @@ import org.springframework.web.bind.annotation.RestController;
 import edu.ai.lms.core.quiz.adapter.in.http.mapper.CreateQuizCommandMapper;
 import edu.ai.lms.core.quiz.adapter.in.http.mapper.ModifyQuizCommandMapper;
 import edu.ai.lms.core.quiz.adapter.in.http.request.CreateQuizRequest;
+import edu.ai.lms.core.quiz.adapter.in.http.request.DeleteQuizzesRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.request.ModifyQuizRequest;
+import edu.ai.lms.core.quiz.adapter.in.http.request.QuizLearningOutcomeOperationRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuizResponse;
 import edu.ai.lms.core.quiz.adapter.in.http.response.DeleteQuizResponse;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetAllQuizzesResponse;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuizResponse;
 import edu.ai.lms.core.quiz.adapter.in.http.response.ModifyQuizResponse;
+import edu.ai.lms.core.quiz.adapter.in.http.response.QuizLearningOutcomeOperationResponse;
+import edu.ai.lms.core.quiz.app.port.in.command.AddQuizLearningOutcomesCommand;
 import edu.ai.lms.core.quiz.app.port.in.command.CreateQuizCommand;
 import edu.ai.lms.core.quiz.app.port.in.command.ModifyQuizCommand;
+import edu.ai.lms.core.quiz.app.port.in.command.RemoveQuizLearningOutcomesCommand;
+import edu.ai.lms.core.quiz.app.port.in.usecase.AddQuizLearningOutcomesUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.CreateQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.DeleteQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.GetAllQuizzesUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.GetQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.ModifyQuizUseCase;
+import edu.ai.lms.core.quiz.app.port.in.usecase.RemoveQuizLearningOutcomesUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -49,31 +58,33 @@ public class QuizController {
     private final DeleteQuizUseCase deleteQuizUseCase;
     private final GetQuizUseCase getQuizUseCase;
     private final GetAllQuizzesUseCase getAllQuizzesUseCase;
+        private final AddQuizLearningOutcomesUseCase addQuizLearningOutcomesUseCase;
+        private final RemoveQuizLearningOutcomesUseCase removeQuizLearningOutcomesUseCase;
     private final CreateQuizCommandMapper createQuizCommandMapper;
     private final ModifyQuizCommandMapper modifyQuizCommandMapper;
 
-    @Operation(summary = "Get all quizzes in a course", description = "Students see all quizzes; teachers see only their own quizzes.")
+        @Operation(summary = "Get teacher-created quizzes in a course", description = "Students see only displayed teacher-created quizzes; teachers see all teacher-created quizzes.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Quizzes retrieved successfully",
                     content = @Content(schema = @Schema(implementation = GetAllQuizzesResponse.class)))
     })
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    @GetMapping()
+        @GetMapping("/teacher-created")
     public ResponseEntity<GetAllQuizzesResponse> getAllQuizzes(
             @PathVariable UUID courseId,
             @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(defaultValue = "asc") String sortDirection) {
-        GetAllQuizzesResponse response = getAllQuizzesUseCase.getAllQuizzes(courseId, pageSize, sortDirection);
+                        @RequestParam(defaultValue = "asc") String lastCreated) {
+                GetAllQuizzesResponse response = getAllQuizzesUseCase.getAllQuizzes(courseId, pageSize, lastCreated);
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Get a specific quiz", description = "Get a quiz by its ID within a course.")
+    @Operation(summary = "Get a specific quiz", description = "Get a quiz with full questions and answers by its ID within a course.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Quiz retrieved successfully",
                     content = @Content(schema = @Schema(implementation = GetQuizResponse.class))),
             @ApiResponse(responseCode = "404", description = "Quiz not found")
     })
-    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @PreAuthorize("hasRole('TEACHER')")
     @GetMapping("/{quizId}")
     public ResponseEntity<GetQuizResponse> getQuiz(
             @PathVariable UUID courseId,
@@ -126,6 +137,71 @@ public class QuizController {
             @PathVariable UUID courseId,
             @PathVariable UUID quizId) {
         DeleteQuizResponse response = deleteQuizUseCase.deleteQuiz(courseId, quizId);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Delete quizzes", description = "Delete one or many quizzes.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Quizzes deleted successfully",
+                    content = @Content(schema = @Schema(implementation = DeleteQuizResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Quiz not found")
+    })
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @DeleteMapping()
+    public ResponseEntity<List<DeleteQuizResponse>> deleteQuizzes(
+            @PathVariable UUID courseId,
+            @Valid @RequestBody DeleteQuizzesRequest request) {
+        List<DeleteQuizResponse> responses = request.getQuizIds().stream()
+                .map(quizId -> deleteQuizUseCase.deleteQuiz(courseId, quizId))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
+    @Operation(summary = "Add learning outcomes to a quiz",
+            description = "Adds learning outcomes by explicit ids and/or group ids. Group ids are expanded to child learning outcomes and overlaps are deduplicated.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Learning outcomes added successfully",
+                    content = @Content(schema = @Schema(implementation = QuizLearningOutcomeOperationResponse.class)))
+    })
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @PostMapping("/{quizId}/learning-outcomes")
+    public ResponseEntity<QuizLearningOutcomeOperationResponse> addLearningOutcomes(
+            @PathVariable UUID courseId,
+            @PathVariable UUID quizId,
+            @Valid @RequestBody QuizLearningOutcomeOperationRequest request) {
+
+        AddQuizLearningOutcomesCommand command = AddQuizLearningOutcomesCommand.builder()
+                .courseId(courseId)
+                .quizId(quizId)
+                .learningOutcomeIds(request.getLearningOutcomeIds())
+                .groupLearningOutcomeIds(request.getGroupLearningOutcomeIds())
+                .build();
+
+        QuizLearningOutcomeOperationResponse response = addQuizLearningOutcomesUseCase.addLearningOutcomes(command);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Remove learning outcomes from a quiz",
+            description = "Removes learning outcomes by explicit ids and/or group ids. Group ids are expanded to child learning outcomes and overlaps are deduplicated.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Learning outcomes removed successfully",
+                    content = @Content(schema = @Schema(implementation = QuizLearningOutcomeOperationResponse.class)))
+    })
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @DeleteMapping("/{quizId}/learning-outcomes")
+    public ResponseEntity<QuizLearningOutcomeOperationResponse> removeLearningOutcomes(
+            @PathVariable UUID courseId,
+            @PathVariable UUID quizId,
+            @Valid @RequestBody QuizLearningOutcomeOperationRequest request) {
+
+        RemoveQuizLearningOutcomesCommand command = RemoveQuizLearningOutcomesCommand.builder()
+                .courseId(courseId)
+                .quizId(quizId)
+                .learningOutcomeIds(request.getLearningOutcomeIds())
+                .groupLearningOutcomeIds(request.getGroupLearningOutcomeIds())
+                .build();
+
+        QuizLearningOutcomeOperationResponse response = removeQuizLearningOutcomesUseCase.removeLearningOutcomes(command);
         return ResponseEntity.ok(response);
     }
 }

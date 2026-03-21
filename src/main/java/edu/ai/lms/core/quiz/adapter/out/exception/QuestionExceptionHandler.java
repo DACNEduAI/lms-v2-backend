@@ -1,5 +1,6 @@
 package edu.ai.lms.core.quiz.adapter.out.exception;
 
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -10,6 +11,10 @@ import edu.ai.lms.core.quiz.app.exception.QuestionNotFoundException;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Exception handler for question-related exceptions.

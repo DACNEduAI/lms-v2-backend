@@ -5,7 +5,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.DeleteChapterResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
@@ -30,9 +30,9 @@ public class DeleteChapterService implements TeacherDeleteChapterUseCase {
 
     @Override
     @Transactional
-    public DeleteChapterResponse deleteChapter(UUID courseId, Long chapterNumber) {
+    public DeleteChapterResponse deleteChapter(UUID courseId, UUID chapterId) {
         // Verify teacher is authenticated
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         // Verify course exists
@@ -45,16 +45,16 @@ public class DeleteChapterService implements TeacherDeleteChapterUseCase {
         }
 
         // Verify chapter exists
-        Chapter existingChapter = loadChapterPort.findByKeyWithoutMaterials(courseId, chapterNumber)
+        Chapter existingChapter = loadChapterPort.findByKey(courseId, chapterId)
                 .orElseThrow(() -> new ChapterNotFoundException(
-                        "Chapter not found with number: " + chapterNumber + " in course: " + courseId));
+                        "Chapter not found with number: " + chapterId + " in course: " + courseId));
 
         // Delete the chapter
-        deleteChapterPort.deleteByKey(courseId, chapterNumber);
+        deleteChapterPort.deleteByKey(courseId, chapterId);
 
         return DeleteChapterResponse.builder()
                 .courseId(courseId)
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .message("Chapter deleted successfully")
                 .success(true)
                 .build();

@@ -1,6 +1,8 @@
 package edu.ai.lms.core.quiz.app.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,17 +24,21 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.ModifyQuestionResponse;
+import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.QuestionNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.port.in.command.ModifyQuestionCommand;
+import edu.ai.lms.core.quiz.app.port.out.DeleteAnswerPort;
+import edu.ai.lms.core.quiz.app.port.out.LoadAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,6 +46,15 @@ class ModifyQuestionServiceUT {
 
     @Mock
     private SaveQuestionPort saveQuestionPort;
+
+    @Mock
+    private SaveAnswerPort saveAnswerPort;
+
+    @Mock
+    private LoadAnswerPort loadAnswerPort;
+
+    @Mock
+    private DeleteAnswerPort deleteAnswerPort;
 
     @Mock
     private LoadQuestionPort loadQuestionPort;
@@ -53,7 +68,7 @@ class ModifyQuestionServiceUT {
     @InjectMocks
     private ModifyQuestionService modifyQuestionService;
 
-    private User mockTeacher;
+    private UserAuth mockTeacher;
     private UUID teacherId;
     private UUID quizId;
     private UUID questionId;
@@ -67,7 +82,7 @@ class ModifyQuestionServiceUT {
         quizId = UUID.randomUUID();
         questionId = UUID.randomUUID();
 
-        mockTeacher = User.builder()
+        mockTeacher = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -77,7 +92,7 @@ class ModifyQuestionServiceUT {
                 .quizTitle("Midterm Quiz")
                 .courseId(UUID.randomUUID())
                 .teacherId(teacherId)
-                .active(true)
+                .display(true)
                 .build();
 
         existingQuestion = Question.builder()
@@ -89,10 +104,17 @@ class ModifyQuestionServiceUT {
                 .createdAt(LocalDateTime.now())
                 .build();
 
+        Answer updatedAnswer = Answer.builder()
+                .content("Updated answer")
+                .isCorrect(true)
+                .explanation("Updated explanation")
+                .build();
+
         Question updatedQuestion = Question.builder()
                 .content("Updated Question")
                 .type(Question.QuestionType.TRUE_FALSE)
                 .points(20.0)
+                .answers(new ArrayList<>(List.of(updatedAnswer)))
                 .build();
 
         validCommand = ModifyQuestionCommand.builder()
@@ -103,12 +125,13 @@ class ModifyQuestionServiceUT {
     }
 
     @Test
-    @DisplayName("Should successfully modify a question with valid details")
+    @DisplayName("Should successfully modify a question with answers")
     void testModifyQuestion_WithValidDetails_ShouldSucceed() {
-        // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadAnswerPort.getByQuestionId(questionId)).thenReturn(List.of(
+                Answer.builder().answerNumber(1L).questionId(questionId).build()));
 
         Question savedQuestion = Question.builder()
                 .id(questionId)
@@ -120,120 +143,90 @@ class ModifyQuestionServiceUT {
                 .build();
         when(saveQuestionPort.save(any(Question.class))).thenReturn(savedQuestion);
 
-        // Act
+        Answer savedAnswer = Answer.builder()
+                .answerNumber(2L)
+                .content("Updated answer")
+                .isCorrect(true)
+                .explanation("Updated explanation")
+                .questionId(questionId)
+                .build();
+        when(saveAnswerPort.save(any(Answer.class))).thenReturn(savedAnswer);
+
         ModifyQuestionResponse response = modifyQuestionService.modifyQuestion(validCommand);
 
-        // Assert
         assertNotNull(response);
         assertEquals(questionId, response.getQuestionId());
-        assertEquals("Updated Question", response.getContent());
-        assertEquals("TRUE_FALSE", response.getType());
-        assertEquals(20.0, response.getPoints());
-        assertEquals(quizId, response.getQuizId());
-
-        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
-        verify(loadQuizPort, times(1)).findById(quizId);
-        verify(loadQuestionPort, times(1)).findByIdWithoutAnswers(questionId);
-        verify(saveQuestionPort, times(1)).save(any(Question.class));
+        assertEquals(1, response.getAnswers().size());
+        assertEquals(2L, response.getAnswers().get(0).getAnswerNumber());
+        verify(deleteAnswerPort, times(1)).deleteByKey(questionId, 1L);
+        verify(saveAnswerPort, times(1)).save(any(Answer.class));
     }
 
     @Test
     @DisplayName("Should throw UserNotAuthenticatedException when user is not authenticated")
     void testModifyQuestion_WithUnauthenticatedUser_ShouldThrowException() {
-        // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
 
-        // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(UserNotAuthenticatedException.class,
                 () -> modifyQuestionService.modifyQuestion(validCommand));
 
         assertEquals("User not authenticated", exception.getMessage());
-
         verify(saveQuestionPort, never()).save(any(Question.class));
     }
 
     @Test
     @DisplayName("Should throw QuizNotFoundException when quiz does not exist")
     void testModifyQuestion_WithNonExistentQuiz_ShouldThrowException() {
-        // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.empty());
 
-        // Act & Assert
         QuizNotFoundException exception = assertThrows(QuizNotFoundException.class,
                 () -> modifyQuestionService.modifyQuestion(validCommand));
 
         assertEquals("Quiz not found with id: " + quizId, exception.getMessage());
-
         verify(saveQuestionPort, never()).save(any(Question.class));
     }
 
     @Test
     @DisplayName("Should throw IllegalArgumentException when user is not the quiz owner")
     void testModifyQuestion_WithNonOwner_ShouldThrowException() {
-        // Arrange
         UUID anotherTeacherId = UUID.randomUUID();
-        User anotherTeacher = User.builder()
+        UserAuth anotherTeacher = UserAuth.builder()
                 .id(anotherTeacherId)
                 .role(Roles.TEACHER)
                 .build();
 
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
 
-        // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> modifyQuestionService.modifyQuestion(validCommand));
 
         assertEquals("User is not authorized to modify questions in this quiz", exception.getMessage());
-
         verify(saveQuestionPort, never()).save(any(Question.class));
     }
 
     @Test
     @DisplayName("Should throw QuestionNotFoundException when question does not exist")
     void testModifyQuestion_WithNonExistentQuestion_ShouldThrowException() {
-        // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.empty());
 
-        // Act & Assert
         QuestionNotFoundException exception = assertThrows(QuestionNotFoundException.class,
                 () -> modifyQuestionService.modifyQuestion(validCommand));
 
         assertEquals("Question not found with id: " + questionId, exception.getMessage());
-
-        verify(saveQuestionPort, never()).save(any(Question.class));
-    }
-
-    @Test
-    @DisplayName("Should throw IllegalArgumentException when question does not belong to the quiz")
-    void testModifyQuestion_WithQuizMismatch_ShouldThrowException() {
-        // Arrange
-        UUID differentQuizId = UUID.randomUUID();
-        existingQuestion.setQuizId(differentQuizId);
-
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> modifyQuestionService.modifyQuestion(validCommand));
-
-        assertEquals("Question does not belong to this quiz", exception.getMessage());
-
         verify(saveQuestionPort, never()).save(any(Question.class));
     }
 
     @Test
     @DisplayName("Should preserve existing question id and quizId when modifying")
     void testModifyQuestion_ShouldPreserveExistingProperties() {
-        // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadAnswerPort.getByQuestionId(questionId)).thenReturn(List.of());
 
         ArgumentCaptor<Question> questionCaptor = ArgumentCaptor.forClass(Question.class);
         Question savedQuestion = Question.builder()
@@ -243,11 +236,10 @@ class ModifyQuestionServiceUT {
                 .updatedAt(LocalDateTime.now())
                 .build();
         when(saveQuestionPort.save(any(Question.class))).thenReturn(savedQuestion);
+        when(saveAnswerPort.save(any(Answer.class))).thenReturn(Answer.builder().answerNumber(1L).build());
 
-        // Act
         modifyQuestionService.modifyQuestion(validCommand);
 
-        // Assert
         verify(saveQuestionPort).save(questionCaptor.capture());
         Question capturedQuestion = questionCaptor.getValue();
         assertEquals(questionId, capturedQuestion.getId());

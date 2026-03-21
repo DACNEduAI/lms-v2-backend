@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.AddStudentsToCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -34,13 +34,13 @@ import edu.ai.lms.core.course.app.port.in.command.AddStudentsToCourseCommand;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.LoadStudentsByEmailPort;
-import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
+import edu.ai.lms.core.course.app.port.out.SaveCourseEnrollmentPort;
 
 @ExtendWith(MockitoExtension.class)
 class AddStudentsToCourseServiceUT {
 
     @Mock
-    private SaveCoursePort saveCoursePort;
+        private SaveCourseEnrollmentPort saveCourseEnrollmentPort;
 
     @Mock
     private LoadCoursePort loadCoursePort;
@@ -56,7 +56,7 @@ class AddStudentsToCourseServiceUT {
 
     private UUID teacherId;
     private UUID courseId;
-    private User mockTeacher;
+    private UserAuth mockTeacher;
     private Course mockCourse;
 
     @BeforeEach
@@ -64,7 +64,7 @@ class AddStudentsToCourseServiceUT {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
 
-        mockTeacher = User.builder()
+        mockTeacher = UserAuth.builder()
                 .id(teacherId)
                 .email("teacher@example.com")
                 .role(Roles.TEACHER)
@@ -99,8 +99,6 @@ class AddStudentsToCourseServiceUT {
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
         when(loadStudentsByEmailPort.findStudentIdsByEmails(List.of(email1, email2))).thenReturn(emailToIdMap);
-        when(saveCoursePort.save(any(Course.class))).thenReturn(mockCourse);
-
         AddStudentsToCourseResponse response = addStudentsToCourseService.addStudentsToCourse(command);
 
         assertNotNull(response);
@@ -109,7 +107,7 @@ class AddStudentsToCourseServiceUT {
         assertEquals(2, response.getAddedStudentEmails().size());
         assertTrue(response.getAddedStudentEmails().contains(email1));
         assertTrue(response.getAddedStudentEmails().contains(email2));
-        verify(saveCoursePort).save(any(Course.class));
+        verify(saveCourseEnrollmentPort).addStudentsToCourse(any(UUID.class), any(List.class));
     }
 
     @Test
@@ -134,15 +132,13 @@ class AddStudentsToCourseServiceUT {
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
         when(loadStudentsByEmailPort.findStudentIdsByEmails(List.of(existingEmail, newEmail))).thenReturn(emailToIdMap);
-        when(saveCoursePort.save(any(Course.class))).thenReturn(mockCourse);
-
         AddStudentsToCourseResponse response = addStudentsToCourseService.addStudentsToCourse(command);
 
         assertNotNull(response);
         assertEquals(1, response.getTotalAdded());
         assertEquals(1, response.getAddedStudentEmails().size());
         assertTrue(response.getAddedStudentEmails().contains(newEmail));
-        verify(saveCoursePort).save(any(Course.class));
+        verify(saveCourseEnrollmentPort).addStudentsToCourse(any(UUID.class), any(List.class));
     }
 
     @Test
@@ -158,7 +154,7 @@ class AddStudentsToCourseServiceUT {
         assertThrows(TeacherNotFoundException.class,
                 () -> addStudentsToCourseService.addStudentsToCourse(command));
 
-        verify(saveCoursePort, never()).save(any(Course.class));
+        verify(saveCourseEnrollmentPort, never()).addStudentsToCourse(any(UUID.class), any(List.class));
     }
 
     @Test
@@ -175,14 +171,14 @@ class AddStudentsToCourseServiceUT {
         assertThrows(CourseNotFoundException.class,
                 () -> addStudentsToCourseService.addStudentsToCourse(command));
 
-        verify(saveCoursePort, never()).save(any(Course.class));
+        verify(saveCourseEnrollmentPort, never()).addStudentsToCourse(any(UUID.class), any(List.class));
     }
 
     @Test
     @DisplayName("Should throw IllegalArgumentException when teacher does not own the course")
     void testAddStudentsToCourse_UnauthorizedTeacher() {
         UUID anotherTeacherId = UUID.randomUUID();
-        User anotherTeacher = User.builder()
+        UserAuth anotherTeacher = UserAuth.builder()
                 .id(anotherTeacherId)
                 .email("other@example.com")
                 .role(Roles.TEACHER)
@@ -199,7 +195,7 @@ class AddStudentsToCourseServiceUT {
         assertThrows(IllegalArgumentException.class,
                 () -> addStudentsToCourseService.addStudentsToCourse(command));
 
-        verify(saveCoursePort, never()).save(any(Course.class));
+        verify(saveCourseEnrollmentPort, never()).addStudentsToCourse(any(UUID.class), any(List.class));
     }
 
     @Test
@@ -227,7 +223,7 @@ class AddStudentsToCourseServiceUT {
 
         assertTrue(ex.getMissingEmails().contains(missingEmail));
         assertEquals(1, ex.getMissingEmails().size());
-        verify(saveCoursePort, never()).save(any(Course.class));
+        verify(saveCourseEnrollmentPort, never()).addStudentsToCourse(any(UUID.class), any(List.class));
     }
 
     @Test
@@ -247,13 +243,13 @@ class AddStudentsToCourseServiceUT {
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
         when(loadStudentsByEmailPort.findStudentIdsByEmails(List.of(email))).thenReturn(emailToIdMap);
-        when(saveCoursePort.save(any(Course.class))).thenReturn(mockCourse);
 
-        AddStudentsToCourseResponse response = addStudentsToCourseService.addStudentsToCourse(command);
+                AddStudentsToCourseResponse response = addStudentsToCourseService.addStudentsToCourse(command);
 
-        assertNotNull(response);
-        assertEquals(courseId, response.getCourseId());
-        assertEquals(1, response.getTotalAdded());
-        assertEquals("Students added to course successfully", response.getMessage());
+                assertNotNull(response);
+                assertEquals(courseId, response.getCourseId());
+                assertEquals(1, response.getTotalAdded());
+                assertTrue(response.getAddedStudentEmails().contains(email));
+                verify(saveCourseEnrollmentPort).addStudentsToCourse(any(UUID.class), any(List.class));
     }
 }

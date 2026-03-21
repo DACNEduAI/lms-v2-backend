@@ -21,7 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuestionResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
@@ -43,7 +43,7 @@ class GetQuestionServiceUT {
     @InjectMocks
     private GetQuestionService getQuestionService;
 
-    private User mockTeacher;
+    private UserAuth mockTeacher;
     private UUID teacherId;
     private UUID quizId;
     private UUID questionId;
@@ -55,7 +55,7 @@ class GetQuestionServiceUT {
         quizId = UUID.randomUUID();
         questionId = UUID.randomUUID();
 
-        mockTeacher = User.builder()
+        mockTeacher = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -92,8 +92,8 @@ class GetQuestionServiceUT {
     @DisplayName("Should successfully get a question with answers")
     void testGetQuestion_WithValidDetails_ShouldSucceed() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findById(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getById(questionId)).thenReturn(Optional.of(existingQuestion));
 
         // Act
         GetQuestionResponse response = getQuestionService.getQuestion(quizId, questionId);
@@ -110,15 +110,15 @@ class GetQuestionServiceUT {
         assertEquals("Paris", response.getAnswers().get(0).getContent());
         assertEquals("London", response.getAnswers().get(1).getContent());
 
-        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
-        verify(loadQuestionPort, times(1)).findById(questionId);
+        verify(loadSignedInUserPort, times(1)).getAuthenticatedUser();
+        verify(loadQuestionPort, times(1)).getById(questionId);
     }
 
     @Test
     @DisplayName("Should throw UserNotAuthenticatedException when user is not authenticated")
     void testGetQuestion_WithUnauthenticatedUser_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(UserNotAuthenticatedException.class,
@@ -126,15 +126,15 @@ class GetQuestionServiceUT {
 
         assertEquals("User not authenticated", exception.getMessage());
 
-        verify(loadQuestionPort, never()).findById(questionId);
+        verify(loadQuestionPort, never()).getById(questionId);
     }
 
     @Test
     @DisplayName("Should throw QuestionNotFoundException when question does not exist")
     void testGetQuestion_WithNonExistentQuestion_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findById(questionId)).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getById(questionId)).thenReturn(Optional.empty());
 
         // Act & Assert
         QuestionNotFoundException exception = assertThrows(QuestionNotFoundException.class,
@@ -150,8 +150,8 @@ class GetQuestionServiceUT {
         UUID differentQuizId = UUID.randomUUID();
         existingQuestion.setQuizId(differentQuizId);
 
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findById(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getById(questionId)).thenReturn(Optional.of(existingQuestion));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -166,8 +166,8 @@ class GetQuestionServiceUT {
         // Arrange
         existingQuestion.setAnswers(new ArrayList<>());
 
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findById(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getById(questionId)).thenReturn(Optional.of(existingQuestion));
 
         // Act
         GetQuestionResponse response = getQuestionService.getQuestion(quizId, questionId);

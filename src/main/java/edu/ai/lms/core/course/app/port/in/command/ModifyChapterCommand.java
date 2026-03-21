@@ -6,5 +6,5 @@ import edu.ai.lms.core.course.app.domain.Chapter;
 import lombok.Builder;
 
 @Builder
-public record ModifyChapterCommand(UUID courseId, Long chapterNumber, Chapter chapter) {
+public record ModifyChapterCommand(UUID courseId, UUID chapterId, Chapter chapter) {
 }

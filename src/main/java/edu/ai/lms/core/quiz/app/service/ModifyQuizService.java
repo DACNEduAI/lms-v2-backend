@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.ModifyQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
@@ -27,10 +27,10 @@ public class ModifyQuizService implements ModifyQuizUseCase {
     @Override
     @Transactional
     public ModifyQuizResponse modifyQuiz(ModifyQuizCommand command) {
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
-        Quiz existingQuiz = loadQuizPort.findById(command.quizId())
+        Quiz existingQuiz = loadQuizPort.getById(command.quizId())
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found with id: " + command.quizId()));
 
         // Verify quiz belongs to the same course
@@ -47,6 +47,9 @@ public class ModifyQuizService implements ModifyQuizUseCase {
         updatedQuiz.setCourseId(existingQuiz.getCourseId());
         updatedQuiz.setTeacherId(existingQuiz.getTeacherId());
         updatedQuiz.setStudentId(existingQuiz.getStudentId());
+        if (updatedQuiz.getDisplay() == null) {
+            updatedQuiz.setDisplay(existingQuiz.getDisplay());
+        }
 
         Quiz savedQuiz = saveQuizPort.save(updatedQuiz);
 
@@ -55,13 +58,16 @@ public class ModifyQuizService implements ModifyQuizUseCase {
                 .quizTitle(savedQuiz.getQuizTitle())
                 .timeLimitMinutes(savedQuiz.getTimeLimitMinutes())
                 .passScore(savedQuiz.getPassScore())
+                .startTime(savedQuiz.getStartTime())
+                .dueTime(savedQuiz.getDueTime())
+                .attemptLimited(savedQuiz.getAttemptLimited())
                 .courseId(savedQuiz.getCourseId())
-                .active(savedQuiz.getActive())
+                .display(savedQuiz.getDisplay())
                 .updatedAt(savedQuiz.getUpdatedAt())
                 .build();
     }
 
-    private void verifyQuizOwnership(User user, Quiz quiz) {
+    private void verifyQuizOwnership(UserAuth user, Quiz quiz) {
         boolean isOwner = (user.getRole() == Roles.TEACHER && user.getId().equals(quiz.getTeacherId()))
                 || (user.getRole() == Roles.STUDENT && user.getId().equals(quiz.getStudentId()));
 

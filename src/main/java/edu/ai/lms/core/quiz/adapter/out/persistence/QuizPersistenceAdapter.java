@@ -7,12 +7,12 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.quiz.adapter.out.persistence.mapper.QuizJdbcMapper;
+import edu.ai.lms.core.quiz.app.domain.Answer;
+import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.port.out.DeleteQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
-import edu.ai.lms.database.QuizJdbcTable;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -20,37 +20,57 @@ import lombok.RequiredArgsConstructor;
 class QuizPersistenceAdapter implements SaveQuizPort, LoadQuizPort, DeleteQuizPort {
 
     private final QuizRepository quizRepository;
-    private final QuizJdbcMapper quizJdbcMapper;
+    private final QuestionRepository questionRepository;
+    private final AnswerRepository answerRepository;
 
     @Override
     public Quiz save(Quiz quiz) {
-        QuizJdbcTable entity = quizJdbcMapper.mapToQuizJdbcEntity(quiz);
-        QuizJdbcTable savedEntity = quizRepository.save(entity);
-        return quizJdbcMapper.mapToQuiz(savedEntity);
+        return quizRepository.save(quiz);
     }
 
     @Override
-    public Optional<Quiz> findById(UUID quizId) {
-        return quizRepository.findById(quizId)
-                .map(quizJdbcMapper::mapToQuiz);
+    public Optional<Quiz> getById(UUID quizId) {
+        return quizRepository.getById(quizId);
     }
 
     @Override
-    public List<Quiz> findAllByCourseId(UUID courseId) {
-        return quizRepository.findAllByCourseId(courseId).stream()
-                .map(quizJdbcMapper::mapToQuiz)
-                .collect(Collectors.toList());
+    public Optional<Quiz> getByIdWithQuestionsAndAnswers(UUID courseId, UUID quizId) {
+        return quizRepository.getByIdAndCourseId(quizId, courseId)
+                .map(this::loadQuizWithQuestionsAndAnswers);
     }
 
     @Override
-    public List<Quiz> findByCourseIdAndTeacherId(UUID courseId, UUID teacherId) {
-        return quizRepository.findByCourseIdAndTeacherId(courseId, teacherId).stream()
-                .map(quizJdbcMapper::mapToQuiz)
-                .collect(Collectors.toList());
+    public List<Quiz> getAllByCourseId(UUID courseId) {
+        return quizRepository.getAllByCourseId(courseId).stream().collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Quiz> getTeacherCreatedByCourseId(UUID courseId) {
+        return quizRepository.getTeacherCreatedByCourseId(courseId).stream().collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Quiz> getDisplayedTeacherCreatedByCourseId(UUID courseId) {
+        return quizRepository.getDisplayedTeacherCreatedByCourseId(courseId).stream().collect(Collectors.toList());
     }
 
     @Override
     public void deleteById(UUID quizId) {
         quizRepository.deleteById(quizId);
+    }
+
+    private Quiz loadQuizWithQuestionsAndAnswers(Quiz quiz) {
+        List<Question> questions = questionRepository.getByQuizId(quiz.getId()).stream()
+                .map(this::loadQuestionWithAnswers)
+                .collect(Collectors.toList());
+        quiz.setQuestions(questions);
+        return quiz;
+    }
+
+    private Question loadQuestionWithAnswers(Question question) {
+        List<Answer> answers = answerRepository.getByQuestionId(question.getId()).stream()
+                .collect(Collectors.toList());
+        question.setAnswers(answers);
+        return question;
     }
 }

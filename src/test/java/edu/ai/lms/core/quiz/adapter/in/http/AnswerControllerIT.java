@@ -136,9 +136,13 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
     void testCreateQuestion() {
         String requestBody = """
                 {
-                    "content": "What is the speed of light?",
-                    "type": "MULTIPLE_CHOICE",
-                    "points": 10.0
+                    "questions": [
+                    {
+                        "content": "What is the speed of light?",
+                        "type": "MULTIPLE_CHOICE",
+                        "points": 10.0
+                    }
+                    ]
                 }
                 """;
 
@@ -147,14 +151,14 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .post("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question")
+                .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(201)
-                .body("questionId", notNullValue())
+                .body("[0].questionId", notNullValue())
                 .extract().response();
 
-        createdQuestionId = UUID.fromString(response.jsonPath().getString("questionId"));
+        createdQuestionId = UUID.fromString(response.jsonPath().getString("[0].questionId"));
     }
 
     // ==================== CREATE ANSWER TESTS ====================
@@ -176,7 +180,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .post("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/answer")
+                .post("/api/quiz/" + createdQuestionId + "/answer")
                 .then()
                 .log().all()
                 .statusCode(201)
@@ -207,7 +211,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .post("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/answer")
+                .post("/api/quiz/" + createdQuestionId + "/answer")
                 .then()
                 .log().all()
                 .statusCode(201)
@@ -234,7 +238,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                 .contentType(ContentType.JSON)
                 .body(requestBody)
                 .when()
-                .post("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/answer")
+                .post("/api/quiz/" + createdQuestionId + "/answer")
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -256,7 +260,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .post("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/answer")
+                .post("/api/quiz/" + createdQuestionId + "/answer")
                 .then()
                 .log().all()
                 .statusCode(400);
@@ -271,7 +275,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId)
+                .get("/api/quiz/" + createdQuizId + "/question/" + createdQuestionId)
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -298,7 +302,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/answer/" + createdAnswerNumber)
+                .put("/api/quiz/" + createdQuestionId + "/answer/" + createdAnswerNumber)
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -324,7 +328,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                 .contentType(ContentType.JSON)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/answer/" + createdAnswerNumber)
+                .put("/api/quiz/" + createdQuestionId + "/answer/" + createdAnswerNumber)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -346,7 +350,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/answer/99999")
+                .put("/api/quiz/" + createdQuestionId + "/answer/99999")
                 .then()
                 .log().all()
                 .statusCode(404);
@@ -360,7 +364,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
     void testDeleteAnswer_WithoutAuth() {
         given()
                 .when()
-                .delete("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/answer/" + secondAnswerNumber)
+                .delete("/api/quiz/" + createdQuestionId + "/answer/" + secondAnswerNumber)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -373,7 +377,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .delete("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/answer/" + secondAnswerNumber)
+                .delete("/api/quiz/" + createdQuestionId + "/answer/" + secondAnswerNumber)
                 .then()
                 .log().all()
                 .statusCode(200)
@@ -389,7 +393,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .delete("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/answer/99999")
+                .delete("/api/quiz/" + createdQuestionId + "/answer/99999")
                 .then()
                 .log().all()
                 .statusCode(404);
@@ -404,7 +408,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/quiz/" + createdQuizId + "/question/" + createdQuestionId)
+                .get("/api/quiz/" + createdQuizId + "/question/" + createdQuestionId)
                 .then()
                 .log().all()
                 .statusCode(200)

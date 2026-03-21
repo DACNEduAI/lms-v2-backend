@@ -34,7 +34,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/{courseId}/quiz/{quizId}/question/{questionId}/answer")
+@RequestMapping("/api/quiz/{questionId}/answer")
 @RequiredArgsConstructor
 public class AnswerController {
 
@@ -52,8 +52,6 @@ public class AnswerController {
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
     @PostMapping()
     public ResponseEntity<CreateAnswerResponse> createAnswer(
-            @PathVariable UUID courseId,
-            @PathVariable UUID quizId,
             @PathVariable UUID questionId,
             @Valid @RequestBody CreateAnswerRequest request) {
         CreateAnswerCommand command = createAnswerCommandMapper.toCommand(questionId, request);
@@ -70,8 +68,6 @@ public class AnswerController {
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
     @PutMapping("/{answerNumber}")
     public ResponseEntity<ModifyAnswerResponse> modifyAnswer(
-            @PathVariable UUID courseId,
-            @PathVariable UUID quizId,
             @PathVariable UUID questionId,
             @PathVariable Long answerNumber,
             @Valid @RequestBody ModifyAnswerRequest request) {
@@ -89,8 +85,6 @@ public class AnswerController {
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
     @DeleteMapping("/{answerNumber}")
     public ResponseEntity<DeleteAnswerResponse> deleteAnswer(
-            @PathVariable UUID courseId,
-            @PathVariable UUID quizId,
             @PathVariable UUID questionId,
             @PathVariable Long answerNumber) {
         DeleteAnswerResponse response = deleteAnswerUseCase.deleteAnswer(questionId, answerNumber);

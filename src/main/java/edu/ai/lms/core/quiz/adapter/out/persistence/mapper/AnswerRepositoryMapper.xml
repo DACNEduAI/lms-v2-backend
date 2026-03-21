@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.quiz.adapter.out.persistence.AnswerRepository">
+
+  <resultMap id="AnswerResultMap" type="edu.ai.lms.core.quiz.app.domain.Answer">
+    <id property="answerNumber" column="answer_number" />
+    <result property="content" column="content" />
+    <result property="isCorrect" column="is_correct" />
+    <result property="explanation" column="explanation" />
+    <result property="questionId" column="question_id" />
+    <result property="createdAt" column="created_at" />
+    <result property="updatedAt" column="updated_at" />
+  </resultMap>
+
+  <select id="getByQuestionId" resultMap="AnswerResultMap">
+    SELECT answer_number, content, is_correct, explanation, question_id, created_at, updated_at
+    FROM answers
+    WHERE question_id = #{questionId}
+    ORDER BY answer_number
+  </select>
+
+  <select id="getByAnswerNumberAndQuestionId" resultMap="AnswerResultMap">
+    SELECT answer_number, content, is_correct, explanation, question_id, created_at, updated_at
+    FROM answers
+    WHERE answer_number = #{answerNumber}
+      AND question_id = #{questionId}
+  </select>
+
+  <delete id="deleteByQuestionId">
+    DELETE FROM answers WHERE question_id = #{questionId}
+  </delete>
+
+  <delete id="deleteByAnswerNumberAndQuestionId">
+    DELETE FROM answers
+    WHERE answer_number = #{answerNumber}
+      AND question_id = #{questionId}
+  </delete>
+
+  <select id="insertAndReturnAnswerNumber" resultType="java.lang.Long">
+    INSERT INTO answers (question_id, content, is_correct, explanation, created_at, updated_at)
+    VALUES (#{questionId}, #{content}, #{isCorrect}, #{explanation}, NOW(), NOW())
+    RETURNING answer_number
+  </select>
+
+  <update id="updateByCompositeKey">
+    UPDATE answers
+    SET content = #{content},
+        is_correct = #{isCorrect},
+        explanation = #{explanation},
+        updated_at = NOW()
+    WHERE answer_number = #{answerNumber}
+      AND question_id = #{questionId}
+  </update>
+
+</mapper>

@@ -28,7 +28,7 @@ public class CreateMaterialCommandMapper {
                 .build();
     }
 
-    public CreateMaterialForChapterCommand toCommand(UUID courseId, Long chapterNumber, CreateMaterialRequest request) {
+    public CreateMaterialForChapterCommand toCommand(UUID courseId, UUID chapterId, CreateMaterialRequest request) {
         String fileKey = generateFileKey(courseId, request.getTitle(), request.getType());
 
         Material material = Material.builder()
@@ -40,7 +40,7 @@ public class CreateMaterialCommandMapper {
 
         return CreateMaterialForChapterCommand.builder()
                 .courseId(courseId)
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .material(material)
                 .build();
     }

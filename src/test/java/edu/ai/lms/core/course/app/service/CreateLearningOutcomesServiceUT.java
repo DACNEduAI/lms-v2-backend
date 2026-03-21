@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.CreateLearningOutcomesResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
@@ -49,7 +49,7 @@ class CreateLearningOutcomesServiceUT {
     @InjectMocks
     private CreateLearningOutcomesService createLearningOutcomesService;
 
-    private User mockUser;
+    private UserAuth mockUser;
     private UUID teacherId;
     private UUID courseId;
     private Course mockCourse;
@@ -59,7 +59,7 @@ class CreateLearningOutcomesServiceUT {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
 
-        mockUser = User.builder()
+        mockUser = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -203,7 +203,7 @@ class CreateLearningOutcomesServiceUT {
     void testCreateLearningOutcomes_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
         UUID anotherTeacherId = UUID.randomUUID();
-        User anotherUser = User.builder().id(anotherTeacherId).role(Roles.TEACHER).build();
+        UserAuth anotherUser = UserAuth.builder().id(anotherTeacherId).role(Roles.TEACHER).build();
 
         LearningOutcome lo = LearningOutcome.builder().code("CLO-1").description("Understand basics").build();
         CreateLearningOutcomesCommand command = CreateLearningOutcomesCommand.builder()

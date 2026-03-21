@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.ModifyAnswerResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
@@ -60,7 +60,7 @@ class ModifyAnswerServiceUT {
     @InjectMocks
     private ModifyAnswerService modifyAnswerService;
 
-    private User mockTeacher;
+    private UserAuth mockTeacher;
     private UUID teacherId;
     private UUID quizId;
     private UUID questionId;
@@ -77,7 +77,7 @@ class ModifyAnswerServiceUT {
         questionId = UUID.randomUUID();
         answerNumber = 1L;
 
-        mockTeacher = User.builder()
+        mockTeacher = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -87,7 +87,7 @@ class ModifyAnswerServiceUT {
                 .quizTitle("Midterm Quiz")
                 .courseId(UUID.randomUUID())
                 .teacherId(teacherId)
-                .active(true)
+                .display(true)
                 .build();
 
         existingQuestion = Question.builder()
@@ -122,10 +122,10 @@ class ModifyAnswerServiceUT {
     @DisplayName("Should successfully modify an answer with valid details")
     void testModifyAnswer_WithValidDetails_ShouldSucceed() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
-        when(loadAnswerPort.findByKey(questionId, answerNumber)).thenReturn(Optional.of(existingAnswer));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadAnswerPort.getByKey(questionId, answerNumber)).thenReturn(Optional.of(existingAnswer));
 
         Answer savedAnswer = Answer.builder()
                 .answerNumber(answerNumber)
@@ -148,10 +148,10 @@ class ModifyAnswerServiceUT {
         assertEquals("Updated explanation", response.getExplanation());
         assertEquals(questionId, response.getQuestionId());
 
-        verify(loadSignedInUserPort, times(1)).findAuthenticatedUser();
-        verify(loadQuestionPort, times(1)).findByIdWithoutAnswers(questionId);
-        verify(loadQuizPort, times(1)).findById(quizId);
-        verify(loadAnswerPort, times(1)).findByKey(questionId, answerNumber);
+        verify(loadSignedInUserPort, times(1)).getAuthenticatedUser();
+        verify(loadQuestionPort, times(1)).getByIdWithoutAnswers(questionId);
+        verify(loadQuizPort, times(1)).getById(quizId);
+        verify(loadAnswerPort, times(1)).getByKey(questionId, answerNumber);
         verify(saveAnswerPort, times(1)).save(any(Answer.class));
     }
 
@@ -159,7 +159,7 @@ class ModifyAnswerServiceUT {
     @DisplayName("Should throw UserNotAuthenticatedException when user is not authenticated")
     void testModifyAnswer_WithUnauthenticatedUser_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
 
         // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(UserNotAuthenticatedException.class,
@@ -174,8 +174,8 @@ class ModifyAnswerServiceUT {
     @DisplayName("Should throw QuestionNotFoundException when question does not exist")
     void testModifyAnswer_WithNonExistentQuestion_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.empty());
 
         // Act & Assert
         QuestionNotFoundException exception = assertThrows(QuestionNotFoundException.class,
@@ -190,9 +190,9 @@ class ModifyAnswerServiceUT {
     @DisplayName("Should throw QuizNotFoundException when quiz does not exist")
     void testModifyAnswer_WithNonExistentQuiz_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.empty());
 
         // Act & Assert
         QuizNotFoundException exception = assertThrows(QuizNotFoundException.class,
@@ -208,14 +208,14 @@ class ModifyAnswerServiceUT {
     void testModifyAnswer_WithNonOwner_ShouldThrowException() {
         // Arrange
         UUID anotherTeacherId = UUID.randomUUID();
-        User anotherTeacher = User.builder()
+        UserAuth anotherTeacher = UserAuth.builder()
                 .id(anotherTeacherId)
                 .role(Roles.TEACHER)
                 .build();
 
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -230,10 +230,10 @@ class ModifyAnswerServiceUT {
     @DisplayName("Should throw AnswerNotFoundException when answer does not exist")
     void testModifyAnswer_WithNonExistentAnswer_ShouldThrowException() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
-        when(loadAnswerPort.findByKey(questionId, answerNumber)).thenReturn(Optional.empty());
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadAnswerPort.getByKey(questionId, answerNumber)).thenReturn(Optional.empty());
 
         // Act & Assert
         AnswerNotFoundException exception = assertThrows(AnswerNotFoundException.class,
@@ -248,10 +248,10 @@ class ModifyAnswerServiceUT {
     @DisplayName("Should preserve existing answerNumber and questionId when modifying")
     void testModifyAnswer_ShouldPreserveExistingProperties() {
         // Arrange
-        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadQuestionPort.findByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
-        when(loadQuizPort.findById(quizId)).thenReturn(Optional.of(existingQuiz));
-        when(loadAnswerPort.findByKey(questionId, answerNumber)).thenReturn(Optional.of(existingAnswer));
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuestionPort.getByIdWithoutAnswers(questionId)).thenReturn(Optional.of(existingQuestion));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadAnswerPort.getByKey(questionId, answerNumber)).thenReturn(Optional.of(existingAnswer));
 
         ArgumentCaptor<Answer> answerCaptor = ArgumentCaptor.forClass(Answer.class);
         Answer savedAnswer = Answer.builder()

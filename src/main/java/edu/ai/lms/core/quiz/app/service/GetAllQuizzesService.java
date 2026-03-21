@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetAllQuizzesResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
@@ -32,19 +32,19 @@ public class GetAllQuizzesService implements GetAllQuizzesUseCase {
         List<Quiz> loadQuizzes(UUID userId, UUID courseId);
     }
 
-    // Student strategy: see ALL quizzes in the course (from all creators)
+    // Student strategy: see displayed quizzes created by teachers in the course.
     private class StudentQuizLoadStrategy implements QuizLoadStrategy {
         @Override
         public List<Quiz> loadQuizzes(UUID userId, UUID courseId) {
-            return loadQuizPort.findAllByCourseId(courseId);
+            return loadQuizPort.getDisplayedTeacherCreatedByCourseId(courseId);
         }
     }
 
-    // Teacher strategy: see ONLY their own quizzes in the course
+    // Teacher strategy: see all quizzes created by teachers in the course.
     private class TeacherQuizLoadStrategy implements QuizLoadStrategy {
         @Override
         public List<Quiz> loadQuizzes(UUID userId, UUID courseId) {
-            return loadQuizPort.findByCourseIdAndTeacherId(courseId, userId);
+            return loadQuizPort.getTeacherCreatedByCourseId(courseId);
         }
     }
 
@@ -58,8 +58,8 @@ public class GetAllQuizzesService implements GetAllQuizzesUseCase {
 
     @Override
     @Transactional(readOnly = true)
-    public GetAllQuizzesResponse getAllQuizzes(UUID courseId, int pageSize, String sortDirection) {
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+    public GetAllQuizzesResponse getAllQuizzes(UUID courseId, int pageSize, String lastCreated) {
+        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         // Verify user belongs to the course
@@ -73,11 +73,17 @@ public class GetAllQuizzesService implements GetAllQuizzesUseCase {
 
         // Sort quizzes by title
         Comparator<Quiz> comparator = Comparator.comparing(
-                quiz -> quiz.getQuizTitle().toLowerCase().charAt(0));
+                Quiz::getStartTime,
+                Comparator.nullsLast(Comparator.naturalOrder()));
 
-        if ("desc".equalsIgnoreCase(sortDirection)) {
+        if ("des".equalsIgnoreCase(lastCreated) || "desc".equalsIgnoreCase(lastCreated)) {
             comparator = comparator.reversed();
         }
+
+        String appliedLastCreated =
+                ("des".equalsIgnoreCase(lastCreated) || "desc".equalsIgnoreCase(lastCreated))
+                        ? "des"
+                        : "asc";
 
         List<GetAllQuizzesResponse.QuizSummary> quizSummaries = quizzes.stream()
                 .sorted(comparator)
@@ -87,7 +93,10 @@ public class GetAllQuizzesService implements GetAllQuizzesUseCase {
                         .quizTitle(quiz.getQuizTitle())
                         .timeLimitMinutes(quiz.getTimeLimitMinutes())
                         .passScore(quiz.getPassScore())
-                        .active(quiz.getActive())
+                        .startTime(quiz.getStartTime())
+                        .dueTime(quiz.getDueTime())
+                        .attemptLimited(quiz.getAttemptLimited())
+                        .display(quiz.getDisplay())
                         .createdAt(quiz.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
@@ -96,11 +105,11 @@ public class GetAllQuizzesService implements GetAllQuizzesUseCase {
                 .quizzes(quizSummaries)
                 .totalQuizzes(quizzes.size())
                 .pageSize(pageSize)
-                .sortDirection(sortDirection != null ? sortDirection : "asc")
+                .lastCreated(appliedLastCreated)
                 .build();
     }
 
-    private void verifyCourseMembership(User user, UUID courseId) {
+    private void verifyCourseMembership(UserAuth user, UUID courseId) {
         boolean isMember = user.getRole() == Roles.TEACHER
                 ? loadCourseMembershipPort.isTeacherInCourse(user.getId(), courseId)
                 : loadCourseMembershipPort.isStudentInCourse(user.getId(), courseId);

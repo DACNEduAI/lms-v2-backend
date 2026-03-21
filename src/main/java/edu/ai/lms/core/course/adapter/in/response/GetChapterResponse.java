@@ -1,8 +1,12 @@
 package edu.ai.lms.core.course.adapter.in.response;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.v3.oas.annotations.media.Schema;
+import edu.ai.lms.config.DatePatternConstants;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,12 +16,20 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class GetChapterResponse {
-    private Long chapterNumber;
+    private UUID chapterId;
     private String title;
     private String description;
     private UUID courseId;
-    private List<MaterialDto> materials;
+    private List<UUID> learningOutcomeIds;
+    @Builder.Default
+    private List<LearningOutcomeSummary> ungroupedLearningOutcomes = new ArrayList<>();
+    @Builder.Default
+    private List<GroupLearningOutcomeSummary> groupedLearningOutcomes = new ArrayList<>();
+    @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN)
     private LocalDateTime createdAt;
+    @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN)
     private LocalDateTime updatedAt;
 
     @Getter
@@ -25,11 +37,22 @@ public class GetChapterResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
-    public static class MaterialDto {
+    public static class LearningOutcomeSummary {
         private UUID id;
-        private String title;
-        private String type;
-        private String fileKey;
-        private boolean downloadable;
+        private String code;
+        private String description;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class GroupLearningOutcomeSummary {
+        private UUID id;
+        private String name;
+        private String description;
+        @Builder.Default
+        private List<LearningOutcomeSummary> learningOutcomes = new ArrayList<>();
     }
 }

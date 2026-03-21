@@ -1,18 +1,36 @@
 package edu.ai.lms.core.quiz.adapter.out.persistence;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.data.jdbc.repository.query.Query;
-import org.springframework.data.repository.CrudRepository;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import edu.ai.lms.core.quiz.app.domain.Question;
 
-import edu.ai.lms.database.QuestionJdbcTable;
+@Mapper
+interface QuestionRepository {
 
-@Repository
-interface QuestionRepository extends CrudRepository<QuestionJdbcTable, UUID> {
+    int insert(Question entity);
 
-    @Query("SELECT * FROM questions WHERE quiz_id = :quizId ORDER BY created_at")
-    List<QuestionJdbcTable> findByQuizId(@Param("quizId") UUID quizId);
+    int update(Question entity);
+
+    default Question save(Question entity) {
+        if (entity.getId() == null) {
+            entity.setId(java.util.UUID.randomUUID());
+            insert(entity);
+        } else {
+            int updated = update(entity);
+            if (updated == 0) {
+                insert(entity);
+            }
+        }
+        return getById(entity.getId()).orElseThrow();
+    }
+
+    void deleteById(@Param("id") UUID id);
+
+    Optional<Question> getById(@Param("questionId") UUID questionId);
+
+    List<Question> getByQuizId(@Param("quizId") UUID quizId);
 }

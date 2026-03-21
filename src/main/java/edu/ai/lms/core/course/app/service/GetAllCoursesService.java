@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.GetAllCoursesResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.port.in.usecase.GetAllCoursesUseCase;
@@ -24,45 +24,15 @@ public class GetAllCoursesService implements GetAllCoursesUseCase {
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInUserPort loadSignedInUserPort;
 
-    // Strategy Pattern - Inner interface for loading courses
-    private interface CourseLoadStrategy {
-        List<Course> loadCourses(UUID userId);
-    }
-
-    // Strategy Pattern - Teacher implementation
-    private class TeacherCourseLoadStrategy implements CourseLoadStrategy {
-        @Override
-        public List<Course> loadCourses(UUID userId) {
-            return loadCoursePort.findAllByTeacherId(userId);
-        }
-    }
-
-    // Strategy Pattern - Student implementation
-    private class StudentCourseLoadStrategy implements CourseLoadStrategy {
-        @Override
-        public List<Course> loadCourses(UUID userId) {
-            return loadCoursePort.findAllByStudentId(userId);
-        }
-    }
-
-    // Strategy Pattern - Select strategy based on role
-    private CourseLoadStrategy selectStrategy(Roles role) {
-        return switch (role) {
-            case TEACHER -> new TeacherCourseLoadStrategy();
-            case STUDENT -> new StudentCourseLoadStrategy();
-            default -> throw new IllegalArgumentException("Unsupported role: " + role);
-        };
-    }
-
     @Override
     @Transactional(readOnly = true)
     public GetAllCoursesResponse getAllCourses(int pageSize, String sortDirection) {
         // Validate user exists and get authenticated user
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
 
         // Select the appropriate strategy based on user's role
-        CourseLoadStrategy strategy = selectStrategy(user.getRole());
+        LoadCourseStrategy strategy = selectStrategy(user.getRole());
 
         // Load all courses for the user using the selected strategy
         List<Course> courses = strategy.loadCourses(user.getId());
@@ -70,7 +40,7 @@ public class GetAllCoursesService implements GetAllCoursesUseCase {
         // Sort courses by course name (first letter)
         Comparator<Course> comparator = Comparator.comparing(
                 course -> course.getCourseName().toLowerCase().charAt(0));
-        
+
         if ("desc".equalsIgnoreCase(sortDirection)) {
             comparator = comparator.reversed();
         }
@@ -98,5 +68,35 @@ public class GetAllCoursesService implements GetAllCoursesUseCase {
                 .pageSize(pageSize)
                 .sortDirection(sortDirection != null ? sortDirection : "asc")
                 .build();
+    }
+
+    // Strategy Pattern - Inner interface for loading courses
+    private interface LoadCourseStrategy {
+        List<Course> loadCourses(UUID userId);
+    }
+
+    // Strategy Pattern - Teacher implementation
+    private class TeacherLoadCourseStrategy implements LoadCourseStrategy {
+        @Override
+        public List<Course> loadCourses(UUID userId) {
+            return loadCoursePort.findAllByTeacherId(userId);
+        }
+    }
+
+    // Strategy Pattern - Student implementation
+    private class StudentLoadCourseStrategy implements LoadCourseStrategy {
+        @Override
+        public List<Course> loadCourses(UUID userId) {
+            return loadCoursePort.findAllByStudentId(userId);
+        }
+    }
+
+    // Strategy Pattern - Select strategy based on role
+    private LoadCourseStrategy selectStrategy(Roles role) {
+        return switch (role) {
+            case TEACHER -> new TeacherLoadCourseStrategy();
+            case STUDENT -> new StudentLoadCourseStrategy();
+            default -> throw new IllegalArgumentException("Unsupported role: " + role);
+        };
     }
 }

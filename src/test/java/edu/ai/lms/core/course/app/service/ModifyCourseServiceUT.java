@@ -1,7 +1,6 @@
 package edu.ai.lms.core.course.app.service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,10 +24,9 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.ModifyCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.in.command.ModifyCourseCommand;
@@ -52,7 +50,7 @@ class ModifyCourseServiceUT {
     private ModifyCourseService modifyCourseService;
 
     private ModifyCourseCommand validCommand;
-    private User mockUser;
+    private UserAuth mockUser;
     private Course existingCourse;
     private UUID teacherId;
     private UUID courseId;
@@ -62,7 +60,7 @@ class ModifyCourseServiceUT {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
 
-        mockUser = User.builder()
+        mockUser = UserAuth.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -76,12 +74,6 @@ class ModifyCourseServiceUT {
                 .active(true)
                 .build();
 
-        List<LearningOutcome> learningOutcomes = new ArrayList<>();
-        learningOutcomes.add(LearningOutcome.builder()
-                .code("CLO-1")
-                .description("Updated learning outcome")
-                .build());
-
         Course course = Course.builder()
                 .courseName("Updated Course Name")
                 .description("Updated description")
@@ -90,7 +82,6 @@ class ModifyCourseServiceUT {
                 .coverImage("https://example.com/new-image.jpg")
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(3))
-                .learningOutcomes(learningOutcomes)
                 .build();
 
         validCommand = ModifyCourseCommand.builder()
@@ -175,7 +166,7 @@ class ModifyCourseServiceUT {
     void testModifyCourse_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
         UUID differentTeacherId = UUID.randomUUID();
-        User differentUser = User.builder()
+        UserAuth differentUser = UserAuth.builder()
                 .id(differentTeacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -195,7 +186,7 @@ class ModifyCourseServiceUT {
     }
 
     @Test
-    @DisplayName("Should save course with updated details and learning outcomes")
+        @DisplayName("Should save course with updated details")
     void testModifyCourse_ShouldSaveCourseWithUpdatedDetails() {
         // Arrange
         Course course = validCommand.course();
@@ -222,9 +213,6 @@ class ModifyCourseServiceUT {
         assertEquals("Updated Course Name", capturedCourse.getCourseName());
         assertEquals("Updated description", capturedCourse.getDescription());
         assertTrue(capturedCourse.getTeacherIds().contains(teacherId));
-        assertNotNull(capturedCourse.getLearningOutcomes());
-        assertEquals(1, capturedCourse.getLearningOutcomes().size());
-        assertEquals("CLO-1", capturedCourse.getLearningOutcomes().get(0).getCode());
     }
 
     @Test
@@ -251,10 +239,10 @@ class ModifyCourseServiceUT {
     }
 
     @Test
-    @DisplayName("Should handle modify course with empty learning outcomes")
-    void testModifyCourse_WithEmptyLearningOutcomes_ShouldSucceed() {
+    @DisplayName("Should handle modify course without learning outcomes payload")
+    void testModifyCourse_WithoutLearningOutcomes_ShouldSucceed() {
         // Arrange
-        Course emptyLoCourse = Course.builder()
+        Course noLearningOutcomesCourse = Course.builder()
                 .courseName("Updated Course Name")
                 .description("Updated description")
                 .courseCode("CS101")
@@ -262,25 +250,24 @@ class ModifyCourseServiceUT {
                 .coverImage("https://example.com/new-image.jpg")
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(3))
-                .learningOutcomes(new ArrayList<>())
                 .build();
-        ModifyCourseCommand emptyLoCommand = ModifyCourseCommand.builder()
+        ModifyCourseCommand noLearningOutcomesCommand = ModifyCourseCommand.builder()
                 .courseId(courseId)
-                .course(emptyLoCourse)
+                .course(noLearningOutcomesCourse)
                 .build();
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(existingCourse));
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
         
         Course savedCourse = Course.builder()
                 .id(courseId)
-                .courseName(emptyLoCourse.getCourseName())
-                .courseCode(emptyLoCourse.getCourseCode())
+                .courseName(noLearningOutcomesCourse.getCourseName())
+                .courseCode(noLearningOutcomesCourse.getCourseCode())
                 .teacherIds(List.of(teacherId))
                 .build();
         when(saveCoursePort.save(any(Course.class))).thenReturn(savedCourse);
 
         // Act
-        ModifyCourseResponse response = modifyCourseService.modifyCourse(emptyLoCommand);
+        ModifyCourseResponse response = modifyCourseService.modifyCourse(noLearningOutcomesCommand);
 
         // Assert
         assertNotNull(response);

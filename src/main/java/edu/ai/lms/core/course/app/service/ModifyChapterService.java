@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.User;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.ModifyChapterResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
@@ -33,7 +33,7 @@ public class ModifyChapterService implements TeacherModifyChapterUseCase {
     @Transactional
     public ModifyChapterResponse modifyChapter(ModifyChapterCommand command) {
         // Verify teacher is authenticated
-        User user = loadSignedInUserPort.findAuthenticatedUser()
+        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         // Verify course exists
@@ -46,13 +46,13 @@ public class ModifyChapterService implements TeacherModifyChapterUseCase {
         }
 
         // Verify chapter exists
-        Chapter existingChapter = loadChapterPort.findByKey(command.courseId(), command.chapterNumber())
+        Chapter existingChapter = loadChapterPort.findByKey(command.courseId(), command.chapterId())
                 .orElseThrow(() -> new ChapterNotFoundException(
-                        "Chapter not found with number: " + command.chapterNumber() + " in course: " + command.courseId()));
+                        "Chapter not found with number: " + command.chapterId() + " in course: " + command.courseId()));
 
         // Update chapter with new data
         Chapter updatedChapter = Chapter.builder()
-                .chapterNumber(existingChapter.getChapterNumber())
+                .chapterId(existingChapter.getChapterId())
                 .courseId(existingChapter.getCourseId())
                 .title(command.chapter().getTitle())
                 .description(command.chapter().getDescription())
@@ -63,7 +63,7 @@ public class ModifyChapterService implements TeacherModifyChapterUseCase {
         Chapter savedChapter = saveChapterPort.save(updatedChapter);
 
         return ModifyChapterResponse.builder()
-                .chapterNumber(savedChapter.getChapterNumber())
+                .chapterId(savedChapter.getChapterId())
                 .title(savedChapter.getTitle())
                 .description(savedChapter.getDescription())
                 .courseId(savedChapter.getCourseId())

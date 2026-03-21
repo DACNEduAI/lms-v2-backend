@@ -3,24 +3,48 @@ package edu.ai.lms.core.course.adapter.out.persistence;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.data.jdbc.repository.query.Modifying;
-import org.springframework.data.jdbc.repository.query.Query;
-import org.springframework.data.repository.CrudRepository;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
-import edu.ai.lms.database.LearningOutcomeJdbcTable;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import edu.ai.lms.core.course.app.domain.LearningOutcome;
 
 /**
  * Package-private repository interface for learning outcomes.
  */
-@Repository
-interface LearningOutcomeRepository extends CrudRepository<LearningOutcomeJdbcTable, UUID> {
+@Mapper
+interface LearningOutcomeRepository {
 
-    @Query("SELECT * FROM learning_outcomes WHERE course_id = :courseId")
-    List<LearningOutcomeJdbcTable> findByCourseId(@Param("courseId") UUID courseId);
+    java.util.Optional<LearningOutcome> findById(@Param("id") UUID id);
 
-    @Modifying
-    @Query("DELETE FROM learning_outcomes WHERE course_id = :courseId")
+    int insert(LearningOutcome entity);
+
+    int update(LearningOutcome entity);
+
+    default LearningOutcome save(LearningOutcome entity) {
+        if (entity.getId() == null) {
+            entity.setId(java.util.UUID.randomUUID());
+            insert(entity);
+        } else {
+            int updated = update(entity);
+            if (updated == 0) {
+                insert(entity);
+            }
+        }
+        return findById(entity.getId()).orElseThrow();
+    }
+
+    void deleteById(@Param("id") UUID id);
+
+    void deleteAllById(@Param("ids") List<UUID> ids);
+
+    List<LearningOutcome> findByCourseId(@Param("courseId") UUID courseId);
+
+    List<LearningOutcome> findByGroupLearningOutcomeId(@Param("groupId") UUID groupId);
+
+    List<LearningOutcome> findUngroupedByCourseId(@Param("courseId") UUID courseId);
+
+    void updateGroupLearningOutcomeId(@Param("id") UUID id, @Param("courseId") UUID courseId, @Param("groupId") UUID groupId);
+
+    void removeFromGroup(@Param("id") UUID id, @Param("courseId") UUID courseId);
+
     void deleteByCourseId(@Param("courseId") UUID courseId);
 }

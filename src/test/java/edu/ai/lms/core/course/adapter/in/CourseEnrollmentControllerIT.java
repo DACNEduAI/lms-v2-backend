@@ -149,7 +149,7 @@ class CourseEnrollmentControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .log().all()
                 .statusCode(201)
-                .body("token", notNullValue());
+            .body("token", notNullValue());
     }
 
     @Test
@@ -598,5 +598,51 @@ class CourseEnrollmentControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .log().all()
                 .statusCode(400);
+    }
+
+    @Test
+    @Order(24)
+    @DisplayName("Should list course enrollment IDs for teachers and students")
+    void testGetCourseEnrollments_Success() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/course/" + createdCourseId + "/enrollments")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("courseId", equalTo(createdCourseId.toString()))
+                .body("teachers", hasSize(1))
+                .body("teachers[0]", notNullValue())
+                .body("students", hasSize(1))
+                .body("students[0]", notNullValue());
+    }
+
+    @Test
+    @Order(25)
+    @DisplayName("Should fail to list course enrollments without authentication")
+    void testGetCourseEnrollments_WithoutAuth() {
+        given()
+                .contentType(ContentType.JSON)
+                .when()
+                .get("/api/course/" + createdCourseId + "/enrollments")
+                .then()
+                .log().all()
+                .statusCode(anyOf(is(401), is(403)));
+    }
+
+    @Test
+    @Order(26)
+    @DisplayName("Should fail to list course enrollments by unauthorized teacher")
+    void testGetCourseEnrollments_UnauthorizedTeacher() {
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + anotherTeacherToken)
+                .when()
+                .get("/api/course/" + createdCourseId + "/enrollments")
+                .then()
+                .log().all()
+                .statusCode(403);
     }
 }

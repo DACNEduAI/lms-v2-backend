@@ -15,7 +15,7 @@ import lombok.Setter;
 @Builder
 public class DeleteChapterResponse {
     private UUID courseId;
-    private Long chapterNumber;
+    private UUID chapterId;
     private String message;
     private Boolean success;
 }
