@@ -75,13 +75,13 @@
     SELECT m.id, m.title, m.type, m.file_key, m.is_downloadable, m.status, m.course_id, m.created_at, m.updated_at
     FROM materials m
     INNER JOIN chapter_materials cm ON m.id = cm.material_id
-    WHERE cm.chapter_number = #{chapterNumber}
-      AND cm.course_id = #{courseId}
+    WHERE cm.chapter_id = #{chapterId}
+      AND m.course_id = #{courseId}
   </select>
 
   <insert id="insertChapterMaterial">
-    INSERT INTO chapter_materials (material_id, chapter_number, course_id)
-    VALUES (#{materialId}, #{chapterNumber}, #{courseId})
+    INSERT INTO chapter_materials (material_id, chapter_id)
+    VALUES (#{materialId}, #{chapterId})
   </insert>
 
   <delete id="deleteChapterMaterialLinks">

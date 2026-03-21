@@ -10,11 +10,11 @@ import edu.ai.lms.core.course.app.port.in.command.RemoveLearningOutcomesFromChap
 @Component
 public class RemoveLearningOutcomesFromChapterCommandMapper {
 
-    public RemoveLearningOutcomesFromChapterCommand toCommand(UUID courseId, Long chapterNumber,
+    public RemoveLearningOutcomesFromChapterCommand toCommand(UUID courseId, UUID chapterId,
                                                                RemoveLearningOutcomesFromChapterRequest request) {
         return RemoveLearningOutcomesFromChapterCommand.builder()
                 .courseId(courseId)
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .learningOutcomeIds(request.getLearningOutcomeIds())
                 .build();
     }

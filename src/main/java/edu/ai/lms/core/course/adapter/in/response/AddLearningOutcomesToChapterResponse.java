@@ -12,7 +12,7 @@ import lombok.*;
 @Builder
 public class AddLearningOutcomesToChapterResponse {
     private UUID courseId;
-    private Long chapterNumber;
+    private UUID chapterId;
     private List<UUID> addedLearningOutcomeIds;
     private int totalAdded;
     private String message;

@@ -54,7 +54,7 @@ class CreateChapterServiceUT {
     private UserAuth mockUser;
     private UUID teacherId;
     private UUID courseId;
-    private Long chapterNumber;
+    private UUID chapterId;
     private Course mockCourse;
     private CreateChapterCommand validCommand;
 
@@ -62,7 +62,7 @@ class CreateChapterServiceUT {
     void setUp() {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
-        chapterNumber = 1L;
+        chapterId = UUID.randomUUID();
 
         mockUser = UserAuth.builder()
                 .id(teacherId)
@@ -99,7 +99,7 @@ class CreateChapterServiceUT {
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         Chapter savedChapter = Chapter.builder()
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .title("Chapter 1: Introduction")
                 .description("Introduction to Java programming")
                 .courseId(courseId)
@@ -112,7 +112,7 @@ class CreateChapterServiceUT {
 
         // Assert
         assertNotNull(response);
-        assertEquals(chapterNumber, response.getChapterNumber());
+        assertEquals(chapterId, response.getChapterId());
         assertEquals("Chapter 1: Introduction", response.getTitle());
         assertEquals("Introduction to Java programming", response.getDescription());
         assertEquals(courseId, response.getCourseId());
@@ -190,7 +190,7 @@ class CreateChapterServiceUT {
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
 
         Chapter savedChapter = Chapter.builder()
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .title("Chapter 1: Introduction")
                 .description("Introduction to Java programming")
                 .courseId(courseId)
@@ -219,7 +219,7 @@ class CreateChapterServiceUT {
 
         LocalDateTime createdAt = LocalDateTime.now();
         Chapter savedChapter = Chapter.builder()
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .title("Chapter 1: Introduction")
                 .description("Introduction to Java programming")
                 .courseId(courseId)
@@ -231,7 +231,7 @@ class CreateChapterServiceUT {
         CreateChapterResponse response = createChapterService.createChapter(validCommand);
 
         // Assert
-        assertEquals(chapterNumber, response.getChapterNumber());
+        assertEquals(chapterId, response.getChapterId());
         assertEquals("Chapter 1: Introduction", response.getTitle());
         assertEquals("Introduction to Java programming", response.getDescription());
         assertEquals(courseId, response.getCourseId());

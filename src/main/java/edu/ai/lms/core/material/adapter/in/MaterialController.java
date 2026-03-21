@@ -107,11 +107,11 @@ public class MaterialController {
             @ApiResponse(responseCode = "403", description = "Not authorized to access this course")
     })
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    @GetMapping("/chapter/{chapterNumber}")
+    @GetMapping("/chapter/{chapterId}")
     public ResponseEntity<List<GetMaterialResponse>> getChapterMaterials(
             @PathVariable UUID courseId,
-            @PathVariable Long chapterNumber) {
-        List<GetMaterialResponse> response = getChapterMaterialsUseCase.getChapterMaterials(courseId, chapterNumber);
+            @PathVariable UUID chapterId) {
+        List<GetMaterialResponse> response = getChapterMaterialsUseCase.getChapterMaterials(courseId, chapterId);
         return ResponseEntity.ok(response);
     }
 
@@ -124,13 +124,13 @@ public class MaterialController {
             @ApiResponse(responseCode = "403", description = "Not authorized to add materials to this course")
     })
     @PreAuthorize("hasRole('TEACHER')")
-    @PostMapping("/chapter/{chapterNumber}")
+    @PostMapping("/chapter/{chapterId}")
     public ResponseEntity<CreateMaterialResponse> createMaterialForChapter(
             @PathVariable UUID courseId,
-            @PathVariable Long chapterNumber,
+            @PathVariable UUID chapterId,
             @Valid @RequestBody CreateMaterialRequest request
     ) {
-        CreateMaterialForChapterCommand command = createMaterialCommandMapper.toCommand(courseId, chapterNumber, request);
+        CreateMaterialForChapterCommand command = createMaterialCommandMapper.toCommand(courseId, chapterId, request);
         CreateMaterialResponse response = createMaterialUseCase.createMaterialForChapter(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

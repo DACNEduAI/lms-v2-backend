@@ -37,17 +37,17 @@ class GetChapterServiceUT {
     @InjectMocks
     private GetChapterService getChapterService;
 
-    private Long chapterNumber;
+    private UUID chapterId;
     private UUID courseId;
     private Chapter mockChapter;
 
     @BeforeEach
     void setUp() {
-        chapterNumber = 1L;
+        chapterId = UUID.randomUUID();
         courseId = UUID.randomUUID();
 
         mockChapter = Chapter.builder()
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .title("Chapter 1: Introduction")
                 .description("Introduction to Java programming")
                 .courseId(courseId)
@@ -60,37 +60,37 @@ class GetChapterServiceUT {
     @DisplayName("Should successfully get a chapter with valid course ID and chapter number")
     void testGetChapter_WithValidKey_ShouldSucceed() {
         // Arrange
-        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.of(mockChapter));
+        when(loadChapterPort.findByKey(courseId, chapterId)).thenReturn(Optional.of(mockChapter));
 
         // Act
-        GetChapterResponse response = getChapterService.getChapter(courseId, chapterNumber);
+        GetChapterResponse response = getChapterService.getChapter(courseId, chapterId);
 
         // Assert
         assertNotNull(response);
-        assertEquals(chapterNumber, response.getChapterNumber());
+        assertEquals(chapterId, response.getChapterId());
         assertEquals("Chapter 1: Introduction", response.getTitle());
         assertEquals("Introduction to Java programming", response.getDescription());
         assertEquals(courseId, response.getCourseId());
         assertNotNull(response.getCreatedAt());
         assertNotNull(response.getUpdatedAt());
 
-        verify(loadChapterPort, times(1)).findByKey(courseId, chapterNumber);
+        verify(loadChapterPort, times(1)).findByKey(courseId, chapterId);
     }
 
     @Test
     @DisplayName("Should throw ChapterNotFoundException when chapter does not exist")
     void testGetChapter_WithNonExistentChapter_ShouldThrowException() {
         // Arrange
-        Long nonExistentChapterNumber = 999L;
-        when(loadChapterPort.findByKey(courseId, nonExistentChapterNumber)).thenReturn(Optional.empty());
+        UUID nonExistentChapterId = UUID.randomUUID();
+        when(loadChapterPort.findByKey(courseId, nonExistentChapterId)).thenReturn(Optional.empty());
 
         // Act & Assert
         ChapterNotFoundException exception = assertThrows(ChapterNotFoundException.class,
-                () -> getChapterService.getChapter(courseId, nonExistentChapterNumber));
+                () -> getChapterService.getChapter(courseId, nonExistentChapterId));
 
         assertTrue(exception.getMessage().contains("Chapter not found"));
 
-        verify(loadChapterPort, times(1)).findByKey(courseId, nonExistentChapterNumber);
+        verify(loadChapterPort, times(1)).findByKey(courseId, nonExistentChapterId);
     }
 
     @Test
@@ -98,7 +98,7 @@ class GetChapterServiceUT {
     void testGetChapter_WithNullDescription_ShouldSucceed() {
         // Arrange
         Chapter chapterNoDescription = Chapter.builder()
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .title("Minimal Chapter")
                 .description(null)
                 .courseId(courseId)
@@ -106,19 +106,19 @@ class GetChapterServiceUT {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        when(loadChapterPort.findByKey(courseId, chapterNumber)).thenReturn(Optional.of(chapterNoDescription));
+        when(loadChapterPort.findByKey(courseId, chapterId)).thenReturn(Optional.of(chapterNoDescription));
 
         // Act
-        GetChapterResponse response = getChapterService.getChapter(courseId, chapterNumber);
+        GetChapterResponse response = getChapterService.getChapter(courseId, chapterId);
 
         // Assert
         assertNotNull(response);
-        assertEquals(chapterNumber, response.getChapterNumber());
+        assertEquals(chapterId, response.getChapterId());
         assertEquals("Minimal Chapter", response.getTitle());
         assertEquals(null, response.getDescription());
         assertEquals(courseId, response.getCourseId());
 
-        verify(loadChapterPort, times(1)).findByKey(courseId, chapterNumber);
+        verify(loadChapterPort, times(1)).findByKey(courseId, chapterId);
     }
 
     @Test
@@ -127,7 +127,7 @@ class GetChapterServiceUT {
         // Arrange
         UUID specificCourseId = UUID.randomUUID();
         Chapter chapter = Chapter.builder()
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .title("Mapped Chapter")
                 .description("Testing courseId mapping")
                 .courseId(specificCourseId)
@@ -135,16 +135,16 @@ class GetChapterServiceUT {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        when(loadChapterPort.findByKey(specificCourseId, chapterNumber)).thenReturn(Optional.of(chapter));
+        when(loadChapterPort.findByKey(specificCourseId, chapterId)).thenReturn(Optional.of(chapter));
 
         // Act
-        GetChapterResponse response = getChapterService.getChapter(specificCourseId, chapterNumber);
+        GetChapterResponse response = getChapterService.getChapter(specificCourseId, chapterId);
 
         // Assert
         assertNotNull(response);
         assertEquals(specificCourseId, response.getCourseId());
 
-        verify(loadChapterPort, times(1)).findByKey(specificCourseId, chapterNumber);
+        verify(loadChapterPort, times(1)).findByKey(specificCourseId, chapterId);
     }
 
     // ==================== getAllChapters Tests ====================
@@ -157,8 +157,9 @@ class GetChapterServiceUT {
         @DisplayName("Should return all chapters for a course")
         void testGetAllChapters_WithMultipleChapters_ShouldReturnAll() {
             // Arrange
+            UUID chapterId2 = UUID.randomUUID();
             Chapter chapter2 = Chapter.builder()
-                    .chapterNumber(2L)
+                .chapterId(chapterId2)
                     .title("Chapter 2: Variables")
                     .description("Understanding variables in Java")
                     .courseId(courseId)
@@ -166,8 +167,9 @@ class GetChapterServiceUT {
                     .updatedAt(LocalDateTime.now())
                     .build();
 
+            UUID chapterId3 = UUID.randomUUID();
             Chapter chapter3 = Chapter.builder()
-                    .chapterNumber(3L)
+                .chapterId(chapterId3)
                     .title("Chapter 3: Control Flow")
                     .description("If-else and switch statements")
                     .courseId(courseId)
@@ -185,14 +187,14 @@ class GetChapterServiceUT {
             assertNotNull(responses);
             assertEquals(3, responses.size());
 
-            assertEquals(1L, responses.get(0).getChapterNumber());
+            assertEquals(chapterId, responses.get(0).getChapterId());
             assertEquals("Chapter 1: Introduction", responses.get(0).getTitle());
             assertEquals(courseId, responses.get(0).getCourseId());
 
-            assertEquals(2L, responses.get(1).getChapterNumber());
+            assertEquals(chapterId2, responses.get(1).getChapterId());
             assertEquals("Chapter 2: Variables", responses.get(1).getTitle());
 
-            assertEquals(3L, responses.get(2).getChapterNumber());
+            assertEquals(chapterId3, responses.get(2).getChapterId());
             assertEquals("Chapter 3: Control Flow", responses.get(2).getTitle());
 
             verify(loadChapterPort, times(1)).findAllByCourseId(courseId);
@@ -228,7 +230,7 @@ class GetChapterServiceUT {
             // Assert
             assertNotNull(responses);
             assertEquals(1, responses.size());
-            assertEquals(chapterNumber, responses.get(0).getChapterNumber());
+            assertEquals(chapterId, responses.get(0).getChapterId());
             assertEquals("Chapter 1: Introduction", responses.get(0).getTitle());
             assertEquals("Introduction to Java programming", responses.get(0).getDescription());
             assertEquals(courseId, responses.get(0).getCourseId());
@@ -244,9 +246,10 @@ class GetChapterServiceUT {
             // Arrange
             LocalDateTime createdAt = LocalDateTime.of(2026, 1, 15, 10, 0);
             LocalDateTime updatedAt = LocalDateTime.of(2026, 2, 20, 14, 30);
+            UUID specificChapterId = UUID.randomUUID();
 
             Chapter chapter = Chapter.builder()
-                    .chapterNumber(5L)
+                .chapterId(specificChapterId)
                     .title("Specific Chapter")
                     .description("Detailed description")
                     .courseId(courseId)
@@ -262,7 +265,7 @@ class GetChapterServiceUT {
 
             // Assert
             GetChapterResponse response = responses.get(0);
-            assertEquals(5L, response.getChapterNumber());
+            assertEquals(specificChapterId, response.getChapterId());
             assertEquals("Specific Chapter", response.getTitle());
             assertEquals("Detailed description", response.getDescription());
             assertEquals(courseId, response.getCourseId());
@@ -300,7 +303,7 @@ class GetChapterServiceUT {
 
             // Assert
             verify(loadChapterPort, times(1)).findAllByCourseId(courseId);
-            verify(loadChapterPort, never()).findByKey(courseId, chapterNumber);
+            verify(loadChapterPort, never()).findByKey(courseId, chapterId);
         }
     }
 }

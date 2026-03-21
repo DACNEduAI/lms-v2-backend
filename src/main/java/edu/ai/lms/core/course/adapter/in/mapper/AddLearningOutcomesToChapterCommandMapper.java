@@ -10,11 +10,11 @@ import edu.ai.lms.core.course.app.port.in.command.AddLearningOutcomesToChapterCo
 @Component
 public class AddLearningOutcomesToChapterCommandMapper {
 
-    public AddLearningOutcomesToChapterCommand toCommand(UUID courseId, Long chapterNumber,
+    public AddLearningOutcomesToChapterCommand toCommand(UUID courseId, UUID chapterId,
                                                          AddLearningOutcomesToChapterRequest request) {
         return AddLearningOutcomesToChapterCommand.builder()
                 .courseId(courseId)
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .learningOutcomeIds(request.getLearningOutcomeIds())
                 .build();
     }

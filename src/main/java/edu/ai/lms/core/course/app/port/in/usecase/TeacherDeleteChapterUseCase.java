@@ -5,5 +5,5 @@ import java.util.UUID;
 import edu.ai.lms.core.course.adapter.in.response.DeleteChapterResponse;
 
 public interface TeacherDeleteChapterUseCase {
-    DeleteChapterResponse deleteChapter(UUID courseId, Long chapterNumber);
+    DeleteChapterResponse deleteChapter(UUID courseId, UUID chapterId);
 }

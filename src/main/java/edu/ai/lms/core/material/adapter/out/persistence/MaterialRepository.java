@@ -45,15 +45,14 @@ interface MaterialRepository {
     List<Material> findByStatusIn(@Param("statuses") List<String> statuses);
 
     List<Material> findByChapterKey(
-            @Param("chapterNumber") Long chapterNumber,
+            @Param("chapterId") UUID chapterId,
             @Param("courseId") UUID courseId);
 
     // ─── Junction table operations ─────────────────────────────────────────────
 
     void insertChapterMaterial(
             @Param("materialId") UUID materialId,
-            @Param("chapterNumber") Long chapterNumber,
-            @Param("courseId") UUID courseId);
+            @Param("chapterId") UUID chapterId);
 
     // ─── Deletes ───────────────────────────────────────────────────────────────
 

@@ -25,7 +25,7 @@ import io.restassured.response.Response;
 class ChapterControllerIT extends IntegrationTestConfiguration {
     private static String teacherToken;
     private static UUID createdCourseId;
-    private static Long createdChapterNumber;
+    private static UUID createdChapterId;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     // ==================== SETUP: Register teacher and create a course ====================
@@ -123,14 +123,14 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .log().all()
                 .statusCode(201)
-                .body("chapterNumber", notNullValue())
+                .body("chapterId", notNullValue())
                 .body("title", equalTo("Chapter 1: Introduction"))
                 .body("description", equalTo("Introduction to Java programming"))
                 .body("courseId", equalTo(createdCourseId.toString()))
                 .body("createdAt", notNullValue())
                 .extract().response();
 
-        createdChapterNumber = response.jsonPath().getLong("chapterNumber");
+        createdChapterId = UUID.fromString(response.jsonPath().getString("chapterId"));
     }
 
     // ==================== GET ALL CHAPTERS TESTS ====================
@@ -148,7 +148,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                 .log().all()
                 .statusCode(200)
                 .body("$.size()", greaterThanOrEqualTo(1))
-                .body("[0].chapterNumber", notNullValue())
+                .body("[0].chapterId", notNullValue())
                 .body("[0].title", notNullValue())
                 .body("[0].courseId", equalTo(createdCourseId.toString()))
                 .body("[0].createdAt", notNullValue());
@@ -279,11 +279,11 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/chapter/" + createdChapterNumber)
+                .get("/api/" + createdCourseId + "/chapter/" + createdChapterId)
                 .then()
                 .log().all()
                 .statusCode(200)
-                .body("chapterNumber", equalTo(createdChapterNumber.intValue()))
+                .body("chapterId", equalTo(createdChapterId.toString()))
                 .body("title", equalTo("Chapter 1: Introduction"))
                 .body("description", equalTo("Introduction to Java programming"))
                 .body("courseId", equalTo(createdCourseId.toString()))
@@ -297,7 +297,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
     void testGetChapter_WithoutAuth() {
         given()
                 .when()
-                .get("/api/" + createdCourseId + "/chapter/" + createdChapterNumber)
+                .get("/api/" + createdCourseId + "/chapter/" + createdChapterId)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -307,12 +307,12 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
     @Order(11)
     @DisplayName("Should fail to get non-existent chapter")
     void testGetChapter_WithNonExistentKey() {
-        Long nonExistentChapterNumber = 99999L;
+        UUID nonExistentChapterId = UUID.randomUUID();
 
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/chapter/" + nonExistentChapterNumber)
+                .get("/api/" + createdCourseId + "/chapter/" + nonExistentChapterId)
                 .then()
                 .log().all()
                 .statusCode(404);
@@ -351,11 +351,11 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + anotherTeacherToken)
                 .when()
-                .get("/api/" + createdCourseId + "/chapter/" + createdChapterNumber)
+                .get("/api/" + createdCourseId + "/chapter/" + createdChapterId)
                 .then()
                 .log().all()
                 .statusCode(200)
-                .body("chapterNumber", equalTo(createdChapterNumber.intValue()))
+                .body("chapterId", equalTo(createdChapterId.toString()))
                 .body("title", equalTo("Chapter 1: Introduction"));
     }
 
@@ -378,7 +378,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .log().all()
                 .statusCode(201)
-                .body("chapterNumber", notNullValue())
+                .body("chapterId", notNullValue())
                 .body("title", equalTo("Minimal Chapter"))
                 .body("courseId", equalTo(createdCourseId.toString()))
                 .body("createdAt", notNullValue());
@@ -404,7 +404,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .log().all()
                 .statusCode(201)
-                .body("chapterNumber", notNullValue())
+                .body("chapterId", notNullValue())
                 .body("title", equalTo("Chapter 4: Loops and Iteration"))
                 .body("courseId", equalTo(createdCourseId.toString()))
                 .body("createdAt", notNullValue());
@@ -498,11 +498,11 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber)
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId)
                 .then()
                 .log().all()
                 .statusCode(200)
-                .body("chapterNumber", equalTo(createdChapterNumber.intValue()))
+                .body("chapterId", equalTo(createdChapterId.toString()))
                 .body("title", equalTo("Chapter 1: Updated Introduction"))
                 .body("description", equalTo("Updated introduction to Java programming"))
                 .body("courseId", equalTo(createdCourseId.toString()))
@@ -524,7 +524,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                 .contentType(ContentType.JSON)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber)
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -545,7 +545,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber)
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId)
                 .then()
                 .log().all()
                 .statusCode(400);
@@ -555,7 +555,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
     @Order(22)
     @DisplayName("Should fail to modify non-existent chapter")
     void testModifyChapter_WithNonExistentChapter() {
-        Long nonExistentChapterNumber = 99999L;
+        UUID nonExistentChapterId = UUID.randomUUID();
 
         String requestBody = """
                 {
@@ -569,7 +569,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + nonExistentChapterNumber)
+                .put("/api/" + createdCourseId + "/chapter/" + nonExistentChapterId)
                 .then()
                 .log().all()
                 .statusCode(404);
@@ -617,7 +617,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                 .header("Authorization", "Bearer " + unauthorizedToken)
                 .body(requestBody)
                 .when()
-                .put("/api/" + createdCourseId + "/chapter/" + createdChapterNumber)
+                .put("/api/" + createdCourseId + "/chapter/" + createdChapterId)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(403), is(400), is(500)));
@@ -631,7 +631,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
     void testDeleteChapter_WithoutAuth() {
         given()
                 .when()
-                .delete("/api/" + createdCourseId + "/chapter/" + createdChapterNumber)
+                .delete("/api/" + createdCourseId + "/chapter/" + createdChapterId)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -641,12 +641,12 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
     @Order(25)
     @DisplayName("Should fail to delete non-existent chapter")
     void testDeleteChapter_WithNonExistentChapter() {
-        Long nonExistentChapterNumber = 99999L;
+        UUID nonExistentChapterId = UUID.randomUUID();
 
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .delete("/api/" + createdCourseId + "/chapter/" + nonExistentChapterNumber)
+                .delete("/api/" + createdCourseId + "/chapter/" + nonExistentChapterId)
                 .then()
                 .log().all()
                 .statusCode(404);
@@ -685,7 +685,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + unauthorizedToken)
                 .when()
-                .delete("/api/" + createdCourseId + "/chapter/" + createdChapterNumber)
+                .delete("/api/" + createdCourseId + "/chapter/" + createdChapterId)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(403), is(400), is(500)));
@@ -714,7 +714,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                 .statusCode(201)
                 .extract().response();
 
-        Long chapterToDelete = createResponse.jsonPath().getLong("chapterNumber");
+        UUID chapterToDelete = UUID.fromString(createResponse.jsonPath().getString("chapterId"));
 
         // Now delete the chapter
         given()
@@ -725,7 +725,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                 .log().all()
                 .statusCode(200)
                 .body("courseId", equalTo(createdCourseId.toString()))
-                .body("chapterNumber", equalTo(chapterToDelete.intValue()))
+                .body("chapterId", equalTo(chapterToDelete.toString()))
                 .body("message", equalTo("Chapter deleted successfully"))
                 .body("success", equalTo(true));
 
@@ -748,7 +748,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
-                .delete("/api/" + nonExistentCourseId + "/chapter/" + createdChapterNumber)
+                .delete("/api/" + nonExistentCourseId + "/chapter/" + createdChapterId)
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(404), is(400), is(500)));

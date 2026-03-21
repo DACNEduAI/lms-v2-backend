@@ -45,9 +45,9 @@ public class AddLearningOutcomesToChapterService implements TeacherAddLearningOu
             throw new IllegalArgumentException("Teacher is not authorized to modify this course");
         }
 
-        Chapter chapter = loadChapterPort.findByKey(command.courseId(), command.chapterNumber())
+        Chapter chapter = loadChapterPort.findByKey(command.courseId(), command.chapterId())
                 .orElseThrow(() -> new ChapterNotFoundException(
-                        "Chapter not found with courseId: " + command.courseId() + " and chapterNumber: " + command.chapterNumber()));
+                        "Chapter not found with courseId: " + command.courseId() + " and chapterId: " + command.chapterId()));
 
         // Validate that all requested LO IDs belong to this course
         Set<UUID> courseLOIds = course.getLearningOutcomes().stream()
@@ -70,14 +70,14 @@ public class AddLearningOutcomesToChapterService implements TeacherAddLearningOu
         for (UUID loId : command.learningOutcomeIds()) {
             if (!currentLOIds.contains(loId)) {
                 saveChapterLearningOutcomePort.addLearningOutcomeToChapter(
-                        command.chapterNumber(), command.courseId(), loId);
+                        command.chapterId(), command.courseId(), loId);
                 actuallyAdded.add(loId);
             }
         }
 
         return AddLearningOutcomesToChapterResponse.builder()
                 .courseId(command.courseId())
-                .chapterNumber(command.chapterNumber())
+                .chapterId(command.chapterId())
                 .addedLearningOutcomeIds(actuallyAdded)
                 .totalAdded(actuallyAdded.size())
                 .message("Learning outcomes added to chapter successfully")

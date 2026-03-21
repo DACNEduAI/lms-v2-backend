@@ -207,16 +207,16 @@ class CreateMaterialServiceUT {
     @DisplayName("Should successfully create a material for a chapter")
     void testCreateMaterialForChapter_WithValidData_ShouldSucceed() {
         // Arrange
-        Long chapterNumber = 1L;
+        UUID chapterId = UUID.randomUUID();
         when(getMaterialPort.findByFileKey(material.getFileKey())).thenReturn(Optional.empty());
-        when(createMaterialPort.createForChapter(eq(courseId), eq(chapterNumber), any(Material.class)))
+        when(createMaterialPort.createForChapter(eq(courseId), eq(chapterId), any(Material.class)))
                 .thenReturn(savedMaterial);
         when(createUploadLinkPort.createUploadLink(eq(savedMaterial.getFileKey()), eq("application/pdf")))
                 .thenReturn("https://presigned-url.example.com/upload");
 
         CreateMaterialForChapterCommand command = CreateMaterialForChapterCommand.builder()
                 .courseId(courseId)
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .material(material)
                 .build();
 
@@ -229,7 +229,7 @@ class CreateMaterialServiceUT {
         assertEquals("PENDING", response.getStatus());
         assertNotNull(response.getPresignedUploadUrl());
 
-        verify(createMaterialPort, times(1)).createForChapter(eq(courseId), eq(chapterNumber), any(Material.class));
+        verify(createMaterialPort, times(1)).createForChapter(eq(courseId), eq(chapterId), any(Material.class));
     }
 
     @Test
@@ -245,7 +245,7 @@ class CreateMaterialServiceUT {
 
         CreateMaterialForChapterCommand command = CreateMaterialForChapterCommand.builder()
                 .courseId(courseId)
-                .chapterNumber(1L)
+                .chapterId(UUID.randomUUID())
                 .material(material)
                 .build();
 
@@ -269,7 +269,7 @@ class CreateMaterialServiceUT {
 
         CreateMaterialForChapterCommand command = CreateMaterialForChapterCommand.builder()
                 .courseId(courseId)
-                .chapterNumber(1L)
+                .chapterId(UUID.randomUUID())
                 .material(material)
                 .build();
 
@@ -285,7 +285,7 @@ class CreateMaterialServiceUT {
     @DisplayName("Should resolve content type to video/mp4 for VIDEO type when creating chapter material")
     void testCreateMaterialForChapter_WithVideoType_ShouldResolveContentType() {
         // Arrange
-        Long chapterNumber = 2L;
+        UUID chapterId = UUID.randomUUID();
         Material videoMaterial = Material.builder()
                 .title("Chapter Video")
                 .type(MaterialType.VIDEO)
@@ -305,14 +305,14 @@ class CreateMaterialServiceUT {
                 .build();
 
         when(getMaterialPort.findByFileKey(videoMaterial.getFileKey())).thenReturn(Optional.empty());
-        when(createMaterialPort.createForChapter(eq(courseId), eq(chapterNumber), any(Material.class)))
+        when(createMaterialPort.createForChapter(eq(courseId), eq(chapterId), any(Material.class)))
                 .thenReturn(savedVideo);
         when(createUploadLinkPort.createUploadLink(eq(savedVideo.getFileKey()), eq("video/mp4")))
                 .thenReturn("https://presigned-url.example.com/upload-video");
 
         CreateMaterialForChapterCommand command = CreateMaterialForChapterCommand.builder()
                 .courseId(courseId)
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .material(videoMaterial)
                 .build();
 

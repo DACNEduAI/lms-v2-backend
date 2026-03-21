@@ -45,9 +45,9 @@ public class RemoveLearningOutcomesFromChapterService implements TeacherRemoveLe
             throw new IllegalArgumentException("Teacher is not authorized to modify this course");
         }
 
-        Chapter chapter = loadChapterPort.findByKey(command.courseId(), command.chapterNumber())
+        Chapter chapter = loadChapterPort.findByKey(command.courseId(), command.chapterId())
                 .orElseThrow(() -> new ChapterNotFoundException(
-                        "Chapter not found with courseId: " + command.courseId() + " and chapterNumber: " + command.chapterNumber()));
+                        "Chapter not found with courseId: " + command.courseId() + " and chapterId: " + command.chapterId()));
 
         // Validate that all requested LO IDs are currently associated with this chapter
         Set<UUID> currentLOIds = new java.util.HashSet<>(chapter.getLearningOutcomeIds());
@@ -64,12 +64,12 @@ public class RemoveLearningOutcomesFromChapterService implements TeacherRemoveLe
         // Remove LOs from chapter
         for (UUID loId : command.learningOutcomeIds()) {
             deleteChapterLearningOutcomePort.removeLearningOutcomeFromChapter(
-                    command.chapterNumber(), command.courseId(), loId);
+                    command.chapterId(), command.courseId(), loId);
         }
 
         return RemoveLearningOutcomesFromChapterResponse.builder()
                 .courseId(command.courseId())
-                .chapterNumber(command.chapterNumber())
+                .chapterId(command.chapterId())
                 .removedLearningOutcomeIds(command.learningOutcomeIds())
                 .totalRemoved(command.learningOutcomeIds().size())
                 .message("Learning outcomes removed from chapter successfully")

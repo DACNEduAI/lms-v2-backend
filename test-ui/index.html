@@ -229,7 +229,7 @@
     </select>
 
     <label>Chapter Number (optional — leave blank for course-level material)</label>
-    <input id="chapterNumber" type="number" placeholder="1" />
+    <input id="chapterId" type="number" placeholder="1" />
 
     <button class="btn-primary" onclick="createMaterial()">Create Material</button>
     <div class="result" id="createResult"></div>
@@ -387,7 +387,7 @@
     const title       = document.getElementById('materialTitle').value.trim();
     const type        = document.getElementById('materialType').value;
     const downloadable = document.getElementById('materialDownloadable').value === 'true';
-    const chapter     = document.getElementById('chapterNumber').value.trim();
+    const chapter     = document.getElementById('chapterId').value.trim();
 
     if (!courseId) { showResult('createResult', 'err', 'Course ID is required.'); return; }
 

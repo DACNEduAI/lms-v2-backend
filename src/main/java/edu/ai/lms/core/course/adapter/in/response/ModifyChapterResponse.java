@@ -18,7 +18,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class ModifyChapterResponse {
-    private Long chapterNumber;
+    private UUID chapterId;
     private String title;
     private String description;
     private UUID courseId;

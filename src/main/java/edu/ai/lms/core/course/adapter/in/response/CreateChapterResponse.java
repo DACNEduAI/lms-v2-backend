@@ -14,7 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class CreateChapterResponse {
-    private Long chapterNumber;
+    private UUID chapterId;
     private String title;
     private String description;
     private UUID courseId;

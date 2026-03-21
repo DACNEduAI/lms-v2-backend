@@ -30,7 +30,7 @@ public class DeleteChapterService implements TeacherDeleteChapterUseCase {
 
     @Override
     @Transactional
-    public DeleteChapterResponse deleteChapter(UUID courseId, Long chapterNumber) {
+    public DeleteChapterResponse deleteChapter(UUID courseId, UUID chapterId) {
         // Verify teacher is authenticated
         UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
@@ -45,16 +45,16 @@ public class DeleteChapterService implements TeacherDeleteChapterUseCase {
         }
 
         // Verify chapter exists
-        Chapter existingChapter = loadChapterPort.findByKey(courseId, chapterNumber)
+        Chapter existingChapter = loadChapterPort.findByKey(courseId, chapterId)
                 .orElseThrow(() -> new ChapterNotFoundException(
-                        "Chapter not found with number: " + chapterNumber + " in course: " + courseId));
+                        "Chapter not found with number: " + chapterId + " in course: " + courseId));
 
         // Delete the chapter
-        deleteChapterPort.deleteByKey(courseId, chapterNumber);
+        deleteChapterPort.deleteByKey(courseId, chapterId);
 
         return DeleteChapterResponse.builder()
                 .courseId(courseId)
-                .chapterNumber(chapterNumber)
+                .chapterId(chapterId)
                 .message("Chapter deleted successfully")
                 .success(true)
                 .build();
