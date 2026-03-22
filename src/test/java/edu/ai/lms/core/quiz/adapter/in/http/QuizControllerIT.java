@@ -31,6 +31,8 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     private static UUID createdQuizId;
     private static UUID secondQuizId;
     private static UUID thirdQuizId;
+    private static UUID studentBQuizId;
+    private static UUID hiddenTeacherQuizId;
     private static UUID lo1;
     private static UUID lo2;
     private static UUID lo3;
@@ -864,7 +866,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 }
                 """.formatted(STUDENT_B_QUIZ_TITLE);
 
-        given()
+        Response response = given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + studentBToken)
                 .body(requestBody)
@@ -872,7 +874,10 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .post("/api/" + createdCourseId + "/quiz")
                 .then()
                 .statusCode(201)
-                .body("quizTitle", equalTo(STUDENT_B_QUIZ_TITLE));
+            .body("quizTitle", equalTo(STUDENT_B_QUIZ_TITLE))
+            .extract().response();
+
+        studentBQuizId = UUID.fromString(response.jsonPath().getString("quizId"));
     }
 
     @Test
@@ -931,7 +936,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 }
                 """.formatted(HIDDEN_TEACHER_QUIZ_TITLE);
 
-        given()
+        Response response = given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + teacherToken)
                 .body(requestBody)
@@ -939,12 +944,15 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .post("/api/" + createdCourseId + "/quiz")
                 .then()
                 .statusCode(201)
-                .body("quizTitle", equalTo(HIDDEN_TEACHER_QUIZ_TITLE));
+            .body("quizTitle", equalTo(HIDDEN_TEACHER_QUIZ_TITLE))
+            .extract().response();
+
+        hiddenTeacherQuizId = UUID.fromString(response.jsonPath().getString("quizId"));
     }
 
     @Test
     @Order(38)
-    @DisplayName("Teacher-created endpoint should not include student-created or hidden teacher quizzes")
+    @DisplayName("Teacher-created endpoint should include all teacher quizzes and exclude student-created quizzes")
     void testGetAllQuizzesCreatedByTeacher_ShouldExcludeStudentCreated() {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
@@ -955,7 +963,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .body("quizzes.quizTitle", org.hamcrest.Matchers.not(hasItem(STUDENT_A_QUIZ_ONE_TITLE)))
                 .body("quizzes.quizTitle", org.hamcrest.Matchers.not(hasItem(STUDENT_A_QUIZ_TWO_TITLE)))
                 .body("quizzes.quizTitle", org.hamcrest.Matchers.not(hasItem(STUDENT_B_QUIZ_TITLE)))
-                .body("quizzes.quizTitle", org.hamcrest.Matchers.not(hasItem(HIDDEN_TEACHER_QUIZ_TITLE)));
+                .body("quizzes.quizTitle", hasItem(HIDDEN_TEACHER_QUIZ_TITLE));
     }
 
     @Test
@@ -984,5 +992,45 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .get("/api/" + createdCourseId + "/quiz/student-created?pageSize=10&lastCreated=asc")
                 .then()
                 .statusCode(anyOf(is(401), is(403)));
+    }
+
+    @Test
+    @Order(41)
+    @DisplayName("Student should view teacher-created visible quiz")
+    void testGetQuiz_AsStudent_VisibleTeacherQuiz_ShouldSucceed() {
+        given()
+                .header("Authorization", "Bearer " + studentAToken)
+                .when()
+                .get("/api/" + createdCourseId + "/quiz/" + createdQuizId)
+                .then()
+                .statusCode(200)
+                .body("quizId", equalTo(createdQuizId.toString()))
+                .body("display", equalTo(true));
+    }
+
+    @Test
+    @Order(42)
+    @DisplayName("Teacher should view student-created visible quiz")
+    void testGetQuiz_AsTeacher_ForStudentCreatedVisibleQuiz_ShouldSucceed() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/quiz/" + studentBQuizId)
+                .then()
+                .statusCode(200)
+                .body("quizId", equalTo(studentBQuizId.toString()))
+                .body("display", equalTo(true));
+    }
+
+    @Test
+    @Order(43)
+    @DisplayName("Student should not view hidden quiz")
+    void testGetQuiz_AsStudent_HiddenQuiz_ShouldBeForbidden() {
+        given()
+                .header("Authorization", "Bearer " + studentAToken)
+                .when()
+                .get("/api/" + createdCourseId + "/quiz/" + hiddenTeacherQuizId)
+                .then()
+                .statusCode(403);
     }
 }

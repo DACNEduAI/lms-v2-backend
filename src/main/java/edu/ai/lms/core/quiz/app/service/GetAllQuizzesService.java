@@ -36,9 +36,13 @@ public class GetAllQuizzesService implements GetAllQuizzesCreatedByTeacherUseCas
 
         verifyCourseMembershipForTeacherCreatedListing(user, courseId);
 
-        List<Quiz> quizzes = loadQuizPort.getTeacherCreatedByCourseId(courseId).stream()
+        List<Quiz> quizzes = loadQuizPort.getTeacherCreatedByCourseId(courseId);
+        if (user.getRole() == Roles.STUDENT) {
+            quizzes = quizzes.stream()
                 .filter(quiz -> Boolean.TRUE.equals(quiz.getDisplay()))
                 .collect(Collectors.toList());
+        }
+
         return buildResponse(quizzes, pageSize, lastCreated);
     }
 

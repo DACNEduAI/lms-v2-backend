@@ -111,8 +111,8 @@ class GetAllQuizzesServiceUT {
                         .build());
     }
 
-    @Test
-        @DisplayName("Should return displayable teacher-created quizzes for teacher")
+        @Test
+        @DisplayName("Should return all teacher-created quizzes for teacher")
     void testGetAllQuizzesCreatedByTeacher_ShouldSucceed() {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
@@ -121,10 +121,11 @@ class GetAllQuizzesServiceUT {
         GetAllQuizzesResponse response = getAllQuizzesService.getAllQuizzesCreatedByTeacher(courseId, 10, "asc");
 
         assertNotNull(response);
-                assertEquals(2, response.getTotalQuizzes());
-                assertEquals(2, response.getQuizzes().size());
+        assertEquals(3, response.getTotalQuizzes());
+        assertEquals(3, response.getQuizzes().size());
         assertEquals("Alpha Quiz", response.getQuizzes().get(0).getQuizTitle());
-                assertEquals("Charlie Quiz", response.getQuizzes().get(1).getQuizTitle());
+        assertEquals("Beta Quiz", response.getQuizzes().get(1).getQuizTitle());
+        assertEquals("Charlie Quiz", response.getQuizzes().get(2).getQuizTitle());
         verify(loadQuizPort, times(1)).getTeacherCreatedByCourseId(courseId);
         verify(loadQuizPort, never()).getStudentCreatedByCourseIdAndStudentId(courseId, teacherId);
     }
@@ -174,7 +175,8 @@ class GetAllQuizzesServiceUT {
         assertNotNull(response);
         assertEquals("des", response.getLastCreated());
         assertEquals("Charlie Quiz", response.getQuizzes().get(0).getQuizTitle());
-        assertEquals("Alpha Quiz", response.getQuizzes().get(1).getQuizTitle());
+                assertEquals("Beta Quiz", response.getQuizzes().get(1).getQuizTitle());
+                assertEquals("Alpha Quiz", response.getQuizzes().get(2).getQuizTitle());
     }
 
     @Test
