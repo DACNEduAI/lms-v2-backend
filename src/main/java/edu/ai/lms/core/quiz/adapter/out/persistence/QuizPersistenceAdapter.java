@@ -50,8 +50,10 @@ class QuizPersistenceAdapter implements SaveQuizPort, LoadQuizPort, DeleteQuizPo
     }
 
     @Override
-    public List<Quiz> getDisplayedTeacherCreatedByCourseId(UUID courseId) {
-        return quizRepository.getDisplayedTeacherCreatedByCourseId(courseId).stream().collect(Collectors.toList());
+    public List<Quiz> getStudentCreatedByCourseIdAndStudentId(UUID courseId, UUID studentId) {
+        return quizRepository.getStudentCreatedByCourseIdAndStudentId(courseId, studentId)
+                .stream()
+                .collect(Collectors.toList());
     }
 
     @Override

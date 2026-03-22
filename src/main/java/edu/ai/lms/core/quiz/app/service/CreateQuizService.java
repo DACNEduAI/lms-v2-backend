@@ -42,6 +42,7 @@ public class CreateQuizService implements CreateQuizUseCase {
 
         if (user.getRole() == Roles.TEACHER) {
             quiz.setTeacherId(user.getId());
+
         } else {
             quiz.setStudentId(user.getId());
             quiz.setStartTime(null);

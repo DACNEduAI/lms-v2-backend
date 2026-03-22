@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import edu.ai.lms.common.ErrorResponse;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
+import edu.ai.lms.core.quiz.app.exception.QuizNotVisible;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -117,4 +118,21 @@ public class QuizExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
     }
+
+        /**
+         * Handles QuizNotVisible.
+         * This occurs when a student tries to access a quiz with display=false.
+         */
+        @ApiResponse(responseCode = "403", description = "Quiz is not visible",
+                        content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+        @ExceptionHandler(QuizNotVisible.class)
+        public ResponseEntity<ErrorResponse> handleQuizNotVisibleException(QuizNotVisible ex) {
+                ErrorResponse errorResponse = ErrorResponse.builder()
+                                .status(HttpStatus.FORBIDDEN.value())
+                                .error("Access Denied")
+                                .message(ex.getMessage())
+                                .build();
+
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+        }
 }

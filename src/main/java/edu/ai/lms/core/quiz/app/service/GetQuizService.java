@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import edu.ai.lms.core.quiz.app.exception.QuizNotVisible;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,18 +38,20 @@ public class GetQuizService implements GetQuizUseCase {
         UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
-        if (user.getRole() != Roles.TEACHER) {
-            throw new IllegalArgumentException("Only teachers can access this quiz");
+        // verify teacher and student have the privilege to view quizzes in the course
+        if (user.getRole() == Roles.TEACHER) {
+            verifyTeacherInCourse(user, courseId);
+        } else if (user.getRole() == Roles.STUDENT) {
+            verifyStudentInCourse(user, courseId);
         }
-
-        verifyTeacherInCourse(user, courseId);
 
         Quiz quiz = loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found with id: " + quizId));
 
-        if (!user.getId().equals(quiz.getTeacherId())) {
-            throw new IllegalArgumentException("Teacher is not authorized to access this quiz");
+        if (user.getRole() == Roles.STUDENT && !Boolean.TRUE.equals(quiz.getDisplay())) {
+            throw new QuizNotVisible("Quiz is not visible for student to view: " + quiz.getId());
         }
+
 
         List<GetQuizResponse.QuestionSummary> questionSummaries = quiz.getQuestions().stream()
                 .map(q -> GetQuizResponse.QuestionSummary.builder()
@@ -121,6 +124,12 @@ public class GetQuizService implements GetQuizUseCase {
 
     private void verifyTeacherInCourse(UserAuth user, UUID courseId) {
         if (!loadCourseMembershipPort.isTeacherInCourse(user.getId(), courseId)) {
+            throw new IllegalArgumentException("User is not a member of this course");
+        }
+    }
+
+    private void verifyStudentInCourse(UserAuth user, UUID courseId) {
+        if (!loadCourseMembershipPort.isStudentInCourse(user.getId(), courseId)) {
             throw new IllegalArgumentException("User is not a member of this course");
         }
     }
