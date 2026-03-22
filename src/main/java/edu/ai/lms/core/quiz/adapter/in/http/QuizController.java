@@ -78,13 +78,27 @@ public class QuizController {
         return ResponseEntity.ok(response);
     }
 
+//    @Operation(summary = "Get teacher-created quizzes in a course (legacy route)", description = "Backward-compatible route for older frontend using /api/{courseId}/quiz.")
+//    @ApiResponses(value = {
+//            @ApiResponse(responseCode = "200", description = "Quizzes retrieved successfully", content = @Content(schema = @Schema(implementation = GetAllQuizzesResponse.class)))
+//    })
+//    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+//    @GetMapping()
+//    public ResponseEntity<GetAllQuizzesResponse> getAllQuizzesLegacy(
+//            @PathVariable UUID courseId,
+//            @RequestParam(defaultValue = "10") int pageSize,
+//            @RequestParam(defaultValue = "asc") String sortDirection) {
+//        GetAllQuizzesResponse response = getAllQuizzesUseCase.getAllQuizzes(courseId, pageSize, sortDirection);
+//        return ResponseEntity.ok(response);
+//    }
+
     @Operation(summary = "Get a specific quiz", description = "Get a quiz with full questions and answers by its ID within a course.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Quiz retrieved successfully",
                     content = @Content(schema = @Schema(implementation = GetQuizResponse.class))),
             @ApiResponse(responseCode = "404", description = "Quiz not found")
     })
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
     @GetMapping("/{quizId}")
     public ResponseEntity<GetQuizResponse> getQuiz(
             @PathVariable UUID courseId,
