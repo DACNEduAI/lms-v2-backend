@@ -36,7 +36,8 @@ import edu.ai.lms.core.quiz.app.port.in.command.RemoveQuizLearningOutcomesComman
 import edu.ai.lms.core.quiz.app.port.in.usecase.AddQuizLearningOutcomesUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.CreateQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.DeleteQuizUseCase;
-import edu.ai.lms.core.quiz.app.port.in.usecase.GetAllQuizzesUseCase;
+import edu.ai.lms.core.quiz.app.port.in.usecase.GetAllQuizzesCreatedByStudentUseCase;
+import edu.ai.lms.core.quiz.app.port.in.usecase.GetAllQuizzesCreatedByTeacherUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.GetQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.ModifyQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.RemoveQuizLearningOutcomesUseCase;
@@ -53,29 +54,48 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class QuizController {
 
-        private final CreateQuizUseCase createQuizUseCase;
-        private final ModifyQuizUseCase modifyQuizUseCase;
-        private final DeleteQuizUseCase deleteQuizUseCase;
-        private final GetQuizUseCase getQuizUseCase;
-        private final GetAllQuizzesUseCase getAllQuizzesUseCase;
-        private final AddQuizLearningOutcomesUseCase addQuizLearningOutcomesUseCase;
-        private final RemoveQuizLearningOutcomesUseCase removeQuizLearningOutcomesUseCase;
-        private final CreateQuizCommandMapper createQuizCommandMapper;
-        private final ModifyQuizCommandMapper modifyQuizCommandMapper;
+    private final CreateQuizUseCase createQuizUseCase;
+    private final ModifyQuizUseCase modifyQuizUseCase;
+    private final DeleteQuizUseCase deleteQuizUseCase;
+    private final GetQuizUseCase getQuizUseCase;
+    private final GetAllQuizzesCreatedByTeacherUseCase getAllQuizzesCreatedByTeacherUseCase;
+    private final GetAllQuizzesCreatedByStudentUseCase getAllQuizzesCreatedByStudentUseCase;
+    private final AddQuizLearningOutcomesUseCase addQuizLearningOutcomesUseCase;
+    private final RemoveQuizLearningOutcomesUseCase removeQuizLearningOutcomesUseCase;
+    private final CreateQuizCommandMapper createQuizCommandMapper;
+    private final ModifyQuizCommandMapper modifyQuizCommandMapper;
 
-        @Operation(summary = "Get teacher-created quizzes in a course", description = "Students see only displayed teacher-created quizzes; teachers see all teacher-created quizzes.")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "Quizzes retrieved successfully", content = @Content(schema = @Schema(implementation = GetAllQuizzesResponse.class)))
-        })
+        @Operation(summary = "Get teacher-created quizzes in a course", description = "Returns teacher-created quizzes in the course where display=true for authorized course members.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Quizzes retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = GetAllQuizzesResponse.class)))
+    })
         @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-        @GetMapping("/teacher-created")
-        public ResponseEntity<GetAllQuizzesResponse> getAllQuizzes(
-                        @PathVariable UUID courseId,
-                        @RequestParam(defaultValue = "10") int pageSize,
-                        @RequestParam(defaultValue = "asc") String lastCreated) {
-                GetAllQuizzesResponse response = getAllQuizzesUseCase.getAllQuizzes(courseId, pageSize, lastCreated);
-                return ResponseEntity.ok(response);
-        }
+    @GetMapping("/teacher-created")
+    public ResponseEntity<GetAllQuizzesResponse> getAllQuizzesCreatedByTeacher(
+            @PathVariable UUID courseId,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(defaultValue = "asc") String lastCreated) {
+        GetAllQuizzesResponse response = getAllQuizzesCreatedByTeacherUseCase
+                .getAllQuizzesCreatedByTeacher(courseId, pageSize, lastCreated);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Get student-created quizzes in a course", description = "Returns quizzes in the course created by the authenticated student only.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Quizzes retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = GetAllQuizzesResponse.class)))
+    })
+    @PreAuthorize("hasRole('STUDENT')")
+    @GetMapping("/student-created")
+    public ResponseEntity<GetAllQuizzesResponse> getAllQuizzesCreatedByStudent(
+            @PathVariable UUID courseId,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(defaultValue = "asc") String lastCreated) {
+        GetAllQuizzesResponse response = getAllQuizzesCreatedByStudentUseCase
+                .getAllQuizzesCreatedByStudent(courseId, pageSize, lastCreated);
+        return ResponseEntity.ok(response);
+    }
 
 //    @Operation(summary = "Get teacher-created quizzes in a course (legacy route)", description = "Backward-compatible route for older frontend using /api/{courseId}/quiz.")
 //    @ApiResponses(value = {

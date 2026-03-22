@@ -30,6 +30,7 @@ import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.domain.QuizLearningOutcomeView;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
+import edu.ai.lms.core.quiz.app.exception.QuizNotVisible;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
@@ -156,17 +157,45 @@ class GetQuizServiceUT {
     }
 
     @Test
-    @DisplayName("Should throw IllegalArgumentException when user is a student")
-    void testGetQuiz_AsStudent_ShouldThrowException() {
-        // Arrange
+        @DisplayName("Should successfully get a visible quiz as student in the same course")
+        void testGetQuiz_AsStudent_ShouldSucceed() {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
+                when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
+                when(loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)).thenReturn(Optional.of(existingQuiz));
+                when(loadCourseLearningOutcomePort.findQuizLearningOutcomes(courseId, quizId)).thenReturn(List.of());
 
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                GetQuizResponse response = getQuizService.getQuiz(courseId, quizId);
+
+                assertNotNull(response);
+                assertEquals(quizId, response.getQuizId());
+                assertEquals("Midterm Quiz", response.getQuizTitle());
+                verify(loadQuizPort, times(1)).getByIdWithQuestionsAndAnswers(courseId, quizId);
+        }
+
+        @Test
+        @DisplayName("Should throw QuizNotVisible when student tries to view a hidden quiz")
+        void testGetQuiz_AsStudent_WithHiddenQuiz_ShouldThrowQuizNotVisible() {
+                Quiz hiddenQuiz = Quiz.builder()
+                                .id(existingQuiz.getId())
+                                .quizTitle(existingQuiz.getQuizTitle())
+                                .timeLimitMinutes(existingQuiz.getTimeLimitMinutes())
+                                .passScore(existingQuiz.getPassScore())
+                                .courseId(existingQuiz.getCourseId())
+                                .teacherId(existingQuiz.getTeacherId())
+                                .display(false)
+                                .questions(existingQuiz.getQuestions())
+                                .createdAt(existingQuiz.getCreatedAt())
+                                .updatedAt(existingQuiz.getUpdatedAt())
+                                .build();
+
+                when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
+                when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
+                when(loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)).thenReturn(Optional.of(hiddenQuiz));
+
+                QuizNotVisible exception = assertThrows(QuizNotVisible.class,
                 () -> getQuizService.getQuiz(courseId, quizId));
 
-        assertEquals("Only teachers can access this quiz", exception.getMessage());
-        verify(loadQuizPort, never()).getByIdWithQuestionsAndAnswers(any(UUID.class), any(UUID.class));
+                assertEquals("Quiz is not visible for student to view: " + quizId, exception.getMessage());
     }
 
     @Test
@@ -205,7 +234,7 @@ class GetQuizServiceUT {
     void testGetQuiz_WithNonExistentQuiz_ShouldThrowException() {
         // Arrange
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
-        when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
+                when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
         when(loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)).thenReturn(Optional.empty());
 
         // Act & Assert
@@ -213,26 +242,5 @@ class GetQuizServiceUT {
                 () -> getQuizService.getQuiz(courseId, quizId));
 
         assertEquals("Quiz not found with id: " + quizId, exception.getMessage());
-    }
-
-    @Test
-    @DisplayName("Should throw IllegalArgumentException when teacher tries to access another teacher's quiz")
-    void testGetQuiz_AsNonOwnerTeacher_ShouldThrowException() {
-        // Arrange
-        UUID anotherTeacherId = UUID.randomUUID();
-        UserAuth anotherTeacher = UserAuth.builder()
-                .id(anotherTeacherId)
-                .role(Roles.TEACHER)
-                .build();
-
-        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
-        when(loadCourseMembershipPort.isTeacherInCourse(anotherTeacherId, courseId)).thenReturn(true);
-        when(loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)).thenReturn(Optional.of(existingQuiz));
-
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> getQuizService.getQuiz(courseId, quizId));
-
-        assertEquals("Teacher is not authorized to access this quiz", exception.getMessage());
     }
 }

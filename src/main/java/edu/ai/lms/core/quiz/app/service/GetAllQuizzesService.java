@@ -13,7 +13,8 @@ import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetAllQuizzesResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
-import edu.ai.lms.core.quiz.app.port.in.usecase.GetAllQuizzesUseCase;
+import edu.ai.lms.core.quiz.app.port.in.usecase.GetAllQuizzesCreatedByStudentUseCase;
+import edu.ai.lms.core.quiz.app.port.in.usecase.GetAllQuizzesCreatedByTeacherUseCase;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
@@ -21,59 +22,49 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class GetAllQuizzesService implements GetAllQuizzesUseCase {
+public class GetAllQuizzesService implements GetAllQuizzesCreatedByTeacherUseCase, GetAllQuizzesCreatedByStudentUseCase {
 
     private final LoadQuizPort loadQuizPort;
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadCourseMembershipPort loadCourseMembershipPort;
 
-    // Strategy Pattern - Inner interface for loading quizzes
-    private interface QuizLoadStrategy {
-        List<Quiz> loadQuizzes(UUID userId, UUID courseId);
-    }
+    @Override
+    @Transactional(readOnly = true)
+    public GetAllQuizzesResponse getAllQuizzesCreatedByTeacher(UUID courseId, int pageSize, String lastCreated) {
+        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
+                .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
-    // Student strategy: see displayed quizzes created by teachers in the course.
-    private class StudentQuizLoadStrategy implements QuizLoadStrategy {
-        @Override
-        public List<Quiz> loadQuizzes(UUID userId, UUID courseId) {
-            return loadQuizPort.getDisplayedTeacherCreatedByCourseId(courseId);
+        verifyCourseMembershipForTeacherCreatedListing(user, courseId);
+
+        List<Quiz> quizzes = loadQuizPort.getTeacherCreatedByCourseId(courseId);
+        if (user.getRole() == Roles.STUDENT) {
+            quizzes = quizzes.stream()
+                .filter(quiz -> Boolean.TRUE.equals(quiz.getDisplay()))
+                .collect(Collectors.toList());
         }
-    }
 
-    // Teacher strategy: see all quizzes created by teachers in the course.
-    private class TeacherQuizLoadStrategy implements QuizLoadStrategy {
-        @Override
-        public List<Quiz> loadQuizzes(UUID userId, UUID courseId) {
-            return loadQuizPort.getTeacherCreatedByCourseId(courseId);
-        }
-    }
-
-    private QuizLoadStrategy selectStrategy(Roles role) {
-        return switch (role) {
-            case TEACHER -> new TeacherQuizLoadStrategy();
-            case STUDENT -> new StudentQuizLoadStrategy();
-            default -> throw new IllegalArgumentException("Unsupported role: " + role);
-        };
+        return buildResponse(quizzes, pageSize, lastCreated);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public GetAllQuizzesResponse getAllQuizzes(UUID courseId, int pageSize, String lastCreated) {
+    public GetAllQuizzesResponse getAllQuizzesCreatedByStudent(UUID courseId, int pageSize, String lastCreated) {
         UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
-        // Verify user belongs to the course
-        verifyCourseMembership(user, courseId);
+        if (user.getRole() != Roles.STUDENT) {
+            throw new IllegalArgumentException("Only students can view student-created quizzes");
+        }
 
-        // Select the appropriate strategy based on user's role
-        QuizLoadStrategy strategy = selectStrategy(user.getRole());
+        verifyStudentMembership(user.getId(), courseId);
 
-        // Load quizzes using the selected strategy
-        List<Quiz> quizzes = strategy.loadQuizzes(user.getId(), courseId);
+        List<Quiz> quizzes = loadQuizPort.getStudentCreatedByCourseIdAndStudentId(courseId, user.getId());
+        return buildResponse(quizzes, pageSize, lastCreated);
+    }
 
-        // Sort quizzes by title
+    private GetAllQuizzesResponse buildResponse(List<Quiz> quizzes, int pageSize, String lastCreated) {
         Comparator<Quiz> comparator = Comparator.comparing(
-                Quiz::getStartTime,
+                Quiz::getCreatedAt,
                 Comparator.nullsLast(Comparator.naturalOrder()));
 
         if ("des".equalsIgnoreCase(lastCreated) || "desc".equalsIgnoreCase(lastCreated)) {
@@ -109,13 +100,31 @@ public class GetAllQuizzesService implements GetAllQuizzesUseCase {
                 .build();
     }
 
-    private void verifyCourseMembership(UserAuth user, UUID courseId) {
-        boolean isMember = user.getRole() == Roles.TEACHER
-                ? loadCourseMembershipPort.isTeacherInCourse(user.getId(), courseId)
-                : loadCourseMembershipPort.isStudentInCourse(user.getId(), courseId);
-
+    private void verifyTeacherMembership(UUID teacherId, UUID courseId) {
+        boolean isMember = loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId);
         if (!isMember) {
             throw new IllegalArgumentException("User is not a member of this course");
         }
+    }
+
+    private void verifyStudentMembership(UUID studentId, UUID courseId) {
+        boolean isMember = loadCourseMembershipPort.isStudentInCourse(studentId, courseId);
+        if (!isMember) {
+            throw new IllegalArgumentException("User is not a member of this course");
+        }
+    }
+
+    private void verifyCourseMembershipForTeacherCreatedListing(UserAuth user, UUID courseId) {
+        if (user.getRole() == Roles.TEACHER) {
+            verifyTeacherMembership(user.getId(), courseId);
+            return;
+        }
+
+        if (user.getRole() == Roles.STUDENT) {
+            verifyStudentMembership(user.getId(), courseId);
+            return;
+        }
+
+        throw new IllegalArgumentException("Only teachers and students can view teacher-created quizzes");
     }
 }
