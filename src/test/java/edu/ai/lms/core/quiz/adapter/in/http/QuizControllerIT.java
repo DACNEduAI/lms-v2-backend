@@ -39,6 +39,12 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     private static UUID group2;
     private static UUID otherCourseId;
     private static UUID foreignLearningOutcomeId;
+    private static String studentAToken;
+    private static String studentBToken;
+    private static final String STUDENT_A_QUIZ_ONE_TITLE = "Student A Quiz One";
+    private static final String STUDENT_A_QUIZ_TWO_TITLE = "Student A Quiz Two";
+    private static final String STUDENT_B_QUIZ_TITLE = "Student B Quiz";
+    private static final String HIDDEN_TEACHER_QUIZ_TITLE = "Hidden Teacher Quiz";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     // ==================== SETUP: Register teacher and create a course ====================
@@ -324,7 +330,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     @Test
     @Order(12)
     @DisplayName("Should successfully get all quizzes in a course")
-    void testGetAllQuizzes_ShouldSucceed() {
+    void testGetAllQuizzes_CreatedByTeacher_ShouldSucceed() {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
@@ -340,7 +346,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     @Test
     @Order(13)
     @DisplayName("Should limit quizzes by pageSize")
-    void testGetAllQuizzes_WithPageSize() {
+    void testGetAllQuizzes_CreatedByTeacher_WithPageSize() {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
@@ -355,7 +361,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     @Test
     @Order(14)
     @DisplayName("Should fail to get all quizzes without authentication")
-    void testGetAllQuizzes_WithoutAuth() {
+    void testGetAllQuizzes_CreatedByTeacher_WithoutAuth() {
         given()
                 .when()
                 .get("/api/" + createdCourseId + "/quiz/teacher-created")
@@ -499,7 +505,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     @Test
     @Order(21)
     @DisplayName("Should verify the quiz was deleted from the list")
-    void testGetAllQuizzes_AfterDelete() {
+    void testGetAllQuizzes_CreatedByTeacher_AfterDelete() {
         given()
                 .header("Authorization", "Bearer " + teacherToken)
                 .when()
@@ -725,5 +731,258 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .body("operation", equalTo("REMOVE"))
                 .body("totalAffected", equalTo(2))
                 .body("learningOutcomeIds", hasSize(2));
+    }
+
+    @Test
+    @Order(29)
+    @DisplayName("Should register two students for student-created quiz list tests")
+    void testRegisterStudentsForStudentCreatedList() {
+        String studentARegisterBody = """
+                {
+                    "firstName": "Student",
+                    "lastName": "A",
+                    "email": "student.a.quiz@example.com",
+                    "password": "StudentPass123!",
+                    "studentId": "STU-QA-001",
+                    "enrollmentYear": 2026
+                }
+                """;
+
+        studentAToken = given()
+                .contentType(ContentType.JSON)
+                .body(studentARegisterBody)
+                .when()
+                .post("/api/auth/student/register")
+                .then()
+                .statusCode(201)
+                .extract()
+                .path("token");
+
+        String studentBRegisterBody = """
+                {
+                    "firstName": "Student",
+                    "lastName": "B",
+                    "email": "student.b.quiz@example.com",
+                    "password": "StudentPass123!",
+                    "studentId": "STU-QA-002",
+                    "enrollmentYear": 2026
+                }
+                """;
+
+        studentBToken = given()
+                .contentType(ContentType.JSON)
+                .body(studentBRegisterBody)
+                .when()
+                .post("/api/auth/student/register")
+                .then()
+                .statusCode(201)
+                .extract()
+                .path("token");
+    }
+
+    @Test
+    @Order(30)
+    @DisplayName("Should enroll both students into the course")
+    void testEnrollStudentsForStudentCreatedList() {
+        String addStudentsBody = """
+                {
+                    "studentEmails": [
+                        "student.a.quiz@example.com",
+                        "student.b.quiz@example.com"
+                    ]
+                }
+                """;
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(addStudentsBody)
+                .when()
+                .put("/api/course/" + createdCourseId + "/students/add")
+                .then()
+                .statusCode(200);
+    }
+
+    @Test
+    @Order(31)
+    @DisplayName("Should create first quiz by student A")
+    void testCreateFirstQuizByStudentA() {
+        String requestBody = """
+                {
+                    "quizTitle": "%s",
+                    "timeLimitMinutes": 20,
+                    "passScore": 50.0,
+                    "display": true
+                }
+                """.formatted(STUDENT_A_QUIZ_ONE_TITLE);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + studentAToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/quiz")
+                .then()
+                .statusCode(201)
+                .body("quizTitle", equalTo(STUDENT_A_QUIZ_ONE_TITLE));
+    }
+
+    @Test
+    @Order(32)
+    @DisplayName("Should create second quiz by student A")
+    void testCreateSecondQuizByStudentA() {
+        String requestBody = """
+                {
+                    "quizTitle": "%s",
+                    "timeLimitMinutes": 25,
+                    "passScore": 55.0,
+                    "display": true
+                }
+                """.formatted(STUDENT_A_QUIZ_TWO_TITLE);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + studentAToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/quiz")
+                .then()
+                .statusCode(201)
+                .body("quizTitle", equalTo(STUDENT_A_QUIZ_TWO_TITLE));
+    }
+
+    @Test
+    @Order(33)
+    @DisplayName("Should create one quiz by student B")
+    void testCreateQuizByStudentB() {
+        String requestBody = """
+                {
+                    "quizTitle": "%s",
+                    "timeLimitMinutes": 15,
+                    "passScore": 45.0,
+                    "display": true
+                }
+                """.formatted(STUDENT_B_QUIZ_TITLE);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + studentBToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/quiz")
+                .then()
+                .statusCode(201)
+                .body("quizTitle", equalTo(STUDENT_B_QUIZ_TITLE));
+    }
+
+    @Test
+    @Order(34)
+    @DisplayName("Should return only student A quizzes for student-created endpoint")
+    void testGetAllQuizzesCreatedByStudent_ForStudentA() {
+        given()
+                .header("Authorization", "Bearer " + studentAToken)
+                .when()
+                .get("/api/" + createdCourseId + "/quiz/student-created?pageSize=10&lastCreated=asc")
+                .then()
+                .statusCode(200)
+                .body("quizzes.quizTitle", hasItem(STUDENT_A_QUIZ_ONE_TITLE))
+                .body("quizzes.quizTitle", hasItem(STUDENT_A_QUIZ_TWO_TITLE))
+                .body("quizzes.quizTitle", org.hamcrest.Matchers.not(hasItem(STUDENT_B_QUIZ_TITLE)));
+    }
+
+    @Test
+    @Order(35)
+    @DisplayName("Should sort student-created quizzes by last created descending")
+    void testGetAllQuizzesCreatedByStudent_ForStudentA_DescSort() {
+        given()
+                .header("Authorization", "Bearer " + studentAToken)
+                .when()
+                .get("/api/" + createdCourseId + "/quiz/student-created?pageSize=10&lastCreated=des")
+                .then()
+                .statusCode(200)
+                .body("lastCreated", equalTo("des"))
+                .body("quizzes[0].quizTitle", equalTo(STUDENT_A_QUIZ_TWO_TITLE));
+    }
+
+    @Test
+    @Order(36)
+    @DisplayName("Should return only student B quizzes for student-created endpoint")
+    void testGetAllQuizzesCreatedByStudent_ForStudentB() {
+        given()
+                .header("Authorization", "Bearer " + studentBToken)
+                .when()
+                .get("/api/" + createdCourseId + "/quiz/student-created?pageSize=10&lastCreated=asc")
+                .then()
+                .statusCode(200)
+                .body("quizzes", hasSize(1))
+                .body("quizzes[0].quizTitle", equalTo(STUDENT_B_QUIZ_TITLE));
+    }
+
+    @Test
+    @Order(37)
+    @DisplayName("Should create hidden teacher quiz with display false")
+    void testCreateHiddenTeacherQuiz() {
+        String requestBody = """
+                {
+                    "quizTitle": "%s",
+                    "timeLimitMinutes": 30,
+                    "passScore": 50.0,
+                    "display": false
+                }
+                """.formatted(HIDDEN_TEACHER_QUIZ_TITLE);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/quiz")
+                .then()
+                .statusCode(201)
+                .body("quizTitle", equalTo(HIDDEN_TEACHER_QUIZ_TITLE));
+    }
+
+    @Test
+    @Order(38)
+    @DisplayName("Teacher-created endpoint should not include student-created or hidden teacher quizzes")
+    void testGetAllQuizzesCreatedByTeacher_ShouldExcludeStudentCreated() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/quiz/teacher-created?pageSize=20&lastCreated=asc")
+                .then()
+                .statusCode(200)
+                .body("quizzes.quizTitle", org.hamcrest.Matchers.not(hasItem(STUDENT_A_QUIZ_ONE_TITLE)))
+                .body("quizzes.quizTitle", org.hamcrest.Matchers.not(hasItem(STUDENT_A_QUIZ_TWO_TITLE)))
+                .body("quizzes.quizTitle", org.hamcrest.Matchers.not(hasItem(STUDENT_B_QUIZ_TITLE)))
+                .body("quizzes.quizTitle", org.hamcrest.Matchers.not(hasItem(HIDDEN_TEACHER_QUIZ_TITLE)));
+    }
+
+    @Test
+    @Order(39)
+    @DisplayName("Should allow student access to teacher-created endpoint with display=true filtering")
+    void testGetAllQuizzesCreatedByTeacher_AsStudent_ShouldSucceed() {
+        given()
+                .header("Authorization", "Bearer " + studentAToken)
+                .when()
+                .get("/api/" + createdCourseId + "/quiz/teacher-created?pageSize=10&lastCreated=asc")
+                .then()
+                .statusCode(200)
+                .body("quizzes.quizTitle", org.hamcrest.Matchers.not(hasItem(STUDENT_A_QUIZ_ONE_TITLE)))
+                .body("quizzes.quizTitle", org.hamcrest.Matchers.not(hasItem(STUDENT_A_QUIZ_TWO_TITLE)))
+                .body("quizzes.quizTitle", org.hamcrest.Matchers.not(hasItem(STUDENT_B_QUIZ_TITLE)))
+                .body("quizzes.quizTitle", org.hamcrest.Matchers.not(hasItem(HIDDEN_TEACHER_QUIZ_TITLE)));
+    }
+
+    @Test
+    @Order(40)
+    @DisplayName("Should deny teacher access to student-created endpoint")
+    void testGetAllQuizzesCreatedByStudent_AsTeacher_ShouldBeForbidden() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/" + createdCourseId + "/quiz/student-created?pageSize=10&lastCreated=asc")
+                .then()
+                .statusCode(anyOf(is(401), is(403)));
     }
 }

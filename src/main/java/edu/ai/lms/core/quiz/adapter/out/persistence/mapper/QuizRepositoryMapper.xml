@@ -73,12 +73,11 @@
     ORDER BY created_at DESC
   </select>
 
-  <select id="getDisplayedTeacherCreatedByCourseId" resultMap="QuizResultMap">
+  <select id="getStudentCreatedByCourseIdAndStudentId" resultMap="QuizResultMap">
     SELECT id, quiz_title, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
     FROM quizzes
     WHERE course_id = #{courseId}
-      AND teacher_id IS NOT NULL
-      AND display = true
+      AND student_id = #{studentId}
     ORDER BY created_at DESC
   </select>
 
