@@ -106,20 +106,6 @@ public class QuizController {
         return ResponseEntity.ok(response);
     }
 
-        @Operation(summary = "Get a specific quiz", description = "Get a quiz with full questions and answers by its ID within a course.")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "Quiz retrieved successfully", content = @Content(schema = @Schema(implementation = GetQuizResponse.class))),
-                        @ApiResponse(responseCode = "404", description = "Quiz not found")
-        })
-        @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-        @GetMapping("/{quizId}")
-        public ResponseEntity<GetQuizResponse> getQuiz(
-                        @PathVariable UUID courseId,
-                        @PathVariable UUID quizId) {
-                GetQuizResponse response = getQuizUseCase.getQuiz(courseId, quizId);
-                return ResponseEntity.ok(response);
-        }
-
         @Operation(summary = "Create a new quiz", description = "Create a new quiz in a course.")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "201", description = "Quiz created successfully", content = @Content(schema = @Schema(implementation = CreateQuizResponse.class)))
