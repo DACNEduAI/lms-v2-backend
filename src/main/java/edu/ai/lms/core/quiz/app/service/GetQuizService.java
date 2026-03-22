@@ -37,16 +37,18 @@ public class GetQuizService implements GetQuizUseCase {
         UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
-        if (user.getRole() != Roles.TEACHER) {
-            throw new IllegalArgumentException("Only teachers can access this quiz");
-        }
-
-        verifyTeacherInCourse(user, courseId);
+                if (user.getRole() == Roles.TEACHER) {
+                        verifyTeacherInCourse(user, courseId);
+                } else if (user.getRole() == Roles.STUDENT) {
+                        verifyStudentInCourse(user, courseId);
+                } else {
+                        throw new IllegalArgumentException("Only teachers or students can access this quiz");
+                }
 
         Quiz quiz = loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found with id: " + quizId));
 
-        if (!user.getId().equals(quiz.getTeacherId())) {
+                if (user.getRole() == Roles.TEACHER && !user.getId().equals(quiz.getTeacherId())) {
             throw new IllegalArgumentException("Teacher is not authorized to access this quiz");
         }
 
@@ -124,4 +126,10 @@ public class GetQuizService implements GetQuizUseCase {
             throw new IllegalArgumentException("User is not a member of this course");
         }
     }
+
+        private void verifyStudentInCourse(UserAuth user, UUID courseId) {
+                if (!loadCourseMembershipPort.isStudentInCourse(user.getId(), courseId)) {
+                        throw new IllegalArgumentException("User is not a member of this course");
+                }
+        }
 }
