@@ -149,7 +149,7 @@ class AttemptControllerIT extends IntegrationTestConfiguration {
         String timedQuizBody = """
                 {
                     "quizTitle": "Timed Attempt Quiz",
-                    "timeLimitMinutes": 0,
+                    "timeLimitMinutes": 1,
                     "passScore": 5.0,
                     "attemptLimited": 2,
                     "display": true
@@ -280,7 +280,7 @@ class AttemptControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(6)
-    @DisplayName("Should auto-mark timed attempt as error after due time + grace")
+    @DisplayName("Should keep timed attempt active before timer expires")
     void submitTimedQuizTooLate() throws InterruptedException {
         given()
                 .header("Authorization", "Bearer " + studentToken)
@@ -299,13 +299,36 @@ class AttemptControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .statusCode(200)
                 .body("attempts", hasSize(2))
-                .body("attempts[0].status", equalTo("ERROR"));
+                .body("attempts[0].status", equalTo("STARTED"));
     }
 
     @Test
     @Order(7)
     @DisplayName("Should reject new start when attempt limit reached")
     void rejectStartWhenLimitReached() {
+        String submitBody = """
+                {
+                    "quizId": "%s",
+                    "submittedAnswers": [
+                        {
+                            "questionId": "%s",
+                            "studentAnswerId": %d
+                        }
+                    ],
+                    "timeSpentSeconds": 4
+                }
+                """.formatted(timedQuizId, timedQuestionId, timedCorrectAnswerNumber);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + studentToken)
+                .body(submitBody)
+                .when()
+                .post("/api/" + courseId + "/attempt/quiz/" + timedQuizId + "/submit")
+                .then()
+                .statusCode(200)
+                .body("status", equalTo("FINISHED"));
+
         given()
                 .header("Authorization", "Bearer " + studentToken)
                 .when()

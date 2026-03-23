@@ -5,7 +5,6 @@ import edu.ai.lms.core.attempt.adapter.in.response.SubmitAttemptResponse;
 import edu.ai.lms.core.attempt.app.domain.Attempt;
 import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
 import edu.ai.lms.core.attempt.app.exception.AttemptNotFoundException;
-import edu.ai.lms.core.attempt.app.exception.InvalidAttemptSubmissionException;
 import edu.ai.lms.core.attempt.app.exception.QuizNotFoundForAttemptException;
 import edu.ai.lms.core.attempt.app.exception.UserNotAuthenticatedForAttemptException;
 import edu.ai.lms.core.attempt.app.port.in.command.SubmitAttemptCommand;
@@ -101,7 +100,8 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
 
     private boolean isLate(LocalDateTime dueTime, LocalDateTime now) {
         if (dueTime == null) {
-            throw new InvalidAttemptSubmissionException("Attempt due time is missing");
+            // Unlimited mode: never treated as late.
+            return false;
         }
         return now.isAfter(dueTime.plusSeconds(SUBMISSION_GRACE_SECONDS));
     }

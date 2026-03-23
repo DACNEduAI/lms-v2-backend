@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -242,5 +243,34 @@ class GetQuizServiceUT {
                 () -> getQuizService.getQuiz(courseId, quizId));
 
         assertEquals("Quiz not found with id: " + quizId, exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Should return unlimited quiz metadata when time limit is zero and due time is absent")
+    void testGetQuiz_WithUnlimitedQuiz_ShouldReturnZeroTimeLimitAndNullDueTime() {
+        Quiz unlimitedQuiz = Quiz.builder()
+                .id(existingQuiz.getId())
+                .quizTitle(existingQuiz.getQuizTitle())
+                .timeLimitMinutes(0)
+                .passScore(existingQuiz.getPassScore())
+                .courseId(existingQuiz.getCourseId())
+                .teacherId(existingQuiz.getTeacherId())
+                .display(true)
+                .questions(existingQuiz.getQuestions())
+                .dueTime(null)
+                .createdAt(existingQuiz.getCreatedAt())
+                .updatedAt(existingQuiz.getUpdatedAt())
+                .build();
+
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
+        when(loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)).thenReturn(Optional.of(unlimitedQuiz));
+        when(loadCourseLearningOutcomePort.findQuizLearningOutcomes(courseId, quizId)).thenReturn(List.of());
+
+        GetQuizResponse response = getQuizService.getQuiz(courseId, quizId);
+
+        assertNotNull(response);
+        assertEquals(0, response.getTimeLimitMinutes());
+        assertNull(response.getDueTime());
     }
 }

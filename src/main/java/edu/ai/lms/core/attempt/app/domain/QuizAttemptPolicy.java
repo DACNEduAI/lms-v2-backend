@@ -27,6 +27,6 @@ public class QuizAttemptPolicy {
     private Integer attemptLimited;
 
     public boolean hasTimer() {
-        return timeLimitMinutes != null;
+        return timeLimitMinutes != null && timeLimitMinutes > 0;
     }
 }

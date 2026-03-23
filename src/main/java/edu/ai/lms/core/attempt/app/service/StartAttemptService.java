@@ -85,9 +85,7 @@ public class StartAttemptService implements StartAttemptUseCase {
         if (policy.hasTimer()) {
             return now.plusMinutes(policy.getTimeLimitMinutes());
         }
-        if (policy.getQuizDueTime() == null) {
-            throw new InvalidAttemptSubmissionException("Quiz due time is missing for non-timed quiz");
-        }
+        // No timer: honor quiz-level dueTime when configured; otherwise allow unlimited duration.
         return policy.getQuizDueTime();
     }
 }
