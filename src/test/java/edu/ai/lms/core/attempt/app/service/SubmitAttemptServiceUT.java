@@ -131,14 +131,14 @@ class SubmitAttemptServiceUT {
     }
 
     @Test
-    @DisplayName("Should mark non-timed late attempt as finished with zero score")
+        @DisplayName("Should treat zero-minute late attempt as non-timed and finish with zero score")
     void shouldMarkNonTimedLateAttemptAsFinishedWithZero() {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
 
         UserAuth user = UserAuth.builder().id(studentId).role(Roles.STUDENT).build();
-        QuizAttemptPolicy policy = QuizAttemptPolicy.builder().quizId(quizId).courseId(courseId).timeLimitMinutes(null).build();
+        QuizAttemptPolicy policy = QuizAttemptPolicy.builder().quizId(quizId).courseId(courseId).timeLimitMinutes(0).build();
         Attempt startedAttempt = Attempt.builder()
                 .id(UUID.randomUUID())
                 .studentId(studentId)

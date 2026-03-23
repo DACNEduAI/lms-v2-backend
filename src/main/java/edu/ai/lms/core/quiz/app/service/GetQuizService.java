@@ -49,10 +49,6 @@ public class GetQuizService implements GetQuizUseCase {
         Quiz quiz = loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found with id: " + quizId));
 
-        if (user.getRole() == Roles.TEACHER && !user.getId().equals(quiz.getTeacherId())) {
-            throw new IllegalArgumentException("Teacher is not authorized to access this quiz");
-        }
-
         if (user.getRole() == Roles.STUDENT && !Boolean.TRUE.equals(quiz.getDisplay())) {
             throw new QuizNotVisible("Quiz is not visible for student to view: " + quiz.getId());
         }

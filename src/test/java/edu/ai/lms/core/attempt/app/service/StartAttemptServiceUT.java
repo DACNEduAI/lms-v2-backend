@@ -24,6 +24,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -148,5 +149,41 @@ class StartAttemptServiceUT {
                 .build());
 
         assertEquals(quizDueTime, response.getDueTime());
+    }
+
+    @Test
+    @DisplayName("Should allow unlimited attempt when non-timed quiz has no due time")
+    void shouldAllowUnlimitedAttemptWhenNonTimedQuizHasNoDueTime() {
+        UUID studentId = UUID.randomUUID();
+        UUID courseId = UUID.randomUUID();
+        UUID quizId = UUID.randomUUID();
+
+        UserAuth user = UserAuth.builder().id(studentId).role(Roles.STUDENT).build();
+        QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
+                .quizId(quizId)
+                .courseId(courseId)
+                .timeLimitMinutes(0)
+                .quizDueTime(null)
+                .attemptLimited(3)
+                .build();
+
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(user));
+        when(loadQuizAttemptPolicyPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
+        when(loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)).thenReturn(Optional.of(policy));
+        when(loadAttemptPort.getLatestStartedAttempt(studentId, quizId)).thenReturn(Optional.empty());
+        when(loadAttemptPort.countFinishedAttempts(studentId, quizId)).thenReturn(0L);
+        when(saveAttemptPort.save(any(Attempt.class))).thenAnswer(invocation -> {
+            Attempt attempt = invocation.getArgument(0);
+            attempt.setId(UUID.randomUUID());
+            return attempt;
+        });
+
+        var response = startAttemptService.startAttempt(StartAttemptCommand.builder()
+                .courseId(courseId)
+                .quizId(quizId)
+                .build());
+
+        assertEquals("STARTED", response.getStatus());
+        assertNull(response.getDueTime());
     }
 }
