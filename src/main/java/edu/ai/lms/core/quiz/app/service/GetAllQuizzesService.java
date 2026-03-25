@@ -82,6 +82,7 @@ public class GetAllQuizzesService implements GetAllQuizzesCreatedByTeacherUseCas
                 .map(quiz -> GetAllQuizzesResponse.QuizSummary.builder()
                         .quizId(quiz.getId())
                         .quizTitle(quiz.getQuizTitle())
+                    .unlimited(quiz.getUnlimited())
                         .timeLimitMinutes(quiz.getTimeLimitMinutes())
                         .passScore(quiz.getPassScore())
                         .startTime(quiz.getStartTime())

@@ -65,7 +65,7 @@ public class QuizController {
         private final CreateQuizCommandMapper createQuizCommandMapper;
         private final ModifyQuizCommandMapper modifyQuizCommandMapper;
 
-        @Operation(summary = "Get teacher-created quizzes in a course", description = "Returns teacher-created quizzes in the course where display=true for authorized course members.")
+        @Operation(summary = "Get teacher-created quizzes in a course", description = "Returns teacher-created quizzes in a course. LMS logic: exposes visible teacher-authored assessments to course participants. Path field: courseId. Query fields: pageSize, lastCreated (sort hint). Response fields: quizzes[] (quizId, quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, display, createdAt), totalQuizzes, pageSize, lastCreated.")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Quizzes retrieved successfully", content = @Content(schema = @Schema(implementation = GetAllQuizzesResponse.class)))
         })
@@ -80,7 +80,7 @@ public class QuizController {
                 return ResponseEntity.ok(response);
         }
 
-        @Operation(summary = "Get student-created quizzes in a course", description = "Returns quizzes in the course created by the authenticated student only.")
+        @Operation(summary = "Get student-created quizzes in a course", description = "Returns quizzes created by the authenticated student in the course. LMS logic: personal authored quiz management for students. Path field: courseId. Query fields: pageSize, lastCreated. Response fields: quizzes[] and paging metadata.")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Quizzes retrieved successfully", content = @Content(schema = @Schema(implementation = GetAllQuizzesResponse.class)))
         })
@@ -114,7 +114,7 @@ public class QuizController {
         // return ResponseEntity.ok(response);
         // }
 
-        @Operation(summary = "Get a specific quiz", description = "Get a quiz with full questions and answers by its ID within a course.")
+        @Operation(summary = "Get a specific quiz", description = "Gets full quiz detail. LMS logic: primary aggregate view for quiz delivery/editing, including outcomes and question/answer structure. Path fields: courseId, quizId. Response fields: quiz metadata + ungroupedLearningOutcomes[] + groupedLearningOutcomes[] + questions[] with answers[].")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Quiz retrieved successfully", content = @Content(schema = @Schema(implementation = GetQuizResponse.class))),
                         @ApiResponse(responseCode = "404", description = "Quiz not found")
@@ -128,7 +128,7 @@ public class QuizController {
                 return ResponseEntity.ok(response);
         }
 
-        @Operation(summary = "Create a new quiz", description = "Create a new quiz in a course.")
+        @Operation(summary = "Create a new quiz", description = "Creates a quiz in a course. LMS logic: configures assessment rules (timing, pass score, attempt limits, visibility). Path field: courseId. Request fields: quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, display. Response fields: quizId, quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, courseId, display, createdAt.")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "201", description = "Quiz created successfully", content = @Content(schema = @Schema(implementation = CreateQuizResponse.class)))
         })
@@ -142,7 +142,7 @@ public class QuizController {
                 return ResponseEntity.status(HttpStatus.CREATED).body(response);
         }
 
-        @Operation(summary = "Modify an existing quiz", description = "Update quiz details. Only the quiz creator can modify.")
+        @Operation(summary = "Modify an existing quiz", description = "Updates quiz configuration. LMS logic: only quiz creator can revise assessment policy/schedule/visibility. Path fields: courseId, quizId. Request fields: quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, display. Response fields mirror updated quiz metadata plus updatedAt.")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Quiz modified successfully", content = @Content(schema = @Schema(implementation = ModifyQuizResponse.class))),
                         @ApiResponse(responseCode = "404", description = "Quiz not found")
@@ -158,7 +158,7 @@ public class QuizController {
                 return ResponseEntity.ok(response);
         }
 
-        @Operation(summary = "Delete a quiz", description = "Delete a quiz. Only the quiz creator can delete.")
+        @Operation(summary = "Delete a quiz", description = "Deletes one quiz. LMS logic: creator removes quiz from course assessment catalog. Path fields: courseId, quizId. Response fields: quizId, message.")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Quiz deleted successfully", content = @Content(schema = @Schema(implementation = DeleteQuizResponse.class))),
                         @ApiResponse(responseCode = "404", description = "Quiz not found")
@@ -172,7 +172,7 @@ public class QuizController {
                 return ResponseEntity.ok(response);
         }
 
-        @Operation(summary = "Delete quizzes", description = "Delete one or many quizzes.")
+        @Operation(summary = "Delete quizzes", description = "Batch deletes quizzes. LMS logic: bulk assessment cleanup. Path field: courseId. Request fields: quizIds[]. Response: list of delete results (quizId, message).")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Quizzes deleted successfully", content = @Content(schema = @Schema(implementation = DeleteQuizResponse.class))),
                         @ApiResponse(responseCode = "404", description = "Quiz not found")
@@ -188,7 +188,7 @@ public class QuizController {
                 return ResponseEntity.ok(responses);
         }
 
-        @Operation(summary = "Add learning outcomes to a quiz", description = "Adds learning outcomes by explicit ids and/or group ids. Group ids are expanded to child learning outcomes and overlaps are deduplicated.")
+        @Operation(summary = "Add learning outcomes to a quiz", description = "Adds learning outcomes to a quiz using direct outcome IDs and/or group IDs. LMS logic: expands group IDs to child outcomes and deduplicates mappings. Path fields: courseId, quizId. Request fields: learningOutcomeIds[], groupLearningOutcomeIds[]. Response fields: quizId, courseId, operation, totalAffected, learningOutcomeIds[].")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Learning outcomes added successfully", content = @Content(schema = @Schema(implementation = QuizLearningOutcomeOperationResponse.class)))
         })
@@ -211,7 +211,7 @@ public class QuizController {
                 return ResponseEntity.ok(response);
         }
 
-        @Operation(summary = "Remove learning outcomes from a quiz", description = "Removes learning outcomes by explicit ids and/or group ids. Group ids are expanded to child learning outcomes and overlaps are deduplicated.")
+        @Operation(summary = "Remove learning outcomes from a quiz", description = "Removes learning outcomes from a quiz using direct outcome IDs and/or group IDs. LMS logic: expands group IDs and deduplicates removal set. Path fields: courseId, quizId. Request fields: learningOutcomeIds[], groupLearningOutcomeIds[]. Response fields: quizId, courseId, operation, totalAffected, learningOutcomeIds[].")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Learning outcomes removed successfully", content = @Content(schema = @Schema(implementation = QuizLearningOutcomeOperationResponse.class)))
         })

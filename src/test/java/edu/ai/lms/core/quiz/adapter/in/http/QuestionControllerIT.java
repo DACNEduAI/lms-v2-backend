@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -30,6 +31,10 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
     private static UUID createdQuestionId;
     private static UUID secondQuestionId;
     private static UUID thirdQuestionId;
+    private static UUID questionLo1;
+    private static UUID questionLo2;
+    private static UUID foreignCourseId;
+    private static UUID foreignLearningOutcomeId;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     // ==================== SETUP ====================
@@ -111,6 +116,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "quizTitle": "Algebra Quiz",
+                    "unlimited": true,
                     "timeLimitMinutes": 45,
                     "passScore": 60.0
                 }
@@ -511,5 +517,163 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 .statusCode(200)
                 .body("questionId", equalTo(createdQuestionId.toString()))
                 .body("content", equalTo("What is 2 + 3?"));
+    }
+
+    @Test
+    @Order(18)
+    @DisplayName("Should create learning outcomes for question mapping")
+    void testCreateLearningOutcomesForQuestionMapping() {
+        String requestBody = """
+                {
+                    "learningOutcomes": [
+                        {"code": "QLO-1", "description": "Question mapped LO 1"},
+                        {"code": "QLO-2", "description": "Question mapped LO 2"}
+                    ]
+                }
+                """;
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/learning-outcome")
+                .then()
+                .statusCode(201)
+                .body("totalCreated", equalTo(2))
+                .extract().response();
+
+        questionLo1 = UUID.fromString(response.jsonPath().getString("learningOutcomes[0].id"));
+        questionLo2 = UUID.fromString(response.jsonPath().getString("learningOutcomes[1].id"));
+    }
+
+    @Test
+    @Order(19)
+    @DisplayName("Should add learning outcomes to a question")
+    void testAddLearningOutcomesToQuestion_ShouldSucceed() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s", "%s"]
+                }
+                """.formatted(questionLo1, questionLo2);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .post("/api/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/learning-outcomes")
+                .then()
+                .statusCode(200)
+                .body("operation", equalTo("ADD"))
+                .body("learningOutcomeIds", hasSize(2));
+    }
+
+    @Test
+    @Order(20)
+    @DisplayName("Should get all learning outcomes mapped to a question")
+    void testGetQuestionLearningOutcomes_ShouldSucceed() {
+        given()
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .get("/api/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/learning-outcomes")
+                .then()
+                .statusCode(200)
+                .body("questionId", equalTo(createdQuestionId.toString()))
+                .body("learningOutcomes", hasSize(2))
+                .body("learningOutcomes.code", hasItem("QLO-1"))
+                .body("learningOutcomes.code", hasItem("QLO-2"));
+    }
+
+    @Test
+    @Order(21)
+    @DisplayName("Should remove a learning outcome from a question")
+    void testRemoveLearningOutcomesFromQuestion_ShouldSucceed() {
+        String requestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(questionLo1);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .delete("/api/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/learning-outcomes")
+                .then()
+                .statusCode(200)
+                .body("operation", equalTo("REMOVE"))
+                .body("learningOutcomeIds", hasSize(1));
+    }
+
+    @Test
+    @Order(22)
+    @DisplayName("Should reject adding learning outcomes from another course")
+    void testAddLearningOutcomesToQuestion_FromDifferentCourse_ShouldFail() {
+        String startDate = LocalDate.now().plusDays(2).format(DATE_FORMATTER);
+        String endDate = LocalDate.now().plusMonths(4).format(DATE_FORMATTER);
+
+        String createOtherCourseRequest = """
+                {
+                    "courseName": "Foreign Course For Question Mapping",
+                    "description": "Course used to validate question LO course mismatch",
+                    "courseCode": "QST-FOREIGN-101",
+                    "active": true,
+                    "coverImage": "https://example.com/foreign-question-course.jpg",
+                    "startDate": "%s",
+                    "endDate": "%s",
+                    "learningOutcomes": []
+                }
+                """.formatted(startDate, endDate);
+
+        Response createOtherCourseResponse = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(createOtherCourseRequest)
+                .when()
+                .post("/api/course")
+                .then()
+                .statusCode(201)
+                .extract().response();
+
+        foreignCourseId = UUID.fromString(createOtherCourseResponse.jsonPath().getString("courseId"));
+
+        String createForeignLearningOutcomeRequest = """
+                {
+                    "learningOutcomes": [
+                        {"code": "QLO-FOREIGN-1", "description": "Foreign question learning outcome"}
+                    ]
+                }
+                """;
+
+        Response createForeignLearningOutcomeResponse = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(createForeignLearningOutcomeRequest)
+                .when()
+                .post("/api/" + foreignCourseId + "/learning-outcome")
+                .then()
+                .statusCode(201)
+                .body("totalCreated", equalTo(1))
+                .extract().response();
+
+        foreignLearningOutcomeId = UUID.fromString(createForeignLearningOutcomeResponse.jsonPath().getString("learningOutcomes[0].id"));
+
+        String addRequestBody = """
+                {
+                    "learningOutcomeIds": ["%s"]
+                }
+                """.formatted(foreignLearningOutcomeId);
+
+        given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(addRequestBody)
+                .when()
+                .post("/api/quiz/" + createdQuizId + "/question/" + createdQuestionId + "/learning-outcomes")
+                .then()
+                .statusCode(403)
+                .body("message", equalTo("Some learning outcomes do not belong to this course"));
     }
 }

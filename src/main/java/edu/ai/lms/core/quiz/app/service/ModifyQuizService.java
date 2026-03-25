@@ -16,6 +16,8 @@ import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
 import lombok.RequiredArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class ModifyQuizService implements ModifyQuizUseCase {
@@ -41,21 +43,16 @@ public class ModifyQuizService implements ModifyQuizUseCase {
         // Verify user is the creator of the quiz
         verifyQuizOwnership(user, existingQuiz);
 
-        // Update quiz fields
-        Quiz updatedQuiz = command.quiz();
-        updatedQuiz.setId(existingQuiz.getId());
-        updatedQuiz.setCourseId(existingQuiz.getCourseId());
-        updatedQuiz.setTeacherId(existingQuiz.getTeacherId());
-        updatedQuiz.setStudentId(existingQuiz.getStudentId());
-        if (updatedQuiz.getDisplay() == null) {
-            updatedQuiz.setDisplay(existingQuiz.getDisplay());
-        }
+        Quiz requestedQuiz = command.quiz();
+        Quiz updatedQuiz = mergeQuiz(existingQuiz, requestedQuiz);
+        validateQuizTimeConfiguration(updatedQuiz);
 
         Quiz savedQuiz = saveQuizPort.save(updatedQuiz);
 
         return ModifyQuizResponse.builder()
                 .quizId(savedQuiz.getId())
                 .quizTitle(savedQuiz.getQuizTitle())
+            .unlimited(savedQuiz.getUnlimited())
                 .timeLimitMinutes(savedQuiz.getTimeLimitMinutes())
                 .passScore(savedQuiz.getPassScore())
                 .startTime(savedQuiz.getStartTime())
@@ -65,6 +62,52 @@ public class ModifyQuizService implements ModifyQuizUseCase {
                 .display(savedQuiz.getDisplay())
                 .updatedAt(savedQuiz.getUpdatedAt())
                 .build();
+    }
+
+    private Quiz mergeQuiz(Quiz existingQuiz, Quiz requestedQuiz) {
+        Quiz merged = Quiz.builder()
+                .id(existingQuiz.getId())
+                .quizTitle(requestedQuiz.getQuizTitle() != null ? requestedQuiz.getQuizTitle() : existingQuiz.getQuizTitle())
+                .unlimited(requestedQuiz.getUnlimited() != null ? requestedQuiz.getUnlimited() : existingQuiz.getUnlimited())
+                .timeLimitMinutes(requestedQuiz.getTimeLimitMinutes() != null ? requestedQuiz.getTimeLimitMinutes() : existingQuiz.getTimeLimitMinutes())
+                .passScore(requestedQuiz.getPassScore() != null ? requestedQuiz.getPassScore() : existingQuiz.getPassScore())
+                .startTime(requestedQuiz.getStartTime() != null ? requestedQuiz.getStartTime() : existingQuiz.getStartTime())
+                .dueTime(requestedQuiz.getDueTime() != null ? requestedQuiz.getDueTime() : existingQuiz.getDueTime())
+                .attemptLimited(requestedQuiz.getAttemptLimited() != null ? requestedQuiz.getAttemptLimited() : existingQuiz.getAttemptLimited())
+                .courseId(existingQuiz.getCourseId())
+                .studentId(existingQuiz.getStudentId())
+                .teacherId(existingQuiz.getTeacherId())
+                .display(requestedQuiz.getDisplay() != null ? requestedQuiz.getDisplay() : existingQuiz.getDisplay())
+                .createdAt(existingQuiz.getCreatedAt())
+                .updatedAt(existingQuiz.getUpdatedAt())
+                .build();
+
+        return merged;
+    }
+
+    private void validateQuizTimeConfiguration(Quiz quiz) {
+        if (quiz.getUnlimited() == null) {
+            quiz.setUnlimited(false);
+        }
+
+        if (Boolean.TRUE.equals(quiz.getUnlimited())) {
+            if (quiz.getStartTime() != null || quiz.getDueTime() != null) {
+                throw new IllegalArgumentException("When unlimited is true, startTime and dueTime must be null");
+            }
+            quiz.setStartTime(null);
+            quiz.setDueTime(null);
+            return;
+        }
+
+        if (quiz.getDueTime() == null) {
+            throw new IllegalArgumentException("dueTime is required when unlimited is false");
+        }
+
+        LocalDateTime startTime = quiz.getStartTime();
+        LocalDateTime dueTime = quiz.getDueTime();
+        if (startTime != null && dueTime.isBefore(startTime)) {
+            throw new IllegalArgumentException("dueTime must be after or equal to startTime");
+        }
     }
 
     private void verifyQuizOwnership(UserAuth user, Quiz quiz) {

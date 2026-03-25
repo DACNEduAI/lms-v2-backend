@@ -16,6 +16,7 @@ import java.util.UUID;
 public class ModifyQuizResponse {
     private UUID quizId;
     private String quizTitle;
+    private Boolean unlimited;
     private Integer timeLimitMinutes;
     private Double passScore;
     @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)

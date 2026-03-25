@@ -131,6 +131,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "quizTitle": "Midterm Quiz",
+                    "unlimited": false,
                     "timeLimitMinutes": 60,
                     "passScore": 70.0,
                     "startTime": "10-01-2026 09:00:00",
@@ -171,6 +172,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "quizTitle": "Final Quiz",
+                    "unlimited": true,
                     "timeLimitMinutes": 120,
                     "passScore": 80.0
                 }
@@ -199,6 +201,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "quizTitle": "Practice Quiz",
+                    "unlimited": true,
                     "timeLimitMinutes": 45,
                     "passScore": 65.0
                 }
@@ -226,6 +229,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "quizTitle": "Unauthorized Quiz",
+                    "unlimited": true,
                     "timeLimitMinutes": 30,
                     "passScore": 50.0
                 }
@@ -247,6 +251,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     void testCreateQuiz_WithMissingTitle() {
         String requestBody = """
                 {
+                    "unlimited": true,
                     "timeLimitMinutes": 30,
                     "passScore": 50.0
                 }
@@ -812,6 +817,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "quizTitle": "%s",
+                    "unlimited": true,
                     "timeLimitMinutes": 20,
                     "passScore": 50.0,
                     "display": true
@@ -836,6 +842,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "quizTitle": "%s",
+                    "unlimited": true,
                     "timeLimitMinutes": 25,
                     "passScore": 55.0,
                     "display": true
@@ -860,6 +867,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "quizTitle": "%s",
+                    "unlimited": true,
                     "timeLimitMinutes": 15,
                     "passScore": 45.0,
                     "display": true
@@ -930,6 +938,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "quizTitle": "%s",
+                    "unlimited": true,
                     "timeLimitMinutes": 30,
                     "passScore": 50.0,
                     "display": false

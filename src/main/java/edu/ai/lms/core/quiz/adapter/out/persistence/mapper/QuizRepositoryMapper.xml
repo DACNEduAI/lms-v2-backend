@@ -7,6 +7,7 @@
   <resultMap id="QuizResultMap" type="edu.ai.lms.core.quiz.app.domain.Quiz">
     <id property="id" column="id" />
     <result property="quizTitle" column="quiz_title" />
+    <result property="unlimited" column="unlimited" />
     <result property="timeLimitMinutes" column="time_limit_minutes" />
     <result property="passScore" column="pass_score" />
     <result property="startTime" column="start_time" />
@@ -21,13 +22,14 @@
   </resultMap>
 
   <insert id="insert" parameterType="edu.ai.lms.core.quiz.app.domain.Quiz">
-    INSERT INTO quizzes (id, quiz_title, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, ai_settings_id, course_id, student_id, teacher_id, display, created_at, updated_at)
-    VALUES (#{id}, #{quizTitle}, #{timeLimitMinutes}, #{passScore}, #{startTime}, #{dueTime}, #{attemptLimited}, NULL, #{courseId}, #{studentId}, #{teacherId}, #{display}, NOW(), NOW())
+    INSERT INTO quizzes (id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, ai_settings_id, course_id, student_id, teacher_id, display, created_at, updated_at)
+    VALUES (#{id}, #{quizTitle}, #{unlimited}, #{timeLimitMinutes}, #{passScore}, #{startTime}, #{dueTime}, #{attemptLimited}, NULL, #{courseId}, #{studentId}, #{teacherId}, #{display}, NOW(), NOW())
   </insert>
 
   <update id="update" parameterType="edu.ai.lms.core.quiz.app.domain.Quiz">
     UPDATE quizzes
     SET quiz_title = #{quizTitle},
+      unlimited = #{unlimited},
         time_limit_minutes = #{timeLimitMinutes},
         pass_score = #{passScore},
       start_time = #{startTime},
@@ -46,27 +48,27 @@
   </delete>
 
   <select id="getById" resultMap="QuizResultMap">
-    SELECT id, quiz_title, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
+    SELECT id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
     FROM quizzes
     WHERE id = #{quizId}
   </select>
 
   <select id="getByIdAndCourseId" resultMap="QuizResultMap">
-    SELECT id, quiz_title, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
+    SELECT id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
     FROM quizzes
     WHERE id = #{quizId}
       AND course_id = #{courseId}
   </select>
 
   <select id="getAllByCourseId" resultMap="QuizResultMap">
-    SELECT id, quiz_title, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
+    SELECT id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
     FROM quizzes
     WHERE course_id = #{courseId}
     ORDER BY created_at DESC
   </select>
 
   <select id="getTeacherCreatedByCourseId" resultMap="QuizResultMap">
-    SELECT id, quiz_title, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
+    SELECT id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
     FROM quizzes
     WHERE course_id = #{courseId}
       AND teacher_id IS NOT NULL
@@ -74,7 +76,7 @@
   </select>
 
   <select id="getStudentCreatedByCourseIdAndStudentId" resultMap="QuizResultMap">
-    SELECT id, quiz_title, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
+    SELECT id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
     FROM quizzes
     WHERE course_id = #{courseId}
       AND student_id = #{studentId}

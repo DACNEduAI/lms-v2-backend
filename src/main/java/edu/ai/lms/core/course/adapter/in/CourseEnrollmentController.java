@@ -42,7 +42,22 @@ public class CourseEnrollmentController {
     private final AddStudentsToCourseCommandMapper addStudentsToCourseCommandMapper;
     private final RemoveStudentsFromCourseCommandMapper removeStudentsFromCourseCommandMapper;
 
-    @Operation(summary = "Get course enrollments", description = "Get all teachers and students participating in a course. Only the course owner (teacher) can access this endpoint.")
+    @Operation(
+            summary = "Get course enrollments",
+            description = """
+                    Returns course enrollment participants.
+
+                    LMS business logic:
+                    - Course owner teacher retrieves participant rosters for management.
+
+                    Path fields:
+                    - courseId: Course ID.
+
+                    Response fields:
+                    - courseId: Target course ID.
+                    - teachers[]: Teacher user IDs in the course.
+                    - students[]: Student user IDs in the course.
+                    """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Course enrollments retrieved successfully",
                     content = @Content(schema = @Schema(implementation = GetCourseEnrollmentsResponse.class))),
@@ -56,7 +71,26 @@ public class CourseEnrollmentController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Add students to a course", description = "Add students to a course by their email addresses. Only the course owner (teacher) can add students.")
+    @Operation(
+            summary = "Add students to a course",
+            description = """
+                    Adds students to a course by email.
+
+                    LMS business logic:
+                    - Course owner teacher enrolls existing student accounts.
+
+                    Path fields:
+                    - courseId: Course ID.
+
+                    Request fields:
+                    - studentEmails[]: Student email addresses to enroll.
+
+                    Response fields:
+                    - courseId: Course ID.
+                    - addedStudentEmails[]: Emails successfully enrolled.
+                    - totalAdded: Number of added students.
+                    - message: Operation message.
+                    """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Students added to course successfully",
                     content = @Content(schema = @Schema(implementation = AddStudentsToCourseResponse.class))),
@@ -73,7 +107,26 @@ public class CourseEnrollmentController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Remove students from a course", description = "Remove students from a course by their email addresses. Only the course owner (teacher) can remove students.")
+    @Operation(
+            summary = "Remove students from a course",
+            description = """
+                    Removes students from a course by email.
+
+                    LMS business logic:
+                    - Course owner teacher unenrolls students from the course roster.
+
+                    Path fields:
+                    - courseId: Course ID.
+
+                    Request fields:
+                    - studentEmails[]: Student email addresses to remove.
+
+                    Response fields:
+                    - courseId: Course ID.
+                    - removedStudentEmails[]: Emails successfully removed.
+                    - totalRemoved: Number of removed students.
+                    - message: Operation message.
+                    """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Students removed from course successfully",
                     content = @Content(schema = @Schema(implementation = RemoveStudentsFromCourseResponse.class))),

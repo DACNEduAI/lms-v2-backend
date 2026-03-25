@@ -146,15 +146,18 @@ class AttemptControllerIT extends IntegrationTestConfiguration {
     @Order(3)
     @DisplayName("Should create timed and non-timed quizzes")
     void createQuizzes() {
+        String timedDueTime = LocalDateTime.now().plusMinutes(2).format(DATE_TIME_FORMATTER);
         String timedQuizBody = """
                 {
                     "quizTitle": "Timed Attempt Quiz",
+                    "unlimited": false,
                     "timeLimitMinutes": 1,
                     "passScore": 5.0,
+                    "dueTime": "%s",
                     "attemptLimited": 2,
                     "display": true
                 }
-                """;
+                """.formatted(timedDueTime);
 
         Response timedQuizResponse = given()
                 .contentType(ContentType.JSON)
@@ -173,6 +176,7 @@ class AttemptControllerIT extends IntegrationTestConfiguration {
         String untimedQuizBody = """
                 {
                     "quizTitle": "Untimed Attempt Quiz",
+                    "unlimited": false,
                     "passScore": 5.0,
                     "attemptLimited": 2,
                     "dueTime": "%s",

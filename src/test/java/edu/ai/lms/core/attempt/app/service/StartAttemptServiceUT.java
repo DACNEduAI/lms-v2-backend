@@ -4,6 +4,7 @@ import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.attempt.app.domain.Attempt;
 import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
 import edu.ai.lms.core.attempt.app.exception.AttemptLimitExceededException;
+import edu.ai.lms.core.attempt.app.exception.InvalidAttemptSubmissionException;
 import edu.ai.lms.core.attempt.app.port.in.command.StartAttemptCommand;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
@@ -58,7 +59,9 @@ class StartAttemptServiceUT {
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
                 .courseId(courseId)
+            .unlimited(false)
                 .timeLimitMinutes(30)
+            .quizDueTime(LocalDateTime.now().plusHours(1))
                 .attemptLimited(2)
                 .build();
 
@@ -99,7 +102,9 @@ class StartAttemptServiceUT {
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
                 .courseId(courseId)
+            .unlimited(false)
                 .timeLimitMinutes(30)
+            .quizDueTime(LocalDateTime.now().plusHours(1))
                 .attemptLimited(1)
                 .build();
 
@@ -127,6 +132,7 @@ class StartAttemptServiceUT {
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
                 .courseId(courseId)
+            .unlimited(false)
                 .timeLimitMinutes(null)
                 .quizDueTime(quizDueTime)
                 .attemptLimited(3)
@@ -162,6 +168,7 @@ class StartAttemptServiceUT {
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
                 .courseId(courseId)
+            .unlimited(true)
                 .timeLimitMinutes(0)
                 .quizDueTime(null)
                 .attemptLimited(3)
@@ -185,5 +192,37 @@ class StartAttemptServiceUT {
 
         assertEquals("STARTED", response.getStatus());
         assertNull(response.getDueTime());
+    }
+
+    @Test
+    @DisplayName("Should reject attempt before quiz start time when unlimited is false")
+    void shouldRejectAttemptBeforeQuizStartTimeWhenLimited() {
+        UUID studentId = UUID.randomUUID();
+        UUID courseId = UUID.randomUUID();
+        UUID quizId = UUID.randomUUID();
+
+        UserAuth user = UserAuth.builder().id(studentId).role(Roles.STUDENT).build();
+        QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
+                .quizId(quizId)
+                .courseId(courseId)
+                .unlimited(false)
+                .quizStartTime(LocalDateTime.now().plusMinutes(5))
+                .quizDueTime(LocalDateTime.now().plusHours(1))
+                .attemptLimited(3)
+                .build();
+
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(user));
+        when(loadQuizAttemptPolicyPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
+        when(loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)).thenReturn(Optional.of(policy));
+        when(loadAttemptPort.getLatestStartedAttempt(studentId, quizId)).thenReturn(Optional.empty());
+        when(loadAttemptPort.countFinishedAttempts(studentId, quizId)).thenReturn(0L);
+
+        InvalidAttemptSubmissionException exception = assertThrows(InvalidAttemptSubmissionException.class,
+                () -> startAttemptService.startAttempt(StartAttemptCommand.builder()
+                        .courseId(courseId)
+                        .quizId(quizId)
+                        .build()));
+
+        assertEquals("Quiz has not started yet", exception.getMessage());
     }
 }

@@ -16,6 +16,8 @@ public class ModifyQuizRequest {
 
     private String quizTitle;
 
+    private Boolean unlimited;
+
     private Integer timeLimitMinutes;
 
     private Double passScore;

@@ -12,6 +12,7 @@ import edu.ai.lms.core.attempt.app.port.in.usecase.GetMyAttemptsUseCase;
 import edu.ai.lms.core.attempt.app.port.in.usecase.StartAttemptUseCase;
 import edu.ai.lms.core.attempt.app.port.in.usecase.SubmitAttemptUseCase;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -39,7 +40,26 @@ public class AttemptController {
     private final GetMyAttemptsUseCase getMyAttemptsUseCase;
     private final SubmitAttemptCommandMapper submitAttemptCommandMapper;
 
-    @Operation(summary = "Start a quiz attempt", description = "Creates a started attempt for the authenticated student.")
+    @Operation(
+            summary = "Start a quiz attempt",
+            description = """
+                    Starts a quiz attempt for the authenticated student.
+
+                    LMS business logic:
+                    - Creates an attempt record in STARTED state.
+                    - Applies quiz timing policy (start window/due time) to the attempt lifecycle.
+
+                    Path fields:
+                    - courseId: Course that contains the quiz.
+                    - quizId: Quiz to attempt.
+
+                    Response fields:
+                    - attemptId: Created attempt identifier.
+                    - quizId: Quiz identifier.
+                    - status: Attempt lifecycle status.
+                    - startTime: Attempt start timestamp.
+                    - dueTime: Attempt deadline timestamp.
+                    """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Attempt started successfully",
                     content = @Content(schema = @Schema(implementation = StartAttemptResponse.class)))
@@ -47,8 +67,8 @@ public class AttemptController {
     @PreAuthorize("hasRole('STUDENT')")
     @PostMapping("/quiz/{quizId}/start")
     public ResponseEntity<StartAttemptResponse> startAttempt(
-            @PathVariable UUID courseId,
-            @PathVariable UUID quizId) {
+            @Parameter(description = "Course ID that owns the quiz") @PathVariable UUID courseId,
+            @Parameter(description = "Quiz ID to start an attempt for") @PathVariable UUID quizId) {
         StartAttemptCommand command = StartAttemptCommand.builder()
                 .courseId(courseId)
                 .quizId(quizId)
@@ -58,7 +78,36 @@ public class AttemptController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Submit a quiz attempt", description = "Submits answers for the active started attempt.")
+                @Operation(
+                                                summary = "Submit a quiz attempt",
+                                                description = """
+                                                                                Submits answers for an active attempt.
+
+                                                                                LMS business logic:
+                                                                                - Validates request quizId against URL quizId.
+                                                                                - Evaluates submitted answers and finalizes score/status.
+
+                                                                                Path fields:
+                                                                                - courseId: Course context.
+                                                                                - quizId: Quiz being submitted.
+
+                                                                                Request body fields:
+                                                                                - quizId: Must match the quizId in the URL.
+                                                                                - submittedAnswers[]: Student answer payload list.
+                                                                                        - questionId: Question being answered.
+                                                                                        - studentAnswerId: Selected answer number/ID.
+                                                                                - timeSpentSeconds: Total attempt duration in seconds.
+
+                                                                                Response fields:
+                                                                                - attemptId: Submitted attempt identifier.
+                                                                                - quizId: Quiz identifier.
+                                                                                - status: Final attempt status.
+                                                                                - score: Computed score.
+                                                                                - timeSpentSeconds: Stored attempt duration.
+                                                                                - submittedTime: Submission timestamp.
+                                                                                - dueTime: Deadline timestamp used for validation.
+                                                                                - errorReason: Reason for invalid/late submission if present.
+                                                                                """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Attempt submitted",
                     content = @Content(schema = @Schema(implementation = SubmitAttemptResponse.class)))
@@ -66,8 +115,8 @@ public class AttemptController {
     @PreAuthorize("hasRole('STUDENT')")
     @PostMapping("/quiz/{quizId}/submit")
     public ResponseEntity<SubmitAttemptResponse> submitAttempt(
-            @PathVariable UUID courseId,
-            @PathVariable UUID quizId,
+            @Parameter(description = "Course ID that owns the quiz") @PathVariable UUID courseId,
+            @Parameter(description = "Quiz ID being submitted") @PathVariable UUID quizId,
             @Valid @RequestBody SubmitAttemptRequest request) {
 
                 if (!quizId.equals(request.getQuizId())) {
@@ -79,7 +128,30 @@ public class AttemptController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Get my attempts by quiz", description = "Returns attempts of the authenticated student for the given quiz.")
+                @Operation(
+                                                summary = "Get my attempts by quiz",
+                                                description = """
+                                                                                Returns all attempts of the authenticated student for a specific quiz.
+
+                                                                                LMS business logic:
+                                                                                - Provides learner attempt history for progress, scoring, and retry tracking.
+
+                                                                                Path fields:
+                                                                                - courseId: Course context.
+                                                                                - quizId: Quiz to fetch attempt history for.
+
+                                                                                Response fields:
+                                                                                - quizId: Quiz identifier.
+                                                                                - attempts[]: Attempt history list.
+                                                                                        - attemptId: Attempt identifier.
+                                                                                        - status: Attempt status.
+                                                                                        - score: Attempt score.
+                                                                                        - startTime: Attempt start time.
+                                                                                        - dueTime: Attempt deadline.
+                                                                                        - submittedTime: Attempt submission time.
+                                                                                        - timeSpentSeconds: Duration spent.
+                                                                                        - errorReason: Late/error reason if any.
+                                                                                """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Attempts fetched",
                     content = @Content(schema = @Schema(implementation = GetMyAttemptsResponse.class)))
@@ -87,8 +159,8 @@ public class AttemptController {
     @PreAuthorize("hasRole('STUDENT')")
     @GetMapping("/quiz/{quizId}/me")
     public ResponseEntity<GetMyAttemptsResponse> getMyAttempts(
-            @PathVariable UUID courseId,
-            @PathVariable UUID quizId) {
+                        @Parameter(description = "Course ID that owns the quiz") @PathVariable UUID courseId,
+                        @Parameter(description = "Quiz ID to fetch my attempts") @PathVariable UUID quizId) {
         return ResponseEntity.ok(getMyAttemptsUseCase.getMyAttempts(courseId, quizId));
     }
 }

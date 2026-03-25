@@ -110,6 +110,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "quizTitle": "Physics Quiz",
+                    "unlimited": true,
                     "timeLimitMinutes": 30,
                     "passScore": 50.0
                 }

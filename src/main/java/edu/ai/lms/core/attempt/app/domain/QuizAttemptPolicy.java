@@ -20,13 +20,21 @@ public class QuizAttemptPolicy {
 
     private UUID courseId;
 
+    private Boolean unlimited;
+
     private Integer timeLimitMinutes;
+
+    private LocalDateTime quizStartTime;
 
     private LocalDateTime quizDueTime;
 
     private Integer attemptLimited;
 
     public boolean hasTimer() {
-        return timeLimitMinutes != null && timeLimitMinutes > 0;
+        return !Boolean.TRUE.equals(unlimited) && timeLimitMinutes != null && timeLimitMinutes > 0;
+    }
+
+    public boolean isUnlimited() {
+        return Boolean.TRUE.equals(unlimited);
     }
 }
