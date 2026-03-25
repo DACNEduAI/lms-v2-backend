@@ -51,7 +51,23 @@ public class ChapterController {
     private final CreateChapterCommandMapper createChapterCommandMapper;
     private final ModifyChapterCommandMapper modifyChapterCommandMapper;
 
-    @Operation(summary = "Get all chapters for a course", description = "Returns all chapters belonging to a specific course, ordered by chapter number.")
+    @Operation(
+            summary = "Get all chapters for a course",
+            description = """
+                    Returns all chapters for a course.
+
+                    LMS business logic:
+                    - Exposes course structure used by learners/teachers for navigation.
+
+                    Path fields:
+                    - courseId: Parent course ID.
+
+                    Response fields per chapter:
+                    - chapterId, title, description, courseId.
+                    - learningOutcomeIds.
+                    - ungroupedLearningOutcomes[] and groupedLearningOutcomes[].
+                    - createdAt, updatedAt.
+                    """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Chapters retrieved successfully"),
             @ApiResponse(responseCode = "403", description = "Not authorized to access this course")
@@ -64,7 +80,24 @@ public class ChapterController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Get a specific chapter", description = "Get a chapter by its course ID and chapter number. The chapter's course must belong to the authenticated teacher.")
+    @Operation(
+            summary = "Get a specific chapter",
+            description = """
+                    Returns one chapter in a course.
+
+                    LMS business logic:
+                    - Retrieves chapter content scope and mapped learning outcomes.
+
+                    Path fields:
+                    - courseId: Course ID.
+                    - chapterId: Chapter ID.
+
+                    Response fields:
+                    - chapterId, title, description, courseId.
+                    - learningOutcomeIds.
+                    - ungroupedLearningOutcomes[] and groupedLearningOutcomes[].
+                    - createdAt, updatedAt.
+                    """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Chapter retrieved successfully",
                     content = @Content(schema = @Schema(implementation = GetChapterResponse.class))),
@@ -80,7 +113,24 @@ public class ChapterController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Create a new chapter", description = "Create a new chapter within a course")
+    @Operation(
+            summary = "Create a new chapter",
+            description = """
+                    Creates a chapter in a course.
+
+                    LMS business logic:
+                    - Course owner teacher adds a new instructional unit to course structure.
+
+                    Path fields:
+                    - courseId: Course ID.
+
+                    Request fields:
+                    - title: Chapter title.
+                    - description: Chapter description.
+
+                    Response fields:
+                    - chapterId, title, description, courseId, createdAt.
+                    """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Chapter created successfully",
                     content = @Content(schema = @Schema(implementation = CreateChapterResponse.class))),
@@ -97,7 +147,25 @@ public class ChapterController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(summary = "Modify an existing chapter", description = "Modify a chapter within a course. Only the course owner (teacher) can modify chapters.")
+    @Operation(
+            summary = "Modify an existing chapter",
+            description = """
+                    Updates chapter metadata.
+
+                    LMS business logic:
+                    - Course owner teacher edits chapter structure details.
+
+                    Path fields:
+                    - courseId: Course ID.
+                    - chapterId: Chapter ID.
+
+                    Request fields:
+                    - title: Updated chapter title.
+                    - description: Updated chapter description.
+
+                    Response fields:
+                    - chapterId, title, description, courseId, updatedAt.
+                    """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Chapter modified successfully",
                     content = @Content(schema = @Schema(implementation = ModifyChapterResponse.class))),
@@ -115,7 +183,21 @@ public class ChapterController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Delete a chapter", description = "Delete a chapter from a course. Only the course owner (teacher) can delete chapters.")
+    @Operation(
+            summary = "Delete a chapter",
+            description = """
+                    Deletes a chapter from a course.
+
+                    LMS business logic:
+                    - Course owner teacher removes an instructional unit from the course structure.
+
+                    Path fields:
+                    - courseId: Course ID.
+                    - chapterId: Chapter ID.
+
+                    Response fields:
+                    - courseId, chapterId, message, success.
+                    """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Chapter deleted successfully",
                     content = @Content(schema = @Schema(implementation = DeleteChapterResponse.class))),

@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS ai_settings (
 CREATE TABLE IF NOT EXISTS quizzes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     quiz_title VARCHAR(255) NOT NULL,
+    unlimited BOOLEAN NOT NULL DEFAULT false,
     time_limit_minutes INTEGER,
     pass_score DOUBLE PRECISION,
     start_time TIMESTAMP,
@@ -232,8 +233,8 @@ CREATE TABLE IF NOT EXISTS quiz_learning_outcomes (
 );
 
 CREATE TABLE IF NOT EXISTS question_learning_outcomes (
-    question_id UUID REFERENCES questions(id),
-    learning_outcome_id UUID REFERENCES learning_outcomes(id),
+    question_id UUID REFERENCES questions(id) ON DELETE CASCADE,
+    learning_outcome_id UUID REFERENCES learning_outcomes(id) ON DELETE CASCADE,
     PRIMARY KEY (question_id, learning_outcome_id)
 );
 

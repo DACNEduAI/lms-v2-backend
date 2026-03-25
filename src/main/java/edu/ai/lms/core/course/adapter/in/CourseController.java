@@ -53,7 +53,23 @@ public class CourseController {
     private final CreateCourseCommandMapper createCourseCommandMapper;
     private final ModifyCourseCommandMapper modifyCourseCommandMapper;
 
-    @Operation(summary = "Get a specific course", description = "Get a course by its ID. The course must belong to the authenticated teacher.")
+    @Operation(
+            summary = "Get a specific course",
+            description = """
+                    Returns one course by ID.
+
+                    LMS business logic:
+                    - Loads the course aggregate and its learning outcome structure.
+                    - Accessible to authorized teachers/students in the course context.
+
+                    Path fields:
+                    - courseId: Target course ID.
+
+                    Response fields:
+                    - courseId, courseName, courseCode, description, teacherId, active, coverImage, startDate, endDate.
+                    - groupLearningOutcomes[]: Grouped CLOs (id, name, description, learningOutcomes[]).
+                    - ungroupedLearningOutcomes[]: CLOs not assigned to groups (id, code, description).
+                    """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Course retrieved successfully",
                     content = @Content(schema = @Schema(implementation = GetCourseResponse.class))),
@@ -67,7 +83,24 @@ public class CourseController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Get all courses", description = "Get all courses for the authenticated teacher with pagination and sorting")
+    @Operation(
+            summary = "Get all courses",
+            description = """
+                    Returns a course list with pagination/sorting options.
+
+                    LMS business logic:
+                    - Provides course discovery/list view for authorized users.
+
+                    Query fields:
+                    - pageSize: Number of courses to return.
+                    - sortDirection: Sort direction (asc/desc).
+
+                    Response fields:
+                    - courses[]: Course summary items (courseId, courseName, courseCode, description, active, coverImage, startDate, endDate).
+                    - totalCourses: Count returned in this response context.
+                    - pageSize: Applied page size.
+                    - sortDirection: Applied sort direction.
+                    """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Courses retrieved successfully",
                     content = @Content(schema = @Schema(implementation = GetAllCoursesResponse.class)))
@@ -83,7 +116,31 @@ public class CourseController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Create a new course", description = "Create a new course")
+                @Operation(
+                                                summary = "Create a new course",
+                                                description = """
+                                                                                Creates a course for the authenticated teacher.
+
+                                                                                LMS business logic:
+                                                                                - Teacher becomes course owner.
+                                                                                - Validates course metadata and date range.
+                                                                                - Can seed initial learning outcomes at creation time.
+
+                                                                                Request fields:
+                                                                                - courseName: Course title.
+                                                                                - description: Course description.
+                                                                                - courseCode: Institutional course code.
+                                                                                - active: Course visibility/availability state.
+                                                                                - coverImage: Cover image reference.
+                                                                                - startDate: Course start date.
+                                                                                - endDate: Course end date (must be after startDate).
+                                                                                - learningOutcomes[]: Optional initial CLO list.
+                                                                                        - code: CLO code.
+                                                                                        - description: CLO description.
+
+                                                                                Response fields:
+                                                                                - courseId, courseName, courseCode, description, teacherId, active, coverImage, startDate, endDate.
+                                                                                """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Course created successfully",
                     content = @Content(schema = @Schema(implementation = CreateCourseResponse.class))),
@@ -97,7 +154,24 @@ public class CourseController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(summary = "Modify an existing course", description = "Update course details")
+    @Operation(
+            summary = "Modify an existing course",
+            description = """
+                    Updates an existing course.
+
+                    LMS business logic:
+                    - Only the course owner teacher can modify course metadata.
+                    - Date-range validity is enforced.
+
+                    Path fields:
+                    - courseId: Target course ID.
+
+                    Request fields:
+                    - courseName, description, courseCode, active, coverImage, startDate, endDate.
+
+                    Response fields:
+                    - courseId, courseName, courseCode, description, teacherId, active, coverImage, startDate, endDate, updatedAt.
+                    """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Course modified successfully",
                     content = @Content(schema = @Schema(implementation = ModifyCourseResponse.class))),
@@ -115,7 +189,23 @@ public class CourseController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Delete a course", description = "Delete an existing course")
+    @Operation(
+            summary = "Delete a course",
+            description = """
+                    Deletes a course.
+
+                    LMS business logic:
+                    - Only the owning teacher can remove the course.
+                    - Removal applies to the course aggregate and related associations.
+
+                    Path fields:
+                    - courseId: Target course ID.
+
+                    Response fields:
+                    - courseId: Deleted course ID.
+                    - message: Operation result message.
+                    - success: Deletion status flag.
+                    """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Course deleted successfully",
                     content = @Content(schema = @Schema(implementation = DeleteCourseResponse.class))),

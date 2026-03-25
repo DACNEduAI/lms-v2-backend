@@ -46,7 +46,7 @@ public class GroupLearningOutcomeController {
     private final RemoveLearningOutcomesFromGroupCommandMapper removeLearningOutcomesFromGroupCommandMapper;
 
     @Operation(summary = "Create a group learning outcome",
-            description = "Create a group learning outcome with a list of existing learning outcome IDs to assign to the group.")
+            description = "Creates a group learning outcome and assigns existing child outcomes. LMS logic: builds a CLO hierarchy for curriculum organization; a learning outcome cannot be in conflicting groups. Path field: courseId. Request fields: name, description, learningOutcomeIds[]. Response fields: id, name, description, courseId, learningOutcomes[] (id, code, description), createdAt.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Group learning outcome created successfully",
                     content = @Content(schema = @Schema(implementation = CreateGroupLearningOutcomeResponse.class))),
@@ -65,7 +65,7 @@ public class GroupLearningOutcomeController {
     }
 
     @Operation(summary = "Add learning outcomes to a group",
-            description = "Add existing learning outcomes to an existing group. Learning outcomes must not already be in another group.")
+            description = "Adds existing learning outcomes to a group. LMS logic: extends group composition while enforcing non-conflicting membership. Path fields: courseId, groupId. Request fields: learningOutcomeIds[]. Response fields: groupId, name, courseId, learningOutcomes[] (id, code, description), totalAdded.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Learning outcomes added to group successfully",
                     content = @Content(schema = @Schema(implementation = AddLearningOutcomesToGroupResponse.class))),
@@ -85,7 +85,7 @@ public class GroupLearningOutcomeController {
     }
 
     @Operation(summary = "Remove learning outcomes from a group",
-            description = "Remove learning outcomes from a group. The learning outcomes will become ungrouped.")
+            description = "Removes learning outcomes from a group (outcomes become ungrouped). LMS logic: supports CLO hierarchy reorganization without deleting outcomes. Path fields: courseId, groupId. Request fields: learningOutcomeIds[]. Response fields: groupId, name, courseId, totalRemoved, message.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Learning outcomes removed from group successfully",
                     content = @Content(schema = @Schema(implementation = RemoveLearningOutcomesFromGroupResponse.class))),

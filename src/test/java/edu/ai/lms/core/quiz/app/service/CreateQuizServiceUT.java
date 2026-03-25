@@ -75,8 +75,10 @@ class CreateQuizServiceUT {
 
         Quiz quiz = Quiz.builder()
                 .quizTitle("Midterm Quiz")
+                .unlimited(false)
                 .timeLimitMinutes(60)
                 .passScore(70.0)
+                .dueTime(LocalDateTime.now().plusHours(1))
                 .build();
 
         validCommand = CreateQuizCommand.builder()
@@ -94,8 +96,10 @@ class CreateQuizServiceUT {
         Quiz savedQuiz = Quiz.builder()
                 .id(quizId)
                 .quizTitle("Midterm Quiz")
+                .unlimited(false)
                 .timeLimitMinutes(60)
                 .passScore(70.0)
+                .dueTime(LocalDateTime.now().plusHours(1))
                 .courseId(courseId)
                 .teacherId(teacherId)
                 .display(true)
@@ -175,6 +179,7 @@ class CreateQuizServiceUT {
         Quiz savedQuiz = Quiz.builder()
                 .id(quizId)
                 .quizTitle("Midterm Quiz")
+                .unlimited(false)
                 .courseId(courseId)
                 .teacherId(teacherId)
                 .display(true)
@@ -212,4 +217,35 @@ class CreateQuizServiceUT {
                 assertNull(capturedQuiz.getDueTime());
                 assertNull(capturedQuiz.getAttemptLimited());
         }
+
+    @Test
+    @DisplayName("Should reject create when unlimited is true but startTime or dueTime is provided")
+    void testCreateQuiz_WithUnlimitedTrueAndProvidedTimes_ShouldThrow() {
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
+
+        validCommand.quiz().setUnlimited(true);
+        validCommand.quiz().setStartTime(LocalDateTime.now().plusMinutes(1));
+        validCommand.quiz().setDueTime(LocalDateTime.now().plusHours(1));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> createQuizService.createQuiz(validCommand));
+
+        assertEquals("When unlimited is true, startTime and dueTime must be null", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Should reject create when unlimited is false and dueTime is missing")
+    void testCreateQuiz_WithUnlimitedFalseAndMissingDueTime_ShouldThrow() {
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
+
+        validCommand.quiz().setUnlimited(false);
+        validCommand.quiz().setDueTime(null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> createQuizService.createQuiz(validCommand));
+
+        assertEquals("dueTime is required when unlimited is false", exception.getMessage());
+    }
 }

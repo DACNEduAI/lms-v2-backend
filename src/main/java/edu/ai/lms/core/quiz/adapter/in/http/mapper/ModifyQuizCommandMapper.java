@@ -14,6 +14,7 @@ public class ModifyQuizCommandMapper {
     public ModifyQuizCommand toCommand(UUID courseId, UUID quizId, ModifyQuizRequest request) {
         Quiz quiz = Quiz.builder()
                 .quizTitle(request.getQuizTitle())
+            .unlimited(request.getUnlimited())
                 .timeLimitMinutes(request.getTimeLimitMinutes())
                 .passScore(request.getPassScore())
                 .startTime(request.getStartTime())

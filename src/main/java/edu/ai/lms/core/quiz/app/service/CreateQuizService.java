@@ -15,6 +15,8 @@ import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
 import lombok.RequiredArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class CreateQuizService implements CreateQuizUseCase {
@@ -36,15 +38,20 @@ public class CreateQuizService implements CreateQuizUseCase {
         // Set quiz properties
         Quiz quiz = command.quiz();
         quiz.setCourseId(command.courseId());
+        if (quiz.getUnlimited() == null) {
+            quiz.setUnlimited(false);
+        }
         if (quiz.getDisplay() == null) {
             quiz.setDisplay(true);
         }
 
         if (user.getRole() == Roles.TEACHER) {
             quiz.setTeacherId(user.getId());
+            validateQuizTimeConfiguration(quiz);
 
         } else {
             quiz.setStudentId(user.getId());
+            quiz.setUnlimited(true);
             quiz.setStartTime(null);
             quiz.setDueTime(null);
             quiz.setAttemptLimited(null);
@@ -56,6 +63,7 @@ public class CreateQuizService implements CreateQuizUseCase {
         return CreateQuizResponse.builder()
                 .quizId(savedQuiz.getId())
                 .quizTitle(savedQuiz.getQuizTitle())
+            .unlimited(savedQuiz.getUnlimited())
                 .timeLimitMinutes(savedQuiz.getTimeLimitMinutes())
                 .passScore(savedQuiz.getPassScore())
                 .startTime(savedQuiz.getStartTime())
@@ -65,6 +73,27 @@ public class CreateQuizService implements CreateQuizUseCase {
                 .display(savedQuiz.getDisplay())
                 .createdAt(savedQuiz.getCreatedAt())
                 .build();
+    }
+
+    private void validateQuizTimeConfiguration(Quiz quiz) {
+        if (Boolean.TRUE.equals(quiz.getUnlimited())) {
+            if (quiz.getStartTime() != null || quiz.getDueTime() != null) {
+                throw new IllegalArgumentException("When unlimited is true, startTime and dueTime must be null");
+            }
+            quiz.setStartTime(null);
+            quiz.setDueTime(null);
+            return;
+        }
+
+        if (quiz.getDueTime() == null) {
+            throw new IllegalArgumentException("dueTime is required when unlimited is false");
+        }
+
+        LocalDateTime startTime = quiz.getStartTime();
+        LocalDateTime dueTime = quiz.getDueTime();
+        if (startTime != null && dueTime.isBefore(startTime)) {
+            throw new IllegalArgumentException("dueTime must be after or equal to startTime");
+        }
     }
 
     private void verifyCourseMembership(UserAuth user, java.util.UUID courseId) {

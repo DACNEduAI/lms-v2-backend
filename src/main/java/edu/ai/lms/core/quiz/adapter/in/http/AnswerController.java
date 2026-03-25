@@ -44,7 +44,7 @@ public class AnswerController {
     private final CreateAnswerCommandMapper createAnswerCommandMapper;
     private final ModifyAnswerCommandMapper modifyAnswerCommandMapper;
 
-    @Operation(summary = "Create a new answer", description = "Add an answer to a question. Only the quiz creator can add answers.")
+        @Operation(summary = "Create a new answer", description = "Creates an answer option for a question. LMS logic: defines selectable choices used in quiz grading. Path field: questionId. Request fields: content, isCorrect, explanation. Response fields: answerNumber, content, isCorrect, explanation, questionId, createdAt.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Answer created successfully",
                     content = @Content(schema = @Schema(implementation = CreateAnswerResponse.class)))
@@ -59,7 +59,7 @@ public class AnswerController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(summary = "Modify an answer", description = "Update an answer. Only the quiz creator can modify answers.")
+        @Operation(summary = "Modify an answer", description = "Updates an answer option. LMS logic: lets quiz creators refine answer correctness/content/feedback. Path fields: questionId, answerNumber. Request fields: content, isCorrect, explanation. Response fields: answerNumber, content, isCorrect, explanation, questionId, updatedAt.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Answer modified successfully",
                     content = @Content(schema = @Schema(implementation = ModifyAnswerResponse.class))),
@@ -76,7 +76,7 @@ public class AnswerController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Delete an answer", description = "Delete an answer from a question. Only the quiz creator can delete answers.")
+        @Operation(summary = "Delete an answer", description = "Deletes an answer option from a question. LMS logic: removes obsolete choices from question configuration. Path fields: questionId, answerNumber. Response fields: answerNumber, questionId, message.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Answer deleted successfully",
                     content = @Content(schema = @Schema(implementation = DeleteAnswerResponse.class))),

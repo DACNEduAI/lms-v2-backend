@@ -78,7 +78,7 @@ public class LearningOutcomeController {
 
     // ==================== COURSE-LEVEL LEARNING OUTCOME MANAGEMENT ====================
 
-    @Operation(summary = "Create learning outcomes", description = "Create one or more learning outcomes for a course. Only the course owner (teacher) can create learning outcomes.")
+        @Operation(summary = "Create learning outcomes", description = "Creates one or more learning outcomes (CLOs) for a course. LMS logic: the course owner defines measurable outcomes used for chapter/quiz/question mapping. Path field: courseId. Request fields: learningOutcomes[] with code and description. Response fields: courseId, learningOutcomes[] (id, code, description, createdAt), totalCreated.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Learning outcomes created successfully",
                     content = @Content(schema = @Schema(implementation = CreateLearningOutcomesResponse.class))),
@@ -95,7 +95,7 @@ public class LearningOutcomeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(summary = "Get a single learning outcome", description = "Get a learning outcome by its ID in a course.")
+        @Operation(summary = "Get a single learning outcome", description = "Gets one learning outcome in a course. LMS logic: retrieves CLO details used in outcome mapping screens. Path fields: courseId, learningOutcomeId. Response fields: id, code, description, courseId, groupLearningOutcomeId, createdAt, updatedAt.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Learning outcome retrieved successfully",
                     content = @Content(schema = @Schema(implementation = GetLearningOutcomeResponse.class))),
@@ -110,7 +110,7 @@ public class LearningOutcomeController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Get learning outcomes by IDs", description = "Get learning outcomes in a course by providing a list of learning outcome IDs.")
+        @Operation(summary = "Get learning outcomes by IDs", description = "Gets multiple learning outcomes by IDs. LMS logic: supports batch lookup for mapping operations. Path field: courseId. Query field: ids (list of learningOutcome IDs). Response: list of learning outcome objects (id, code, description, courseId, grouping/timestamps).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Learning outcomes retrieved successfully"),
             @ApiResponse(responseCode = "404", description = "One or more learning outcomes not found")
@@ -124,7 +124,7 @@ public class LearningOutcomeController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Get grouped learning outcomes", description = "Get all group learning outcomes in a course with their child learning outcomes.")
+        @Operation(summary = "Get grouped learning outcomes", description = "Gets grouped learning outcomes with nested child outcomes. LMS logic: exposes CLO hierarchy for curriculum organization. Path field: courseId. Response fields: each group has id, name, description, and learningOutcomes[].")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Grouped learning outcomes retrieved successfully")
     })
@@ -136,7 +136,7 @@ public class LearningOutcomeController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Modify a single learning outcome", description = "Modify a specific learning outcome by its ID. Only the course owner (teacher) can modify learning outcomes.")
+        @Operation(summary = "Modify a single learning outcome", description = "Updates one learning outcome. LMS logic: only the course owner can revise CLO metadata. Path fields: courseId, learningOutcomeId. Request fields: code and/or description. Response fields: id, code, description, courseId, updatedAt.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Learning outcome modified successfully",
                     content = @Content(schema = @Schema(implementation = ModifyLearningOutcomeResponse.class))),
@@ -155,7 +155,7 @@ public class LearningOutcomeController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Modify multiple learning outcomes", description = "Modify one or more learning outcomes in batch. Only the course owner (teacher) can modify learning outcomes.")
+        @Operation(summary = "Modify multiple learning outcomes", description = "Batch updates learning outcomes. LMS logic: supports bulk syllabus refinement by the course owner. Path field: courseId. Request fields: learningOutcomes[] with required id and optional code/description. Response fields: courseId, learningOutcomes[] (id, code, description, updatedAt), totalModified.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Learning outcomes modified successfully",
                     content = @Content(schema = @Schema(implementation = ModifyLearningOutcomesResponse.class))),
@@ -172,7 +172,7 @@ public class LearningOutcomeController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Delete multiple learning outcomes", description = "Delete one or more learning outcomes by their IDs. Only the course owner (teacher) can delete learning outcomes.")
+        @Operation(summary = "Delete multiple learning outcomes", description = "Batch deletes learning outcomes by ID. LMS logic: owner removes obsolete CLOs. Path field: courseId. Request fields: learningOutcomeIds[]. Response fields: courseId, deletedIds[], totalDeleted, message.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Learning outcomes deleted successfully",
                     content = @Content(schema = @Schema(implementation = DeleteLearningOutcomesResponse.class))),
@@ -189,7 +189,7 @@ public class LearningOutcomeController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Add learning outcomes to a course", description = "Add one or more learning outcomes to a course. Only the course owner (teacher) can add learning outcomes.")
+        @Operation(summary = "Add learning outcomes to a course", description = "Alias-style endpoint to add/create learning outcomes for a course. LMS logic: explicit add action for clients. Path field: courseId. Request fields: learningOutcomes[] (code, description). Response fields: courseId, learningOutcomes[] (id, code, description, createdAt), totalCreated.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Learning outcomes added to course successfully",
                     content = @Content(schema = @Schema(implementation = CreateLearningOutcomesResponse.class))),
@@ -206,7 +206,7 @@ public class LearningOutcomeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(summary = "Remove learning outcomes from a course", description = "Remove one or more learning outcomes from a course by their IDs. Only the course owner (teacher) can remove learning outcomes.")
+        @Operation(summary = "Remove learning outcomes from a course", description = "Alias-style endpoint to remove learning outcomes from a course. LMS logic: explicit remove action for clients. Path field: courseId. Request fields: learningOutcomeIds[]. Response fields: courseId, deletedIds[], totalDeleted, message.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Learning outcomes removed from course successfully",
                     content = @Content(schema = @Schema(implementation = DeleteLearningOutcomesResponse.class))),
@@ -226,7 +226,7 @@ public class LearningOutcomeController {
     // ==================== CHAPTER-LEVEL LEARNING OUTCOME MANAGEMENT ====================
 
     @Operation(summary = "Add learning outcomes to a chapter",
-            description = "Add learning outcomes to a chapter by their IDs. Only the course owner (teacher) can add learning outcomes. Learning outcomes must belong to the same course.")
+            description = "Adds CLO links to a chapter. LMS logic: maps instructional content to measurable outcomes. Path fields: courseId, chapterId. Request fields: learningOutcomeIds[]. Response fields: courseId, chapterId, addedLearningOutcomeIds[], totalAdded, message.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Learning outcomes added to chapter successfully",
                     content = @Content(schema = @Schema(implementation = AddLearningOutcomesToChapterResponse.class))),
@@ -245,7 +245,7 @@ public class LearningOutcomeController {
     }
 
     @Operation(summary = "Remove learning outcomes from a chapter",
-            description = "Remove learning outcomes from a chapter by their IDs. Only the course owner (teacher) can remove learning outcomes.")
+            description = "Removes CLO links from a chapter. LMS logic: updates chapter-outcome alignment after curriculum changes. Path fields: courseId, chapterId. Request fields: learningOutcomeIds[]. Response fields: courseId, chapterId, removedLearningOutcomeIds[], totalRemoved, message.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Learning outcomes removed from chapter successfully",
                     content = @Content(schema = @Schema(implementation = RemoveLearningOutcomesFromChapterResponse.class))),

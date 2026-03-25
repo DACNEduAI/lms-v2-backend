@@ -60,6 +60,8 @@ public class StartAttemptService implements StartAttemptUseCase {
             throw new AttemptLimitExceededException("You have reached the attempt limit for this quiz");
         }
 
+        validateStartTimeWindow(policy, now);
+
         LocalDateTime dueTime = resolveDueTime(policy, now);
 
         Attempt attempt = Attempt.builder()
@@ -82,10 +84,29 @@ public class StartAttemptService implements StartAttemptUseCase {
     }
 
     private LocalDateTime resolveDueTime(QuizAttemptPolicy policy, LocalDateTime now) {
-        if (policy.hasTimer()) {
-            return now.plusMinutes(policy.getTimeLimitMinutes());
+        if (policy.isUnlimited()) {
+            return null;
         }
-        // No timer: honor quiz-level dueTime when configured; otherwise allow unlimited duration.
+
+        if (policy.getQuizDueTime() == null) {
+            throw new InvalidAttemptSubmissionException("Quiz due time is required when unlimited is false");
+        }
+
+        if (policy.hasTimer()) {
+            LocalDateTime timerDueTime = now.plusMinutes(policy.getTimeLimitMinutes());
+            return timerDueTime.isBefore(policy.getQuizDueTime()) ? timerDueTime : policy.getQuizDueTime();
+        }
+
         return policy.getQuizDueTime();
+    }
+
+    private void validateStartTimeWindow(QuizAttemptPolicy policy, LocalDateTime now) {
+        if (policy.isUnlimited()) {
+            return;
+        }
+
+        if (policy.getQuizStartTime() != null && now.isBefore(policy.getQuizStartTime())) {
+            throw new InvalidAttemptSubmissionException("Quiz has not started yet");
+        }
     }
 }

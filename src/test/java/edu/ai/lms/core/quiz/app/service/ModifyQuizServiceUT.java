@@ -68,8 +68,10 @@ class ModifyQuizServiceUT {
         existingQuiz = Quiz.builder()
                 .id(quizId)
                 .quizTitle("Original Title")
+                .unlimited(false)
                 .timeLimitMinutes(60)
                 .passScore(70.0)
+                .dueTime(LocalDateTime.now().plusHours(1))
                 .courseId(courseId)
                 .teacherId(teacherId)
                 .display(true)
@@ -78,8 +80,10 @@ class ModifyQuizServiceUT {
 
         Quiz updatedQuiz = Quiz.builder()
                 .quizTitle("Updated Title")
+                .unlimited(false)
                 .timeLimitMinutes(90)
                 .passScore(80.0)
+                .dueTime(LocalDateTime.now().plusHours(2))
                 .display(true)
                 .build();
 
@@ -100,8 +104,10 @@ class ModifyQuizServiceUT {
         Quiz savedQuiz = Quiz.builder()
                 .id(quizId)
                 .quizTitle("Updated Title")
+                .unlimited(false)
                 .timeLimitMinutes(90)
                 .passScore(80.0)
+                .dueTime(validCommand.quiz().getDueTime())
                 .courseId(courseId)
                 .teacherId(teacherId)
                 .display(true)
@@ -207,8 +213,10 @@ class ModifyQuizServiceUT {
         Quiz savedQuiz = Quiz.builder()
                 .id(quizId)
                 .quizTitle("Updated Title")
+                .unlimited(false)
                 .courseId(courseId)
                 .teacherId(teacherId)
+                .dueTime(existingQuiz.getDueTime())
                 .display(true)
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -224,4 +232,29 @@ class ModifyQuizServiceUT {
         assertEquals(courseId, capturedQuiz.getCourseId());
         assertEquals(teacherId, capturedQuiz.getTeacherId());
     }
+
+        @Test
+        @DisplayName("Should reject modify when unlimited is true but startTime or dueTime is provided")
+        void testModifyQuiz_WithUnlimitedTrueAndProvidedTimes_ShouldThrow() {
+                Quiz invalidUpdate = Quiz.builder()
+                                .quizTitle("Invalid Update")
+                                .unlimited(true)
+                                .startTime(LocalDateTime.now().plusMinutes(1))
+                                .dueTime(LocalDateTime.now().plusHours(1))
+                                .build();
+
+                ModifyQuizCommand invalidCommand = ModifyQuizCommand.builder()
+                                .courseId(courseId)
+                                .quizId(quizId)
+                                .quiz(invalidUpdate)
+                                .build();
+
+                when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+                when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+
+                IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                                () -> modifyQuizService.modifyQuiz(invalidCommand));
+
+                assertEquals("When unlimited is true, startTime and dueTime must be null", exception.getMessage());
+        }
 }

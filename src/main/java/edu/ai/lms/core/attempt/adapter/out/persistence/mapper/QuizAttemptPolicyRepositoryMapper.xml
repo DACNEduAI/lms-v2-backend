@@ -7,7 +7,9 @@
   <resultMap id="QuizAttemptPolicyResultMap" type="edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy">
     <id property="quizId" column="quiz_id" />
     <result property="courseId" column="course_id" />
+    <result property="unlimited" column="unlimited" />
     <result property="timeLimitMinutes" column="time_limit_minutes" />
+    <result property="quizStartTime" column="quiz_start_time" />
     <result property="quizDueTime" column="quiz_due_time" />
     <result property="attemptLimited" column="attempt_limited" />
   </resultMap>
@@ -22,7 +24,9 @@
   <select id="getQuizAttemptPolicy" resultMap="QuizAttemptPolicyResultMap">
     SELECT id AS quiz_id,
            course_id,
+          unlimited,
            time_limit_minutes,
+          start_time AS quiz_start_time,
            due_time AS quiz_due_time,
            attempt_limited
     FROM quizzes
@@ -33,7 +37,9 @@
   <select id="getQuizAttemptPolicyByQuizId" resultMap="QuizAttemptPolicyResultMap">
     SELECT id AS quiz_id,
            course_id,
+          unlimited,
            time_limit_minutes,
+          start_time AS quiz_start_time,
            due_time AS quiz_due_time,
            attempt_limited
     FROM quizzes
@@ -61,7 +67,7 @@
   </select>
 
   <select id="quizHasTimer" resultType="boolean">
-    SELECT COALESCE(time_limit_minutes IS NOT NULL, false)
+    SELECT COALESCE(unlimited = false AND time_limit_minutes IS NOT NULL AND time_limit_minutes &gt; 0, false)
     FROM quizzes
     WHERE id = #{quizId}
   </select>

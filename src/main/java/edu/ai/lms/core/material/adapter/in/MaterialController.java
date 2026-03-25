@@ -53,7 +53,7 @@ public class MaterialController {
     private final ModifyMaterialCommandMapper modifyMaterialCommandMapper;
 
     @Operation(summary = "Get all uploaded materials for a course",
-            description = "Returns all materials with UPLOADED status for a course. No presigned URLs are included.")
+            description = "Returns uploaded materials for a course. LMS logic: only materials in UPLOADED state are surfaced to consumers. Path field: courseId. Response fields per item: id, title, type, fileKey, isDownloadable, status, presignedUrl, courseId, createdAt, updatedAt.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Uploaded materials retrieved successfully"),
             @ApiResponse(responseCode = "403", description = "Not authorized to access this course")
@@ -66,7 +66,7 @@ public class MaterialController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Download a specific material", description = "Download a material by its ID within a course.")
+        @Operation(summary = "Download a specific material", description = "Gets one material by ID. LMS logic: returns content metadata and secure access URL details for course material retrieval. Path fields: courseId, materialId. Response fields: id, title, type, fileKey, isDownloadable, status, presignedUrl, courseId, createdAt, updatedAt.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Material retrieved successfully",
                     content = @Content(schema = @Schema(implementation = GetMaterialResponse.class))),
@@ -82,7 +82,7 @@ public class MaterialController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Create a new general material for a course", description = "Upload a new general material within a course.")
+        @Operation(summary = "Create a new general material for a course", description = "Creates a course-level material upload record. LMS logic: prepares file metadata and presigned upload URL for direct client upload. Path field: courseId. Request fields: title, type (PDF/VIDEO/LINK), isDownloadable. Response fields: id, title, type, fileKey, isDownloadable, status, presignedUploadUrl, courseId, createdAt.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Material created successfully",
                     content = @Content(schema = @Schema(implementation = CreateMaterialResponse.class))),
@@ -101,7 +101,7 @@ public class MaterialController {
     }
 
     @Operation(summary = "Get all materials for a specific chapter",
-            description = "Returns all materials linked to a given chapter within a course. No presigned URLs are included.")
+            description = "Returns materials linked to a chapter. LMS logic: chapter-scoped content retrieval for structured learning flow. Path fields: courseId, chapterId. Response fields per item: id, title, type, fileKey, isDownloadable, status, presignedUrl, courseId, createdAt, updatedAt.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Chapter materials retrieved successfully"),
             @ApiResponse(responseCode = "403", description = "Not authorized to access this course")
@@ -116,7 +116,7 @@ public class MaterialController {
     }
 
     @Operation(summary = "Create a new material for a specific chapter",
-            description = "Upload a new material and associate it with a specific chapter within a course.")
+            description = "Creates a chapter-level material upload record. LMS logic: associates newly created material with a specific instructional chapter. Path fields: courseId, chapterId. Request fields: title, type, isDownloadable. Response fields: id, title, type, fileKey, isDownloadable, status, presignedUploadUrl, courseId, createdAt.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Material created for chapter successfully",
                     content = @Content(schema = @Schema(implementation = CreateMaterialResponse.class))),
@@ -135,7 +135,7 @@ public class MaterialController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(summary = "Modify an existing material", description = "Modify a material within a course. Only the course owner (teacher) can modify materials.")
+        @Operation(summary = "Modify an existing material", description = "Updates material metadata. LMS logic: course owner can revise title/type/download settings while preserving material lifecycle tracking. Path fields: courseId, materialId. Request fields: title, type, isDownloadable. Response fields: id, title, type, fileKey, isDownloadable, status, presignedUploadUrl, courseId, updatedAt.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Material modified successfully",
                     content = @Content(schema = @Schema(implementation = ModifyMaterialResponse.class))),
@@ -154,7 +154,7 @@ public class MaterialController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Delete a material", description = "Delete a material from a course. Only the course owner (teacher) can delete materials.")
+        @Operation(summary = "Delete a material", description = "Deletes a material from a course. LMS logic: removes material association and related content references. Path fields: courseId, materialId. Response fields: courseId, materialId, message, success.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Material deleted successfully",
                     content = @Content(schema = @Schema(implementation = DeleteMaterialResponse.class))),
@@ -171,7 +171,7 @@ public class MaterialController {
     }
 
     @Operation(summary = "Confirm material upload",
-            description = "Verify whether the file for a material has been uploaded to storage successfully. Updates the material status accordingly.")
+            description = "Confirms upload completion for a material file. LMS logic: verifies storage object existence and updates material status in lifecycle. Path fields: courseId, materialId. Response fields: materialId, courseId, fileKey, status, uploaded, message.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Upload verification completed",
                     content = @Content(schema = @Schema(implementation = ConfirmUploadResponse.class))),

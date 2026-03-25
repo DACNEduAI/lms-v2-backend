@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.quiz.adapter.out.persistence.QuestionLearningOutcomeRepository">
+
+  <insert id="insertBatch">
+    INSERT INTO question_learning_outcomes (question_id, learning_outcome_id)
+    VALUES
+    <foreach collection="learningOutcomeIds" item="learningOutcomeId" separator=",">
+      (#{questionId}, #{learningOutcomeId})
+    </foreach>
+    ON CONFLICT (question_id, learning_outcome_id) DO NOTHING
+  </insert>
+
+  <delete id="deleteBatch">
+    DELETE FROM question_learning_outcomes
+    WHERE question_id = #{questionId}
+      AND learning_outcome_id IN
+      <foreach collection="learningOutcomeIds" item="learningOutcomeId" open="(" separator="," close=")">
+        #{learningOutcomeId}
+      </foreach>
+  </delete>
+
+  <select id="findLearningOutcomeIdsByQuestionId" resultType="java.util.UUID">
+    SELECT learning_outcome_id
+    FROM question_learning_outcomes
+    WHERE question_id = #{questionId}
+    ORDER BY learning_outcome_id
+  </select>
+
+  <resultMap id="QuestionLearningOutcomeViewMap" type="edu.ai.lms.core.quiz.app.domain.QuestionLearningOutcomeView">
+    <result property="learningOutcomeId" column="learning_outcome_id" />
+    <result property="learningOutcomeCode" column="learning_outcome_code" />
+    <result property="learningOutcomeDescription" column="learning_outcome_description" />
+  </resultMap>
+
+  <select id="findLearningOutcomesByQuestionId" resultMap="QuestionLearningOutcomeViewMap">
+    SELECT lo.id AS learning_outcome_id,
+           lo.code AS learning_outcome_code,
+           lo.description AS learning_outcome_description
+    FROM question_learning_outcomes qlo
+    JOIN learning_outcomes lo ON lo.id = qlo.learning_outcome_id
+    WHERE qlo.question_id = #{questionId}
+    ORDER BY lo.code
+  </select>
+
+</mapper>

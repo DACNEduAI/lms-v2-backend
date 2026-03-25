@@ -17,6 +17,8 @@ public class CreateQuizRequest {
     @NotBlank(message = "Quiz title cannot be blank")
     private String quizTitle;
 
+    private Boolean unlimited;
+
     private Integer timeLimitMinutes;
 
     private Double passScore;

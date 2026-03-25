@@ -18,6 +18,9 @@ public class Quiz {
 
     private String quizTitle;
 
+    @Builder.Default
+    private Boolean unlimited = false;
+
     private Integer timeLimitMinutes;
 
     private Double passScore;
