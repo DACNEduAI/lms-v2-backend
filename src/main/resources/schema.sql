@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS questions (
     content TEXT,
     type VARCHAR(50),
     points DOUBLE PRECISION,
-    quiz_id UUID REFERENCES quizzes(id),
+    quiz_id UUID REFERENCES quizzes(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
