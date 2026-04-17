@@ -27,7 +27,7 @@
 		<url/>
 	</scm>
 	<properties>
-		<java.version>21</java.version>
+		<java.version>25</java.version>
 		<spring-boot-admin.version>3.5.5</spring-boot-admin.version>
 		<spring-cloud.version>2025.0.0</spring-cloud.version>
 		<spring-modulith.version>1.4.7</spring-modulith.version>
@@ -291,6 +291,29 @@
 						</goals>
 					</execution>
 				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>3.12.0</version>
+				<configuration>
+					<outputDirectory>${project.basedir}/docs</outputDirectory>
+
+					<source>21</source>
+					<encoding>UTF-8</encoding>
+					<docencoding>UTF-8</docencoding>
+					<charset>UTF-8</charset>
+
+					<show>private</show>
+					<nohelp>true</nohelp>
+
+					<author>true</author>
+					<version>true</version>
+					<use>true</use>
+					<splitindex>true</splitindex>
+					<doclint>none</doclint>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
