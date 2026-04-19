@@ -29,7 +29,7 @@ public class StartAttemptService implements StartAttemptUseCase {
     private final LoadQuizAttemptPolicyPort loadQuizAttemptPolicyPort;
     private final LoadAttemptPort loadAttemptPort;
     private final SaveAttemptPort saveAttemptPort;
-    private final AttemptAutoFinalizeService attemptAutoFinalizeService;
+    private final AttemptAutoCloseService attemptAutoCloseService;
 
     @Override
     @Transactional
@@ -49,7 +49,7 @@ public class StartAttemptService implements StartAttemptUseCase {
                 .orElseThrow(() -> new QuizNotFoundForAttemptException("Quiz not found in course"));
 
         LocalDateTime now = LocalDateTime.now();
-        attemptAutoFinalizeService.finalizeExpiredStartedAttemptIfNeeded(user.getId(), command.quizId(), now);
+        attemptAutoCloseService.isAlreadyStartedAttemptExpiredValidation(user.getId(), command.courseId(), command.quizId(), now);
 
         if (loadAttemptPort.getLatestStartedAttempt(user.getId(), command.quizId()).isPresent()) {
             throw new InvalidAttemptSubmissionException("There is already an active started attempt for this quiz");

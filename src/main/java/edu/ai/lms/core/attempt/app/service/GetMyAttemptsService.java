@@ -25,7 +25,7 @@ public class GetMyAttemptsService implements GetMyAttemptsUseCase {
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadQuizAttemptPolicyPort loadQuizAttemptPolicyPort;
     private final LoadAttemptPort loadAttemptPort;
-    private final AttemptAutoFinalizeService attemptAutoFinalizeService;
+    private final AttemptAutoCloseService attemptAutoCloseService;
 
     @Override
     @Transactional(readOnly = true)
@@ -44,7 +44,7 @@ public class GetMyAttemptsService implements GetMyAttemptsUseCase {
         loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)
                 .orElseThrow(() -> new QuizNotFoundForAttemptException("Quiz not found in course"));
 
-        attemptAutoFinalizeService.finalizeExpiredStartedAttemptIfNeeded(user.getId(), quizId, LocalDateTime.now());
+        attemptAutoCloseService.isAlreadyStartedAttemptExpiredValidation(user.getId(), courseId, quizId, LocalDateTime.now());
 
         List<GetMyAttemptsResponse.AttemptItem> attempts = loadAttemptPort.getByStudentAndQuiz(user.getId(), quizId)
                 .stream()

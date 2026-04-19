@@ -31,7 +31,7 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
     private final LoadAttemptPort loadAttemptPort;
     private final SaveAttemptPort saveAttemptPort;
     private final AttemptScoringService attemptScoringService;
-    private final AttemptAutoFinalizeService attemptAutoFinalizeService;
+    private final AttemptAutoCloseService attemptAutoCloseService;
 
     @Override
     @Transactional
@@ -51,7 +51,7 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
                 .orElseThrow(() -> new QuizNotFoundForAttemptException("Quiz not found in course"));
 
         LocalDateTime now = LocalDateTime.now();
-        attemptAutoFinalizeService.finalizeExpiredStartedAttemptIfNeeded(user.getId(), command.quizId(), now);
+        attemptAutoCloseService.isAlreadyStartedAttemptExpiredValidation(user.getId(), command.courseId(), command.quizId(), now);
 
         Attempt startedAttempt = loadAttemptPort.getLatestStartedAttempt(user.getId(), command.quizId())
                 .orElseThrow(() -> new AttemptNotFoundException("No active started attempt found for this quiz"));

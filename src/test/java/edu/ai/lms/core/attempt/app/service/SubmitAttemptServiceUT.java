@@ -45,7 +45,7 @@ class SubmitAttemptServiceUT {
     @Mock
     private AttemptScoringService attemptScoringService;
     @Mock
-    private AttemptAutoFinalizeService attemptAutoFinalizeService;
+    private AttemptAutoCloseService attemptAutoCloseService;
 
     @InjectMocks
     private SubmitAttemptService submitAttemptService;

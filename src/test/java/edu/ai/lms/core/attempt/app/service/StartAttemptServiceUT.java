@@ -43,7 +43,7 @@ class StartAttemptServiceUT {
     @Mock
     private SaveAttemptPort saveAttemptPort;
     @Mock
-    private AttemptAutoFinalizeService attemptAutoFinalizeService;
+    private AttemptAutoCloseService attemptAutoCloseService;
 
     @InjectMocks
     private StartAttemptService startAttemptService;
