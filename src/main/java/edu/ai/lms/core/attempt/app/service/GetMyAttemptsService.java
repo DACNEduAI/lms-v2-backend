@@ -28,7 +28,7 @@ public class GetMyAttemptsService implements GetMyAttemptsUseCase {
     private final AttemptAutoCloseService attemptAutoCloseService;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public GetMyAttemptsResponse getMyAttempts(UUID courseId, UUID quizId) {
         UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedForAttemptException("User not authenticated"));
