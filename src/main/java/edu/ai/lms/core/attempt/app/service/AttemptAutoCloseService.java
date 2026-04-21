@@ -1,6 +1,5 @@
 package edu.ai.lms.core.attempt.app.service;
 
-import edu.ai.lms.core.attempt.adapter.in.scheduler.AttemptAutoCloseScheduler;
 import edu.ai.lms.core.attempt.app.domain.Attempt;
 import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
@@ -11,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -33,12 +31,11 @@ import java.util.UUID;
  *     <li>{@link StartAttemptService#startAttempt(edu.ai.lms.core.attempt.app.port.in.command.StartAttemptCommand)}</li>
  *     <li>{@link GetMyAttemptsService#getMyAttempts(UUID, UUID)}</li>
  *     <li>{@link SubmitAttemptService#submitAttempt(edu.ai.lms.core.attempt.app.port.in.command.SubmitAttemptCommand)}</li>
- *     <li>{@link AttemptAutoCloseScheduler#closeExpiredStartedAttemptsScheduler()}</li>
  * </ul>
  * Module context:
  * <ul>
  *     <li>Belongs to the attempt application service layer: {@code core.attempt.app.service}</li>
- *     <li>Used by attempt use-case services and the scheduler input adapter</li>
+ *     <li>Used by attempt use-case services and Quartz auto-close jobs</li>
  * </ul>
  */
 @Service
@@ -75,9 +72,9 @@ public class AttemptAutoCloseService {
      * </ul>
      *
      * @param studentId current student id whose started attempt is validated
-     * @param courseId current course id used to load quiz attempt policy
-     * @param quizId current quiz id used to locate started attempt and policy
-     * @param now current timestamp supplied by caller for deterministic evaluation
+     * @param courseId  current course id used to load quiz attempt policy
+     * @param quizId    current quiz id used to locate started attempt and policy
+     * @param now       current timestamp supplied by caller for deterministic evaluation
      */
     @Transactional
     public void isAlreadyStartedAttemptExpiredValidation(UUID studentId, UUID courseId, UUID quizId, LocalDateTime now) {
@@ -95,40 +92,29 @@ public class AttemptAutoCloseService {
     }
 
     /**
-     * Closes all expired started attempts in batch at execution time.
-     * <p>
-     * Business flow:
-     * <ol>
-     *     <li>Computes threshold as {@code now - SUBMISSION_GRACE_SECONDS}.</li>
-     *     <li>Loads all attempts still in {@code STARTED} state whose due time is before threshold.</li>
-     *     <li>For each attempt, loads its quiz policy.</li>
-     *     <li>Skips attempts without policy and closes valid ones with
-     *     {@link #closeExpiredStartedAttempt(Attempt, QuizAttemptPolicy, LocalDateTime)}.</li>
-     * </ol>
-     * Output/side effect: may persist multiple closed attempts; returns no value.
-     * <p>
-     * Used by:
-     * <ul>
-     *     <li>{@link AttemptAutoCloseScheduler#closeExpiredStartedAttemptsScheduler()}</li>
-     * </ul>
+     * Quartz job entrypoint. Closes one attempt only when it is still started and expired.
+     *
+     * <p>This method is intentionally idempotent and safe for repeated executions.
      */
     @Transactional
-    public void closeAllExpiredStartedAttempts() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime threshold = now.minusSeconds(SUBMISSION_GRACE_SECONDS);
-        List<Attempt> expiredAttempts = loadAttemptPort.getExpiredStartedAttempts(threshold);
-
-        for (Attempt attempt : expiredAttempts) {
-
-            QuizAttemptPolicy policy = loadQuizAttemptPolicyPort
-                    .getQuizAttemptPolicy(null, attempt.getQuizId())
-                    // null because 
-                    .orElse(null);
-            if (policy == null) {
-                continue;
-            }
-            closeExpiredStartedAttempt(attempt, policy, now);
+    public void closeAttemptIfStillStarted(UUID attemptId, LocalDateTime now) {
+        Optional<Attempt> attemptOpt = loadAttemptPort.getById(attemptId);
+        if (attemptOpt.isEmpty()) {
+            return;
         }
+
+        Attempt attempt = attemptOpt.get();
+        if (attempt.getStatus() != Attempt.AttemptStatus.STARTED) {
+            return;
+        }
+
+        if (!isExpired(attempt.getDueTime(), now)) {
+            return;
+        }
+
+        loadQuizAttemptPolicyPort
+                .getQuizAttemptPolicy(null, attempt.getQuizId())
+                .ifPresent(policy -> closeExpiredStartedAttempt(attempt, policy, now));
     }
 
     /**
@@ -141,29 +127,30 @@ public class AttemptAutoCloseService {
      * </ul>
      * Always sets {@code submittedTime} to {@code now} before persisting.
      * <p>
-     * Internal usage:
-     * <ul>
-     *     <li>Called by {@link #isAlreadyStartedAttemptExpiredValidation(UUID, UUID, UUID, LocalDateTime)}</li>
-     *     <li>Called by {@link #closeAllExpiredStartedAttempts()}</li>
-     * </ul>
+     * Internal usage: called by
+     * {@link #isAlreadyStartedAttemptExpiredValidation(UUID, UUID, UUID, LocalDateTime)} and
+     * {@link #closeAttemptIfStillStarted(UUID, LocalDateTime)}.
      *
      * @param attempt expired started attempt to mutate and save
-     * @param policy quiz attempt policy that determines timer-based close behavior
-     * @param now timestamp recorded as the submitted time
+     * @param policy  quiz attempt policy that determines timer-based close behavior
+     * @param now     timestamp recorded as the submitted time
      */
-    private void closeExpiredStartedAttempt(Attempt attempt, QuizAttemptPolicy policy, LocalDateTime now) {
+    private boolean closeExpiredStartedAttempt(Attempt attempt, QuizAttemptPolicy policy, LocalDateTime now) {
+        Attempt.AttemptStatus status;
+        Double score;
+        String errorReason;
+
         if (policy.hasTimer()) {
-            attempt.setStatus(Attempt.AttemptStatus.ERROR);
-            attempt.setErrorReason("Attempt expired before submission");
-            attempt.setScore(null);
+            status = Attempt.AttemptStatus.ERROR;
+            errorReason = "Attempt expired before submission";
+            score = null;
         } else {
-            attempt.setStatus(Attempt.AttemptStatus.FINISHED);
-            attempt.setScore(0.0);
-            attempt.setErrorReason("Attempt was not submitted before due time");
+            status = Attempt.AttemptStatus.FINISHED;
+            score = 0.0;
+            errorReason = "Attempt was not submitted before due time";
         }
 
-        attempt.setSubmittedTime(now);
-        saveAttemptPort.save(attempt);
+        return saveAttemptPort.closeIfStarted(attempt.getId(), status, score, errorReason, now);
     }
 
     /**
@@ -175,7 +162,7 @@ public class AttemptAutoCloseService {
      * </ul>
      *
      * @param dueTime due time of the attempt; {@code null} means not expired by this check
-     * @param now current time used for comparison
+     * @param now     current time used for comparison
      * @return {@code true} if {@code now} is strictly after {@code dueTime + SUBMISSION_GRACE_SECONDS}; otherwise {@code false}
      */
     private boolean isExpired(LocalDateTime dueTime, LocalDateTime now) {

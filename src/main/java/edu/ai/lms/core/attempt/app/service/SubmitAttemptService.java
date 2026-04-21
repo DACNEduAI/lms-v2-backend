@@ -13,14 +13,18 @@ import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
+import edu.ai.lms.core.attempt.app.port.out.UnscheduleAttemptAutoClosePort;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class SubmitAttemptService implements SubmitAttemptUseCase {
 
@@ -30,6 +34,7 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
     private final LoadQuizAttemptPolicyPort loadQuizAttemptPolicyPort;
     private final LoadAttemptPort loadAttemptPort;
     private final SaveAttemptPort saveAttemptPort;
+    private final UnscheduleAttemptAutoClosePort unscheduleAttemptAutoClosePort;
     private final AttemptScoringService attemptScoringService;
     private final AttemptAutoCloseService attemptAutoCloseService;
 
@@ -72,6 +77,7 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
         startedAttempt.setErrorReason(null);
 
         Attempt saved = saveAttemptPort.save(startedAttempt);
+        unscheduleAutoCloseBestEffort(saved.getId());
         return toResponse(saved);
     }
 
@@ -95,7 +101,16 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
         }
 
         Attempt saved = saveAttemptPort.save(startedAttempt);
+        unscheduleAutoCloseBestEffort(saved.getId());
         return toResponse(saved);
+    }
+
+    private void unscheduleAutoCloseBestEffort(UUID attemptId) {
+        try {
+            unscheduleAttemptAutoClosePort.unschedule(attemptId);
+        } catch (RuntimeException ex) {
+            log.warn("Failed to unschedule attempt auto-close job for attempt {}", attemptId, ex);
+        }
     }
 
     private boolean isLate(LocalDateTime dueTime, LocalDateTime now) {

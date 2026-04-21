@@ -27,6 +27,22 @@ class AttemptPersistenceAdapter implements SaveAttemptPort, LoadAttemptPort, Loa
     }
 
     @Override
+    public boolean closeIfStarted(
+            UUID attemptId,
+            Attempt.AttemptStatus status,
+            Double score,
+            String errorReason,
+            LocalDateTime submittedTime
+    ) {
+        return attemptRepository.closeIfStarted(attemptId, status, score, errorReason, submittedTime) > 0;
+    }
+
+    @Override
+    public Optional<Attempt> getById(UUID attemptId) {
+        return attemptRepository.getById(attemptId);
+    }
+
+    @Override
     public long countFinishedAttempts(UUID studentId, UUID quizId) {
         return attemptRepository.countFinishedAttempts(studentId, quizId);
     }
@@ -44,11 +60,6 @@ class AttemptPersistenceAdapter implements SaveAttemptPort, LoadAttemptPort, Loa
     @Override
     public List<Attempt> getByStudentAndQuiz(UUID studentId, UUID quizId) {
         return attemptRepository.getByStudentAndQuiz(studentId, quizId);
-    }
-
-    @Override
-    public List<Attempt> getExpiredStartedAttempts(LocalDateTime threshold) {
-        return attemptRepository.getExpiredStartedAttempts(threshold);
     }
 
     @Override
