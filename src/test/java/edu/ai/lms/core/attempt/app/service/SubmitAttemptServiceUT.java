@@ -10,6 +10,7 @@ import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
+import edu.ai.lms.core.attempt.app.port.out.UnscheduleAttemptAutoClosePort;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,9 +44,11 @@ class SubmitAttemptServiceUT {
     @Mock
     private SaveAttemptPort saveAttemptPort;
     @Mock
+    private UnscheduleAttemptAutoClosePort unscheduleAttemptAutoClosePort;
+    @Mock
     private AttemptScoringService attemptScoringService;
     @Mock
-    private AttemptAutoFinalizeService attemptAutoFinalizeService;
+    private AttemptAutoCloseService attemptAutoCloseService;
 
     @InjectMocks
     private SubmitAttemptService submitAttemptService;
@@ -92,6 +95,7 @@ class SubmitAttemptServiceUT {
         verify(saveAttemptPort).save(captor.capture());
         assertEquals(Attempt.AttemptStatus.FINISHED, captor.getValue().getStatus());
         assertEquals(8.0, captor.getValue().getScore());
+        verify(unscheduleAttemptAutoClosePort).unschedule(eq(startedAttempt.getId()));
     }
 
     @Test
@@ -128,6 +132,7 @@ class SubmitAttemptServiceUT {
 
         assertEquals("ERROR", response.getStatus());
         assertNull(response.getScore());
+        verify(unscheduleAttemptAutoClosePort).unschedule(eq(startedAttempt.getId()));
     }
 
     @Test
@@ -164,6 +169,7 @@ class SubmitAttemptServiceUT {
 
         assertEquals("FINISHED", response.getStatus());
         assertEquals(0.0, response.getScore());
+        verify(unscheduleAttemptAutoClosePort).unschedule(eq(startedAttempt.getId()));
 
         verify(loadQuizAttemptPolicyPort).getQuizAttemptPolicy(eq(courseId), eq(quizId));
     }

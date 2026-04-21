@@ -52,6 +52,17 @@
     WHERE id = #{attemptId}
   </select>
 
+  <update id="closeIfStarted">
+    UPDATE attempts
+    SET status = #{status, javaType=edu.ai.lms.core.attempt.app.domain.Attempt$AttemptStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        score = #{score},
+        error_reason = #{errorReason},
+        submitted_time = #{submittedTime},
+        updated_at = NOW()
+    WHERE id = #{attemptId}
+      AND status = 'STARTED'
+  </update>
+
   <select id="getByIdAndStudentId" resultMap="AttemptResultMap">
     SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
            time_spent_seconds, status, error_reason, created_at, updated_at
@@ -86,15 +97,6 @@
     WHERE student_id = #{studentId}
       AND quiz_id = #{quizId}
     ORDER BY created_at DESC
-  </select>
-
-  <select id="getExpiredStartedAttempts" resultMap="AttemptResultMap">
-    SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
-           time_spent_seconds, status, error_reason, created_at, updated_at
-    FROM attempts
-    WHERE status = 'STARTED'
-      AND due_time IS NOT NULL
-      AND due_time &lt; #{threshold}
   </select>
 
 </mapper>

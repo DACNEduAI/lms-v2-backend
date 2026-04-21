@@ -1,0 +1,171 @@
+package edu.ai.lms.core.attempt.app.service;
+
+import edu.ai.lms.core.attempt.app.domain.Attempt;
+import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
+import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
+import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
+import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * Auto-closes quiz attempts that remain in {@link Attempt.AttemptStatus#STARTED}
+ * after their due time (with a small submission grace period).
+ * <p>
+ * This service centralizes expiration handling so different flows always apply the same
+ * business rule before continuing. When an attempt expires:
+ * <ul>
+ *     <li>If the quiz policy has a timer, the attempt is closed as {@code ERROR} with no score.</li>
+ *     <li>If the quiz policy has no timer, the attempt is closed as {@code FINISHED} with score {@code 0.0}.</li>
+ * </ul>
+ * In both cases, {@code submittedTime} is set to the processing time and the updated
+ * attempt is persisted via {@link SaveAttemptPort}.
+ * <p>
+ * Main callers in this codebase:
+ * <ul>
+ *     <li>{@link StartAttemptService#startAttempt(edu.ai.lms.core.attempt.app.port.in.command.StartAttemptCommand)}</li>
+ *     <li>{@link GetMyAttemptsService#getMyAttempts(UUID, UUID)}</li>
+ *     <li>{@link SubmitAttemptService#submitAttempt(edu.ai.lms.core.attempt.app.port.in.command.SubmitAttemptCommand)}</li>
+ * </ul>
+ * Module context:
+ * <ul>
+ *     <li>Belongs to the attempt application service layer: {@code core.attempt.app.service}</li>
+ *     <li>Used by attempt use-case services and Quartz auto-close jobs</li>
+ * </ul>
+ */
+@Service
+@RequiredArgsConstructor
+public class AttemptAutoCloseService {
+
+    /**
+     * Grace window added after due time to tolerate small client/network delays during submission.
+     */
+    private static final long SUBMISSION_GRACE_SECONDS = 5L;
+
+    private final LoadAttemptPort loadAttemptPort;
+    private final LoadQuizAttemptPolicyPort loadQuizAttemptPolicyPort;
+    private final SaveAttemptPort saveAttemptPort;
+
+    /**
+     * Closes the latest active started attempt for a student and quiz if that attempt is expired.
+     * <p>
+     * Business flow:
+     * <ol>
+     *     <li>Loads the latest {@code STARTED} attempt of the student for the quiz.</li>
+     *     <li>If no started attempt exists, exits without side effects.</li>
+     *     <li>Checks expiration against {@code dueTime + SUBMISSION_GRACE_SECONDS}.</li>
+     *     <li>If expired, loads quiz policy and applies close rules through
+     *     {@link #closeExpiredStartedAttempt(Attempt, QuizAttemptPolicy, LocalDateTime)}.</li>
+     * </ol>
+     * Output/side effect: may persist one closed attempt; returns no value.
+     * <p>
+     * Used by:
+     * <ul>
+     *     <li>{@link StartAttemptService#startAttempt(edu.ai.lms.core.attempt.app.port.in.command.StartAttemptCommand)}</li>
+     *     <li>{@link GetMyAttemptsService#getMyAttempts(UUID, UUID)}</li>
+     *     <li>{@link SubmitAttemptService#submitAttempt(edu.ai.lms.core.attempt.app.port.in.command.SubmitAttemptCommand)}</li>
+     * </ul>
+     *
+     * @param studentId current student id whose started attempt is validated
+     * @param courseId  current course id used to load quiz attempt policy
+     * @param quizId    current quiz id used to locate started attempt and policy
+     * @param now       current timestamp supplied by caller for deterministic evaluation
+     */
+    @Transactional
+    public void isAlreadyStartedAttemptExpiredValidation(UUID studentId, UUID courseId, UUID quizId, LocalDateTime now) {
+        Optional<Attempt> startedAttemptOpt = loadAttemptPort.getLatestStartedAttempt(studentId, quizId);
+        if (startedAttemptOpt.isEmpty()) {
+            return;
+        }
+
+        Attempt startedAttempt = startedAttemptOpt.get();
+        if (isExpired(startedAttempt.getDueTime(), now)) {
+            loadQuizAttemptPolicyPort
+                    .getQuizAttemptPolicy(courseId, quizId)
+                    .ifPresent(policy -> closeExpiredStartedAttempt(startedAttempt, policy, now));
+        }
+    }
+
+    /**
+     * Quartz job entrypoint. Closes one attempt only when it is still started and expired.
+     *
+     * <p>This method is intentionally idempotent and safe for repeated executions.
+     */
+    @Transactional
+    public void closeAttemptIfStillStarted(UUID attemptId, LocalDateTime now) {
+        Optional<Attempt> attemptOpt = loadAttemptPort.getById(attemptId);
+        if (attemptOpt.isEmpty()) {
+            return;
+        }
+
+        Attempt attempt = attemptOpt.get();
+        if (attempt.getStatus() != Attempt.AttemptStatus.STARTED) {
+            return;
+        }
+
+        if (!isExpired(attempt.getDueTime(), now)) {
+            return;
+        }
+
+        loadQuizAttemptPolicyPort
+                .getQuizAttemptPolicy(null, attempt.getQuizId())
+                .ifPresent(policy -> closeExpiredStartedAttempt(attempt, policy, now));
+    }
+
+    /**
+     * Applies the close rule for an expired attempt based on quiz policy and persists it.
+     * <p>
+     * Rule details:
+     * <ul>
+     *     <li>Timer enabled: status {@code ERROR}, score {@code null}, reason indicates expiration.</li>
+     *     <li>Timer disabled: status {@code FINISHED}, score {@code 0.0}, reason indicates non-submission.</li>
+     * </ul>
+     * Always sets {@code submittedTime} to {@code now} before persisting.
+     * <p>
+     * Internal usage: called by
+     * {@link #isAlreadyStartedAttemptExpiredValidation(UUID, UUID, UUID, LocalDateTime)} and
+     * {@link #closeAttemptIfStillStarted(UUID, LocalDateTime)}.
+     *
+     * @param attempt expired started attempt to mutate and save
+     * @param policy  quiz attempt policy that determines timer-based close behavior
+     * @param now     timestamp recorded as the submitted time
+     */
+    private boolean closeExpiredStartedAttempt(Attempt attempt, QuizAttemptPolicy policy, LocalDateTime now) {
+        Attempt.AttemptStatus status;
+        Double score;
+        String errorReason;
+
+        if (policy.hasTimer()) {
+            status = Attempt.AttemptStatus.ERROR;
+            errorReason = "Attempt expired before submission";
+            score = null;
+        } else {
+            status = Attempt.AttemptStatus.FINISHED;
+            score = 0.0;
+            errorReason = "Attempt was not submitted before due time";
+        }
+
+        return saveAttemptPort.closeIfStarted(attempt.getId(), status, score, errorReason, now);
+    }
+
+    /**
+     * Checks whether due time has passed including the grace window.
+     * <p>
+     * Internal usage:
+     * <ul>
+     *     <li>Called by {@link #isAlreadyStartedAttemptExpiredValidation(UUID, UUID, UUID, LocalDateTime)}</li>
+     * </ul>
+     *
+     * @param dueTime due time of the attempt; {@code null} means not expired by this check
+     * @param now     current time used for comparison
+     * @return {@code true} if {@code now} is strictly after {@code dueTime + SUBMISSION_GRACE_SECONDS}; otherwise {@code false}
+     */
+    private boolean isExpired(LocalDateTime dueTime, LocalDateTime now) {
+        return dueTime != null && now.isAfter(dueTime.plusSeconds(SUBMISSION_GRACE_SECONDS));
+    }
+}

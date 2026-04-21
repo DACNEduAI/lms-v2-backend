@@ -66,6 +66,9 @@ public abstract class IntegrationTestConfiguration {
         
         // Disable Spring Boot Admin client for tests
         registry.add("spring.boot.admin.client.enabled", () -> "false");
+
+        // Quartz jobs are validated separately and should not auto-start in existing IT suites.
+        registry.add("spring.quartz.auto-startup", () -> "false");
     }
 
     @BeforeEach

@@ -9,6 +9,7 @@ import edu.ai.lms.core.attempt.app.port.in.command.StartAttemptCommand;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.attempt.app.port.out.ScheduleAttemptAutoClosePort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import org.junit.jupiter.api.DisplayName;
@@ -43,7 +44,9 @@ class StartAttemptServiceUT {
     @Mock
     private SaveAttemptPort saveAttemptPort;
     @Mock
-    private AttemptAutoFinalizeService attemptAutoFinalizeService;
+    private ScheduleAttemptAutoClosePort scheduleAttemptAutoClosePort;
+    @Mock
+    private AttemptAutoCloseService attemptAutoCloseService;
 
     @InjectMocks
     private StartAttemptService startAttemptService;
@@ -89,6 +92,7 @@ class StartAttemptServiceUT {
         ArgumentCaptor<Attempt> captor = ArgumentCaptor.forClass(Attempt.class);
         verify(saveAttemptPort).save(captor.capture());
         assertEquals(Attempt.AttemptStatus.STARTED, captor.getValue().getStatus());
+        verify(scheduleAttemptAutoClosePort).schedule(any(UUID.class), any(LocalDateTime.class));
     }
 
     @Test

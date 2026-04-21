@@ -1,7 +1,9 @@
 package edu.ai.lms.core.course.adapter.in.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.util.List;
@@ -23,8 +25,9 @@ public class ModifyLearningOutcomesRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
+    @Schema(name = "ModifyLearningOutcomeItemRequest")
     public static class LearningOutcomeItem {
-        @jakarta.validation.constraints.NotNull(message = "Learning outcome ID cannot be null")
+        @NotNull(message = "Learning outcome ID cannot be null")
         private UUID id;
 
         private String code;

@@ -13,6 +13,7 @@ import edu.ai.lms.core.attempt.app.port.in.usecase.StartAttemptUseCase;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.attempt.app.port.out.ScheduleAttemptAutoClosePort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import lombok.RequiredArgsConstructor;
@@ -25,11 +26,14 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class StartAttemptService implements StartAttemptUseCase {
 
+    private static final long SUBMISSION_GRACE_SECONDS = 5L;
+
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadQuizAttemptPolicyPort loadQuizAttemptPolicyPort;
     private final LoadAttemptPort loadAttemptPort;
     private final SaveAttemptPort saveAttemptPort;
-    private final AttemptAutoFinalizeService attemptAutoFinalizeService;
+    private final ScheduleAttemptAutoClosePort scheduleAttemptAutoClosePort;
+    private final AttemptAutoCloseService attemptAutoCloseService;
 
     @Override
     @Transactional
@@ -49,7 +53,7 @@ public class StartAttemptService implements StartAttemptUseCase {
                 .orElseThrow(() -> new QuizNotFoundForAttemptException("Quiz not found in course"));
 
         LocalDateTime now = LocalDateTime.now();
-        attemptAutoFinalizeService.finalizeExpiredStartedAttemptIfNeeded(user.getId(), command.quizId(), now);
+        attemptAutoCloseService.isAlreadyStartedAttemptExpiredValidation(user.getId(), command.courseId(), command.quizId(), now);
 
         if (loadAttemptPort.getLatestStartedAttempt(user.getId(), command.quizId()).isPresent()) {
             throw new InvalidAttemptSubmissionException("There is already an active started attempt for this quiz");
@@ -73,6 +77,9 @@ public class StartAttemptService implements StartAttemptUseCase {
                 .build();
 
         Attempt saved = saveAttemptPort.save(attempt);
+        if (saved.getDueTime() != null) {
+            scheduleAttemptAutoClosePort.schedule(saved.getId(), saved.getDueTime().plusSeconds(SUBMISSION_GRACE_SECONDS));
+        }
 
         return StartAttemptResponse.builder()
                 .attemptId(saved.getId())

@@ -30,6 +30,9 @@ public class CreateLearningOutcomesService implements TeacherCreateLearningOutco
     @Override
     @Transactional
     public CreateLearningOutcomesResponse createLearningOutcomes(CreateLearningOutcomesCommand command) {
+
+        command.learningOutcomes().getFirst().getId();
+
         // Verify teacher is authenticated
         UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));

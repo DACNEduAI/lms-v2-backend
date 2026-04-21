@@ -32,6 +32,14 @@ interface AttemptRepository {
 
     Optional<Attempt> getById(@Param("attemptId") UUID attemptId);
 
+    int closeIfStarted(
+            @Param("attemptId") UUID attemptId,
+            @Param("status") Attempt.AttemptStatus status,
+            @Param("score") Double score,
+            @Param("errorReason") String errorReason,
+            @Param("submittedTime") LocalDateTime submittedTime
+    );
+
     Optional<Attempt> getByIdAndStudentId(@Param("attemptId") UUID attemptId, @Param("studentId") UUID studentId);
 
     Optional<Attempt> getLatestStartedAttempt(@Param("studentId") UUID studentId, @Param("quizId") UUID quizId);
@@ -39,6 +47,4 @@ interface AttemptRepository {
     long countFinishedAttempts(@Param("studentId") UUID studentId, @Param("quizId") UUID quizId);
 
     List<Attempt> getByStudentAndQuiz(@Param("studentId") UUID studentId, @Param("quizId") UUID quizId);
-
-    List<Attempt> getExpiredStartedAttempts(@Param("threshold") LocalDateTime threshold);
 }

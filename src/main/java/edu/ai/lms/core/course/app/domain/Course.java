@@ -1,12 +1,16 @@
 package edu.ai.lms.core.course.app.domain;
 
-import jakarta.validation.constraints.AssertTrue;
-import lombok.*;
-
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import jakarta.validation.constraints.AssertTrue;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter

@@ -1,7 +1,9 @@
 package edu.ai.lms.core.course.adapter.in.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.util.List;
@@ -22,11 +24,12 @@ public class CreateLearningOutcomesRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
+    @Schema(name = "CreateLearningOutcomeItemRequest")
     public static class LearningOutcomeItem {
-        @jakarta.validation.constraints.NotBlank(message = "CLO code cannot be blank")
+        @NotBlank(message = "CLO code cannot be blank")
         private String code;
 
-        @jakarta.validation.constraints.NotBlank(message = "CLO description cannot be blank")
+        @NotBlank(message = "CLO description cannot be blank")
         private String description;
     }
 }
