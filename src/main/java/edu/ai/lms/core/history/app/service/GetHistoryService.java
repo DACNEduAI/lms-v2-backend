@@ -27,7 +27,7 @@ public class GetHistoryService implements GetHistoryUseCase {
         long totalElements = loadActivityLogPort.countByUserId(currentUserId);
         int totalPages = (int) Math.ceil((double) totalElements / size);
         int offset = page * size;
-        
+
         List<ActivityLog> content = loadActivityLogPort.findByUserId(currentUserId, offset, size);
 
         PaginatedHistoryResponse response = new PaginatedHistoryResponse();
