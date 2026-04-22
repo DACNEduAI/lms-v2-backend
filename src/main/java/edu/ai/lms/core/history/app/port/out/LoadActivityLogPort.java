@@ -6,5 +6,6 @@ import java.util.UUID;
 
 public interface LoadActivityLogPort {
     List<ActivityLog> findByUserId(UUID userId, int offset, int limit);
+
     long countByUserId(UUID userId);
 }

@@ -53,20 +53,20 @@ class HistoryControllerIT extends IntegrationTestConfiguration {
                 .extract().response();
 
         String token = registerResponse.jsonPath().getString("token");
-        
+
         // Load the created user to get their UUID
         UserAuth student = loadStudentPort.findByEmail("history.student@example.com").orElseThrow();
 
         // Seed logs in DB directly via repository
         for (int i = 0; i < 25; i++) {
             ActivityLog log = ActivityLog.builder()
-                .userId(student.getId())
-                .actionType("SUBMITTED")
-                .entityType("QUIZ")
-                .entityId(UUID.randomUUID())
-                .entityName("Test Quiz " + i)
-                .description("Submitted test quiz " + i)
-                .build();
+                    .userId(student.getId())
+                    .actionType("SUBMITTED")
+                    .entityType("QUIZ")
+                    .entityId(UUID.randomUUID())
+                    .entityName("Test Quiz " + i)
+                    .description("Submitted test quiz " + i)
+                    .build();
             activityLogRepository.insert(log);
         }
 
@@ -87,7 +87,7 @@ class HistoryControllerIT extends IntegrationTestConfiguration {
                 .body("content[0].id", notNullValue())
                 .body("content[0].actionType", equalTo("SUBMITTED"))
                 .body("content[0].entityType", equalTo("QUIZ"));
-        
+
         // Test GET /api/history/me (page 1, size 20)
         given()
                 .header("Authorization", "Bearer " + token)

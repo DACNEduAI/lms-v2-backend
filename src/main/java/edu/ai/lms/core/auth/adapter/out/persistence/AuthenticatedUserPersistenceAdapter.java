@@ -43,4 +43,11 @@ class AuthenticatedUserPersistenceAdapter implements LoadAuthenticatedUserApi {
 
         return Optional.empty();
     }
+
+    @Override
+    public java.util.UUID getCurrentUserId() {
+        return getAuthenticatedUser()
+                .map(UserAuth::getId)
+                .orElseThrow(() -> new RuntimeException("Unauthorized"));
+    }
 }
