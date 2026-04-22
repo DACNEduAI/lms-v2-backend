@@ -1,5 +1,7 @@
 package edu.ai.lms.core.quiz.app.service;
 
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -7,7 +9,9 @@ import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.exception.TimeValidationException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
+import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
 import edu.ai.lms.core.quiz.app.port.in.command.CreateQuizCommand;
 import edu.ai.lms.core.quiz.app.port.in.usecase.CreateQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
@@ -15,8 +19,17 @@ import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
 import lombok.RequiredArgsConstructor;
 
-import java.time.LocalDateTime;
-
+/**
+ * Creates quizzes for teachers and students in a course context.
+ *
+ * <p>Business responsibilities:
+ * <ul>
+ *     <li>Requires an authenticated user and validates course membership before write operations.</li>
+ *     <li>Applies role-based ownership: teacher-created quizzes store {@code teacherId}, student-created quizzes store {@code studentId}.</li>
+ *     <li>Enforces time policy integrity for teacher-created quizzes.</li>
+ *     <li>Normalizes student-created quizzes to unlimited mode and clears teacher-only scheduling controls.</li>
+ * </ul>
+ */
 @Service
 @RequiredArgsConstructor
 public class CreateQuizService implements CreateQuizUseCase {
@@ -25,6 +38,12 @@ public class CreateQuizService implements CreateQuizUseCase {
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadCourseMembershipPort loadCourseMembershipPort;
 
+    /**
+     * Creates a quiz in a course after authentication, membership checks, and business validation.
+     *
+     * @param command input command containing {@code courseId} and quiz payload
+     * @return persisted quiz metadata for API response
+     */
     @Override
     @Transactional
     public CreateQuizResponse createQuiz(CreateQuizCommand command) {
@@ -54,6 +73,7 @@ public class CreateQuizService implements CreateQuizUseCase {
             quiz.setUnlimited(true);
             quiz.setStartTime(null);
             quiz.setDueTime(null);
+            quiz.setTimeLimitMinutes(null);
             quiz.setAttemptLimited(null);
         }
 
@@ -75,34 +95,56 @@ public class CreateQuizService implements CreateQuizUseCase {
                 .build();
     }
 
+    /**
+     * Validates quiz timing consistency.
+     *
+     * <p>Rules:
+     * <ul>
+     *     <li>If unlimited is true: startTime, dueTime, and timeLimitMinutes must all be null.</li>
+     *     <li>If unlimited is false: dueTime is required.</li>
+     *     <li>If startTime is present: dueTime must be after or equal to startTime.</li>
+     * </ul>
+     *
+     * @param quiz quiz draft to validate and normalize
+     */
     private void validateQuizTimeConfiguration(Quiz quiz) {
         if (Boolean.TRUE.equals(quiz.getUnlimited())) {
             if (quiz.getStartTime() != null || quiz.getDueTime() != null) {
-                throw new IllegalArgumentException("When unlimited is true, startTime and dueTime must be null");
+                throw new TimeValidationException("When unlimited is true, startTime and dueTime must be null");
+            }
+            if (quiz.getTimeLimitMinutes() != null) {
+                throw new TimeValidationException("When unlimited is true, timeLimitMinutes must be null");
             }
             quiz.setStartTime(null);
             quiz.setDueTime(null);
+            quiz.setTimeLimitMinutes(null);
             return;
         }
 
         if (quiz.getDueTime() == null) {
-            throw new IllegalArgumentException("dueTime is required when unlimited is false");
+            throw new TimeValidationException("dueTime is required when unlimited is false");
         }
 
         LocalDateTime startTime = quiz.getStartTime();
         LocalDateTime dueTime = quiz.getDueTime();
         if (startTime != null && dueTime.isBefore(startTime)) {
-            throw new IllegalArgumentException("dueTime must be after or equal to startTime");
+            throw new TimeValidationException("dueTime must be after or equal to startTime");
         }
     }
 
+    /**
+     * Verifies that the authenticated user belongs to the target course.
+     *
+     * @param user authenticated user identity
+     * @param courseId target course
+     */
     private void verifyCourseMembership(UserAuth user, java.util.UUID courseId) {
         boolean isMember = user.getRole() == Roles.TEACHER
                 ? loadCourseMembershipPort.isTeacherInCourse(user.getId(), courseId)
                 : loadCourseMembershipPort.isStudentInCourse(user.getId(), courseId);
 
         if (!isMember) {
-            throw new IllegalArgumentException("User is not a member of this course");
+            throw new UserNotAuthorizedException("User is not a member of this course");
         }
     }
 }

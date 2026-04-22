@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import edu.ai.lms.common.ErrorResponse;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotVisible;
+import edu.ai.lms.core.quiz.app.exception.TimeValidationException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
+import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -100,6 +102,38 @@ public class QuizExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    /**
+     * Handles TimeValidationException.
+     */
+    @ApiResponse(responseCode = "400", description = "Invalid quiz time configuration",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ExceptionHandler(TimeValidationException.class)
+    public ResponseEntity<ErrorResponse> handleTimeValidationException(TimeValidationException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Time Validation Failed")
+                .message(ex.getMessage())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    /**
+     * Handles UserNotAuthorizedException.
+     */
+    @ApiResponse(responseCode = "403", description = "Not authorized",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ExceptionHandler(UserNotAuthorizedException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotAuthorizedException(UserNotAuthorizedException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.FORBIDDEN.value())
+                .error("Access Denied")
+                .message(ex.getMessage())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
     }
 
     /**

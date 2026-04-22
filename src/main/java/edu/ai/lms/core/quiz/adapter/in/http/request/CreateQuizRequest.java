@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import edu.ai.lms.config.DatePatternConstants;
 import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
+
+import jakarta.validation.constraints.Positive;
 import lombok.*;
 
 @Getter
@@ -19,6 +21,7 @@ public class CreateQuizRequest {
 
     private Boolean unlimited;
 
+    @Positive(message = "Time limit must be greater than 0 minutes")
     private Integer timeLimitMinutes;
 
     private Double passScore;

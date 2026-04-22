@@ -28,7 +28,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/auth/teacher")
-@Tag(name = "Teacher Authentication", description = "Authentication endpoints for teacher registration and login")
+@Tag(name = "Teacher Authentication Controller", description = "Authentication endpoints for teacher registration and login.")
 @RequiredArgsConstructor
 public class TeacherAuthController {
 

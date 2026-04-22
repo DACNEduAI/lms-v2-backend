@@ -28,7 +28,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/auth/student")
-@Tag(name = "Student Authentication", description = "Authentication endpoints for student registration and login")
+@Tag(name = "Student Authentication Controller", description = "Authentication endpoints for student registration and login.")
 @RequiredArgsConstructor
 public class StudentAuthController {
 

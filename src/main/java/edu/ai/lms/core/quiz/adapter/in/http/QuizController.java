@@ -1,7 +1,7 @@
 package edu.ai.lms.core.quiz.adapter.in.http;
 
-import java.util.UUID;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -46,11 +46,13 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/{courseId}/quiz")
+@Tag(name = "Quiz Controller", description = "Endpoints for quiz lifecycle management, timing policies, visibility, and learning-outcome mappings.")
 @RequiredArgsConstructor
 public class QuizController {
 
@@ -128,7 +130,37 @@ public class QuizController {
                 return ResponseEntity.ok(response);
         }
 
-        @Operation(summary = "Create a new quiz", description = "Creates a quiz in a course. LMS logic: configures assessment rules (timing, pass score, attempt limits, visibility). Path field: courseId. Request fields: quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, display. Response fields: quizId, quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, courseId, display, createdAt.")
+                                @Operation(
+                                                                                                summary = "Create a new quiz",
+                                                                                                description = """
+                                                                                                                                                                Creates a quiz in a course.
+
+                                                                                                                                                                LMS time business logic:
+                                                                                                                                                                - If unlimited is true:
+                                                                                                                                                                        - startTime must be null.
+                                                                                                                                                                        - dueTime must be null.
+                                                                                                                                                                        - timeLimitMinutes must be null.
+                                                                                                                                                                - If unlimited is false:
+                                                                                                                                                                        - dueTime is required.
+                                                                                                                                                                        - If startTime is provided, dueTime must be after or equal to startTime.
+                                                                                                                                                                - Attempt timer behavior:
+                                                                                                                                                                        - Timer mode is active only when unlimited=false and timeLimitMinutes>0.
+                                                                                                                                                                        - Effective attempt due time is min(attemptStart + timeLimitMinutes, quiz dueTime).
+                                                                                                                                                                        - If timer mode is not active, quiz dueTime is used as attempt deadline.
+
+                                                                                                                                                                Additional LMS behavior:
+                                                                                                                                                                - Student-authored quizzes are normalized to unlimited mode.
+                                                                                                                                                                - For student-authored quizzes: startTime, dueTime, timeLimitMinutes, and attemptLimited are cleared.
+
+                                                                                                                                                                Path field:
+                                                                                                                                                                - courseId.
+
+                                                                                                                                                                Request fields:
+                                                                                                                                                                - quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, display.
+
+                                                                                                                                                                Response fields:
+                                                                                                                                                                - quizId, quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, courseId, display, createdAt.
+                                                                                                                                                                """)
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "201", description = "Quiz created successfully", content = @Content(schema = @Schema(implementation = CreateQuizResponse.class)))
         })
@@ -142,7 +174,32 @@ public class QuizController {
                 return ResponseEntity.status(HttpStatus.CREATED).body(response);
         }
 
-        @Operation(summary = "Modify an existing quiz", description = "Updates quiz configuration. LMS logic: only quiz creator can revise assessment policy/schedule/visibility. Path fields: courseId, quizId. Request fields: quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, display. Response fields mirror updated quiz metadata plus updatedAt.")
+                                @Operation(
+                                                                                                summary = "Modify an existing quiz",
+                                                                                                description = """
+                                                                                                                                                                Updates quiz configuration.
+
+                                                                                                                                                                LMS time business logic:
+                                                                                                                                                                - If unlimited is true:
+                                                                                                                                                                        - startTime must be null.
+                                                                                                                                                                        - dueTime must be null.
+                                                                                                                                                                - If unlimited is false:
+                                                                                                                                                                        - dueTime is required.
+                                                                                                                                                                        - If startTime is provided, dueTime must be after or equal to startTime.
+                                                                                                                                                                - Attempt timer behavior remains driven by unlimited + timeLimitMinutes at attempt start.
+
+                                                                                                                                                                LMS authorization logic:
+                                                                                                                                                                - Only the quiz creator can modify assessment policy, schedule, and visibility.
+
+                                                                                                                                                                Path fields:
+                                                                                                                                                                - courseId, quizId.
+
+                                                                                                                                                                Request fields:
+                                                                                                                                                                - quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, display.
+
+                                                                                                                                                                Response fields:
+                                                                                                                                                                - quizId, quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, courseId, display, updatedAt.
+                                                                                                                                                                """)
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Quiz modified successfully", content = @Content(schema = @Schema(implementation = ModifyQuizResponse.class))),
                         @ApiResponse(responseCode = "404", description = "Quiz not found")
