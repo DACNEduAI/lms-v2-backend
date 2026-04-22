@@ -2,6 +2,8 @@ package edu.ai.lms.core.auth.adapter.in.internal;
 
 import java.util.Optional;
 
+import java.util.UUID;
+
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 
 /**
@@ -16,4 +18,11 @@ public interface LoadAuthenticatedUserApi {
      * @return an Optional containing the authenticated User, or empty if not authenticated
      */
     Optional<UserAuth> getAuthenticatedUser();
+
+    /**
+     * Retrieves the ID of the currently authenticated user.
+     *
+     * @return the UUID of the authenticated user
+     */
+    UUID getCurrentUserId();
 }
