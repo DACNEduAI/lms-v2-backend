@@ -19,7 +19,8 @@ DROP TABLE IF EXISTS
     quiz_chapters,
     quiz_learning_outcomes,
     question_learning_outcomes,
-    student_learning_outcomes
+    student_learning_outcomes,
+    activity_logs
     CASCADE;
 
 -- Below is the actual schema of the code
@@ -243,3 +244,17 @@ CREATE TABLE IF NOT EXISTS student_learning_outcomes (
     learning_outcome_id UUID REFERENCES learning_outcomes(id),
     PRIMARY KEY (student_id, learning_outcome_id)
 );
+
+-- Activity Logs table for History module
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    action_type VARCHAR(50) NOT NULL,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id UUID NOT NULL,
+    entity_name VARCHAR(255),
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_activity_logs_user_time ON activity_logs(user_id, created_at DESC);
