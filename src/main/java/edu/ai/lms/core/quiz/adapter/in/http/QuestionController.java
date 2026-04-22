@@ -1,7 +1,7 @@
 package edu.ai.lms.core.quiz.adapter.in.http;
 
-import java.util.UUID;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -44,11 +44,13 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/quiz/{quizId}/question")
+@Tag(name = "Question Controller", description = "Endpoints for question lifecycle management and question-level learning outcome mappings.")
 @RequiredArgsConstructor
 public class QuestionController {
 

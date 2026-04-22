@@ -35,11 +35,13 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/{courseId}/chapter")
+@Tag(name = "Chapter Controller", description = "Endpoints for managing chapter structure within courses.")
 @RequiredArgsConstructor
 public class ChapterController {
 

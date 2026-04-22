@@ -27,7 +27,9 @@ import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.exception.TimeValidationException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
+import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
 import edu.ai.lms.core.quiz.app.port.in.command.CreateQuizCommand;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
@@ -157,12 +159,12 @@ class CreateQuizServiceUT {
     }
 
     @Test
-    @DisplayName("Should throw IllegalArgumentException when teacher is not a member of the course")
+        @DisplayName("Should throw UserNotAuthorizedException when teacher is not a member of the course")
     void testCreateQuiz_WithNonMemberTeacher_ShouldThrowException() {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(false);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                UserNotAuthorizedException exception = assertThrows(UserNotAuthorizedException.class,
                 () -> createQuizService.createQuiz(validCommand));
 
         assertEquals("User is not a member of this course", exception.getMessage());
@@ -215,6 +217,7 @@ class CreateQuizServiceUT {
                 assertEquals(studentId, capturedQuiz.getStudentId());
                 assertNull(capturedQuiz.getStartTime());
                 assertNull(capturedQuiz.getDueTime());
+                assertNull(capturedQuiz.getTimeLimitMinutes());
                 assertNull(capturedQuiz.getAttemptLimited());
         }
 
@@ -228,7 +231,7 @@ class CreateQuizServiceUT {
         validCommand.quiz().setStartTime(LocalDateTime.now().plusMinutes(1));
         validCommand.quiz().setDueTime(LocalDateTime.now().plusHours(1));
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        TimeValidationException exception = assertThrows(TimeValidationException.class,
                 () -> createQuizService.createQuiz(validCommand));
 
         assertEquals("When unlimited is true, startTime and dueTime must be null", exception.getMessage());
@@ -243,9 +246,26 @@ class CreateQuizServiceUT {
         validCommand.quiz().setUnlimited(false);
         validCommand.quiz().setDueTime(null);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        TimeValidationException exception = assertThrows(TimeValidationException.class,
                 () -> createQuizService.createQuiz(validCommand));
 
         assertEquals("dueTime is required when unlimited is false", exception.getMessage());
     }
+
+        @Test
+        @DisplayName("Should reject create when unlimited is true and timeLimitMinutes is provided")
+        void testCreateQuiz_WithUnlimitedTrueAndProvidedTimeLimit_ShouldThrow() {
+                when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+                when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
+
+                validCommand.quiz().setUnlimited(true);
+                validCommand.quiz().setStartTime(null);
+                validCommand.quiz().setDueTime(null);
+                validCommand.quiz().setTimeLimitMinutes(30);
+
+                TimeValidationException exception = assertThrows(TimeValidationException.class,
+                                () -> createQuizService.createQuiz(validCommand));
+
+                assertEquals("When unlimited is true, timeLimitMinutes must be null", exception.getMessage());
+        }
 }

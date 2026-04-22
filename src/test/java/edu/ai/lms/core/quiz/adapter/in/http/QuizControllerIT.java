@@ -173,7 +173,6 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "Final Quiz",
                     "unlimited": true,
-                    "timeLimitMinutes": 120,
                     "passScore": 80.0
                 }
                 """;
@@ -202,7 +201,6 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "Practice Quiz",
                     "unlimited": true,
-                    "timeLimitMinutes": 45,
                     "passScore": 65.0
                 }
                 """;
@@ -230,7 +228,6 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "Unauthorized Quiz",
                     "unlimited": true,
-                    "timeLimitMinutes": 30,
                     "passScore": 50.0
                 }
                 """;
@@ -252,7 +249,6 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "unlimited": true,
-                    "timeLimitMinutes": 30,
                     "passScore": 50.0
                 }
                 """;
@@ -650,14 +646,14 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 """.formatted(startDate, endDate);
 
         Response createOtherCourseResponse = given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + teacherToken)
-            .body(createOtherCourseRequest)
-            .when()
-            .post("/api/course")
-            .then()
-            .statusCode(201)
-            .extract().response();
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(createOtherCourseRequest)
+                .when()
+                .post("/api/course")
+                .then()
+                .statusCode(201)
+                .extract().response();
 
         otherCourseId = UUID.fromString(createOtherCourseResponse.jsonPath().getString("courseId"));
 
@@ -670,15 +666,15 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 """;
 
         Response createForeignLearningOutcomeResponse = given()
-            .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + teacherToken)
-            .body(createForeignLearningOutcomeRequest)
-            .when()
-            .post("/api/" + otherCourseId + "/learning-outcome")
-            .then()
-            .statusCode(201)
-            .body("totalCreated", equalTo(1))
-            .extract().response();
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(createForeignLearningOutcomeRequest)
+                .when()
+                .post("/api/" + otherCourseId + "/learning-outcome")
+                .then()
+                .statusCode(201)
+                .body("totalCreated", equalTo(1))
+                .extract().response();
 
         foreignLearningOutcomeId = UUID.fromString(
                 createForeignLearningOutcomeResponse.jsonPath().getString("learningOutcomes[0].id"));
@@ -818,7 +814,6 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "%s",
                     "unlimited": true,
-                    "timeLimitMinutes": 20,
                     "passScore": 50.0,
                     "display": true
                 }
@@ -843,7 +838,6 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "%s",
                     "unlimited": true,
-                    "timeLimitMinutes": 25,
                     "passScore": 55.0,
                     "display": true
                 }
@@ -868,7 +862,6 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "%s",
                     "unlimited": true,
-                    "timeLimitMinutes": 15,
                     "passScore": 45.0,
                     "display": true
                 }
@@ -882,8 +875,8 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .post("/api/" + createdCourseId + "/quiz")
                 .then()
                 .statusCode(201)
-            .body("quizTitle", equalTo(STUDENT_B_QUIZ_TITLE))
-            .extract().response();
+                .body("quizTitle", equalTo(STUDENT_B_QUIZ_TITLE))
+                .extract().response();
 
         studentBQuizId = UUID.fromString(response.jsonPath().getString("quizId"));
     }
@@ -939,7 +932,6 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "%s",
                     "unlimited": true,
-                    "timeLimitMinutes": 30,
                     "passScore": 50.0,
                     "display": false
                 }
@@ -953,8 +945,8 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .post("/api/" + createdCourseId + "/quiz")
                 .then()
                 .statusCode(201)
-            .body("quizTitle", equalTo(HIDDEN_TEACHER_QUIZ_TITLE))
-            .extract().response();
+                .body("quizTitle", equalTo(HIDDEN_TEACHER_QUIZ_TITLE))
+                .extract().response();
 
         hiddenTeacherQuizId = UUID.fromString(response.jsonPath().getString("quizId"));
     }
