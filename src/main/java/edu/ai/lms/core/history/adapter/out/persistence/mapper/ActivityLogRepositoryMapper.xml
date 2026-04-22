@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.history.adapter.out.persistence.ActivityLogRepository">
+
+    <select id="findByUserId" resultType="edu.ai.lms.core.history.app.domain.ActivityLog">
+        SELECT *
+        FROM activity_logs
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM activity_logs
+        WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO activity_logs (
+            id, user_id, action_type, entity_type, entity_id, entity_name, description, created_at
+        ) VALUES (
+            COALESCE(#{id}, gen_random_uuid()),
+            #{userId},
+            #{actionType},
+            #{entityType},
+            #{entityId},
+            #{entityName},
+            #{description},
+            COALESCE(#{createdAt}, CURRENT_TIMESTAMP)
+        )
+    </insert>
+
+</mapper>
