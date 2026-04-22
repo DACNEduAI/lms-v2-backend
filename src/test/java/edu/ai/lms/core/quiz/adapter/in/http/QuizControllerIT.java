@@ -33,6 +33,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     private static UUID thirdQuizId;
     private static UUID studentBQuizId;
     private static UUID hiddenTeacherQuizId;
+    private static UUID quizWithLearningOutcomeRelationId;
     private static UUID lo1;
     private static UUID lo2;
     private static UUID lo3;
@@ -1034,4 +1035,79 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .statusCode(403);
     }
+
+        @Test
+        @Order(44)
+        @DisplayName("Should create quiz and add learning outcome relation for delete scenario")
+        void testCreateQuiz_WithLearningOutcomeRelation_ForDeleteScenario() {
+        String createQuizRequest = """
+            {
+                "quizTitle": "Quiz With LO Relation",
+                "unlimited": true,
+                "passScore": 60.0,
+                "display": true
+            }
+            """;
+
+        Response createQuizResponse = given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + teacherToken)
+            .body(createQuizRequest)
+            .when()
+            .post("/api/" + createdCourseId + "/quiz")
+            .then()
+            .statusCode(201)
+            .body("quizId", notNullValue())
+            .extract().response();
+
+        quizWithLearningOutcomeRelationId = UUID.fromString(createQuizResponse.jsonPath().getString("quizId"));
+
+        String addLearningOutcomesRequest = """
+            {
+                "learningOutcomeIds": ["%s"],
+                "groupLearningOutcomeIds": []
+            }
+            """.formatted(lo4);
+
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + teacherToken)
+            .body(addLearningOutcomesRequest)
+            .when()
+            .post("/api/" + createdCourseId + "/quiz/" + quizWithLearningOutcomeRelationId + "/learning-outcomes")
+            .then()
+            .statusCode(200)
+            .body("operation", equalTo("ADD"))
+            .body("totalAffected", equalTo(1))
+            .body("learningOutcomeIds", hasSize(1));
+
+        given()
+            .header("Authorization", "Bearer " + teacherToken)
+            .when()
+            .get("/api/" + createdCourseId + "/quiz/" + quizWithLearningOutcomeRelationId)
+            .then()
+            .statusCode(200)
+            .body("ungroupedLearningOutcomes.code", hasItem("CLO-Q4"));
+        }
+
+        @Test
+        @Order(45)
+        @DisplayName("Should delete quiz even when it has learning outcome relation")
+        void testDeleteQuiz_WithLearningOutcomeRelation_ShouldSucceed() {
+        given()
+            .header("Authorization", "Bearer " + teacherToken)
+            .when()
+            .delete("/api/" + createdCourseId + "/quiz/" + quizWithLearningOutcomeRelationId)
+            .then()
+            .statusCode(200)
+            .body("quizId", equalTo(quizWithLearningOutcomeRelationId.toString()))
+            .body("message", equalTo("Quiz deleted successfully"));
+
+        given()
+            .header("Authorization", "Bearer " + teacherToken)
+            .when()
+            .get("/api/" + createdCourseId + "/quiz/" + quizWithLearningOutcomeRelationId)
+            .then()
+            .statusCode(404);
+        }
 }
