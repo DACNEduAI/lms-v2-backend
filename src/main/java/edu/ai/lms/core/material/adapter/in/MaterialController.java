@@ -3,7 +3,6 @@ package edu.ai.lms.core.material.adapter.in;
 import java.util.List;
 import java.util.UUID;
 
-import edu.ai.lms.core.material.app.port.in.usecase.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,16 +28,25 @@ import edu.ai.lms.core.material.adapter.in.response.ModifyMaterialResponse;
 import edu.ai.lms.core.material.app.port.in.command.CreateMaterialForChapterCommand;
 import edu.ai.lms.core.material.app.port.in.command.CreateMaterialForCourseCommand;
 import edu.ai.lms.core.material.app.port.in.command.ModifyMaterialCommand;
+import edu.ai.lms.core.material.app.port.in.usecase.ConfirmUploadUseCase;
+import edu.ai.lms.core.material.app.port.in.usecase.CreateMaterialUseCase;
+import edu.ai.lms.core.material.app.port.in.usecase.DeleteMaterialUseCase;
+import edu.ai.lms.core.material.app.port.in.usecase.GetChapterMaterialsUseCase;
+import edu.ai.lms.core.material.app.port.in.usecase.GetMaterialUseCase;
+import edu.ai.lms.core.material.app.port.in.usecase.GetUploadedMaterialsUseCase;
+import edu.ai.lms.core.material.app.port.in.usecase.ModifyMaterialUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/{courseId}/material")
+@Tag(name = "Material Controller", description = "Endpoints for material upload, retrieval, update, and deletion.")
 @RequiredArgsConstructor
 public class MaterialController {
 

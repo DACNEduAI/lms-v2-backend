@@ -30,11 +30,13 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/quiz/{questionId}/answer")
+@Tag(name = "Answer Controller", description = "Endpoints for answer option lifecycle management within quiz questions.")
 @RequiredArgsConstructor
 public class AnswerController {
 

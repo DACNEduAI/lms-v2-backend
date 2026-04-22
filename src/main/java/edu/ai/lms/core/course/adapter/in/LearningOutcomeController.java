@@ -1,17 +1,17 @@
 package edu.ai.lms.core.course.adapter.in;
 
-import java.util.UUID;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,23 +41,25 @@ import edu.ai.lms.core.course.app.port.in.command.DeleteLearningOutcomesCommand;
 import edu.ai.lms.core.course.app.port.in.command.ModifyLearningOutcomesCommand;
 import edu.ai.lms.core.course.app.port.in.command.ModifySingleLearningOutcomeCommand;
 import edu.ai.lms.core.course.app.port.in.command.RemoveLearningOutcomesFromChapterCommand;
+import edu.ai.lms.core.course.app.port.in.usecase.GetGroupLearningOutcomeUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.GetLearningOutcomeUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherAddLearningOutcomesToChapterUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateLearningOutcomesUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherDeleteLearningOutcomesUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifyLearningOutcomesUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifySingleLearningOutcomeUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherRemoveLearningOutcomesFromChapterUseCase;
-import edu.ai.lms.core.course.app.port.in.usecase.GetGroupLearningOutcomeUseCase;
-import edu.ai.lms.core.course.app.port.in.usecase.GetLearningOutcomeUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
+@Tag(name = "Learning Outcome Controller", description = "Endpoints for course and chapter learning outcome lifecycle management.")
 @RequiredArgsConstructor
 public class LearningOutcomeController {
 
