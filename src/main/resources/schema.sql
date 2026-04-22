@@ -228,8 +228,8 @@ CREATE TABLE IF NOT EXISTS quiz_chapters (
 );
 
 CREATE TABLE IF NOT EXISTS quiz_learning_outcomes (
-    quiz_id UUID REFERENCES quizzes(id),
-    learning_outcome_id UUID REFERENCES learning_outcomes(id),
+    quiz_id UUID REFERENCES quizzes(id) ON DELETE CASCADE,
+    learning_outcome_id UUID REFERENCES learning_outcomes(id) ON DELETE CASCADE,
     PRIMARY KEY (quiz_id, learning_outcome_id)
 );
 
