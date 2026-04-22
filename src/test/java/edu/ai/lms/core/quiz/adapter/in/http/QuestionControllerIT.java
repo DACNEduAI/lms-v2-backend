@@ -117,7 +117,6 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "Algebra Quiz",
                     "unlimited": true,
-                    "timeLimitMinutes": 45,
                     "passScore": 60.0
                 }
                 """;

@@ -111,7 +111,6 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "Physics Quiz",
                     "unlimited": true,
-                    "timeLimitMinutes": 30,
                     "passScore": 50.0
                 }
                 """;
@@ -294,7 +293,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                 {
                     "content": "Approximately 300,000 km/s",
                     "isCorrect": true,
-                    "explanation": "Updated: The speed of light is about 3×10^8 m/s"
+                    "explanation": "Updated: The speed of light is about 3x10^8 m/s"
                 }
                 """;
 
@@ -309,7 +308,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                 .statusCode(200)
                 .body("answerNumber", equalTo(createdAnswerNumber.intValue()))
                 .body("content", equalTo("Approximately 300,000 km/s"))
-                .body("explanation", equalTo("Updated: The speed of light is about 3×10^8 m/s"))
+                .body("explanation", equalTo("Updated: The speed of light is about 3x10^8 m/s"))
                 .body("questionId", equalTo(createdQuestionId.toString()))
                 .body("updatedAt", notNullValue());
     }
