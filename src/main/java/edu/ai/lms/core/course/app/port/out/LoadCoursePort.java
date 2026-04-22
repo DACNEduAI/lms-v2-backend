@@ -8,7 +8,10 @@ import edu.ai.lms.core.course.app.domain.Course;
 
 public interface LoadCoursePort {
     Optional<Course> findById(UUID courseId);
+
     Optional<Course> findByCourseCode(String courseCode);
+
     List<Course> findAllByTeacherId(UUID teacherId);
+
     List<Course> findAllByStudentId(UUID studentId);
 }
