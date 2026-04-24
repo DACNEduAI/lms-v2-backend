@@ -6,6 +6,7 @@ import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,7 @@ import java.util.UUID;
  *     <li>Used by attempt use-case services and Quartz auto-close jobs</li>
  * </ul>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AttemptAutoCloseService {
@@ -45,7 +47,7 @@ public class AttemptAutoCloseService {
     /**
      * Grace window added after due time to tolerate small client/network delays during submission.
      */
-    private static final long SUBMISSION_GRACE_SECONDS = 5L;
+    private static final long SUBMISSION_GRACE_SECONDS = 1L;
 
     private final LoadAttemptPort loadAttemptPort;
     private final LoadQuizAttemptPolicyPort loadQuizAttemptPolicyPort;
@@ -115,6 +117,8 @@ public class AttemptAutoCloseService {
         loadQuizAttemptPolicyPort
                 .getQuizAttemptPolicy(null, attempt.getQuizId())
                 .ifPresent(policy -> closeExpiredStartedAttempt(attempt, policy, now));
+
+        log.info("Auto-closed expired attempt with id={} in the closeAttemptIfStillStarted function", attemptId);
     }
 
     /**
@@ -141,9 +145,9 @@ public class AttemptAutoCloseService {
         String errorReason;
 
         if (policy.hasTimer()) {
-            status = Attempt.AttemptStatus.ERROR;
+            status = Attempt.AttemptStatus.FINISHED;
             errorReason = "Attempt expired before submission";
-            score = null;
+            score = 0.0;
         } else {
             status = Attempt.AttemptStatus.FINISHED;
             score = 0.0;
