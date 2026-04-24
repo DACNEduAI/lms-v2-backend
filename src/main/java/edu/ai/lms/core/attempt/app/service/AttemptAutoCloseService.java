@@ -141,9 +141,9 @@ public class AttemptAutoCloseService {
         String errorReason;
 
         if (policy.hasTimer()) {
-            status = Attempt.AttemptStatus.ERROR;
+            status = Attempt.AttemptStatus.FINISHED;
             errorReason = "Attempt expired before submission";
-            score = null;
+            score = 0.0;
         } else {
             status = Attempt.AttemptStatus.FINISHED;
             score = 0.0;

@@ -18,7 +18,6 @@ import java.util.UUID;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -343,7 +342,7 @@ class AttemptControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(8)
-        @DisplayName("Should auto-finish untimed quiz with zero score after due time + grace")
+    @DisplayName("Should auto-finish untimed quiz with zero score after due time + grace")
     void submitUntimedQuizLate() throws InterruptedException {
         given()
                 .header("Authorization", "Bearer " + studentToken)
@@ -368,6 +367,58 @@ class AttemptControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(9)
+    @DisplayName("Should auto-finish timed quiz with zero score after due time + grace")
+    void autoFinishTimedQuizAfterDueTimeAndGrace() throws InterruptedException {
+        String nearDueTime = LocalDateTime.now().plusSeconds(5).format(DATE_TIME_FORMATTER);
+        String timedNearDueQuizBody = """
+                {
+                    "quizTitle": "Timed Near Due Auto-Finish Quiz",
+                    "unlimited": false,
+                    "timeLimitMinutes": 2,
+                    "passScore": 5.0,
+                    "dueTime": "%s",
+                    "attemptLimited": 1,
+                    "display": true
+                }
+                """.formatted(nearDueTime);
+
+        Response timedNearDueQuizResponse = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(timedNearDueQuizBody)
+                .when()
+                .post("/api/" + courseId + "/quiz")
+                .then()
+                .statusCode(201)
+                .body("quizId", notNullValue())
+                .extract().response();
+
+        UUID timedNearDueQuizId = UUID.fromString(timedNearDueQuizResponse.path("quizId"));
+
+        given()
+                .header("Authorization", "Bearer " + studentToken)
+                .when()
+                .post("/api/" + courseId + "/attempt/quiz/" + timedNearDueQuizId + "/start")
+                .then()
+                .statusCode(200)
+                .body("status", equalTo("STARTED"));
+
+        Thread.sleep(12000);
+
+        given()
+                .header("Authorization", "Bearer " + studentToken)
+                .when()
+                .get("/api/" + courseId + "/attempt/quiz/" + timedNearDueQuizId + "/me")
+                .then()
+                .statusCode(200)
+                .body("attempts", hasSize(1))
+                .body("attempts[0].status", equalTo("FINISHED"))
+                .body("attempts[0].score", equalTo(0.0f))
+                .body("attempts[0].errorReason", equalTo("Attempt expired before submission"));
+    }
+
+    @Test
+    @Order(10)
     @DisplayName("Should get my attempts for a quiz")
     void getMyAttempts() {
         given()
@@ -381,7 +432,7 @@ class AttemptControllerIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(10)
+    @Order(11)
     @DisplayName("Should reject submit when quizId in body mismatches URL")
     void rejectSubmitWhenQuizIdMismatch() {
         String submitBody = """
