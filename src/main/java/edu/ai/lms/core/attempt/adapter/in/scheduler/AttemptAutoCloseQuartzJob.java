@@ -1,24 +1,33 @@
 package edu.ai.lms.core.attempt.adapter.in.scheduler;
 
 import edu.ai.lms.core.attempt.app.service.AttemptAutoCloseService;
+import lombok.extern.slf4j.Slf4j;
 import org.quartz.DisallowConcurrentExecution;
-import org.quartz.Job;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import org.springframework.context.ApplicationContext;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.quartz.QuartzJobBean;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@DisallowConcurrentExecution
-public class AttemptAutoCloseQuartzJob implements Job {
+@Slf4j
+@Component
+public class AttemptAutoCloseQuartzJob extends QuartzJobBean {
 
     public static final String ATTEMPT_ID_KEY = "attemptId";
-    private static final String APPLICATION_CONTEXT_KEY = "applicationContext";
+
+    private final AttemptAutoCloseService attemptAutoCloseService;
+
+    @Autowired
+    public AttemptAutoCloseQuartzJob(AttemptAutoCloseService attemptAutoCloseService) {
+        this.attemptAutoCloseService = attemptAutoCloseService;
+    }
 
     @Override
-    public void execute(JobExecutionContext context) throws JobExecutionException {
+    protected void executeInternal(JobExecutionContext context) throws JobExecutionException {
         JobDataMap jobDataMap = context.getMergedJobDataMap();
         String attemptIdRaw = jobDataMap.getString(ATTEMPT_ID_KEY);
         if (attemptIdRaw == null || attemptIdRaw.isBlank()) {
@@ -27,11 +36,8 @@ public class AttemptAutoCloseQuartzJob implements Job {
 
         try {
             UUID attemptId = UUID.fromString(attemptIdRaw);
-            ApplicationContext applicationContext = (ApplicationContext) context.getScheduler()
-                    .getContext()
-                    .get(APPLICATION_CONTEXT_KEY);
-            AttemptAutoCloseService attemptAutoCloseService = applicationContext.getBean(AttemptAutoCloseService.class);
             attemptAutoCloseService.closeAttemptIfStillStarted(attemptId, LocalDateTime.now());
+            log.info("Executed attempt auto-close job for attemptId={} in the AttemptAutoCloseQuartzJob", attemptId);
         } catch (Exception ex) {
             throw new JobExecutionException("Failed to execute attempt auto-close job", ex);
         }
