@@ -275,3 +275,17 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 CREATE INDEX IF NOT EXISTS idx_notif_user_read ON notifications(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_notif_created_at ON notifications(created_at DESC);
+
+-- ==========================================
+-- CHAT MODULE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS user_chat_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    status VARCHAR(50) DEFAULT 'SENT' CHECK (status IN ('SENT', 'DELIVERED', 'READ')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_chat_messages_participants ON user_chat_messages(sender_id, recipient_id, created_at DESC);
