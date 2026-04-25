@@ -80,6 +80,12 @@ public class SecurityConfig {
                         ).permitAll()
                         // Actuator endpoints
                         .requestMatchers("/actuator/**").permitAll()
+                        // Allow Spring to show actual errors
+                        .requestMatchers("/error").permitAll()
+                        // allow to test the chat
+                        .requestMatchers("/chat-test.html").permitAll()
+                        // allow WebSocket handshakes (auth handled by STOMP interceptor)
+                        .requestMatchers("/ws/**", "/wss/**").permitAll()
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )

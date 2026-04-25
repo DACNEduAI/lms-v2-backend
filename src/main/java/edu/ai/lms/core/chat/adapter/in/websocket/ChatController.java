@@ -29,7 +29,12 @@ public class ChatController {
         UUID recipientId = request.getRecipientId();
         
         ChatMessage savedMessage = sendChatMessageUseCase.sendMessage(senderId, recipientId, request.getContent());
-        
+
+        //TODO: Refactor the sending message logic
+        /*
+        These "Push to recipient" and "Push back to sender" need to be
+        moved to the "out" package
+        * */
         // Push to recipient
         messagingTemplate.convertAndSendToUser(
                 recipientId.toString(),

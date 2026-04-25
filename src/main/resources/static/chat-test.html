@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>STOMP Chat Test Client</title>
+    <!-- SockJS and Stomp.js CDNs -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f4f7f6; }
+        h2 { color: #333; text-align: center; }
+        .container { display: flex; gap: 20px; max-width: 1000px; margin: 0 auto; }
+        .panel { flex: 1; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 20px; }
+        .message-box { height: 350px; overflow-y: scroll; border: 1px solid #e0e0e0; margin-top: 15px; padding: 10px; border-radius: 4px; background: #fafafa; }
+        .msg { margin-bottom: 10px; padding: 10px; border-radius: 8px; max-width: 80%; word-wrap: break-word; }
+        .my-msg { background: #dcf8c6; margin-left: auto; border-bottom-right-radius: 0; }
+        .their-msg { background: #fff; border: 1px solid #e0e0e0; margin-right: auto; border-bottom-left-radius: 0; }
+        .msg-header { font-size: 0.8em; color: #888; margin-bottom: 4px; }
+        input, textarea, button { margin: 8px 0; padding: 10px; width: 100%; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
+        button { background-color: #4CAF50; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        button:hover:not(:disabled) { background-color: #45a049; }
+        #connStatus { font-weight: bold; margin-top: 10px; padding: 10px; border-radius: 4px; text-align: center; }
+        .status-disconnected { background-color: #ffebee; color: #c62828; }
+        .status-connected { background-color: #e8f5e9; color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <h2>STOMP Chat Test Client</h2>
+    <div class="container">
+        <!-- Connection Panel -->
+        <div class="panel">
+            <h3>1. Authentication & Connection</h3>
+            <label>JWT Token:</label>
+            <textarea id="jwtToken" rows="4" placeholder="Paste your JWT token here (with or without 'Bearer ' prefix)"></textarea>
+            <button id="connectBtn" onclick="connect()">Connect to Chat</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            <div id="connStatus" class="status-disconnected">Status: Disconnected</div>
+        </div>
+
+        <!-- Chat Panel -->
+        <div class="panel">
+            <h3>2. Send a Message</h3>
+            <label>Recipient UUID:</label>
+            <input type="text" id="recipientId" placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000">
+            <label>Message:</label>
+            <textarea id="messageContent" rows="3" placeholder="Type your message..."></textarea>
+            <button id="sendBtn" onclick="sendMessage()" disabled>Send Message</button>
+            
+            <h4>Live Message Feed</h4>
+            <div id="messages" class="message-box"></div>
+        </div>
+    </div>
+
+    <script>
+        let stompClient = null;
+        let myUuid = null;
+
+        function connect() {
+            let token = document.getElementById('jwtToken').value.trim();
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            if (!token) {
+                alert("Please enter a JWT token!");
+                return;
+            }
+
+            // Note: Use /ws/ for dev and /wss/ for prod based on your profile config.
+            // Since this runs locally, /ws/ is appropriate.
+            const socket = new SockJS('http://localhost:8080/ws');
+            stompClient = Stomp.over(socket);
+
+            // Add Authorization header for the WebSocketAuthInterceptor
+            const headers = {
+                'Authorization': 'Bearer ' + token
+            };
+
+            updateStatus("Connecting...", false);
+
+            stompClient.connect(headers, function (frame) {
+                // The Principal's name (which we set to UUID) is available in the CONNECTED frame
+                myUuid = frame.headers['user-name'];
+                
+                updateStatus("Connected as: " + myUuid, true);
+                
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+                document.getElementById('sendBtn').disabled = false;
+                
+                // Subscribe to personal message queue
+                stompClient.subscribe('/user/queue/messages', function (message) {
+                    showMessage(JSON.parse(message.body));
+                });
+            }, function (error) {
+                console.error("STOMP error", error);
+                updateStatus("Error / Disconnected", false);
+                alert("Connection dropped or failed to connect. Check console for details.");
+                disconnect();
+            });
+        }
+
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+            }
+            updateStatus("Disconnected", false);
+            myUuid = null;
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('disconnectBtn').disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+        }
+
+        function sendMessage() {
+            const recipientId = document.getElementById('recipientId').value.trim();
+            const content = document.getElementById('messageContent').value.trim();
+            
+            if (!recipientId || !content) {
+                alert("Please enter both recipient ID and message content.");
+                return;
+            }
+
+            const chatMessage = {
+                recipientId: recipientId,
+                content: content
+            };
+
+            // Send to the backend's @MessageMapping("/chat/send") endpoint
+            stompClient.send("/app/chat.send", {}, JSON.stringify(chatMessage));
+            
+            // Clear message input
+            document.getElementById('messageContent').value = '';
+        }
+
+        function showMessage(message) {
+            const messagesDiv = document.getElementById('messages');
+            const wrapper = document.createElement('div');
+            const isMine = (message.senderId === myUuid);
+            
+            wrapper.className = isMine ? 'msg my-msg' : 'msg their-msg';
+            
+            const header = document.createElement('div');
+            header.className = 'msg-header';
+            header.innerText = isMine ? 'You' : 'From: ' + message.senderId;
+            
+            const body = document.createElement('div');
+            body.innerText = message.content;
+            
+            wrapper.appendChild(header);
+            wrapper.appendChild(body);
+            
+            messagesDiv.appendChild(wrapper);
+            
+            // Auto-scroll to bottom
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function updateStatus(text, isConnected) {
+            const statusDiv = document.getElementById('connStatus');
+            statusDiv.innerText = "Status: " + text;
+            statusDiv.className = isConnected ? "status-connected" : "status-disconnected";
+        }
+    </script>
+</body>
+</html>

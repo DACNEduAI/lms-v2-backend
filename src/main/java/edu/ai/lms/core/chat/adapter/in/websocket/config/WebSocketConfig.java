@@ -2,6 +2,8 @@ package edu.ai.lms.core.chat.adapter.in.websocket.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -13,6 +15,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 @Configuration
 @EnableWebSocketMessageBroker
+@Order(Ordered.HIGHEST_PRECEDENCE + 99)
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
@@ -21,7 +24,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        String endpoint = env.acceptsProfiles(Profiles.of("prod")) ? "/wss/" : "/ws/";
+        String endpoint = env.acceptsProfiles(Profiles.of("prod")) ? "/wss" : "/ws";
         registry.addEndpoint(endpoint)
                 .setAllowedOriginPatterns("*") // Use setAllowedOriginPatterns instead of setAllowedOrigins for credentials
                 .withSockJS();
