@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -29,7 +31,10 @@ import edu.ai.lms.core.material.app.domain.Material.MaterialType;
 import edu.ai.lms.core.material.app.exception.MaterialNotFoundException;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
+import edu.ai.lms.core.material.app.port.out.persistence.LoadSignedInUserPort;
 import edu.ai.lms.core.material.app.port.out.storage.VerifyFileUploadedPort;
+import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.Roles;
 
 @ExtendWith(MockitoExtension.class)
 class ConfirmUploadServiceUT {
@@ -42,6 +47,12 @@ class ConfirmUploadServiceUT {
 
     @Mock
     private VerifyFileUploadedPort verifyFileUploadedPort;
+
+    @Mock
+    private LoadSignedInUserPort loadSignedInUserPort;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private ConfirmUploadService confirmUploadService;
@@ -73,6 +84,7 @@ class ConfirmUploadServiceUT {
         // Arrange
         when(getMaterialPort.findByIdAndCourseId(materialId, courseId)).thenReturn(Optional.of(material));
         when(verifyFileUploadedPort.isFileUploaded(material.getFileKey())).thenReturn(true);
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
 
         Material updatedMaterial = Material.builder()
                 .id(materialId)

@@ -1,11 +1,18 @@
 package edu.ai.lms.core.quiz.app.service;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.Roles;
+import edu.ai.lms.common.event.SystemActivityEvent;
+import edu.ai.lms.common.event.SystemNotificationEvent;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
@@ -22,12 +29,16 @@ import lombok.RequiredArgsConstructor;
 /**
  * Creates quizzes for teachers and students in a course context.
  *
- * <p>Business responsibilities:
+ * <p>
+ * Business responsibilities:
  * <ul>
- *     <li>Requires an authenticated user and validates course membership before write operations.</li>
- *     <li>Applies role-based ownership: teacher-created quizzes store {@code teacherId}, student-created quizzes store {@code studentId}.</li>
- *     <li>Enforces time policy integrity for teacher-created quizzes.</li>
- *     <li>Normalizes student-created quizzes to unlimited mode and clears teacher-only scheduling controls.</li>
+ * <li>Requires an authenticated user and validates course membership before
+ * write operations.</li>
+ * <li>Applies role-based ownership: teacher-created quizzes store
+ * {@code teacherId}, student-created quizzes store {@code studentId}.</li>
+ * <li>Enforces time policy integrity for teacher-created quizzes.</li>
+ * <li>Normalizes student-created quizzes to unlimited mode and clears
+ * teacher-only scheduling controls.</li>
  * </ul>
  */
 @Service
@@ -37,9 +48,11 @@ public class CreateQuizService implements CreateQuizUseCase {
     private final SaveQuizPort saveQuizPort;
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadCourseMembershipPort loadCourseMembershipPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
-     * Creates a quiz in a course after authentication, membership checks, and business validation.
+     * Creates a quiz in a course after authentication, membership checks, and
+     * business validation.
      *
      * @param command input command containing {@code courseId} and quiz payload
      * @return persisted quiz metadata for API response
@@ -80,10 +93,40 @@ public class CreateQuizService implements CreateQuizUseCase {
         // Save quiz
         Quiz savedQuiz = saveQuizPort.save(quiz);
 
+        // Publish activity event (lịch sử hoạt động của giảng viên)
+        eventPublisher.publishEvent(SystemActivityEvent.builder()
+                .userId(user.getId())
+                .actionType("CREATE")
+                .entityType("QUIZ")
+                .entityId(savedQuiz.getId())
+                .entityName(savedQuiz.getQuizTitle())
+                .description(user.getRole() == Roles.TEACHER ? "Giảng viên tạo bài kiểm tra mới"
+                        : "Học viên tạo bài kiểm tra mới")
+                .timestamp(LocalDateTime.now())
+                .build());
+
+        // Publish notification event — chỉ khi giảng viên tạo quiz hiển thị công khai
+        if (user.getRole() == Roles.TEACHER && Boolean.TRUE.equals(savedQuiz.getDisplay())) {
+            try {
+                List<UUID> studentIdList = loadCourseMembershipPort.getStudentIdsByCourseId(command.courseId());
+                if (!studentIdList.isEmpty()) {
+                    Set<UUID> studentIds = new HashSet<>(studentIdList);
+                    eventPublisher.publishEvent(new SystemNotificationEvent(
+                            studentIds,
+                            "Có bài kiểm tra mới!",
+                            "Giảng viên vừa tạo bài kiểm tra: " + savedQuiz.getQuizTitle(),
+                            "COURSE_UPDATE",
+                            "/student/quizzes"));
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
         return CreateQuizResponse.builder()
                 .quizId(savedQuiz.getId())
                 .quizTitle(savedQuiz.getQuizTitle())
-            .unlimited(savedQuiz.getUnlimited())
+                .unlimited(savedQuiz.getUnlimited())
                 .timeLimitMinutes(savedQuiz.getTimeLimitMinutes())
                 .passScore(savedQuiz.getPassScore())
                 .startTime(savedQuiz.getStartTime())
@@ -98,11 +141,14 @@ public class CreateQuizService implements CreateQuizUseCase {
     /**
      * Validates quiz timing consistency.
      *
-     * <p>Rules:
+     * <p>
+     * Rules:
      * <ul>
-     *     <li>If unlimited is true: startTime, dueTime, and timeLimitMinutes must all be null.</li>
-     *     <li>If unlimited is false: dueTime is required.</li>
-     *     <li>If startTime is present: dueTime must be after or equal to startTime.</li>
+     * <li>If unlimited is true: startTime, dueTime, and timeLimitMinutes must all
+     * be null.</li>
+     * <li>If unlimited is false: dueTime is required.</li>
+     * <li>If startTime is present: dueTime must be after or equal to
+     * startTime.</li>
      * </ul>
      *
      * @param quiz quiz draft to validate and normalize
@@ -135,7 +181,7 @@ public class CreateQuizService implements CreateQuizUseCase {
     /**
      * Verifies that the authenticated user belongs to the target course.
      *
-     * @param user authenticated user identity
+     * @param user     authenticated user identity
      * @param courseId target course
      */
     private void verifyCourseMembership(UserAuth user, java.util.UUID courseId) {

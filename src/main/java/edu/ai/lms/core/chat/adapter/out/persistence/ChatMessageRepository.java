@@ -1,17 +1,36 @@
 package edu.ai.lms.core.chat.adapter.out.persistence;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jdbc.repository.query.Query;
-import org.springframework.data.repository.CrudRepository;
-import org.springframework.data.repository.PagingAndSortingRepository;
+import edu.ai.lms.core.chat.app.domain.ChatMessage;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
-public interface ChatMessageRepository extends CrudRepository<ChatMessageJdbcEntity, UUID>, PagingAndSortingRepository<ChatMessageJdbcEntity, UUID> {
+@Mapper
+public interface ChatMessageRepository {
 
-    Page<ChatMessageJdbcEntity> findBySenderIdAndRecipientIdOrSenderIdAndRecipientIdOrderByCreatedAtDesc(
-            UUID senderId1, UUID recipientId1,
-            UUID senderId2, UUID recipientId2,
-            Pageable pageable);
+    void insert(ChatMessage message);
+
+    List<ChatMessage> findChatHistory(
+            @Param("userId1") UUID userId1,
+            @Param("userId2") UUID userId2,
+            @Param("offset") long offset,
+            @Param("limit") int limit);
+
+    long countChatHistory(@Param("userId1") UUID userId1, @Param("userId2") UUID userId2);
+
+    Optional<ChatMessage> findById(@Param("id") UUID id);
+
+    default ChatMessage save(ChatMessage message) {
+        if (message.getId() == null) {
+            message.setId(UUID.randomUUID());
+            insert(message);
+        } else {
+            // Usually chat messages are immutable once sent, but add update if needed
+            insert(message); // Or update logic
+        }
+        return findById(message.getId()).orElseThrow();
+    }
 }

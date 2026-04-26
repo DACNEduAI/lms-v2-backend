@@ -1,13 +1,16 @@
 package edu.ai.lms.core.quiz.app.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.Roles;
+import edu.ai.lms.common.event.SystemActivityEvent;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuestionResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
@@ -31,6 +34,7 @@ public class CreateQuestionService implements CreateQuestionUseCase {
     private final SaveAnswerPort saveAnswerPort;
     private final LoadQuizPort loadQuizPort;
     private final LoadSignedInUserPort loadSignedInUserPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -64,6 +68,17 @@ public class CreateQuestionService implements CreateQuestionUseCase {
                     })
                     .collect(Collectors.toList());
         }
+
+        // Publish activity event
+        eventPublisher.publishEvent(SystemActivityEvent.builder()
+                .userId(user.getId())
+                .actionType("CREATE")
+                .entityType("QUESTION")
+                .entityId(savedQuestion.getId())
+                .entityName("Câu hỏi trong " + quiz.getQuizTitle())
+                .description("Giảng viên vừa thêm câu hỏi mới vào bài kiểm tra: " + quiz.getQuizTitle())
+                .timestamp(LocalDateTime.now())
+                .build());
 
         return CreateQuestionResponse.builder()
                 .questionId(savedQuestion.getId())

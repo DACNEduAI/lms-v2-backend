@@ -39,7 +39,7 @@ public class NotificationController {
     public ResponseEntity<Page<Notification>> getMyNotifications(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        
+
         UUID userId = loadAuthenticatedUserApi.getCurrentUserId();
         Page<Notification> notifications = notificationUseCase.getMyNotifications(userId, PageRequest.of(page, size));
         return ResponseEntity.ok(notifications);

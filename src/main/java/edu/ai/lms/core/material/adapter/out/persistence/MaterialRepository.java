@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import edu.ai.lms.core.material.app.domain.Material;
 
 @Mapper
@@ -59,4 +60,7 @@ interface MaterialRepository {
     void deleteChapterMaterialLinks(@Param("materialId") UUID materialId);
 
     void deleteByCourseId(@Param("courseId") UUID courseId);
+
+    @Select("SELECT e.user_id FROM enrollments e INNER JOIN users u ON e.user_id = u.id WHERE e.course_id = #{courseId} AND u.role = 'STUDENT'")
+    List<UUID> findStudentIdsByCourseId(@Param("courseId") UUID courseId);
 }

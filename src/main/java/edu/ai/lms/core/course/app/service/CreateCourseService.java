@@ -1,10 +1,13 @@
 package edu.ai.lms.core.course.app.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import edu.ai.lms.common.event.SystemActivityEvent;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.CreateCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
@@ -24,6 +27,7 @@ public class CreateCourseService implements TeacherCreateCourseUseCase {
     private final SaveCoursePort saveCoursePort;
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInUserPort loadSignedInUserPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -44,6 +48,17 @@ public class CreateCourseService implements TeacherCreateCourseUseCase {
 
         // Save the course
         Course savedCourse = saveCoursePort.save(course);
+
+        // Publish activity event
+        eventPublisher.publishEvent(SystemActivityEvent.builder()
+                .userId(user.getId())
+                .actionType("CREATE")
+                .entityType("COURSE")
+                .entityId(savedCourse.getId())
+                .entityName(savedCourse.getCourseName())
+                .description("Giảng viên vừa tạo khóa học mới: " + savedCourse.getCourseName())
+                .timestamp(LocalDateTime.now())
+                .build());
 
         // Return response
         return CreateCourseResponse.builder()
