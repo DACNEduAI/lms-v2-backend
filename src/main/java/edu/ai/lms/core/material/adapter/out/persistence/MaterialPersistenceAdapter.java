@@ -24,7 +24,6 @@ class MaterialPersistenceAdapter implements CreateMaterialPort, GetMaterialPort,
 
     @Override
     public Material createForCourse(UUID courseId, Material material) {
-        material.setCourseId(courseId);
         if (material.getStatus() == null) {
             material.setStatus(Material.MaterialStatus.PENDING);
         }
@@ -33,7 +32,6 @@ class MaterialPersistenceAdapter implements CreateMaterialPort, GetMaterialPort,
 
     @Override
     public Material createForChapter(UUID courseId, UUID chapterId, Material material) {
-        material.setCourseId(courseId);
         if (material.getStatus() == null) {
             material.setStatus(Material.MaterialStatus.PENDING);
         }

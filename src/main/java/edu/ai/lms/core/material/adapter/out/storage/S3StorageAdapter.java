@@ -176,13 +176,15 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
     // ── Port implementations ────────────────────────────────────────────
 
     @Override
-    public String createDownloadLink(String fileKey) {
-        return createPresignedDownloadUrl(bucketName, fileKey, DEFAULT_PRESIGN_EXPIRY);
+    public String createDownloadLink(String fileKey, Duration expiry) {
+        return createPresignedDownloadUrl(bucketName, fileKey,
+                expiry != null ? expiry : DEFAULT_PRESIGN_EXPIRY);
     }
 
     @Override
-    public String createUploadLink(String fileKey, String contentType) {
-        return createPresignedUploadUrl(bucketName, fileKey, contentType, DEFAULT_PRESIGN_EXPIRY);
+    public String createUploadLink(String fileKey, String contentType, Duration expiry) {
+        return createPresignedUploadUrl(bucketName, fileKey, contentType,
+                expiry != null ? expiry : DEFAULT_PRESIGN_EXPIRY);
     }
 
     @Override

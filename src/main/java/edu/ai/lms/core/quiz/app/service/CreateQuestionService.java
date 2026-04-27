@@ -44,12 +44,18 @@ public class CreateQuestionService implements CreateQuestionUseCase {
         // Verify user is the creator of the quiz
         verifyQuizOwnership(user, quiz);
 
+        // set quizId in question (to know that which quiz this question belongs to)
         Question question = command.question();
         question.setQuizId(quiz.getId());
 
+        // save question to database
         Question savedQuestion = saveQuestionPort.save(question);
         List<CreateQuestionResponse.AnswerSummary> answerSummaries = new ArrayList<>();
 
+        // save the images to the cloud storage
+
+
+        // return the question as a response
         if (question.getAnswers() != null && !question.getAnswers().isEmpty()) {
             answerSummaries = question.getAnswers().stream()
                     .map(answer -> {

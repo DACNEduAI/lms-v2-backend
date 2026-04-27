@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import edu.ai.lms.core.quiz.adapter.in.http.mapper.CreateQuestionCommandMapper;
 import edu.ai.lms.core.quiz.adapter.in.http.mapper.ModifyQuestionCommandMapper;
@@ -148,10 +150,12 @@ public class QuestionController {
     @PostMapping()
     public ResponseEntity<List<CreateQuestionResponse>> createQuestion(
             @PathVariable UUID quizId,
-            @Valid @RequestBody CreateQuestionRequest request) {
+            @Valid @RequestPart("question") CreateQuestionRequest request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images)
+        {
         List<CreateQuestionResponse> responses = request.getQuestions().stream()
                 .map(questionRequest -> {
-                    CreateQuestionCommand command = createQuestionCommandMapper.toCommand(quizId, questionRequest);
+                    CreateQuestionCommand command = createQuestionCommandMapper.toCommand(quizId, questionRequest, images);
                     return createQuestionUseCase.createQuestion(command);
                 })
                 .collect(Collectors.toList());

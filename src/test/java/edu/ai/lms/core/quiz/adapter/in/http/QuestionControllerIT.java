@@ -179,11 +179,11 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 """;
 
         Response response = given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + teacherToken)
-                .body(requestBody)
-                .when()
-                .post("/api/quiz/" + createdQuizId + "/question")
+            .contentType(ContentType.MULTIPART)
+            .multiPart("question", "question.json", requestBody, "application/json")
+            .header("Authorization", "Bearer " + teacherToken)
+            .when()
+            .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(201)
@@ -224,11 +224,11 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 """;
 
         Response response = given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + teacherToken)
-                .body(requestBody)
-                .when()
-                .post("/api/quiz/" + createdQuizId + "/question")
+            .contentType(ContentType.MULTIPART)
+            .multiPart("question", "question.json", requestBody, "application/json")
+            .header("Authorization", "Bearer " + teacherToken)
+            .when()
+            .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(201)
@@ -253,10 +253,10 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 """;
 
         given()
-                .contentType(ContentType.JSON)
-                .body(requestBody)
-                .when()
-                .post("/api/quiz/" + createdQuizId + "/question")
+            .contentType(ContentType.MULTIPART)
+            .multiPart("question", "question.json", requestBody, "application/json")
+            .when()
+            .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -278,11 +278,11 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 """;
 
         given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + teacherToken)
-                .body(requestBody)
-                .when()
-                .post("/api/quiz/" + createdQuizId + "/question")
+            .contentType(ContentType.MULTIPART)
+            .multiPart("question", "question.json", requestBody, "application/json")
+            .header("Authorization", "Bearer " + teacherToken)
+            .when()
+            .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(400);

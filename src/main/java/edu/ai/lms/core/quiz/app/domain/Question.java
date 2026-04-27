@@ -20,6 +20,15 @@ public class Question {
         ESSAY
     }
 
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public class Image {
+        private String url;
+        private String imageName;
+    }
+
     private UUID id;
 
     private String content;
