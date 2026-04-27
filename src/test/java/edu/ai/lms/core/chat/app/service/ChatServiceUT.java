@@ -66,6 +66,7 @@ class ChatServiceUT {
         UUID senderId = UUID.randomUUID();
         UUID recipientId = UUID.randomUUID();
         String content = "How are you?";
+        String tempId = "temp-123";
 
         ChatMessage savedMsg = ChatMessage.builder()
                 .id(UUID.randomUUID())
@@ -73,12 +74,13 @@ class ChatServiceUT {
                 .recipientId(recipientId)
                 .content(content)
                 .status("SENT")
+                .clientTempId(tempId)
                 .build();
 
         when(chatPersistencePort.save(any(ChatMessage.class))).thenReturn(savedMsg);
 
         // Act
-        ChatMessage result = chatService.sendMessage(senderId, recipientId, content);
+        ChatMessage result = chatService.sendMessage(senderId, recipientId, content, tempId);
 
         // Assert
         assertThat(result).isNotNull();
@@ -93,6 +95,7 @@ class ChatServiceUT {
         assertThat(captured.getRecipientId()).isEqualTo(recipientId);
         assertThat(captured.getContent()).isEqualTo(content);
         assertThat(captured.getStatus()).isEqualTo("SENT");
+        assertThat(captured.getClientTempId()).isEqualTo(tempId);
         assertThat(captured.getCreatedAt()).isNotNull();
     }
 }

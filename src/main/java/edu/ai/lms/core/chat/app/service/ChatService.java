@@ -24,12 +24,13 @@ public class ChatService implements SendChatMessageUseCase, GetChatHistoryUseCas
     }
 
     @Override
-    public ChatMessage sendMessage(UUID senderId, UUID recipientId, String content) {
+    public ChatMessage sendMessage(UUID senderId, UUID recipientId, String content, String clientTempId) {
         ChatMessage message = ChatMessage.builder()
                 .senderId(senderId)
                 .recipientId(recipientId)
                 .content(content)
                 .status("SENT")
+                .clientTempId(clientTempId)
                 .createdAt(LocalDateTime.now())
                 .build();
         return chatPersistencePort.save(message);
