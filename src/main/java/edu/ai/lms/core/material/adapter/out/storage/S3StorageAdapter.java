@@ -1,28 +1,39 @@
 package edu.ai.lms.core.material.adapter.out.storage;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Service;
+
 import edu.ai.lms.core.material.adapter.out.storage.config.StorageConfig;
 import edu.ai.lms.core.material.app.port.out.storage.CreateDownloadLinkPort;
 import edu.ai.lms.core.material.app.port.out.storage.CreateUploadLinkPort;
 import edu.ai.lms.core.material.app.port.out.storage.DeleteFilePort;
+import edu.ai.lms.core.material.app.port.out.storage.GetPublicFileUrlPort;
+import edu.ai.lms.core.material.app.port.out.storage.UploadFilePort;
 import edu.ai.lms.core.material.app.port.out.storage.VerifyFileUploadedPort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
-import software.amazon.awssdk.services.s3.model.*;
-
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Facade that delegates storage operations to the appropriate S3Client:
@@ -33,7 +44,8 @@ import java.util.stream.Collectors;
  * helper methods and a uniform API on top of it.
  */
 @Service
-public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLinkPort, DeleteFilePort, VerifyFileUploadedPort {
+public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLinkPort, DeleteFilePort,
+    VerifyFileUploadedPort, UploadFilePort, GetPublicFileUrlPort {
 
     private static final Duration DEFAULT_PRESIGN_EXPIRY = Duration.ofMinutes(5);
 
@@ -41,13 +53,14 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
     private final S3Presigner s3Presigner;
     private final Environment environment;
     private final String bucketName;
+    private final String storageEndpoint;
 
-    @Autowired
     public S3StorageAdapter(StorageConfig storageConfig, Environment environment) {
         this.s3Client = storageConfig.s3Client();
         this.s3Presigner = storageConfig.s3Presigner();
         this.environment = environment;
         this.bucketName = storageConfig.getBucketName();
+        this.storageEndpoint = storageConfig.getEndPoint();
     }
 
     // Profile helpers
@@ -173,6 +186,69 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
         return presignedRequest.url().toExternalForm();
     }
 
+    /**
+     * Uploads object content directly to storage.
+     */
+    public void uploadFile(String bucketName, String key, byte[] content, String contentType, boolean isPublic) {
+        PutObjectRequest.Builder requestBuilder = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key);
+
+        if (contentType != null && !contentType.isBlank()) {
+            requestBuilder.contentType(contentType);
+        }
+
+        if (isPublic) {
+            requestBuilder.acl(ObjectCannedACL.PUBLIC_READ);
+        }
+
+        s3Client.putObject(requestBuilder.build(), RequestBody.fromBytes(content));
+    }
+
+    /**
+     * Builds a public URL for object access. This URL is only usable for publicly
+     * readable objects.
+     */
+    public String getPublicUrl(String bucketName, String key) {
+        if (storageEndpoint == null || storageEndpoint.isBlank()) {
+            throw new IllegalStateException("Storage endpoint is not configured");
+        }
+
+        URI endpointUri = URI.create(storageEndpoint);
+        String scheme = endpointUri.getScheme() != null ? endpointUri.getScheme() : "https";
+        String authority = endpointUri.getAuthority();
+
+        if (authority == null || authority.isBlank()) {
+            throw new IllegalStateException("Storage endpoint authority is invalid");
+        }
+
+        String normalizedEndpoint = removeTrailingSlash(storageEndpoint);
+        String encodedKey = encodePathSegments(key);
+
+        if (authority.startsWith(bucketName + ".")) {
+            return normalizedEndpoint + "/" + encodedKey;
+        }
+
+        return scheme + "://" + bucketName + "." + authority + "/" + encodedKey;
+    }
+
+    private String removeTrailingSlash(String value) {
+        if (value.endsWith("/")) {
+            return value.substring(0, value.length() - 1);
+        }
+        return value;
+    }
+
+    private String encodePathSegments(String key) {
+        if (key == null || key.isBlank()) {
+            return "";
+        }
+
+        return Arrays.stream(key.split("/"))
+                .map(segment -> URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20"))
+                .collect(Collectors.joining("/"));
+    }
+
     // ── Port implementations ────────────────────────────────────────────
 
     @Override
@@ -195,5 +271,15 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
     @Override
     public boolean isFileUploaded(String fileKey) {
         return verifyFileUploaded(bucketName, fileKey);
+    }
+
+    @Override
+    public void uploadFile(String fileKey, byte[] content, String contentType, boolean isPublic) {
+        uploadFile(bucketName, fileKey, content, contentType, isPublic);
+    }
+
+    @Override
+    public String getPublicFileUrl(String fileKey) {
+        return getPublicUrl(bucketName, fileKey);
     }
 }

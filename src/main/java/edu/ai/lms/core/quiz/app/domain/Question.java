@@ -24,7 +24,8 @@ public class Question {
     @Setter
     @NoArgsConstructor
     @AllArgsConstructor
-    public class Image {
+    @Builder
+    public static class Image {
         private String url;
         private String imageName;
     }
@@ -41,6 +42,8 @@ public class Question {
 
     @Builder.Default
     private List<Answer> answers = new ArrayList<>();
+
+    private List<Image> images;
 
     private LocalDateTime createdAt;
 

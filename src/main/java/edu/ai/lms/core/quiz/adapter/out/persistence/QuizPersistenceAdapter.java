@@ -73,6 +73,7 @@ class QuizPersistenceAdapter implements SaveQuizPort, LoadQuizPort, DeleteQuizPo
         List<Answer> answers = answerRepository.getByQuestionId(question.getId()).stream()
                 .collect(Collectors.toList());
         question.setAnswers(answers);
+        question.setImages(questionRepository.getImagesByQuestionId(question.getId()));
         return question;
     }
 }

@@ -3,7 +3,6 @@ package edu.ai.lms.core.material.adapter.out.storage.config;
 import java.net.URI;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
@@ -29,7 +28,7 @@ public class DevConfig implements StorageConfig{
     @Override
     public S3Client s3Client() {
         return S3Client.builder()
-                .endpointOverride(URI.create("https://s3.localhost.localstack.cloud:4566"))
+                .endpointOverride(URI.create(endPoint))
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(accessKey, secretKey)))
                 .region(Region.US_EAST_1)
@@ -39,7 +38,7 @@ public class DevConfig implements StorageConfig{
     @Override
     public S3Presigner s3Presigner() {
         return S3Presigner.builder()
-                .endpointOverride(URI.create("https://s3.localhost.localstack.cloud:4566"))
+                .endpointOverride(URI.create(endPoint))
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(accessKey, secretKey)))
                 .region(Region.US_EAST_1)
