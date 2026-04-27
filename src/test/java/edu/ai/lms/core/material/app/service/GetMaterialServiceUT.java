@@ -16,6 +16,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.never;
@@ -73,7 +75,7 @@ class GetMaterialServiceUT {
 
         when(getMaterialPort.findByIdAndCourseId(materialId, courseId))
                 .thenReturn(Optional.of(material));
-        when(createDownloadLinkPort.createDownloadLink(fileKey)).thenReturn(presignedUrl);
+        when(createDownloadLinkPort.createDownloadLink(eq(fileKey), isNull())).thenReturn(presignedUrl);
 
         // Act
         GetMaterialResponse response = getMaterialService.getMaterial(courseId, materialId);
@@ -88,7 +90,7 @@ class GetMaterialServiceUT {
         assertEquals("UPLOADED", response.getStatus());
         assertEquals(presignedUrl, response.getPresignedUrl());
         assertEquals(courseId, response.getCourseId());
-        verify(createDownloadLinkPort, times(1)).createDownloadLink(fileKey);
+        verify(createDownloadLinkPort, times(1)).createDownloadLink(eq(fileKey), isNull());
     }
 
     @Test
@@ -118,7 +120,7 @@ class GetMaterialServiceUT {
         assertNotNull(response);
         assertNull(response.getPresignedUrl());
         assertFalse(response.getIsDownloadable());
-        verify(createDownloadLinkPort, never()).createDownloadLink(any());
+        verify(createDownloadLinkPort, never()).createDownloadLink(any(), any());
     }
 
     @Test
@@ -146,7 +148,7 @@ class GetMaterialServiceUT {
         // Assert
         assertNotNull(response);
         assertNull(response.getPresignedUrl());
-        verify(createDownloadLinkPort, never()).createDownloadLink(any());
+        verify(createDownloadLinkPort, never()).createDownloadLink(any(), any());
     }
 
     @Test
@@ -215,7 +217,7 @@ class GetMaterialServiceUT {
         assertEquals(2, results.size());
         assertTrue(results.stream().allMatch(r -> "UPLOADED".equals(r.getStatus())));
         verify(getMaterialPort, times(1)).findByCourseId(courseId);
-        verify(createDownloadLinkPort, never()).createDownloadLink(any());
+        verify(createDownloadLinkPort, never()).createDownloadLink(any(), any());
     }
 
     @Test
@@ -230,7 +232,7 @@ class GetMaterialServiceUT {
         // Assert
         assertNotNull(results);
         assertTrue(results.isEmpty());
-        verify(createDownloadLinkPort, never()).createDownloadLink(any());
+        verify(createDownloadLinkPort, never()).createDownloadLink(any(), any());
     }
 
     @Test
@@ -284,7 +286,7 @@ class GetMaterialServiceUT {
         assertEquals(1, results.size());
         assertNull(results.get(0).getPresignedUrl(),
                 "presignedUrl must be null in the uploaded-materials list response");
-        verify(createDownloadLinkPort, never()).createDownloadLink(any());
+        verify(createDownloadLinkPort, never()).createDownloadLink(any(), any());
     }
 
     @Test
@@ -356,7 +358,7 @@ class GetMaterialServiceUT {
         assertTrue(results.stream().anyMatch(r -> "UPLOADED".equals(r.getStatus())));
         assertTrue(results.stream().anyMatch(r -> "PENDING".equals(r.getStatus())));
         verify(getMaterialPort, times(1)).findByChapter(chapterId, courseId);
-        verify(createDownloadLinkPort, never()).createDownloadLink(any());
+        verify(createDownloadLinkPort, never()).createDownloadLink(any(), any());
     }
 
     @Test
@@ -372,7 +374,7 @@ class GetMaterialServiceUT {
         // Assert
         assertNotNull(results);
         assertTrue(results.isEmpty());
-        verify(createDownloadLinkPort, never()).createDownloadLink(any());
+        verify(createDownloadLinkPort, never()).createDownloadLink(any(), any());
     }
 
     @Test
@@ -396,7 +398,7 @@ class GetMaterialServiceUT {
         assertEquals(1, results.size());
         assertNull(results.get(0).getPresignedUrl(),
                 "presignedUrl must be null in the chapter materials list response");
-        verify(createDownloadLinkPort, never()).createDownloadLink(any());
+        verify(createDownloadLinkPort, never()).createDownloadLink(any(), any());
     }
 
     @Test

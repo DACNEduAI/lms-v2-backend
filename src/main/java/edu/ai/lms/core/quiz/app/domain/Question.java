@@ -20,6 +20,16 @@ public class Question {
         ESSAY
     }
 
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class Image {
+        private String url;
+        private String imageName;
+    }
+
     private UUID id;
 
     private String content;
@@ -32,6 +42,8 @@ public class Question {
 
     @Builder.Default
     private List<Answer> answers = new ArrayList<>();
+
+    private List<Image> images;
 
     private LocalDateTime createdAt;
 

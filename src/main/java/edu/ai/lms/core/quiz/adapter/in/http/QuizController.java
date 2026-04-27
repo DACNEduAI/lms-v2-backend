@@ -97,25 +97,6 @@ public class QuizController {
                 return ResponseEntity.ok(response);
         }
 
-        // @Operation(summary = "Get teacher-created quizzes in a course (legacy
-        // route)", description = "Backward-compatible route for older frontend using
-        // /api/{courseId}/quiz.")
-        // @ApiResponses(value = {
-        // @ApiResponse(responseCode = "200", description = "Quizzes retrieved
-        // successfully", content = @Content(schema = @Schema(implementation =
-        // GetAllQuizzesResponse.class)))
-        // })
-        // @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-        // @GetMapping()
-        // public ResponseEntity<GetAllQuizzesResponse> getAllQuizzesLegacy(
-        // @PathVariable UUID courseId,
-        // @RequestParam(defaultValue = "10") int pageSize,
-        // @RequestParam(defaultValue = "asc") String sortDirection) {
-        // GetAllQuizzesResponse response = getAllQuizzesUseCase.getAllQuizzes(courseId,
-        // pageSize, sortDirection);
-        // return ResponseEntity.ok(response);
-        // }
-
         @Operation(summary = "Get a specific quiz", description = "Gets full quiz detail. LMS logic: primary aggregate view for quiz delivery/editing, including outcomes and question/answer structure. Path fields: courseId, quizId. Response fields: quiz metadata + ungroupedLearningOutcomes[] + groupedLearningOutcomes[] + questions[] with answers[].")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Quiz retrieved successfully", content = @Content(schema = @Schema(implementation = GetQuizResponse.class))),
@@ -168,7 +149,9 @@ public class QuizController {
         @PostMapping()
         public ResponseEntity<CreateQuizResponse> createQuiz(
                         @PathVariable UUID courseId,
-                        @Valid @RequestBody CreateQuizRequest request) {
+                        @Valid @RequestBody CreateQuizRequest request
+
+                                ) {
                 CreateQuizCommand command = createQuizCommandMapper.toCommand(courseId, request);
                 CreateQuizResponse response = createQuizUseCase.createQuiz(command);
                 return ResponseEntity.status(HttpStatus.CREATED).body(response);

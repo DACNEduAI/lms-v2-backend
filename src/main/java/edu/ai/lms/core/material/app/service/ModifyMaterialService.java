@@ -46,7 +46,7 @@ public class ModifyMaterialService implements ModifyMaterialUseCase {
         String presignedUploadUrl = null;
         if (fileKeyChanged && updated.getFileKey() != null) {
             presignedUploadUrl = createUploadLinkPort.createUploadLink(
-                    updated.getFileKey(), resolveContentType(updated));
+                    updated.getFileKey(), updated.getContentType(), null);
         }
 
         return ModifyMaterialResponse.builder()
@@ -60,13 +60,5 @@ public class ModifyMaterialService implements ModifyMaterialUseCase {
                 .courseId(updated.getCourseId())
                 .updatedAt(updated.getUpdatedAt())
                 .build();
-    }
-
-    private String resolveContentType(Material m) {
-        if (m.getType() == null) return "application/octet-stream";
-        return switch (m.getType()) {
-            case PDF -> "application/pdf";
-            case VIDEO -> "video/mp4";
-        };
     }
 }

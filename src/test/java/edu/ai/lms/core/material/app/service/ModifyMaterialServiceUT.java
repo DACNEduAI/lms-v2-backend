@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.never;
@@ -93,7 +94,7 @@ class ModifyMaterialServiceUT {
         when(getMaterialPort.findByIdAndCourseId(materialId, courseId))
                 .thenReturn(Optional.of(existing));
         when(modifyMaterialPort.update(any(Material.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(createUploadLinkPort.createUploadLink(eq(newFileKey), eq("application/pdf")))
+        when(createUploadLinkPort.createUploadLink(eq(newFileKey), eq("application/pdf"), isNull()))
                 .thenReturn(presignedUploadUrl);
 
         // Act
@@ -106,7 +107,7 @@ class ModifyMaterialServiceUT {
         assertEquals("PENDING", response.getStatus()); // reset to PENDING
         assertFalse(response.getIsDownloadable());
         assertEquals(presignedUploadUrl, response.getPresignedUploadUrl());
-        verify(createUploadLinkPort, times(1)).createUploadLink(newFileKey, "application/pdf");
+        verify(createUploadLinkPort, times(1)).createUploadLink(newFileKey, "application/pdf", null);
     }
 
     @Test
@@ -151,7 +152,7 @@ class ModifyMaterialServiceUT {
         assertEquals("Updated Title", response.getTitle());
         assertEquals("UPLOADED", response.getStatus()); // status not reset
         assertNull(response.getPresignedUploadUrl());
-        verify(createUploadLinkPort, never()).createUploadLink(any(), any());
+        verify(createUploadLinkPort, never()).createUploadLink(any(), any(), any());
     }
 
     @Test
@@ -190,7 +191,7 @@ class ModifyMaterialServiceUT {
         when(getMaterialPort.findByIdAndCourseId(materialId, courseId))
                 .thenReturn(Optional.of(existing));
         when(modifyMaterialPort.update(any(Material.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(createUploadLinkPort.createUploadLink(eq(newFileKey), eq("video/mp4")))
+        when(createUploadLinkPort.createUploadLink(eq(newFileKey), eq("video/mp4"), isNull()))
                 .thenReturn(presignedUploadUrl);
 
         // Act
@@ -199,7 +200,7 @@ class ModifyMaterialServiceUT {
         // Assert
         assertNotNull(response);
         assertEquals(presignedUploadUrl, response.getPresignedUploadUrl());
-        verify(createUploadLinkPort, times(1)).createUploadLink(newFileKey, "video/mp4");
+        verify(createUploadLinkPort, times(1)).createUploadLink(newFileKey, "video/mp4", null);
     }
 
     @Test
@@ -222,7 +223,7 @@ class ModifyMaterialServiceUT {
         assertTrue(exception.getMessage().contains(materialId.toString()));
         assertTrue(exception.getMessage().contains(courseId.toString()));
         verify(modifyMaterialPort, never()).update(any());
-        verify(createUploadLinkPort, never()).createUploadLink(any(), any());
+        verify(createUploadLinkPort, never()).createUploadLink(any(), any(), any());
     }
 
     @Test
@@ -266,6 +267,6 @@ class ModifyMaterialServiceUT {
         assertNotNull(response);
         assertEquals("UPLOADED", response.getStatus()); // status stays
         assertNull(response.getPresignedUploadUrl());
-        verify(createUploadLinkPort, never()).createUploadLink(any(), any());
+        verify(createUploadLinkPort, never()).createUploadLink(any(), any(), any());
     }
 }

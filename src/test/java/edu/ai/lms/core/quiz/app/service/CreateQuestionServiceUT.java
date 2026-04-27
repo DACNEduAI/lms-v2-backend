@@ -17,6 +17,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.never;
@@ -24,6 +26,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 
 import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
@@ -34,10 +37,12 @@ import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.port.in.command.CreateQuestionCommand;
+import edu.ai.lms.core.quiz.app.port.out.LoadQuestionImagePublicUrlPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
+import edu.ai.lms.core.quiz.app.port.out.UploadQuestionImagePort;
 
 @ExtendWith(MockitoExtension.class)
 class CreateQuestionServiceUT {
@@ -56,6 +61,12 @@ class CreateQuestionServiceUT {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private UploadQuestionImagePort uploadQuestionImagePort;
+
+    @Mock
+    private LoadQuestionImagePublicUrlPort loadQuestionImagePublicUrlPort;
 
     @InjectMocks
     private CreateQuestionService createQuestionService;
@@ -205,5 +216,70 @@ class CreateQuestionServiceUT {
         verify(saveQuestionPort).save(questionCaptor.capture());
         Question capturedQuestion = questionCaptor.getValue();
         assertEquals(quizId, capturedQuestion.getQuizId());
+    }
+
+    @Test
+    @DisplayName("Should upload question images and replace html src with public URLs")
+    void testCreateQuestion_WithImagesInHtml_ShouldUploadAndReplaceContent() {
+        String imageName = "equation:abc123.png";
+        String originalContent = "<p>Solve equation</p><img src=\"" + imageName + "\" alt=\"eq\"/>";
+        String publicUrl = "https://cdn.example.com/quiz/" + imageName;
+
+        Question questionWithImage = Question.builder()
+                .content(originalContent)
+                .type(Question.QuestionType.ESSAY)
+                .points(10.0)
+                .answers(new ArrayList<>())
+                .build();
+
+        MockMultipartFile imageFile = new MockMultipartFile(
+                "images",
+                imageName,
+                "image/png",
+                "fake-image-content".getBytes());
+
+        CreateQuestionCommand commandWithImage = CreateQuestionCommand.builder()
+                .quizId(quizId)
+                .question(questionWithImage)
+                .images(List.of(imageFile))
+                .build();
+
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadQuestionImagePublicUrlPort.getPublicImageUrl(anyString())).thenReturn(publicUrl);
+
+        when(saveQuestionPort.save(any(Question.class))).thenAnswer(invocation -> {
+            Question question = invocation.getArgument(0);
+            return Question.builder()
+                    .id(questionId)
+                    .content(question.getContent())
+                    .type(question.getType())
+                    .points(question.getPoints())
+                    .quizId(question.getQuizId())
+                    .images(question.getImages())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+        });
+
+        CreateQuestionResponse response = createQuestionService.createQuestion(commandWithImage);
+
+        ArgumentCaptor<Question> questionCaptor = ArgumentCaptor.forClass(Question.class);
+        verify(saveQuestionPort).save(questionCaptor.capture());
+
+        verify(uploadQuestionImagePort, times(1)).uploadQuestionImage(
+                eq("quiz/" + quizId + "/question-images/" + imageName),
+                any(byte[].class),
+                eq("image/png"),
+                eq(true));
+        verify(loadQuestionImagePublicUrlPort, times(1)).getPublicImageUrl("quiz/" + quizId + "/question-images/" + imageName);
+        verify(saveAnswerPort, never()).save(any(Answer.class));
+
+        Question savedQuestion = questionCaptor.getValue();
+        assertEquals("<p>Solve equation</p><img src=\"" + publicUrl + "\" alt=\"eq\"/>", savedQuestion.getContent());
+        assertEquals(1, savedQuestion.getImages().size());
+        assertEquals(imageName, savedQuestion.getImages().get(0).getImageName());
+        assertEquals(publicUrl, savedQuestion.getImages().get(0).getUrl());
+
+        assertEquals(savedQuestion.getContent(), response.getContent());
     }
 }

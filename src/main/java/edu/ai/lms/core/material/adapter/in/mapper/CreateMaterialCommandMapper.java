@@ -13,14 +13,13 @@ import edu.ai.lms.core.material.app.port.in.command.CreateMaterialForCourseComma
 public class CreateMaterialCommandMapper {
 
     public CreateMaterialForCourseCommand toCommand(UUID courseId, CreateMaterialRequest request) {
-        String fileKey = generateFileKey(courseId, request.getTitle(), request.getType());
-
-        Material material = Material.builder()
-                .title(request.getTitle())
-                .type(request.getType())
-                .fileKey(fileKey)
-                .downloadable(request.getIsDownloadable() != null && request.getIsDownloadable())
-                .build();
+        // Use our new domain constructor!
+        Material material = new Material(
+                courseId,
+                request.getTitle(),
+                request.getType(),
+                request.getIsDownloadable() != null && request.getIsDownloadable()
+        );
 
         return CreateMaterialForCourseCommand.builder()
                 .courseId(courseId)
@@ -29,33 +28,18 @@ public class CreateMaterialCommandMapper {
     }
 
     public CreateMaterialForChapterCommand toCommand(UUID courseId, UUID chapterId, CreateMaterialRequest request) {
-        String fileKey = generateFileKey(courseId, request.getTitle(), request.getType());
-
-        Material material = Material.builder()
-                .title(request.getTitle())
-                .type(request.getType())
-                .fileKey(fileKey)
-                .downloadable(request.getIsDownloadable() != null && request.getIsDownloadable())
-                .build();
+        // Use our new domain constructor!
+        Material material = new Material(
+                courseId,
+                request.getTitle(),
+                request.getType(),
+                request.getIsDownloadable() != null && request.getIsDownloadable()
+        );
 
         return CreateMaterialForChapterCommand.builder()
                 .courseId(courseId)
                 .chapterId(chapterId)
                 .material(material)
                 .build();
-    }
-
-    private String generateFileKey(UUID courseId, String title, Material.MaterialType type) {
-        String sanitizedTitle = title.replaceAll("[^a-zA-Z0-9._-]", "_");
-        String extension = resolveFileExtension(type);
-        return String.format("courses/%s/%s.%s", courseId, sanitizedTitle, extension);
-    }
-
-    private String resolveFileExtension(Material.MaterialType type) {
-        if (type == null) return "bin";
-        return switch (type) {
-            case PDF -> "pdf";
-            case VIDEO -> "mp4";
-        };
     }
 }

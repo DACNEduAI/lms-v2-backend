@@ -10,13 +10,21 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 import edu.ai.lms.config.IntegrationTestConfiguration;
+import edu.ai.lms.core.quiz.app.port.out.LoadQuestionImagePublicUrlPort;
+import edu.ai.lms.core.quiz.app.port.out.UploadQuestionImagePort;
 import static io.restassured.RestAssured.given;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
@@ -24,6 +32,12 @@ import io.restassured.response.Response;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Question Controller Integration Tests")
 class QuestionControllerIT extends IntegrationTestConfiguration {
+
+    @MockBean
+    private UploadQuestionImagePort uploadQuestionImagePort;
+
+    @MockBean
+    private LoadQuestionImagePublicUrlPort loadQuestionImagePublicUrlPort;
 
     private static String teacherToken;
     private static UUID createdCourseId;
@@ -179,11 +193,11 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 """;
 
         Response response = given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + teacherToken)
-                .body(requestBody)
-                .when()
-                .post("/api/quiz/" + createdQuizId + "/question")
+            .contentType(ContentType.MULTIPART)
+            .multiPart("question", "question.json", requestBody, "application/json")
+            .header("Authorization", "Bearer " + teacherToken)
+            .when()
+            .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(201)
@@ -224,11 +238,11 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 """;
 
         Response response = given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + teacherToken)
-                .body(requestBody)
-                .when()
-                .post("/api/quiz/" + createdQuizId + "/question")
+            .contentType(ContentType.MULTIPART)
+            .multiPart("question", "question.json", requestBody, "application/json")
+            .header("Authorization", "Bearer " + teacherToken)
+            .when()
+            .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(201)
@@ -253,10 +267,10 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 """;
 
         given()
-                .contentType(ContentType.JSON)
-                .body(requestBody)
-                .when()
-                .post("/api/quiz/" + createdQuizId + "/question")
+            .contentType(ContentType.MULTIPART)
+            .multiPart("question", "question.json", requestBody, "application/json")
+            .when()
+            .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(anyOf(is(401), is(403)));
@@ -278,11 +292,11 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 """;
 
         given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + teacherToken)
-                .body(requestBody)
-                .when()
-                .post("/api/quiz/" + createdQuizId + "/question")
+            .contentType(ContentType.MULTIPART)
+            .multiPart("question", "question.json", requestBody, "application/json")
+            .header("Authorization", "Bearer " + teacherToken)
+            .when()
+            .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(400);
@@ -674,5 +688,48 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .statusCode(403)
                 .body("message", equalTo("Some learning outcomes do not belong to this course"));
+    }
+
+    @Test
+    @Order(23)
+    @DisplayName("Should create question with image upload and replace src with public URL")
+    void testCreateQuestion_WithImageUpload_ShouldReplaceSrc() {
+        String imageName = "question-diagram:ab12cd.png";
+        String storageKey = "quiz/" + createdQuizId + "/question-images/" + imageName;
+        String publicUrl = "https://cdn.example.com/" + storageKey;
+
+        when(loadQuestionImagePublicUrlPort.getPublicImageUrl(eq(storageKey))).thenReturn(publicUrl);
+        doNothing().when(uploadQuestionImagePort)
+                .uploadQuestionImage(eq(storageKey), any(byte[].class), eq("image/png"), eq(true));
+
+        String requestBody = """
+                {
+                    "questions": [
+                    {
+                        "content": "<p>Observe diagram</p><img src='%s' alt='diagram'/>",
+                        "type": "ESSAY",
+                        "points": 6.0,
+                        "answers": []
+                    }
+                    ]
+                }
+                """.formatted(imageName);
+
+        given()
+                .contentType(ContentType.MULTIPART)
+                .multiPart("question", "question.json", requestBody, "application/json")
+                .multiPart("images", imageName, "fake-image-bytes".getBytes(), "image/png")
+                .header("Authorization", "Bearer " + teacherToken)
+                .when()
+                .post("/api/quiz/" + createdQuizId + "/question")
+                .then()
+                .statusCode(201)
+                .body("", hasSize(1))
+                .body("[0].content", equalTo("<p>Observe diagram</p><img src='" + publicUrl + "' alt='diagram'/>"))
+                .body("[0].questionId", notNullValue());
+
+        verify(uploadQuestionImagePort)
+                .uploadQuestionImage(eq(storageKey), any(byte[].class), eq("image/png"), eq(true));
+        verify(loadQuestionImagePublicUrlPort).getPublicImageUrl(eq(storageKey));
     }
 }

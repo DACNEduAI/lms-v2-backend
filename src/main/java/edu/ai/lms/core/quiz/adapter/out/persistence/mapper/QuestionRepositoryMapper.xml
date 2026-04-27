@@ -46,4 +46,20 @@
     ORDER BY created_at
   </select>
 
+  <select id="getImagesByQuestionId" resultType="edu.ai.lms.core.quiz.app.domain.Question$Image">
+    SELECT image_name, url
+    FROM question_images
+    WHERE question_id = #{questionId}
+    ORDER BY created_at
+  </select>
+
+  <delete id="deleteImagesByQuestionId">
+    DELETE FROM question_images WHERE question_id = #{questionId}
+  </delete>
+
+  <insert id="insertImage">
+    INSERT INTO question_images (id, question_id, image_name, url, created_at, updated_at)
+    VALUES (gen_random_uuid(), #{questionId}, #{imageName}, #{url}, NOW(), NOW())
+  </insert>
+
 </mapper>

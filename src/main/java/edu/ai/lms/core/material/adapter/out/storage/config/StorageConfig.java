@@ -7,4 +7,5 @@ public interface StorageConfig {
     public S3Client s3Client();
     public S3Presigner s3Presigner();
     public String getBucketName();
+    public String getEndPoint();
 }
