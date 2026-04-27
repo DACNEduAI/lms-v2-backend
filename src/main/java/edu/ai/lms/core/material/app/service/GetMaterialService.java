@@ -32,7 +32,7 @@ public class GetMaterialService implements GetMaterialUseCase, GetUploadedMateri
 
         String presignedUrl = null;
         if (material.getFileKey() != null && material.isDownloadable()) {
-            presignedUrl = createDownloadLinkPort.createDownloadLink(material.getFileKey());
+            presignedUrl = createDownloadLinkPort.createDownloadLink(material.getFileKey(), null);
         }
 
         return GetMaterialResponse.builder()

@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
 import edu.ai.lms.core.quiz.app.domain.Question;
 
 @Mapper
@@ -33,4 +34,12 @@ interface QuestionRepository {
     Optional<Question> getById(@Param("questionId") UUID questionId);
 
     List<Question> getByQuizId(@Param("quizId") UUID quizId);
+
+    List<Question.Image> getImagesByQuestionId(@Param("questionId") UUID questionId);
+
+    void deleteImagesByQuestionId(@Param("questionId") UUID questionId);
+
+    void insertImage(@Param("questionId") UUID questionId,
+                     @Param("imageName") String imageName,
+                     @Param("url") String url);
 }

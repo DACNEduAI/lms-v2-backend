@@ -108,6 +108,11 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
                 public String getBucketName() {
                     return BUCKET_NAME;
                 }
+
+                                @Override
+                                public String getEndPoint() {
+                                        return virtualHostEndpoint.toString();
+                                }
             };
         }
     }

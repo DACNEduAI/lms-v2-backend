@@ -14,6 +14,7 @@ DROP TABLE IF EXISTS
     ai_settings,
     quizzes,
     questions,
+    question_images,
     answers,
     attempts,
     quiz_chapters,
@@ -188,6 +189,17 @@ CREATE TABLE IF NOT EXISTS questions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS question_images (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+    image_name VARCHAR(255) NOT NULL,
+    url TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_question_images_question_id ON question_images(question_id);
 
 -- Answers table (weak entity dependent on Question)
 CREATE TABLE IF NOT EXISTS answers (

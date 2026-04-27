@@ -24,7 +24,7 @@ import static org.hamcrest.Matchers.notNullValue;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Attempt Controller Integration Tests")
-class AttemptControllerIT extends IntegrationTestConfiguration {
+class gitAttemptControllerIT extends IntegrationTestConfiguration {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
@@ -226,11 +226,11 @@ class AttemptControllerIT extends IntegrationTestConfiguration {
                 """;
 
         Response questionResponse = given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + teacherToken)
-                .body(createQuestionBody)
-                .when()
-                .post("/api/quiz/" + timedQuizId + "/question")
+            .contentType(ContentType.MULTIPART)
+            .multiPart("question", "question.json", createQuestionBody, "application/json")
+            .header("Authorization", "Bearer " + teacherToken)
+            .when()
+            .post("/api/quiz/" + timedQuizId + "/question")
                 .then()
                 .statusCode(201)
                 .body("", hasSize(1))

@@ -147,11 +147,11 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                 """;
 
         Response response = given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + teacherToken)
-                .body(requestBody)
-                .when()
-                .post("/api/quiz/" + createdQuizId + "/question")
+            .contentType(ContentType.MULTIPART)
+            .multiPart("question", "question.json", requestBody, "application/json")
+            .header("Authorization", "Bearer " + teacherToken)
+            .when()
+            .post("/api/quiz/" + createdQuizId + "/question")
                 .then()
                 .log().all()
                 .statusCode(201)

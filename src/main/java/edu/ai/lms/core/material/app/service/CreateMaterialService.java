@@ -33,7 +33,7 @@ public class CreateMaterialService implements CreateMaterialUseCase {
                 command.material());
 
         String presignedUploadUrl = createUploadLinkPort.createUploadLink(
-                saved.getFileKey(), resolveContentType(saved));
+                saved.getFileKey(), saved.getContentType(), null);
 
         return toResponse(saved, presignedUploadUrl);
     }
@@ -49,7 +49,7 @@ public class CreateMaterialService implements CreateMaterialUseCase {
                 command.material());
 
         String presignedUploadUrl = createUploadLinkPort.createUploadLink(
-                saved.getFileKey(), resolveContentType(saved));
+                saved.getFileKey(), saved.getContentType(), null);
 
         return toResponse(saved, presignedUploadUrl);
     }
@@ -68,13 +68,7 @@ public class CreateMaterialService implements CreateMaterialUseCase {
                 .build();
     }
 
-    private String resolveContentType(Material m) {
-        if (m.getType() == null) return "application/octet-stream";
-        return switch (m.getType()) {
-            case PDF -> "application/pdf";
-            case VIDEO -> "video/mp4";
-        };
-    }
+
 
     private void checkForDuplicateFileKey(String fileKey) {
         getMaterialPort.findByFileKey(fileKey).ifPresent(existing -> {

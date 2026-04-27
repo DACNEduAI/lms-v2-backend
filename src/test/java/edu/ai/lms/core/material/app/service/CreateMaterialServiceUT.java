@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.nullable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.never;
@@ -86,7 +88,7 @@ class CreateMaterialServiceUT {
         // Arrange
         when(getMaterialPort.findByFileKey(material.getFileKey())).thenReturn(Optional.empty());
         when(createMaterialPort.createForCourse(eq(courseId), any(Material.class))).thenReturn(savedMaterial);
-        when(createUploadLinkPort.createUploadLink(eq(savedMaterial.getFileKey()), eq("application/pdf")))
+        when(createUploadLinkPort.createUploadLink(eq(savedMaterial.getFileKey()), eq("application/pdf"), isNull()))
                 .thenReturn("https://presigned-url.example.com/upload");
 
         CreateMaterialForCourseCommand command = CreateMaterialForCourseCommand.builder()
@@ -108,7 +110,7 @@ class CreateMaterialServiceUT {
 
         verify(getMaterialPort, times(1)).findByFileKey(material.getFileKey());
         verify(createMaterialPort, times(1)).createForCourse(eq(courseId), any(Material.class));
-        verify(createUploadLinkPort, times(1)).createUploadLink(savedMaterial.getFileKey(), "application/pdf");
+        verify(createUploadLinkPort, times(1)).createUploadLink(savedMaterial.getFileKey(), "application/pdf", null);
     }
 
     @Test
@@ -133,7 +135,7 @@ class CreateMaterialServiceUT {
 
         assertTrue(exception.getMessage().contains("already been uploaded"));
         verify(createMaterialPort, never()).createForCourse(any(), any());
-        verify(createUploadLinkPort, never()).createUploadLink(any(), any());
+        verify(createUploadLinkPort, never()).createUploadLink(any(), any(), any());
     }
 
     @Test
@@ -184,7 +186,7 @@ class CreateMaterialServiceUT {
 
         when(getMaterialPort.findByFileKey(videoMaterial.getFileKey())).thenReturn(Optional.empty());
         when(createMaterialPort.createForCourse(eq(courseId), any(Material.class))).thenReturn(savedVideo);
-        when(createUploadLinkPort.createUploadLink(eq(savedVideo.getFileKey()), eq("video/mp4")))
+        when(createUploadLinkPort.createUploadLink(eq(savedVideo.getFileKey()), eq("video/mp4"), isNull()))
                 .thenReturn("https://presigned-url.example.com/upload-video");
 
         CreateMaterialForCourseCommand command = CreateMaterialForCourseCommand.builder()
@@ -198,7 +200,7 @@ class CreateMaterialServiceUT {
         // Assert
         assertNotNull(response);
         assertEquals("VIDEO", response.getType());
-        verify(createUploadLinkPort, times(1)).createUploadLink(savedVideo.getFileKey(), "video/mp4");
+        verify(createUploadLinkPort, times(1)).createUploadLink(savedVideo.getFileKey(), "video/mp4", null);
     }
 
     // ── createMaterialForChapter ───────────────────────────────────────────────
@@ -211,7 +213,7 @@ class CreateMaterialServiceUT {
         when(getMaterialPort.findByFileKey(material.getFileKey())).thenReturn(Optional.empty());
         when(createMaterialPort.createForChapter(eq(courseId), eq(chapterId), any(Material.class)))
                 .thenReturn(savedMaterial);
-        when(createUploadLinkPort.createUploadLink(eq(savedMaterial.getFileKey()), eq("application/pdf")))
+        when(createUploadLinkPort.createUploadLink(eq(savedMaterial.getFileKey()), eq("application/pdf"), isNull()))
                 .thenReturn("https://presigned-url.example.com/upload");
 
         CreateMaterialForChapterCommand command = CreateMaterialForChapterCommand.builder()
@@ -307,7 +309,7 @@ class CreateMaterialServiceUT {
         when(getMaterialPort.findByFileKey(videoMaterial.getFileKey())).thenReturn(Optional.empty());
         when(createMaterialPort.createForChapter(eq(courseId), eq(chapterId), any(Material.class)))
                 .thenReturn(savedVideo);
-        when(createUploadLinkPort.createUploadLink(eq(savedVideo.getFileKey()), eq("video/mp4")))
+        when(createUploadLinkPort.createUploadLink(eq(savedVideo.getFileKey()), eq("video/mp4"), isNull()))
                 .thenReturn("https://presigned-url.example.com/upload-video");
 
         CreateMaterialForChapterCommand command = CreateMaterialForChapterCommand.builder()
@@ -322,6 +324,6 @@ class CreateMaterialServiceUT {
         // Assert
         assertNotNull(response);
         assertEquals("VIDEO", response.getType());
-        verify(createUploadLinkPort, times(1)).createUploadLink(savedVideo.getFileKey(), "video/mp4");
+        verify(createUploadLinkPort, times(1)).createUploadLink(savedVideo.getFileKey(), "video/mp4", null);
     }
 }
