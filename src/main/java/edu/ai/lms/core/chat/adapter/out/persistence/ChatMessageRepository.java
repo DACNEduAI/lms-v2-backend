@@ -26,11 +26,8 @@ public interface ChatMessageRepository {
     default ChatMessage save(ChatMessage message) {
         if (message.getId() == null) {
             message.setId(UUID.randomUUID());
-            insert(message);
-        } else {
-            // Usually chat messages are immutable once sent, but add update if needed
-            insert(message); // Or update logic
         }
-        return findById(message.getId()).orElseThrow();
+        insert(message);
+        return message;
     }
 }

@@ -37,6 +37,7 @@ public class StudentSignInService implements StudentSignInUseCase {
                 .firstName(student.getFirstName())
                 .lastName(student.getLastName())
                 .role(student.getRoleAsString())
+                .studentId(student.getId().toString())
                 .build();
     }
 }

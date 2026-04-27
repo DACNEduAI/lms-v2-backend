@@ -5,6 +5,7 @@ import edu.ai.lms.core.chat.app.port.in.usecase.GetChatHistoryUseCase;
 import edu.ai.lms.core.chat.app.port.in.usecase.SendChatMessageUseCase;
 import edu.ai.lms.core.chat.app.port.out.ChatPersistencePort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatService implements SendChatMessageUseCase, GetChatHistoryUseCase {
@@ -33,6 +35,8 @@ public class ChatService implements SendChatMessageUseCase, GetChatHistoryUseCas
                 .clientTempId(clientTempId)
                 .createdAt(LocalDateTime.now())
                 .build();
-        return chatPersistencePort.save(message);
+        ChatMessage saved = chatPersistencePort.save(message);
+        log.debug("Chat message saved successfully. ID: {}, clientTempId: {}", saved.getId(), saved.getClientTempId());
+        return saved;
     }
 }

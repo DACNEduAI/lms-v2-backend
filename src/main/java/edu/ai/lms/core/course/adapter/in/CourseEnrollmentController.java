@@ -66,7 +66,7 @@ public class CourseEnrollmentController {
             @ApiResponse(responseCode = "404", description = "Course not found"),
             @ApiResponse(responseCode = "403", description = "Not authorized to view course enrollments")
     })
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{courseId}/enrollments")
     public ResponseEntity<GetCourseEnrollmentsResponse> getCourseEnrollments(@PathVariable UUID courseId) {
         GetCourseEnrollmentsResponse response = teacherGetCourseEnrollmentsUseCase.getCourseEnrollments(courseId);

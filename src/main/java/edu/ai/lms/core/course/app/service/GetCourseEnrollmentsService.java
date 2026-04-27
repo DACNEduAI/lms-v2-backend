@@ -32,8 +32,11 @@ public class GetCourseEnrollmentsService implements TeacherGetCourseEnrollmentsU
         Course course = loadCoursePort.findById(courseId)
                 .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + courseId));
 
-        if (!course.getTeacherIds().contains(user.getId())) {
-            throw new IllegalArgumentException("Teacher is not authorized to access enrollments of this course");
+        boolean isTeacherOfCourse = course.getTeacherIds().contains(user.getId());
+        boolean isStudentInCourse = course.getStudentIds().contains(user.getId());
+
+        if (!isTeacherOfCourse && !isStudentInCourse) {
+            throw new IllegalArgumentException("User is not authorized to access enrollments of this course");
         }
 
         return GetCourseEnrollmentsResponse.builder()

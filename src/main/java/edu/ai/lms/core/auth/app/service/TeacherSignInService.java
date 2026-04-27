@@ -37,6 +37,7 @@ public class TeacherSignInService implements TeacherSignInUseCase {
                 .firstName(teacher.getFirstName())
                 .lastName(teacher.getLastName())
                 .role(teacher.getRoleAsString())
+                .teacherId(teacher.getId().toString())
                 .build();
     }
 }
