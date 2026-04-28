@@ -19,5 +19,11 @@
     WHERE e.course_id = #{courseId}
       AND e.user_id = #{studentId}
   </select>
+  <select id="findStudentIdsByCourseId" resultType="java.util.UUID">
+    SELECT e.user_id
+    FROM enrollments e
+    INNER JOIN students s ON s.user_id = e.user_id
+    WHERE e.course_id = #{courseId}
+  </select>
 
 </mapper>

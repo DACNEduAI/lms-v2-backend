@@ -38,13 +38,11 @@ build/
 
 ### Local overrides ###
 src/main/resources/application-local.properties
+.env
 
 ### Local Stack storage development ###
 /storage
-<<<<<<< HEAD
-=======
 
 ### postman
 postman/**
 .postman/**
->>>>>>> 5f49e4cccd7b8caef3d8f265023953513c58937f

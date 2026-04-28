@@ -15,16 +15,18 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Service
 public class SseNotificationService {
 
-    // Map lưu trữ: 1 UserID -> Danh sách các SseEmitter (Vì 1 user có thể mở LMS trên nhiều tab/điện thoại)
+    // Map lưu trữ: 1 UserID -> Danh sách các SseEmitter (Vì 1 user có thể mở LMS
+    // trên nhiều tab/điện thoại)
     private final Map<UUID, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
     /**
      * Client gọi hàm này để mở kết nối
      */
     public SseEmitter subscribe(UUID userId) {
-        // Đặt timeout dài (ví dụ: 30 phút). Nếu để 0 hoặc -1 nó sẽ sống mãi nhưng dễ bị Nginx ngắt.
-        SseEmitter emitter = new SseEmitter(30 * 60 * 1000L); 
-        
+        // Đặt timeout dài (ví dụ: 30 phút). Nếu để 0 hoặc -1 nó sẽ sống mãi nhưng dễ bị
+        // Nginx ngắt.
+        SseEmitter emitter = new SseEmitter(30 * 60 * 1000L);
+
         this.emitters.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
 
         // Xử lý dọn dẹp khi kết nối đứt (User đóng tab, mất mạng...)
@@ -32,7 +34,8 @@ public class SseNotificationService {
         emitter.onTimeout(() -> removeEmitter(userId, emitter));
         emitter.onError(e -> removeEmitter(userId, emitter));
 
-        // Bắn ngay 1 event "connected" mồi để trình duyệt biết kết nối đã thành công và không bị timeout ngay lập tức
+        // Bắn ngay 1 event "connected" mồi để trình duyệt biết kết nối đã thành công và
+        // không bị timeout ngay lập tức
         try {
             emitter.send(SseEmitter.event().name("INIT").data("Connected to LMS Notification Stream"));
         } catch (IOException e) {

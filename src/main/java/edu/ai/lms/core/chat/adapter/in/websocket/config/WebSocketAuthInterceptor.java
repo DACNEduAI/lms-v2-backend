@@ -53,7 +53,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                                     userDetails.getAuthorities()
                             );
                             accessor.setUser(authToken);
-                            log.info("STOMP connection authenticated for user ID: {}", userAuth.getId());
+                            log.debug("STOMP connection authenticated for user ID: {}", userAuth.getId());
                         }
                     }
                 } catch (Exception e) {
@@ -61,10 +61,15 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                     throw new IllegalArgumentException("Invalid token");
                 }
             } else {
-                log.warn("Missing or invalid Authorization header in STOMP CONNECT");
+                log.warn("Missing or invalid Authorization header in STOMP CONNECT. Received: {}", authHeader);
                 throw new IllegalArgumentException("Missing token");
             }
         }
+        
+        if (accessor != null && StompCommand.SEND.equals(accessor.getCommand())) {
+            log.debug("STOMP SEND command detected for destination: {}", accessor.getDestination());
+        }
+
         return message;
     }
 

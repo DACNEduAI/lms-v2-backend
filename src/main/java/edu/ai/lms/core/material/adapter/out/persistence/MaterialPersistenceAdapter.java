@@ -78,6 +78,11 @@ class MaterialPersistenceAdapter implements CreateMaterialPort, GetMaterialPort,
         return materialRepository.findByStatusIn(statusStrings).stream().collect(Collectors.toList());
     }
 
+    @Override
+    public List<UUID> getStudentIdsByCourseId(UUID courseId) {
+        return materialRepository.findStudentIdsByCourseId(courseId);
+    }
+
     // ─── ModifyMaterialPort ────────────────────────────────────────────────────
 
     @Override

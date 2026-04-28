@@ -3,6 +3,7 @@ package edu.ai.lms.core.quiz.app.service;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -46,6 +47,9 @@ class CreateQuizServiceUT {
 
     @Mock
     private LoadCourseMembershipPort loadCourseMembershipPort;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private CreateQuizService createQuizService;

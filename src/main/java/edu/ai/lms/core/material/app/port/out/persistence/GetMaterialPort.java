@@ -19,4 +19,6 @@ public interface GetMaterialPort {
     List<Material> findByChapter(UUID chapterId, UUID courseId);
 
     List<Material> findByStatuses(List<Material.MaterialStatus> statuses);
+
+    List<UUID> getStudentIdsByCourseId(UUID courseId);
 }

@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class QuizDeadlineJdbcAdapterIT extends IntegrationTestConfiguration {
 
     @Autowired
-    private QuizDeadlineJdbcAdapter adapter;
+    private QuizDeadlinePersistenceAdapter adapter;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;

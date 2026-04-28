@@ -4,5 +4,5 @@ import edu.ai.lms.core.chat.app.domain.ChatMessage;
 import java.util.UUID;
 
 public interface SendChatMessageUseCase {
-    ChatMessage sendMessage(UUID senderId, UUID recipientId, String content);
+    ChatMessage sendMessage(UUID senderId, UUID recipientId, String content, String clientTempId);
 }

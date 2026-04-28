@@ -69,6 +69,9 @@ public abstract class IntegrationTestConfiguration {
 
         // Quartz jobs are validated separately and should not auto-start in existing IT suites.
         registry.add("spring.quartz.auto-startup", () -> "false");
+
+        // Disable Spring Modulith JDBC event publication for tests
+        registry.add("spring.modulith.events.jdbc.enabled", () -> "false");
     }
 
     @BeforeEach

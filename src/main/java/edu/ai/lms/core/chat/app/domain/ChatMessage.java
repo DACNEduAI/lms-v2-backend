@@ -18,5 +18,6 @@ public class ChatMessage {
     private UUID recipientId;
     private String content;
     private String status; // SENT, DELIVERED, READ
+    private String clientTempId; // Temporary ID for client-side correlation (transient)
     private LocalDateTime createdAt;
 }

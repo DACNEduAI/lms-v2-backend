@@ -20,7 +20,7 @@ public class NotificationEventListener {
     private final NotificationService notificationService;
     private final SseNotificationService sseNotificationService;
 
-    @Async // CHÚ Ý: Chạy ở thread riêng để không làm nghẽn module phát ra sự kiện
+    @Async
     @EventListener
     public void handleSystemNotification(SystemNotificationEvent event) {
         log.info("Received system notification event: {}", event.title());
@@ -34,12 +34,11 @@ public class NotificationEventListener {
                         event.title(),
                         event.message(),
                         event.type(),
-                        event.linkUrl()
-                );
+                        event.linkUrl());
 
                 // 2. Push Real-time qua SSE nếu user đang online
                 sseNotificationService.pushNotification(userId, savedNotification);
-                
+
             } catch (Exception e) {
                 log.error("Error processing notification for user {}: {}", userId, e.getMessage());
             }

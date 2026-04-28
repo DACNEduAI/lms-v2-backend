@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.chat.adapter.out.persistence.ChatMessageRepository">
+
+    <resultMap id="ChatMessageMap" type="edu.ai.lms.core.chat.app.domain.ChatMessage">
+        <id property="id" column="id"/>
+        <result property="senderId" column="sender_id"/>
+        <result property="recipientId" column="recipient_id"/>
+        <result property="content" column="content"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="clientTempId" column="client_temp_id"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="edu.ai.lms.core.chat.app.domain.ChatMessage">
+        INSERT INTO user_chat_messages (id, sender_id, recipient_id, content, status, created_at, client_temp_id)
+        VALUES (#{id}, #{senderId}, #{recipientId}, #{content}, #{status}, #{createdAt}, #{clientTempId})
+    </insert>
+
+    <select id="findChatHistory" resultMap="ChatMessageMap">
+        SELECT * FROM user_chat_messages 
+        WHERE (sender_id = #{userId1} AND recipient_id = #{userId2})
+           OR (sender_id = #{userId2} AND recipient_id = #{userId1})
+        ORDER BY created_at DESC 
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countChatHistory" resultType="long">
+        SELECT COUNT(*) FROM user_chat_messages 
+        WHERE (sender_id = #{userId1} AND recipient_id = #{userId2})
+           OR (sender_id = #{userId2} AND recipient_id = #{userId1})
+    </select>
+
+    <select id="findById" resultMap="ChatMessageMap">
+        SELECT * FROM user_chat_messages WHERE id = #{id}
+    </select>
+
+</mapper>

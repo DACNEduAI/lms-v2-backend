@@ -5,6 +5,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import edu.ai.lms.common.event.SystemActivityEvent;
+import edu.ai.lms.common.event.SystemNotificationEvent;
 import edu.ai.lms.core.material.adapter.in.response.ConfirmUploadResponse;
 import edu.ai.lms.core.material.app.domain.Material;
 import edu.ai.lms.core.material.app.exception.MaterialNotFoundException;
@@ -12,7 +14,13 @@ import edu.ai.lms.core.material.app.port.in.usecase.ConfirmUploadUseCase;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
 import edu.ai.lms.core.material.app.port.out.storage.VerifyFileUploadedPort;
+import edu.ai.lms.core.material.app.port.out.persistence.LoadSignedInUserPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +29,8 @@ public class ConfirmUploadService implements ConfirmUploadUseCase {
     private final GetMaterialPort getMaterialPort;
     private final ModifyMaterialPort modifyMaterialPort;
     private final VerifyFileUploadedPort verifyFileUploadedPort;
+    private final LoadSignedInUserPort loadSignedInUserPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -39,7 +49,7 @@ public class ConfirmUploadService implements ConfirmUploadUseCase {
 
         Material updated = modifyMaterialPort.update(material);
 
-        return ConfirmUploadResponse.builder()
+        ConfirmUploadResponse response = ConfirmUploadResponse.builder()
                 .materialId(updated.getId())
                 .courseId(updated.getCourseId())
                 .fileKey(updated.getFileKey())
@@ -49,5 +59,37 @@ public class ConfirmUploadService implements ConfirmUploadUseCase {
                         ? "File uploaded successfully. Status updated to UPLOADED."
                         : "File not found in storage. Status updated to FAILED.")
                 .build();
+
+        // Broadcast notification if upload was successful
+        if (uploaded) {
+            // Log activity (Lịch sử hoạt động)
+            UUID currentUserId = loadSignedInUserPort.getAuthenticatedUser()
+                    .map(u -> u.getId())
+                    .orElse(courseId); // Fallback to courseId if not auth (should not happen)
+
+            eventPublisher.publishEvent(SystemActivityEvent.builder()
+                    .userId(currentUserId)
+                    .actionType("CREATE")
+                    .entityType("MATERIAL")
+                    .entityId(updated.getId())
+                    .entityName(updated.getTitle())
+                    .description("Tài liệu mới đã được tải lên thành công")
+                    .timestamp(LocalDateTime.now())
+                    .build());
+
+            List<UUID> studentIdList = getMaterialPort.getStudentIdsByCourseId(courseId);
+            if (!studentIdList.isEmpty()) {
+                Set<UUID> studentIds = new HashSet<>(studentIdList);
+                eventPublisher.publishEvent(new SystemNotificationEvent(
+                        studentIds,
+                        "Tài liệu mới!",
+                        "Giảng viên vừa tải lên tài liệu: " + updated.getTitle(),
+                        "COURSE_UPDATE",
+                        "/student/courses/" + courseId // Link to course page
+                ));
+            }
+        }
+
+        return response;
     }
 }

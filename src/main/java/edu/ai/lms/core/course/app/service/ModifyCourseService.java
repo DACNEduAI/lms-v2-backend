@@ -1,10 +1,14 @@
 package edu.ai.lms.core.course.app.service;
 
-import java.time.LocalDateTime;
-
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
+import java.util.UUID;
+import java.util.Set;
+
+import edu.ai.lms.common.event.SystemNotificationEvent;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.ModifyCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
@@ -24,6 +28,7 @@ public class ModifyCourseService implements TeacherModifyCourseUseCase {
     private final SaveCoursePort saveCoursePort;
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInUserPort loadSignedInUserPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -61,7 +66,7 @@ public class ModifyCourseService implements TeacherModifyCourseUseCase {
         Course savedCourse = saveCoursePort.save(updatedCourse);
 
         // Return response
-        return ModifyCourseResponse.builder()
+        ModifyCourseResponse response = ModifyCourseResponse.builder()
                 .courseId(savedCourse.getId())
                 .courseName(savedCourse.getCourseName())
                 .courseCode(savedCourse.getCourseCode())
@@ -71,7 +76,21 @@ public class ModifyCourseService implements TeacherModifyCourseUseCase {
                 .coverImage(savedCourse.getCoverImage())
                 .startDate(savedCourse.getStartDate())
                 .endDate(savedCourse.getEndDate())
-                .updatedAt(LocalDateTime.now())
+                .updatedAt(java.time.LocalDateTime.now())
                 .build();
+
+        // Broadcast notification to all students in the course
+        if (savedCourse.getStudentIds() != null && !savedCourse.getStudentIds().isEmpty()) {
+            Set<UUID> studentIds = new HashSet<>(savedCourse.getStudentIds());
+            eventPublisher.publishEvent(new SystemNotificationEvent(
+                    studentIds,
+                    "Khóa học cập nhật!",
+                    "Giảng viên vừa cập nhật thông tin khóa học: " + savedCourse.getCourseName(),
+                    "COURSE_UPDATE",
+                    "/student/courses/" + savedCourse.getId()
+            ));
+        }
+
+        return response;
     }
 }

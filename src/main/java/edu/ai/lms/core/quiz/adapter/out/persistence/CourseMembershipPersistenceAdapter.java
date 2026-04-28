@@ -1,5 +1,6 @@
 package edu.ai.lms.core.quiz.adapter.out.persistence;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
@@ -21,5 +22,10 @@ class CourseMembershipPersistenceAdapter implements LoadCourseMembershipPort {
     @Override
     public boolean isStudentInCourse(UUID studentId, UUID courseId) {
         return courseRepository.existsByCourseIdAndStudentId(courseId, studentId);
+    }
+
+    @Override
+    public List<UUID> getStudentIdsByCourseId(UUID courseId) {
+        return courseRepository.findStudentIdsByCourseId(courseId);
     }
 }

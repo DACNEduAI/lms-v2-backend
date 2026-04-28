@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.notification.adapter.out.persistence.NotificationRepository">
+
+    <resultMap id="NotificationMap" type="edu.ai.lms.core.notification.app.domain.Notification">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="title" column="title"/>
+        <result property="message" column="message"/>
+        <result property="type" column="type"/>
+        <result property="linkUrl" column="link_url"/>
+        <result property="isRead" column="is_read"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="findByUserId" resultMap="NotificationMap">
+        SELECT * FROM notifications 
+        WHERE user_id = #{userId} 
+        ORDER BY created_at DESC 
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByUserIdAndIsReadFalse" resultType="long">
+        SELECT COUNT(*) FROM notifications 
+        WHERE user_id = #{userId} AND is_read = false
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*) FROM notifications 
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="findById" resultMap="NotificationMap">
+        SELECT * FROM notifications WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="edu.ai.lms.core.notification.app.domain.Notification">
+        INSERT INTO notifications (id, user_id, title, message, type, link_url, is_read, created_at)
+        VALUES (#{id}, #{userId}, #{title}, #{message}, #{type}, #{linkUrl}, #{isRead}, #{createdAt})
+    </insert>
+
+    <update id="update" parameterType="edu.ai.lms.core.notification.app.domain.Notification">
+        UPDATE notifications 
+        SET is_read = #{isRead},
+            title = #{title},
+            message = #{message},
+            link_url = #{linkUrl},
+            type = #{type}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

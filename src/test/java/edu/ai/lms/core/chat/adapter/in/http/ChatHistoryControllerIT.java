@@ -3,7 +3,7 @@ package edu.ai.lms.core.chat.adapter.in.http;
 import edu.ai.lms.config.IntegrationTestConfiguration;
 import edu.ai.lms.core.auth.app.port.out.LoadStudentPort;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
-import edu.ai.lms.core.chat.adapter.out.persistence.ChatMessageJdbcEntity;
+import edu.ai.lms.core.chat.app.domain.ChatMessage;
 import edu.ai.lms.core.chat.adapter.out.persistence.ChatMessageRepository;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
@@ -81,7 +81,7 @@ class ChatHistoryControllerIT extends IntegrationTestConfiguration {
             UUID sender = (i % 2 == 0) ? userA.getId() : userB.getId();
             UUID recipient = (i % 2 == 0) ? userB.getId() : userA.getId();
 
-            ChatMessageJdbcEntity msg = ChatMessageJdbcEntity.builder()
+            ChatMessage msg = ChatMessage.builder()
                     .senderId(sender)
                     .recipientId(recipient)
                     .content("Message " + i)
@@ -114,7 +114,7 @@ class ChatHistoryControllerIT extends IntegrationTestConfiguration {
         UserAuth userC = loadStudentPort.findByEmail("charlie.chat@example.com").orElseThrow();
 
         // Add 1 random message to User C (to ensure filtering works)
-        ChatMessageJdbcEntity randomMsg = ChatMessageJdbcEntity.builder()
+        ChatMessage randomMsg = ChatMessage.builder()
                 .senderId(userA.getId())
                 .recipientId(userC.getId())
                 .content("Irrelevant message")

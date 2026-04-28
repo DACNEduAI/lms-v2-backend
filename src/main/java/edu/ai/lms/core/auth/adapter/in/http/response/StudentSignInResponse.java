@@ -17,4 +17,5 @@ public class StudentSignInResponse {
     private String firstName;
     private String lastName;
     private String role;
+    private String studentId;
 }
