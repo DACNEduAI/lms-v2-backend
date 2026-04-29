@@ -48,7 +48,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                             edu.ai.lms.core.auth.app.domain.UserAuth userAuth = (edu.ai.lms.core.auth.app.domain.UserAuth) userDetails;
                             
                             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                                    userAuth.getId().toString(), // Use UUID string as principal name
+                                    userAuth.getId().toString(), // Use UUID string as principal name for ChatController and routing
                                     null,
                                     userDetails.getAuthorities()
                             );
@@ -57,8 +57,8 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                         }
                     }
                 } catch (Exception e) {
-                    log.error("Failed to authenticate STOMP connection", e);
-                    throw new IllegalArgumentException("Invalid token");
+                    log.error("Failed to authenticate STOMP connection for token: {}", jwt, e);
+                    throw new IllegalArgumentException("Invalid token: " + e.getMessage());
                 }
             } else {
                 log.warn("Missing or invalid Authorization header in STOMP CONNECT. Received: {}", authHeader);

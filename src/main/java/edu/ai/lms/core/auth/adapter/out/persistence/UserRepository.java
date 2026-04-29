@@ -17,6 +17,8 @@ interface UserRepository {
     Optional<UserAuth> findById(@Param("id") UUID id);
 
     Optional<UserAuth> findByEmail(@Param("email") String email);
+    
+    java.util.List<UserAuth> findByIds(@Param("ids") java.util.List<UUID> ids);
 
     int insert(UserAuth user);
 

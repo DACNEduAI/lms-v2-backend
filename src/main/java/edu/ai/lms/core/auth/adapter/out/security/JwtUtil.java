@@ -7,6 +7,7 @@ import java.util.function.Function;
 
 import javax.crypto.SecretKey;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 
+@Slf4j
 @Component
 public class JwtUtil implements TokenGenerationPort {
 
@@ -27,6 +29,15 @@ public class JwtUtil implements TokenGenerationPort {
 
     @Value("${jwt.expiration}")
     private Long expiration;
+
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        if (secret == null || secret.isBlank()) {
+            log.error("JWT Secret is NOT loaded! Please check your .env or application.properties");
+        } else {
+            log.info("JWT Secret loaded successfully. Length: {}", secret.length());
+        }
+    }
 
     public String extractEmail(String token) {
         return extractClaim(token, Claims::getSubject);

@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.GetCourseEnrollmentsResponse;
+import edu.ai.lms.core.course.adapter.in.response.ParticipantDto;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
@@ -22,6 +23,7 @@ public class GetCourseEnrollmentsService implements TeacherGetCourseEnrollmentsU
 
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInUserPort loadSignedInUserPort;
+    private final edu.ai.lms.core.course.app.port.out.LoadUsersPort loadUsersPort;
 
     @Override
     @Transactional(readOnly = true)
@@ -39,10 +41,24 @@ public class GetCourseEnrollmentsService implements TeacherGetCourseEnrollmentsU
             throw new IllegalArgumentException("User is not authorized to access enrollments of this course");
         }
 
+        List<UserAuth> teacherUsers = loadUsersPort.findAllByIds(course.getTeacherIds());
+        List<UserAuth> studentUsers = loadUsersPort.findAllByIds(course.getStudentIds());
+
         return GetCourseEnrollmentsResponse.builder()
                 .courseId(courseId)
-                .teachers(course.getTeacherIds())
-                .students(course.getStudentIds())
+                .teachers(teacherUsers.stream().map(this::toDto).toList())
+                .students(studentUsers.stream().map(this::toDto).toList())
+                .build();
+    }
+
+    private ParticipantDto toDto(UserAuth user) {
+        return ParticipantDto.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .avatarUrl(user.getAvatarUrl())
+                .role(user.getRoleAsString())
                 .build();
     }
 }

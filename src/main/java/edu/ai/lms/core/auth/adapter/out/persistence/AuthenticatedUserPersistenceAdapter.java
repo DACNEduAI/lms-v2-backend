@@ -21,6 +21,10 @@ class AuthenticatedUserPersistenceAdapter implements LoadAuthenticatedUserApi {
 
     @Override
     public Optional<UserAuth> getAuthenticatedUser() {
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            return Optional.empty();
+        }
+        
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         if (principal instanceof UserAuth user) {
@@ -48,6 +52,8 @@ class AuthenticatedUserPersistenceAdapter implements LoadAuthenticatedUserApi {
     public java.util.UUID getCurrentUserId() {
         return getAuthenticatedUser()
                 .map(UserAuth::getId)
-                .orElseThrow(() -> new RuntimeException("Unauthorized"));
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.UNAUTHORIZED, "User not authenticated"
+                ));
     }
 }
