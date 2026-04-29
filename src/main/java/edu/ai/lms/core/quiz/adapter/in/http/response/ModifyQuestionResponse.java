@@ -18,7 +18,6 @@ public class ModifyQuestionResponse {
     private UUID questionId;
     private String content;
     private String type;
-    private Double points;
     private UUID quizId;
     private List<AnswerSummary> answers;
     @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)

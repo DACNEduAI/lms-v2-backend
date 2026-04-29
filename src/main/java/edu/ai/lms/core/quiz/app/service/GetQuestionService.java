@@ -51,7 +51,6 @@ public class GetQuestionService implements GetQuestionUseCase {
                 .questionId(question.getId())
                 .content(question.getContent())
                 .type(question.getType() != null ? question.getType().name() : null)
-                .points(question.getPoints())
                 .quizId(question.getQuizId())
                 .answers(answerDtos)
                 .createdAt(question.getCreatedAt())

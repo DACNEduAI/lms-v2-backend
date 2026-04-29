@@ -134,17 +134,36 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
     @Order(4)
     @DisplayName("Should create a question for answer tests")
     void testCreateQuestion() {
+        // Create Learning Outcome
+        String loBody = """
+                {
+                    \"learningOutcomes\": [
+                        {\"code\": \"LO-ANS\", \"description\": \"Answer LO\"}
+                    ]
+                }
+                """;
+        Response loResponse = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(loBody)
+                .when()
+                .post("/api/" + createdCourseId + "/learning-outcome")
+                .then()
+                .statusCode(201)
+                .extract().response();
+        UUID learningOutcomeId = UUID.fromString(loResponse.path("learningOutcomes[0].id"));
+
         String requestBody = """
                 {
                     "questions": [
                     {
                         "content": "What is the speed of light?",
                         "type": "MULTIPLE_CHOICE",
-                        "points": 10.0
+                        "learningOutcomeId": "%s"
                     }
                     ]
                 }
-                """;
+                """.formatted(learningOutcomeId);
 
         Response response = given()
             .contentType(ContentType.MULTIPART)

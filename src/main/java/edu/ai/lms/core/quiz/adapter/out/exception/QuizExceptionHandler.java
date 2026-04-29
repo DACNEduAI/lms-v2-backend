@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import edu.ai.lms.common.ErrorResponse;
+import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
+import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotVisible;
 import edu.ai.lms.core.quiz.app.exception.TimeValidationException;
@@ -114,6 +116,38 @@ public class QuizExceptionHandler {
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Time Validation Failed")
+                .message(ex.getMessage())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    /**
+     * Handles MissingLearningOutcomeException.
+     */
+    @ApiResponse(responseCode = "400", description = "Missing learning outcome",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ExceptionHandler(MissingLearningOutcomeException.class)
+    public ResponseEntity<ErrorResponse> handleMissingLearningOutcomeException(MissingLearningOutcomeException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Missing Learning Outcome")
+                .message(ex.getMessage())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    /**
+     * Handles InvalidLearningOutcomeException.
+     */
+    @ApiResponse(responseCode = "400", description = "Invalid learning outcome",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ExceptionHandler(InvalidLearningOutcomeException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidLearningOutcomeException(InvalidLearningOutcomeException ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Invalid Learning Outcome")
                 .message(ex.getMessage())
                 .build();
 

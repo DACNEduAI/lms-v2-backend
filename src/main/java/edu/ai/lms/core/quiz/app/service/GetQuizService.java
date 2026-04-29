@@ -58,7 +58,6 @@ public class GetQuizService implements GetQuizUseCase {
                         .questionId(q.getId())
                         .content(q.getContent())
                         .type(q.getType() != null ? q.getType().name() : null)
-                        .points(q.getPoints())
                         .answers(q.getAnswers().stream()
                                 .map(a -> GetQuizResponse.AnswerSummary.builder()
                                         .answerNumber(a.getAnswerNumber())

@@ -34,6 +34,8 @@ import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuestionResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
+import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.port.in.command.CreateQuestionCommand;
@@ -43,6 +45,8 @@ import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.UploadQuestionImagePort;
+import edu.ai.lms.core.quiz.app.port.out.LoadCourseLearningOutcomePort;
+import edu.ai.lms.core.quiz.app.port.out.SaveQuestionLearningOutcomePort;
 
 @ExtendWith(MockitoExtension.class)
 class CreateQuestionServiceUT {
@@ -68,6 +72,12 @@ class CreateQuestionServiceUT {
     @Mock
     private LoadQuestionImagePublicUrlPort loadQuestionImagePublicUrlPort;
 
+    @Mock
+    private LoadCourseLearningOutcomePort loadCourseLearningOutcomePort;
+
+    @Mock
+    private SaveQuestionLearningOutcomePort saveQuestionLearningOutcomePort;
+
     @InjectMocks
     private CreateQuestionService createQuestionService;
 
@@ -75,6 +85,7 @@ class CreateQuestionServiceUT {
     private UUID teacherId;
     private UUID quizId;
     private UUID questionId;
+    private UUID learningOutcomeId;
     private Quiz existingQuiz;
     private CreateQuestionCommand validCommand;
 
@@ -83,6 +94,7 @@ class CreateQuestionServiceUT {
         teacherId = UUID.randomUUID();
         quizId = UUID.randomUUID();
         questionId = UUID.randomUUID();
+        learningOutcomeId = UUID.randomUUID();
 
         mockTeacher = UserAuth.builder()
                 .id(teacherId)
@@ -106,13 +118,13 @@ class CreateQuestionServiceUT {
         Question question = Question.builder()
                 .content("What is Java?")
                 .type(Question.QuestionType.MULTIPLE_CHOICE)
-                .points(10.0)
                 .answers(new ArrayList<>(List.of(answer)))
                 .build();
 
         validCommand = CreateQuestionCommand.builder()
                 .quizId(quizId)
                 .question(question)
+                .learningOutcomeId(learningOutcomeId)
                 .build();
     }
 
@@ -121,12 +133,13 @@ class CreateQuestionServiceUT {
     void testCreateQuestion_WithValidDetails_ShouldSucceed() {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadCourseLearningOutcomePort.findExistingLearningOutcomeIdsByCourseIdAndIds(any(), any()))
+                .thenReturn(List.of(learningOutcomeId));
 
         Question savedQuestion = Question.builder()
                 .id(questionId)
                 .content("What is Java?")
                 .type(Question.QuestionType.MULTIPLE_CHOICE)
-                .points(10.0)
                 .quizId(quizId)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -149,6 +162,37 @@ class CreateQuestionServiceUT {
         assertEquals(1L, response.getAnswers().get(0).getAnswerNumber());
         verify(saveQuestionPort, times(1)).save(any(Question.class));
         verify(saveAnswerPort, times(1)).save(any(Answer.class));
+        verify(saveQuestionLearningOutcomePort, times(1)).addLearningOutcomes(eq(questionId), eq(List.of(learningOutcomeId)));
+    }
+
+    @Test
+    @DisplayName("Should throw MissingLearningOutcomeException when learningOutcomeId is missing")
+    void testCreateQuestion_WithMissingLearningOutcome_ShouldThrowException() {
+        CreateQuestionCommand invalidCommand = CreateQuestionCommand.builder()
+                .quizId(validCommand.quizId())
+                .question(validCommand.question())
+                .images(validCommand.images())
+                .learningOutcomeId(null)
+                .build();
+
+        MissingLearningOutcomeException exception = assertThrows(MissingLearningOutcomeException.class,
+                () -> createQuestionService.createQuestion(invalidCommand));
+
+        assertEquals("Question must belong to exactly one learning outcome", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Should throw InvalidLearningOutcomeException when learningOutcome doesn't belong to course")
+    void testCreateQuestion_WithInvalidLearningOutcome_ShouldThrowException() {
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadCourseLearningOutcomePort.findExistingLearningOutcomeIdsByCourseIdAndIds(any(), any()))
+                .thenReturn(List.of()); // Not found
+
+        InvalidLearningOutcomeException exception = assertThrows(InvalidLearningOutcomeException.class,
+                () -> createQuestionService.createQuestion(validCommand));
+
+        assertEquals("The learning outcome does not belong to this course", exception.getMessage());
     }
 
     @Test
@@ -200,6 +244,8 @@ class CreateQuestionServiceUT {
     void testCreateQuestion_ShouldSetQuizId() {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(loadCourseLearningOutcomePort.findExistingLearningOutcomeIdsByCourseIdAndIds(any(), any()))
+                .thenReturn(List.of(learningOutcomeId));
 
         ArgumentCaptor<Question> questionCaptor = ArgumentCaptor.forClass(Question.class);
         Question savedQuestion = Question.builder()
@@ -228,7 +274,6 @@ class CreateQuestionServiceUT {
         Question questionWithImage = Question.builder()
                 .content(originalContent)
                 .type(Question.QuestionType.ESSAY)
-                .points(10.0)
                 .answers(new ArrayList<>())
                 .build();
 
@@ -241,10 +286,13 @@ class CreateQuestionServiceUT {
         CreateQuestionCommand commandWithImage = CreateQuestionCommand.builder()
                 .quizId(quizId)
                 .question(questionWithImage)
+                .learningOutcomeId(learningOutcomeId)
                 .images(List.of(imageFile))
                 .build();
 
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadCourseLearningOutcomePort.findExistingLearningOutcomeIdsByCourseIdAndIds(any(), any()))
+                .thenReturn(List.of(learningOutcomeId));
         when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
         when(loadQuestionImagePublicUrlPort.getPublicImageUrl(anyString())).thenReturn(publicUrl);
 
@@ -254,7 +302,6 @@ class CreateQuestionServiceUT {
                     .id(questionId)
                     .content(question.getContent())
                     .type(question.getType())
-                    .points(question.getPoints())
                     .quizId(question.getQuizId())
                     .images(question.getImages())
                     .createdAt(LocalDateTime.now())

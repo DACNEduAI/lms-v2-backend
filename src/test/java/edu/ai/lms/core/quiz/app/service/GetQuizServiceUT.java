@@ -93,7 +93,6 @@ class GetQuizServiceUT {
                 .id(UUID.randomUUID())
                 .content("Sample Question")
                 .type(Question.QuestionType.MULTIPLE_CHOICE)
-                .points(10.0)
                 .quizId(quizId)
                 .answers(new ArrayList<>(List.of(answer)))
                 .build();

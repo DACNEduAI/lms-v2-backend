@@ -27,7 +27,6 @@ public class ModifyQuestionCommandMapper {
         Question question = Question.builder()
                 .content(request.getContent())
                 .type(request.getType() != null ? Question.QuestionType.valueOf(request.getType()) : null)
-                .points(request.getPoints())
                 .answers(answers)
                 .build();
 

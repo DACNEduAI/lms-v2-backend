@@ -51,7 +51,6 @@ public class GetQuizResponse {
         private UUID questionId;
         private String content;
         private String type;
-        private Double points;
         private List<AnswerSummary> answers;
     }
 

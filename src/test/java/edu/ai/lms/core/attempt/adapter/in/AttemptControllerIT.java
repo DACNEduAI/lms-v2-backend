@@ -201,13 +201,32 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
     @Order(4)
     @DisplayName("Should create question and answers for timed quiz")
     void createQuestionAndAnswers() {
+        // Create Learning Outcome
+        String loBody = """
+                {
+                    \"learningOutcomes\": [
+                        {\"code\": \"LO-ATT\", \"description\": \"Attempt LO\"}
+                    ]
+                }
+                """;
+        Response loResponse = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(loBody)
+                .when()
+                .post("/api/" + courseId + "/learning-outcome")
+                .then()
+                .statusCode(201)
+                .extract().response();
+        UUID learningOutcomeId = UUID.fromString(loResponse.path("learningOutcomes[0].id"));
+
         String createQuestionBody = """
                 {
                     "questions": [
                         {
                             "content": "2 + 3 = ?",
                             "type": "MULTIPLE_CHOICE",
-                            "points": 5.0,
+                            "learningOutcomeId": "%s",
                             "answers": [
                                 {
                                     "content": "5",
@@ -223,7 +242,7 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
                         }
                     ]
                 }
-                """;
+                """.formatted(learningOutcomeId);
 
         Response questionResponse = given()
             .contentType(ContentType.MULTIPART)

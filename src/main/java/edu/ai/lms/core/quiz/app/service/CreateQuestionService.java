@@ -25,8 +25,11 @@ import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuestionResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
+import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
+import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
 import edu.ai.lms.core.quiz.app.port.in.command.CreateQuestionCommand;
 import edu.ai.lms.core.quiz.app.port.in.usecase.CreateQuestionUseCase;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionImagePublicUrlPort;
@@ -35,6 +38,8 @@ import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.UploadQuestionImagePort;
+import edu.ai.lms.core.quiz.app.port.out.LoadCourseLearningOutcomePort;
+import edu.ai.lms.core.quiz.app.port.out.SaveQuestionLearningOutcomePort;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -52,10 +57,16 @@ public class CreateQuestionService implements CreateQuestionUseCase {
     private final ApplicationEventPublisher eventPublisher;
     private final UploadQuestionImagePort uploadQuestionImagePort;
     private final LoadQuestionImagePublicUrlPort loadQuestionImagePublicUrlPort;
+    private final LoadCourseLearningOutcomePort loadCourseLearningOutcomePort;
+    private final SaveQuestionLearningOutcomePort saveQuestionLearningOutcomePort;
 
     @Override
     @Transactional
     public CreateQuestionResponse createQuestion(CreateQuestionCommand command) {
+        if (command.learningOutcomeId() == null) {
+            throw new MissingLearningOutcomeException("Question must belong to exactly one learning outcome");
+        }
+
         UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
@@ -64,6 +75,12 @@ public class CreateQuestionService implements CreateQuestionUseCase {
 
         // Verify user is the creator of the quiz
         verifyQuizOwnership(user, quiz);
+
+        List<UUID> validOutcomeIds = loadCourseLearningOutcomePort
+                .findExistingLearningOutcomeIdsByCourseIdAndIds(quiz.getCourseId(), List.of(command.learningOutcomeId()));
+        if (validOutcomeIds.isEmpty() || !validOutcomeIds.contains(command.learningOutcomeId())) {
+            throw new InvalidLearningOutcomeException("The learning outcome does not belong to this course");
+        }
 
         // set quizId in question (to know that which quiz this question belongs to)
         Question question = command.question();
@@ -91,6 +108,8 @@ public class CreateQuestionService implements CreateQuestionUseCase {
                     .collect(Collectors.toList());
         }
 
+        saveQuestionLearningOutcomePort.addLearningOutcomes(savedQuestion.getId(), List.of(command.learningOutcomeId()));
+
         // Publish activity event
         eventPublisher.publishEvent(SystemActivityEvent.builder()
                 .userId(user.getId())
@@ -106,7 +125,6 @@ public class CreateQuestionService implements CreateQuestionUseCase {
                 .questionId(savedQuestion.getId())
                 .content(savedQuestion.getContent())
                 .type(savedQuestion.getType() != null ? savedQuestion.getType().name() : null)
-                .points(savedQuestion.getPoints())
                 .quizId(savedQuestion.getQuizId())
                 .answers(answerSummaries)
                 .createdAt(savedQuestion.getCreatedAt())

@@ -8,5 +8,5 @@ import java.util.List;
 import java.util.UUID;
 
 @Builder
-public record CreateQuestionCommand(UUID quizId, Question question, List<MultipartFile> images) {
+public record CreateQuestionCommand(UUID quizId, Question question, UUID learningOutcomeId, List<MultipartFile> images) {
 }

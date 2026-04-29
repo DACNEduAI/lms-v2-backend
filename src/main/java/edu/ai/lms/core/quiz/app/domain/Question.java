@@ -36,8 +36,6 @@ public class Question {
 
     private QuestionType type;
 
-    private Double points;
-
     private UUID quizId;
 
     @Builder.Default

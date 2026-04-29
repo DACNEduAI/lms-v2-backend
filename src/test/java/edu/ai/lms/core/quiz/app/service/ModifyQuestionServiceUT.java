@@ -99,7 +99,6 @@ class ModifyQuestionServiceUT {
                 .id(questionId)
                 .content("Original Question")
                 .type(Question.QuestionType.MULTIPLE_CHOICE)
-                .points(10.0)
                 .quizId(quizId)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -113,7 +112,6 @@ class ModifyQuestionServiceUT {
         Question updatedQuestion = Question.builder()
                 .content("Updated Question")
                 .type(Question.QuestionType.TRUE_FALSE)
-                .points(20.0)
                 .answers(new ArrayList<>(List.of(updatedAnswer)))
                 .build();
 
@@ -137,7 +135,6 @@ class ModifyQuestionServiceUT {
                 .id(questionId)
                 .content("Updated Question")
                 .type(Question.QuestionType.TRUE_FALSE)
-                .points(20.0)
                 .quizId(quizId)
                 .updatedAt(LocalDateTime.now())
                 .build();

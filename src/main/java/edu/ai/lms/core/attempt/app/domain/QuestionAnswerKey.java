@@ -25,7 +25,5 @@ public class QuestionAnswerKey {
 
     private QuestionType questionType;
 
-    private Double points;
-
     private Long correctAnswerNumber;
 }
