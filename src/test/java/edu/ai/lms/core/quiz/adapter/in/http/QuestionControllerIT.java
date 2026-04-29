@@ -47,6 +47,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
     private static UUID thirdQuestionId;
     private static UUID questionLo1;
     private static UUID questionLo2;
+    private static UUID defaultLearningOutcomeId;
     private static UUID foreignCourseId;
     private static UUID foreignLearningOutcomeId;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
@@ -150,6 +151,29 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
         createdQuizId = UUID.fromString(response.jsonPath().getString("quizId"));
     }
 
+    @Test
+    @Order(3)
+    @DisplayName("Should create a default learning outcome for question creation")
+    void testCreateDefaultLearningOutcome() {
+        String requestBody = """
+                {
+                    \"learningOutcomes\": [
+                        {\"code\": \"DLO-1\", \"description\": \"Default LO\"}
+                    ]
+                }
+                """;
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(requestBody)
+                .when()
+                .post("/api/" + createdCourseId + "/learning-outcome")
+                .then()
+                .statusCode(201)
+                .extract().response();
+        defaultLearningOutcomeId = UUID.fromString(response.jsonPath().getString("learningOutcomes[0].id"));
+    }
+
     // ==================== CREATE QUESTION TESTS ====================
 
     @Test
@@ -162,7 +186,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                     {
                         "content": "What is 2 + 2?",
                         "type": "MULTIPLE_CHOICE",
-                        "points": 5.0,
+                        "learningOutcomeId": "%s",
                         "answers": [
                             {
                                 "content": "4",
@@ -179,7 +203,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                     {
                         "content": "Is the Earth flat?",
                         "type": "TRUE_FALSE",
-                        "points": 3.0,
+                        "learningOutcomeId": "%s",
                         "answers": [
                             {
                                 "content": "False",
@@ -190,7 +214,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                     }
                     ]
                 }
-                """;
+                """.formatted(defaultLearningOutcomeId, defaultLearningOutcomeId);
 
         Response response = given()
             .contentType(ContentType.MULTIPART)
@@ -224,7 +248,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                     {
                         "content": "What is 10 - 4?",
                         "type": "MULTIPLE_CHOICE",
-                        "points": 2.0,
+                        "learningOutcomeId": "%s",
                         "answers": [
                             {
                                 "content": "6",
@@ -235,7 +259,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                     }
                     ]
                 }
-                """;
+                """.formatted(defaultLearningOutcomeId);
 
         Response response = given()
             .contentType(ContentType.MULTIPART)
@@ -262,9 +286,9 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 {
                     "content": "Unauthorized question?",
                     "type": "ESSAY",
-                    "points": 10.0
+                    "learningOutcomeId": "%s"
                 }
-                """;
+                """.formatted(defaultLearningOutcomeId);
 
         given()
             .contentType(ContentType.MULTIPART)
@@ -285,11 +309,11 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                     "questions": [
                     {
                         "type": "MULTIPLE_CHOICE",
-                        "points": 5.0
+                        "learningOutcomeId": "%s"
                     }
                     ]
                 }
-                """;
+                """.formatted(defaultLearningOutcomeId);
 
         given()
             .contentType(ContentType.MULTIPART)
@@ -318,7 +342,6 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 .body("questionId", equalTo(createdQuestionId.toString()))
                 .body("content", equalTo("What is 2 + 2?"))
                 .body("type", equalTo("MULTIPLE_CHOICE"))
-                .body("points", equalTo(5.0f))
                 .body("quizId", equalTo(createdQuizId.toString()))
                 .body("answers", notNullValue())
                 .body("createdAt", notNullValue());
@@ -364,7 +387,6 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                         "questionId": "%s",
                         "content": "What is 2 + 3?",
                         "type": "MULTIPLE_CHOICE",
-                        "points": 8.0,
                         "answers": [
                             {
                                 "content": "5",
@@ -390,7 +412,6 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 .body("[0].questionId", equalTo(createdQuestionId.toString()))
                 .body("[0].content", equalTo("What is 2 + 3?"))
                 .body("[0].type", equalTo("MULTIPLE_CHOICE"))
-                .body("[0].points", equalTo(8.0f))
                 .body("[0].quizId", equalTo(createdQuizId.toString()))
                 .body("[0].answers", hasSize(1))
                 .body("[0].updatedAt", notNullValue());
@@ -407,7 +428,6 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                         "questionId": "%s",
                         "content": "Hacked question",
                         "type": "ESSAY",
-                        "points": 100.0,
                         "answers": []
                     }
                     ]
@@ -437,7 +457,6 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                         "questionId": "%s",
                         "content": "Ghost question",
                         "type": "ESSAY",
-                        "points": 10.0,
                         "answers": []
                     }
                     ]
@@ -579,7 +598,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .statusCode(200)
                 .body("operation", equalTo("ADD"))
-                .body("learningOutcomeIds", hasSize(2));
+                .body("learningOutcomeIds", hasSize(3));
     }
 
     @Test
@@ -593,7 +612,8 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .statusCode(200)
                 .body("questionId", equalTo(createdQuestionId.toString()))
-                .body("learningOutcomes", hasSize(2))
+                .body("learningOutcomes", hasSize(3))
+                .body("learningOutcomes.code", hasItem("DLO-1"))
                 .body("learningOutcomes.code", hasItem("QLO-1"))
                 .body("learningOutcomes.code", hasItem("QLO-2"));
     }
@@ -617,7 +637,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .statusCode(200)
                 .body("operation", equalTo("REMOVE"))
-                .body("learningOutcomeIds", hasSize(1));
+                .body("learningOutcomeIds", hasSize(2));
     }
 
     @Test
@@ -708,12 +728,12 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                     {
                         "content": "<p>Observe diagram</p><img src='%s' alt='diagram'/>",
                         "type": "ESSAY",
-                        "points": 6.0,
+                        "learningOutcomeId": "%s",
                         "answers": []
                     }
                     ]
                 }
-                """.formatted(imageName);
+                """.formatted(imageName, defaultLearningOutcomeId);
 
         given()
                 .contentType(ContentType.MULTIPART)

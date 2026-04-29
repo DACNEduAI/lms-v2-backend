@@ -28,13 +28,13 @@ public class CreateQuestionCommandMapper {
         Question question = Question.builder()
                 .content(request.getContent())
                 .type(request.getType() != null ? Question.QuestionType.valueOf(request.getType()) : null)
-                .points(request.getPoints())
                 .answers(answers)
                 .build();
 
         return CreateQuestionCommand.builder()
                 .quizId(quizId)
                 .question(question)
+                .learningOutcomeId(request.getLearningOutcomeId())
                 .images(images)
                 .build();
     }

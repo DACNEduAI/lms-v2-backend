@@ -80,7 +80,6 @@ class GetQuestionServiceUT {
                 .id(questionId)
                 .content("What is the capital of France?")
                 .type(Question.QuestionType.MULTIPLE_CHOICE)
-                .points(10.0)
                 .quizId(quizId)
                 .answers(new ArrayList<>(List.of(answer1, answer2)))
                 .createdAt(LocalDateTime.now())
@@ -103,7 +102,6 @@ class GetQuestionServiceUT {
         assertEquals(questionId, response.getQuestionId());
         assertEquals("What is the capital of France?", response.getContent());
         assertEquals("MULTIPLE_CHOICE", response.getType());
-        assertEquals(10.0, response.getPoints());
         assertEquals(quizId, response.getQuizId());
         assertNotNull(response.getAnswers());
         assertEquals(2, response.getAnswers().size());

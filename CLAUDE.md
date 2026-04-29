@@ -2,11 +2,11 @@
 
 ## Project Overview
 
-**AI Learning Management System (LMS)** — A Spring Boot backend platform for managing courses, quizzes, materials, and student/teacher authentication. Built with **Hexagonal Architecture** (Clean Architecture) principles, using **Spring Modulith** for module encapsulation.
+**AI Learning Management System (LMS)** — A Spring Boot backend platform for managing courses, quizzes, materials, attempts, chat, notifications, and student/teacher authentication. Built with **Hexagonal Architecture** (Clean Architecture) principles, using **Spring Modulith** for module encapsulation.
 
 - **Language**: Java 21
 - **Framework**: Spring Boot 3.5.6
-- **Database**: PostgreSQL (Spring Data JDBC — *not* JPA)
+- **Database**: PostgreSQL (MyBatis mapper interfaces with annotated SQL — *not* JPA)
 - **Auth**: JWT (jjwt 0.12.6), Spring Security
 - **Storage**: AWS S3 SDK (DigitalOcean Spaces in prod, LocalStack in dev)
 - **Build**: Maven (wrapper included: `./mvnw`)
@@ -115,24 +115,20 @@ src/main/java/edu/ai/lms/
 ├── LmsApplication.java             # Entry point (@SpringBootApplication)
 ├── common/
 │   ├── ErrorResponse.java          # Shared error response DTO
-│   └── Roles.java                  # Enum: ADMIN, TEACHER, STUDENT
+│   ├── Roles.java                  # Enum: ADMIN, TEACHER, STUDENT
+│   └── event/                      # Cross-module events (notifications/history)
 ├── config/
-│   └── OpenApiConfig.java          # Swagger/OpenAPI configuration
-├── database/                       # JDBC table entities (shared across modules)
-│   ├── UserJdbcTable.java
-│   ├── StudentJdbcTable.java
-│   ├── TeacherJdbcTable.java
-│   ├── CourseJdbcTable.java
-│   ├── ChapterJdbcTable.java
-│   ├── MaterialJdbcTable.java
-│   ├── QuizJdbcTable.java
-│   ├── QuestionJdbcTable.java
-│   ├── AnswerJdbcTable.java
-│   └── ... (junction tables, etc.)
+│   ├── OpenApiConfig.java          # Swagger/OpenAPI configuration
+│   ├── JacksonDateFormatConfig.java# JSON date formatting
+│   └── mybatis/                    # MyBatis type handlers (UUID)
 └── core/                           # Business modules
     ├── auth/                       # Authentication module
     ├── course/                     # Course management module
+    ├── attempt/                    # Quiz attempt module
+    ├── chat/                       # Chat + WebSocket module
+    ├── history/                    # Activity history module
     ├── material/                   # Material/file management module
+    ├── notification/               # Notification + SSE module
     ├── quiz/                       # Quiz/question/answer module
     └── user/                       # User module (stub)
 ```
@@ -156,14 +152,17 @@ core/<module>/
 └── adapter/
     ├── in/
     │   ├── [http/]                 # REST Controllers
+    │   ├── [websocket/]            # WebSocket endpoints (chat)
+    │   ├── [event/]                # Event listeners (history/notification)
     │   │   ├── mapper/             # Request → Command mappers
     │   │   ├── request/            # Request DTOs (Jakarta validation)
     │   │   └── response/           # Response DTOs
     │   └── [internal/]             # Internal APIs exposed to other modules
     └── out/
         ├── exception/              # Exception handlers (@RestControllerAdvice)
-        ├── persistence/            # DB adapters, repositories, JDBC mappers
+        ├── persistence/            # DB adapters, MyBatis @Mapper repositories
         ├── [security/]             # Security adapters (auth module only)
+        ├── [scheduler/]            # Quartz scheduling adapters (attempt/quiz)
         └── [storage/]              # S3 storage adapters (material module only)
 ```
 
@@ -176,7 +175,7 @@ core/<module>/
 - JWT token generation and validation
 - Spring Security configuration (stateless, JWT filter)
 - Exposes `LoadAuthenticatedUserApi` as internal API for cross-module auth
-- Domain: `User` (base, implements `UserDetails`), `Student`, `Teacher`
+- Domain: `UserAuth`, `Student`, `Teacher`
 
 ### Course Module (`core/course`)
 - Full CRUD for courses, chapters, learning outcomes
@@ -184,6 +183,22 @@ core/<module>/
 - Course settings management
 - Domain: `Course` (aggregate root), `Chapter` (weak entity), `LearningOutcome`, `Student`, `Teacher`
 - Course is the aggregate root; chapters and learning outcomes are children loaded through CourseRepository
+
+### Attempt Module (`core/attempt`)
+- Start, submit, and review quiz attempts for students
+- Attempt scoring and validation against quiz policy
+- Quartz-backed auto-close for attempts that exceed deadlines
+- Domain: `Attempt`, `QuizAttemptPolicy`, `SubmittedAnswer`
+
+### Chat Module (`core/chat`)
+- WebSocket messaging for real-time chat
+- REST history retrieval with pagination
+- Domain: `ChatMessage`
+
+### History Module (`core/history`)
+- Activity log tracking (create/update/delete actions)
+- Event listener for `SystemActivityEvent`
+- Domain: `ActivityLog`
 
 ### Material Module (`core/material`)
 - File upload/download via pre-signed S3 URLs
@@ -193,8 +208,16 @@ core/<module>/
 - Domain: `Material` with types `PDF`, `VIDEO`, `LINK`
 - Storage: LocalStack (dev) / DigitalOcean Spaces (prod)
 
+### Notification Module (`core/notification`)
+- Server-Sent Events (SSE) stream for real-time notifications
+- Notification inbox with unread counts and read tracking
+- Event listener for `SystemNotificationEvent`
+- Domain: `Notification`
+
 ### Quiz Module (`core/quiz`)
 - Quiz, Question, and Answer management
+- Quiz visibility and deadline reminders (Quartz)
+- Question image storage and learning-outcome mapping
 - Quiz is an independent entity (can be transferred between courses)
 - Questions have types: `MULTIPLE_CHOICE`, `TRUE_FALSE`, `ESSAY`
 - Answer is a weak entity (composite key: `answer_number` + `question_id`)
@@ -205,10 +228,10 @@ core/<module>/
 ## Database
 
 ### Technology
-- **PostgreSQL** with **Spring Data JDBC** (not JPA/Hibernate)
-- JDBC table entities live in `edu.ai.lms.database` package (shared)
-- Domain entities live within each module's `app/domain` package
-- Mappers in `adapter/out/persistence/mapper/` convert between JDBC and domain entities
+- **PostgreSQL** with **MyBatis** mapper interfaces (not JPA/Hibernate)
+- Domain entities live within each module's `app/domain` package and are mapped directly
+- Repositories use `@Mapper` with SQL in annotations (no XML mappers currently)
+- UUID mapping is handled by `config/mybatis/UuidTypeHandler`
 
 ### Schema Initialization
 - `schema.sql` — Creates all tables (drops first for fresh state)
@@ -216,20 +239,19 @@ core/<module>/
 - Control via `spring.sql.init.mode`: `"always"` to reinitialize, `"never"` to skip
 
 ### Key Design Decisions
-- **Composite keys**: `Chapter` (`chapter_number`, `course_id`) and `Answer` (`answer_number`, `question_id`) use composite primary keys. Custom `@Query` methods replace default `save()` for these.
-- **Aggregate roots**: `Course` loads its children (`Chapter`, `LearningOutcome`) through `@MappedCollection`
-- **Relationship ownership**: In M-N relationships (Teacher↔Course, Student↔Course), the owning side holds the list of related objects; the other side only holds IDs
-- **JDBC auditing**: `@CreatedDate` and `@LastModifiedDate` on JDBC table entities, enabled by `@EnableJdbcAuditing`
-- **FullyQualifiedAnnotationBeanNameGenerator**: Used to avoid bean name conflicts between modules having same-named repositories
+- **Composite keys**: `Answer` (`answer_number`, `question_id`) uses a composite primary key; repositories use explicit insert/update logic.
+- **Aggregate roots**: `Course` remains the aggregate root for chapters and learning outcomes.
+- **Relationship ownership**: In M-N relationships (Teacher↔Course, Student↔Course), the owning side holds the list of related objects; the other side only holds IDs.
+- **MyBatis mapping**: Domain entities are mapped directly via `@Mapper` repositories.
+- **FullyQualifiedAnnotationBeanNameGenerator**: Used to avoid bean name conflicts between modules having same-named repositories.
 
 ### Entity Relationship Summary
 ```
 Users ──1:1──> Students
 Users ──1:1──> Teachers
-Courses ──M:N──> Teachers  (via course_teachers)
-Courses ──M:N──> Students  (via course_students)
+Courses ──M:N──> Users (teachers/students)  (via enrollments)
 Courses ──1:N──> Chapters  (Chapter is weak entity of Course)
-Courses ──1:N──> Materials (via course_id FK, SET NULL on delete)
+Courses ──1:N──> Materials (via course_id FK, CASCADE on delete)
 Chapters ──M:N──> Materials (via chapter_materials junction)
 Courses ──1:N──> LearningOutcomes
 Courses ──1:N──> Quizzes
@@ -237,6 +259,9 @@ Quizzes ──1:N──> Questions
 Questions ──1:N──> Answers  (Answer is weak entity of Question)
 Students ──1:N──> Attempts
 Quizzes ──1:N──> Attempts
+Users ──1:N──> Notifications
+Users ──1:N──> ActivityLogs
+Users ──1:N──> ChatMessages (sender/recipient)
 ```
 
 ---
@@ -244,7 +269,7 @@ Quizzes ──1:N──> Attempts
 ## Coding Conventions
 
 ### Entity Annotations (Required on ALL entity-like classes)
-Every class acting as domain entity, request body, response body, or JDBC table must have:
+Every class acting as domain entity, request body, or response body must have:
 ```java
 @Getter
 @Setter
@@ -337,25 +362,35 @@ public class XxxExceptionHandler {
 @RequiredArgsConstructor
 class XxxPersistenceAdapter implements SaveXxxPort, LoadXxxPort, DeleteXxxPort {
     private final XxxRepository xxxRepository;
-    private final XxxJdbcMapper xxxJdbcMapper;
     
     @Override
     public Xxx save(Xxx domain) {
-        XxxJdbcTable entity = xxxJdbcMapper.toJdbc(domain);
-        XxxJdbcTable saved = xxxRepository.save(entity);
-        return xxxJdbcMapper.toDomain(saved);
+        return xxxRepository.save(domain);
     }
 }
 ```
 
 ### Repository Pattern
 ```java
-@Repository
-interface XxxRepository extends CrudRepository<XxxJdbcTable, UUID> {
-    // Custom queries for composite keys or complex operations
-    @Modifying
-    @Query("INSERT INTO xxx (...) VALUES (:param1, :param2)")
-    void insertXxx(@Param("param1") Type param1, @Param("param2") Type param2);
+@Mapper
+interface XxxRepository {
+    int insert(Xxx domain);
+    int update(Xxx domain);
+
+    default Xxx save(Xxx domain) {
+        if (domain.getId() == null) {
+            domain.setId(java.util.UUID.randomUUID());
+            insert(domain);
+        } else {
+            int updated = update(domain);
+            if (updated == 0) {
+                insert(domain);
+            }
+        }
+        return findById(domain.getId()).orElseThrow();
+    }
+
+    Optional<Xxx> findById(@Param("id") UUID id);
 }
 ```
 
@@ -400,8 +435,6 @@ Spring Modulith enforces that modules only access other modules through their pu
 | Output Port | `<Action><Entity>Port` | `SaveCoursePort`, `LoadCoursePort` |
 | Persistence Adapter | `<Entity>PersistenceAdapter` | `CoursePersistenceAdapter` |
 | Repository | `<Entity>Repository` | `CourseRepository` |
-| JDBC Table | `<Entity>JdbcTable` | `CourseJdbcTable` |
-| JDBC Mapper | `<Entity>JdbcMapper` | `CourseJdbcMapper` |
 | Exception | `<Entity><Reason>Exception` | `CourseNotFoundException` |
 | Exception Handler | `<Entity>ExceptionHandler` | `CourseExceptionHandler` |
 | Unit Test | `<ServiceName>UT` | `CreateCourseServiceUT` |
@@ -422,18 +455,14 @@ src/test/java/edu/ai/lms/
 ├── util/
 │   └── TestHelper.java              # REST Assured helper methods
 └── core/
+    ├── attempt/
     ├── auth/
-    │   ├── adapter/in/              # Integration tests (*IT.java)
-    │   └── app/service/             # Unit tests (*UT.java)
+    ├── chat/
     ├── course/
-    │   ├── adapter/in/
-    │   └── app/service/
+    ├── history/
     ├── material/
-    │   ├── adapter/in/
-    │   └── app/service/
+    ├── notification/
     └── quiz/
-        ├── adapter/in/http/
-        └── app/service/
 ```
 
 ### Unit Tests (`*UT.java`)
@@ -534,13 +563,11 @@ Provides convenience methods for integration tests:
 7. **Command mapper** → Create in `core/<module>/adapter/in/[http/]mapper/`
 8. **Controller endpoint** → Add to existing controller or create new one in `core/<module>/adapter/in/[http/]`
 9. **Persistence adapter** → Implement output ports in `core/<module>/adapter/out/persistence/`
-10. **JDBC mapper** → Add mapping in `core/<module>/adapter/out/persistence/mapper/`
-11. **Repository** → Create/update in `core/<module>/adapter/out/persistence/`
-12. **JDBC table entity** → Create/update in `database/` package if new table needed
-13. **Schema** → Update `schema.sql` if new tables needed
-14. **Exception** → Business exception in `app/exception/`, handler in `adapter/out/exception/`
-15. **Unit tests** → `*UT.java` in `test/.../app/service/`
-16. **Integration tests** → `*IT.java` in `test/.../adapter/in/`
+10. **Repository** → Create/update `@Mapper` in `core/<module>/adapter/out/persistence/` with SQL annotations
+11. **Schema** → Update `schema.sql` if new tables needed
+12. **Exception** → Business exception in `app/exception/`, handler in `adapter/out/exception/`
+13. **Unit tests** → `*UT.java` in `test/.../app/service/`
+14. **Integration tests** → `*IT.java` in `test/.../adapter/in/`
 
 ### When Creating a New Module
 
@@ -548,14 +575,14 @@ Provides convenience methods for integration tests:
 2. Add `package-info.java` with `@ApplicationModule`
 3. Follow the module internal structure (app/domain, app/port, app/service, adapter/in, adapter/out)
 4. If the module needs to access auth info, depend on `LoadAuthenticatedUserApi` from the auth module's internal package
-5. Add new JDBC table entities to the shared `database/` package
+5. Add MyBatis `@Mapper` repositories in `adapter/out/persistence/` for new tables
 6. Update `schema.sql` with new tables
 
 ### Context to Always Consider
-- This project uses **Spring Data JDBC**, NOT JPA/Hibernate. No `@Entity`, `@OneToMany`, etc. Use `@Table`, `@MappedCollection`, `@Id` from `org.springframework.data.relational`
+- This project uses **MyBatis**, NOT JPA/Hibernate. No `@Entity`, `@OneToMany`, etc.
 - Commands are **records** with `@Builder`
 - Services use **constructor injection** via `@RequiredArgsConstructor` (Lombok)
-- Repositories are **package-private** interfaces (no `public` modifier) to enforce encapsulation
+- Repositories are **package-private** `@Mapper` interfaces (no `public` modifier) to enforce encapsulation
 - Persistence adapters are **package-private** classes
 - All domain entities are **pure Java + Lombok** (no Spring/JDBC annotations)
 - **PasswordEncoder** is currently `NoOpPasswordEncoder` (will be replaced)
@@ -564,11 +591,10 @@ Provides convenience methods for integration tests:
 ### Common Pitfalls to Avoid
 - Do NOT use JPA annotations (`@Entity`, `@Column` from `javax.persistence`)
 - Do NOT create circular references between modules — use the internal API pattern
-- Do NOT put JDBC table entities inside module packages — they go in `database/`
 - Do NOT make repositories or persistence adapters `public` — keep them package-private
 - Do NOT add business logic to controllers — keep it in services
 - Do NOT use request/response DTOs directly in services — convert via commands
-- For composite keys, do NOT rely on default `save()` — write custom `@Query` methods
+- For composite keys, do NOT rely on default `save()` — write explicit repository methods
 - Do NOT reference the full related object in M-N relationships from the non-owning side — only reference IDs
 
 ### Relationship Modeling Rules

@@ -81,7 +81,6 @@ class DeleteQuestionServiceUT {
                 .id(questionId)
                 .content("What is Java?")
                 .type(Question.QuestionType.MULTIPLE_CHOICE)
-                .points(10.0)
                 .quizId(quizId)
                 .createdAt(LocalDateTime.now())
                 .build();

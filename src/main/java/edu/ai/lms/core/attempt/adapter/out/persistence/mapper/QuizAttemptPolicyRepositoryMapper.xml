@@ -17,7 +17,6 @@
   <resultMap id="QuestionAnswerKeyResultMap" type="edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey">
     <id property="questionId" column="question_id" />
     <result property="questionType" column="question_type" javaType="edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey$QuestionType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
-    <result property="points" column="points" />
     <result property="correctAnswerNumber" column="correct_answer_number" />
   </resultMap>
 
@@ -49,7 +48,6 @@
   <select id="getQuestionAnswerKeys" resultMap="QuestionAnswerKeyResultMap">
     SELECT q.id AS question_id,
            q.type AS question_type,
-           q.points AS points,
            a.answer_number AS correct_answer_number
     FROM questions q
     LEFT JOIN answers a ON a.question_id = q.id AND a.is_correct = true

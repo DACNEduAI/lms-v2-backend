@@ -102,19 +102,19 @@ VALUES
     ('95555555-5555-5555-5555-555555555555', 'Docker & CI/CD Practical', false, 90, 85.0, TO_TIMESTAMP('05-11-2025 14:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('05-11-2025 17:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'a3333333-3333-3333-3333-333333333333', 'c3333333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333', true);
 
 -- 12. Insert Questions (using valid hex 'd...')
-INSERT INTO questions (id, content, type, points, quiz_id)
+INSERT INTO questions (id, content, type, quiz_id)
 VALUES
-    ('d1111111-1111-1111-1111-111111111111', 'In Clean Architecture, entities can depend on Use Case orchestrators.', 'TRUE_FALSE', 5.0, '91111111-1111-1111-1111-111111111111'),
-    ('d2222222-2222-2222-2222-222222222222', 'Which DDD concept ensures transactional consistency?', 'MULTIPLE_CHOICE', 10.0, '91111111-1111-1111-1111-111111111111'),
-    ('d3333333-3333-3333-3333-333333333333', 'Explain how Ports and Adapters isolate the core domain from a PostgreSQL database.', 'ESSAY', 20.0, '91111111-1111-1111-1111-111111111111'),
-    ('d4444444-4444-4444-4444-444444444444', 'An Anti-Corruption Layer (ACL) is used to translate models between two bounded contexts.', 'TRUE_FALSE', 10.0, '92222222-2222-2222-2222-222222222222'),
-    ('d5555555-5555-5555-5555-555555555555', 'A single-layer perceptron can perfectly classify XOR data.', 'TRUE_FALSE', 5.0, '93333333-3333-3333-3333-333333333333'),
-    ('d6666666-6666-6666-6666-666666666666', 'What technique does an SVM use to handle non-linearly separable data?', 'MULTIPLE_CHOICE', 10.0, '93333333-3333-3333-3333-333333333333'),
-    ('d7777777-7777-7777-7777-777777777777', 'Which LangChain component is responsible for dynamically deciding the next action step?', 'MULTIPLE_CHOICE', 10.0, '94444444-4444-4444-4444-444444444444'),
-    ('d8888888-8888-8888-8888-888888888888', 'In a RAG pipeline, semantic search is performed over the raw text strings rather than vector embeddings.', 'TRUE_FALSE', 5.0, '94444444-4444-4444-4444-444444444444'),
-    ('d9999999-9999-9999-9999-999999999999', 'What instruction in a Dockerfile defines the base image?', 'MULTIPLE_CHOICE', 5.0, '95555555-5555-5555-5555-555555555555'),
-    ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A GitHub Action Workflow must be placed in the `.github/workflows` directory.', 'TRUE_FALSE', 5.0, '95555555-5555-5555-5555-555555555555'),
-    ('dbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Describe the steps to configure a multi-stage Docker build to optimize the final image size of a Spring Boot application.', 'ESSAY', 25.0, '95555555-5555-5555-5555-555555555555');
+    ('d1111111-1111-1111-1111-111111111111', 'In Clean Architecture, entities can depend on Use Case orchestrators.', 'TRUE_FALSE', '91111111-1111-1111-1111-111111111111'),
+    ('d2222222-2222-2222-2222-222222222222', 'Which DDD concept ensures transactional consistency?', 'MULTIPLE_CHOICE', '91111111-1111-1111-1111-111111111111'),
+    ('d3333333-3333-3333-3333-333333333333', 'Explain how Ports and Adapters isolate the core domain from a PostgreSQL database.', 'ESSAY', '91111111-1111-1111-1111-111111111111'),
+    ('d4444444-4444-4444-4444-444444444444', 'An Anti-Corruption Layer (ACL) is used to translate models between two bounded contexts.', 'TRUE_FALSE', '92222222-2222-2222-2222-222222222222'),
+    ('d5555555-5555-5555-5555-555555555555', 'A single-layer perceptron can perfectly classify XOR data.', 'TRUE_FALSE', '93333333-3333-3333-3333-333333333333'),
+    ('d6666666-6666-6666-6666-666666666666', 'What technique does an SVM use to handle non-linearly separable data?', 'MULTIPLE_CHOICE', '93333333-3333-3333-3333-333333333333'),
+    ('d7777777-7777-7777-7777-777777777777', 'Which LangChain component is responsible for dynamically deciding the next action step?', 'MULTIPLE_CHOICE', '94444444-4444-4444-4444-444444444444'),
+    ('d8888888-8888-8888-8888-888888888888', 'In a RAG pipeline, semantic search is performed over the raw text strings rather than vector embeddings.', 'TRUE_FALSE', '94444444-4444-4444-4444-444444444444'),
+    ('d9999999-9999-9999-9999-999999999999', 'What instruction in a Dockerfile defines the base image?', 'MULTIPLE_CHOICE', '95555555-5555-5555-5555-555555555555'),
+    ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A GitHub Action Workflow must be placed in the `.github/workflows` directory.', 'TRUE_FALSE', '95555555-5555-5555-5555-555555555555'),
+    ('dbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Describe the steps to configure a multi-stage Docker build to optimize the final image size of a Spring Boot application.', 'ESSAY', '95555555-5555-5555-5555-555555555555');
 
 -- 13. Insert Answers
 INSERT INTO answers (content, is_correct, explanation, question_id)

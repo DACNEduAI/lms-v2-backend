@@ -97,7 +97,6 @@ public class ModifyQuestionService implements ModifyQuestionUseCase {
                 .questionId(savedQuestion.getId())
                 .content(savedQuestion.getContent())
                 .type(savedQuestion.getType() != null ? savedQuestion.getType().name() : null)
-                .points(savedQuestion.getPoints())
                 .quizId(savedQuestion.getQuizId())
                 .answers(answerSummaries)
                 .updatedAt(savedQuestion.getUpdatedAt())

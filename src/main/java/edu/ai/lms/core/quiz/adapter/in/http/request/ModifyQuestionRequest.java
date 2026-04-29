@@ -37,8 +37,6 @@ public class ModifyQuestionRequest {
 
         private String type;
 
-        private Double points;
-
         @Valid
         @Builder.Default
         private List<CreateAnswerRequest> answers = new ArrayList<>();
