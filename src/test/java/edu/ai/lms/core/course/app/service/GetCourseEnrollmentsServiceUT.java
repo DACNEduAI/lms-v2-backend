@@ -28,6 +28,8 @@ import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.course.app.port.out.LoadUsersPort;
+import edu.ai.lms.core.course.adapter.in.response.ParticipantDto;
 
 @ExtendWith(MockitoExtension.class)
 class GetCourseEnrollmentsServiceUT {
@@ -37,6 +39,9 @@ class GetCourseEnrollmentsServiceUT {
 
     @Mock
     private LoadSignedInUserPort loadSignedInUserPort;
+
+    @Mock
+    private LoadUsersPort loadUsersPort;
 
     @InjectMocks
     private GetCourseEnrollmentsService getCourseEnrollmentsService;
@@ -54,6 +59,8 @@ class GetCourseEnrollmentsServiceUT {
         mockTeacher = UserAuth.builder()
                 .id(teacherId)
                 .email("teacher@example.com")
+                .firstName("Martin")
+                .lastName("Fowler")
                 .role(Roles.TEACHER)
                 .build();
 
@@ -72,8 +79,17 @@ class GetCourseEnrollmentsServiceUT {
         UUID studentId = UUID.randomUUID();
         mockCourse.setStudentIds(List.of(studentId));
 
+        UserAuth studentAuth = UserAuth.builder()
+                .id(studentId)
+                .firstName("Alice")
+                .lastName("Chen")
+                .role(Roles.STUDENT)
+                .build();
+
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
+        when(loadUsersPort.findAllByIds(List.of(teacherId))).thenReturn(List.of(mockTeacher));
+        when(loadUsersPort.findAllByIds(List.of(studentId))).thenReturn(List.of(studentAuth));
 
         GetCourseEnrollmentsResponse response = getCourseEnrollmentsService.getCourseEnrollments(courseId);
 
@@ -81,8 +97,10 @@ class GetCourseEnrollmentsServiceUT {
         assertEquals(courseId, response.getCourseId());
         assertEquals(1, response.getTeachers().size());
         assertEquals(1, response.getStudents().size());
-        assertEquals(teacherId, response.getTeachers().get(0));
-        assertEquals(studentId, response.getStudents().get(0));
+        assertEquals(teacherId, response.getTeachers().get(0).getId());
+        assertEquals(studentId, response.getStudents().get(0).getId());
+        assertEquals(mockTeacher.getFirstName(), response.getTeachers().get(0).getFirstName());
+        assertEquals("Alice", response.getStudents().get(0).getFirstName());
     }
 
     @Test

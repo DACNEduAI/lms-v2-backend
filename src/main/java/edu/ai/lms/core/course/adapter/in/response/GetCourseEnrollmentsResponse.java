@@ -17,6 +17,6 @@ import lombok.Setter;
 public class GetCourseEnrollmentsResponse {
 
     private UUID courseId;
-    private List<UUID> teachers;
-    private List<UUID> students;
+    private java.util.List<ParticipantDto> teachers;
+    private java.util.List<ParticipantDto> students;
 }

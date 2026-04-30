@@ -9,6 +9,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/notifications")
 @Tag(name = "Notification", description = "APIs for user notifications")
@@ -30,8 +32,14 @@ public class NotificationController {
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Subscribe to real-time notifications via SSE")
     public SseEmitter stream() {
-        UUID userId = loadAuthenticatedUserApi.getCurrentUserId();
-        return sseNotificationService.subscribe(userId);
+        try {
+            UUID userId = loadAuthenticatedUserApi.getCurrentUserId();
+            log.info("User {} subscribing to notification stream", userId);
+            return sseNotificationService.subscribe(userId);
+        } catch (Exception e) {
+            log.error("Failed to subscribe to notification stream", e);
+            throw e;
+        }
     }
 
     @GetMapping("/me")
@@ -48,9 +56,15 @@ public class NotificationController {
     @GetMapping("/me/unread-count")
     @Operation(summary = "Get unread notification count")
     public ResponseEntity<Map<String, Long>> getUnreadCount() {
-        UUID userId = loadAuthenticatedUserApi.getCurrentUserId();
-        long count = notificationUseCase.getUnreadCount(userId);
-        return ResponseEntity.ok(Map.of("unreadCount", count));
+        try {
+            UUID userId = loadAuthenticatedUserApi.getCurrentUserId();
+            log.info("Fetching unread count for user {}", userId);
+            long count = notificationUseCase.getUnreadCount(userId);
+            return ResponseEntity.ok(Map.of("unreadCount", count));
+        } catch (Exception e) {
+            log.error("Failed to fetch unread count", e);
+            throw e;
+        }
     }
 
     @PutMapping("/{id}/read")
