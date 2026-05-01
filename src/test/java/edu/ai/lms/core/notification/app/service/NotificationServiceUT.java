@@ -67,4 +67,30 @@ class NotificationServiceUT {
         assertEquals("Unauthorized to read this notification", exception.getMessage());
         verify(notificationPort, never()).save(any()); // Đảm bảo KHÔNG CÓ lệnh save nào xuống DB
     }
+
+    @Test
+    void shouldCreateNotificationSuccessfully() {
+        // 1. Arrange
+        UUID userId = UUID.randomUUID();
+        String title = "Test Title";
+        String message = "Test Message";
+        String type = "URGENT";
+        String linkUrl = "/test/url";
+
+        when(notificationPort.save(any(Notification.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // 2. Act
+        Notification result = notificationService.createNotification(userId, title, message, type, linkUrl);
+
+        // 3. Assert
+        assertNotNull(result);
+        assertEquals(userId, result.getUserId());
+        assertEquals(title, result.getTitle());
+        assertEquals(message, result.getMessage());
+        assertEquals(type, result.getType());
+        assertEquals(linkUrl, result.getLinkUrl());
+        assertFalse(result.isRead());
+        assertNotNull(result.getCreatedAt());
+        verify(notificationPort, times(1)).save(any(Notification.class));
+    }
 }

@@ -11,7 +11,7 @@ public class ModifyAnswerRequest {
 
     private String content;
 
-    private Boolean isCorrect;
+    private boolean correct;
 
     private String explanation;
 }

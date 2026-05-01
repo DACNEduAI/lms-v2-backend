@@ -15,6 +15,8 @@ import java.util.UUID;
 @Builder
 public class QuestionLearningOutcomeView {
 
+    private UUID questionId;
+
     private UUID learningOutcomeId;
 
     private String learningOutcomeCode;

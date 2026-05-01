@@ -1,8 +1,5 @@
 package edu.ai.lms.core.quiz.app.service;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.ModifyQuizResponse;
@@ -11,12 +8,21 @@ import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.port.in.command.ModifyQuizCommand;
 import edu.ai.lms.core.quiz.app.port.in.usecase.ModifyQuizUseCase;
+import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
+import edu.ai.lms.common.event.SystemNotificationEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +31,8 @@ public class ModifyQuizService implements ModifyQuizUseCase {
     private final SaveQuizPort saveQuizPort;
     private final LoadQuizPort loadQuizPort;
     private final LoadSignedInUserPort loadSignedInUserPort;
+    private final LoadCourseMembershipPort loadCourseMembershipPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -48,6 +56,25 @@ public class ModifyQuizService implements ModifyQuizUseCase {
         validateQuizTimeConfiguration(updatedQuiz);
 
         Quiz savedQuiz = saveQuizPort.save(updatedQuiz);
+
+        // Notify students if quiz is set to display
+        if (user.getRole() == Roles.TEACHER && Boolean.TRUE.equals(savedQuiz.getDisplay())) {
+            try {
+                List<UUID> studentIdList = loadCourseMembershipPort.getStudentIdsByCourseId(command.courseId());
+                if (!studentIdList.isEmpty()) {
+                    Set<UUID> studentIds = new HashSet<>(studentIdList);
+                    eventPublisher.publishEvent(new SystemNotificationEvent(
+                            studentIds,
+                            "Cập nhật bài kiểm tra!",
+                            "Giảng viên vừa cập nhật bài kiểm tra: " + savedQuiz.getQuizTitle(),
+                            "COURSE_UPDATE",
+                            "/student/quizzes"));
+                }
+            } catch (Exception e) {
+                // Log error but don't fail the whole operation
+                e.printStackTrace();
+            }
+        }
 
         return ModifyQuizResponse.builder()
                 .quizId(savedQuiz.getId())

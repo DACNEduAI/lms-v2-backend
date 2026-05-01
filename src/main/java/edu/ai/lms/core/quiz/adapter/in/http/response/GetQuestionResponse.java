@@ -35,7 +35,7 @@ public class GetQuestionResponse {
     public static class AnswerDto {
         private Long answerNumber;
         private String content;
-        private boolean isCorrect;
+        private boolean correct;
         private String explanation;
     }
 }

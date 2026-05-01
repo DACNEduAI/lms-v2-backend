@@ -1,5 +1,10 @@
 package edu.ai.lms.core.notification.adapter.in.http;
 
+import edu.ai.lms.core.notification.adapter.in.http.request.CourseAnnouncementRequest;
+import edu.ai.lms.core.notification.adapter.in.http.response.CourseAnnouncementResponse;
+import edu.ai.lms.core.notification.app.domain.CourseAnnouncement;
+import edu.ai.lms.core.notification.app.port.in.usecase.GetCourseAnnouncementsUseCase;
+import edu.ai.lms.core.notification.app.port.in.usecase.SendCourseAnnouncementUseCase;
 import edu.ai.lms.core.auth.adapter.in.internal.LoadAuthenticatedUserApi;
 import edu.ai.lms.core.notification.app.domain.Notification;
 import edu.ai.lms.core.notification.app.port.in.usecase.NotificationUseCase;
@@ -12,9 +17,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,7 +33,9 @@ import java.util.UUID;
 public class NotificationController {
 
     private final NotificationUseCase notificationUseCase;
-    private final LoadAuthenticatedUserApi loadAuthenticatedUserApi; // Lấy user đang đăng nhập từ auth module
+    private final SendCourseAnnouncementUseCase sendCourseAnnouncementUseCase;
+    private final GetCourseAnnouncementsUseCase getCourseAnnouncementsUseCase;
+    private final LoadAuthenticatedUserApi loadAuthenticatedUserApi;
     private final SseNotificationService sseNotificationService;
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -73,5 +82,45 @@ public class NotificationController {
         UUID userId = loadAuthenticatedUserApi.getCurrentUserId();
         notificationUseCase.markAsRead(id, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/read-all")
+    @Operation(summary = "Mark all my notifications as read")
+    public ResponseEntity<Void> markAllAsRead() {
+        UUID userId = loadAuthenticatedUserApi.getCurrentUserId();
+        notificationUseCase.markAllAsRead(userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/courses/{courseId}/announce")
+    @PreAuthorize("hasRole('TEACHER')")
+    @Operation(summary = "Send announcement to all students in a course")
+    public ResponseEntity<Void> announceToCourse(
+            @PathVariable UUID courseId,
+            @RequestBody CourseAnnouncementRequest request) {
+        
+        sendCourseAnnouncementUseCase.sendAnnouncement(courseId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/courses/{courseId}/announcements")
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @Operation(summary = "Get announcement history for a course with pagination")
+    public ResponseEntity<Page<CourseAnnouncementResponse>> getAnnouncements(
+            @PathVariable UUID courseId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        
+        Page<CourseAnnouncementResponse> responses = getCourseAnnouncementsUseCase
+                .getAnnouncements(courseId, PageRequest.of(page, size))
+                .map(announcement -> CourseAnnouncementResponse.builder()
+                        .id(announcement.getId())
+                        .title(announcement.getTitle())
+                        .content(announcement.getContent())
+                        .type(announcement.getType())
+                        .createdAt(announcement.getCreatedAt())
+                        .build());
+        
+        return ResponseEntity.ok(responses);
     }
 }

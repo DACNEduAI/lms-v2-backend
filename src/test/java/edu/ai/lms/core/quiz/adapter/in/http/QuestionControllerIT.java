@@ -400,9 +400,9 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 """.formatted(createdQuestionId);
 
         given()
-                .contentType(ContentType.JSON)
+                .contentType(ContentType.MULTIPART)
+                .multiPart("question", "question.json", requestBody, "application/json")
                 .header("Authorization", "Bearer " + teacherToken)
-                .body(requestBody)
                 .when()
                 .put("/api/quiz/" + createdQuizId + "/question")
                 .then()
@@ -435,8 +435,8 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 """.formatted(createdQuestionId);
 
         given()
-                .contentType(ContentType.JSON)
-                .body(requestBody)
+                .contentType(ContentType.MULTIPART)
+                .multiPart("question", "question.json", requestBody, "application/json")
                 .when()
                 .put("/api/quiz/" + createdQuizId + "/question")
                 .then()
@@ -464,9 +464,9 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 """.formatted(nonExistentId);
 
         given()
-                .contentType(ContentType.JSON)
+                .contentType(ContentType.MULTIPART)
+                .multiPart("question", "question.json", requestBody, "application/json")
                 .header("Authorization", "Bearer " + teacherToken)
-                .body(requestBody)
                 .when()
                 .put("/api/quiz/" + createdQuizId + "/question")
                 .then()

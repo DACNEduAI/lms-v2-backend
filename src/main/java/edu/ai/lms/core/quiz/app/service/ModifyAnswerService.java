@@ -58,7 +58,7 @@ public class ModifyAnswerService implements ModifyAnswerUseCase {
         return ModifyAnswerResponse.builder()
                 .answerNumber(savedAnswer.getAnswerNumber())
                 .content(savedAnswer.getContent())
-                .isCorrect(savedAnswer.isCorrect())
+                .correct(savedAnswer.isCorrect())
                 .explanation(savedAnswer.getExplanation())
                 .questionId(savedAnswer.getQuestionId())
                 .updatedAt(savedAnswer.getUpdatedAt())

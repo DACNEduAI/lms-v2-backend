@@ -13,7 +13,7 @@ public class CreateAnswerRequest {
     @NotBlank(message = "Answer content cannot be blank")
     private String content;
 
-    private boolean isCorrect;
+    private boolean correct;
 
     private String explanation;
 }

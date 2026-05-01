@@ -44,6 +44,12 @@ public class NotificationService implements NotificationUseCase {
 
     @Override
     @Transactional
+    public void markAllAsRead(UUID userId) {
+        notificationPort.markAllAsReadByUserId(userId);
+    }
+
+    @Override
+    @Transactional
     public Notification createNotification(UUID userId, String title, String message, String type, String linkUrl) {
         Notification notification = Notification.builder()
                 .userId(userId)

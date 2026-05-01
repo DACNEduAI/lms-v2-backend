@@ -22,6 +22,8 @@ interface NotificationRepository {
     void insert(Notification notification);
     
     void update(Notification notification);
+    
+    void markAllAsReadByUserId(@Param("userId") UUID userId);
 
     default Notification save(Notification notification) {
         if (notification.getId() == null) {

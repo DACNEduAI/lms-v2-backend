@@ -12,4 +12,5 @@ public interface NotificationPort {
     long countUnreadByUserId(UUID userId);
     Optional<Notification> findById(UUID id);
     Notification save(Notification notification);
+    void markAllAsReadByUserId(UUID userId);
 }

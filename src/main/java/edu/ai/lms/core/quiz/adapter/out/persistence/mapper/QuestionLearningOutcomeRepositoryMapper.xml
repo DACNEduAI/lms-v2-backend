@@ -30,6 +30,7 @@
   </select>
 
   <resultMap id="QuestionLearningOutcomeViewMap" type="edu.ai.lms.core.quiz.app.domain.QuestionLearningOutcomeView">
+    <result property="questionId" column="question_id" />
     <result property="learningOutcomeId" column="learning_outcome_id" />
     <result property="learningOutcomeCode" column="learning_outcome_code" />
     <result property="learningOutcomeDescription" column="learning_outcome_description" />
@@ -42,6 +43,18 @@
     FROM question_learning_outcomes qlo
     JOIN learning_outcomes lo ON lo.id = qlo.learning_outcome_id
     WHERE qlo.question_id = #{questionId}
+    ORDER BY lo.code
+  </select>
+
+  <select id="findLearningOutcomesByQuizId" resultMap="QuestionLearningOutcomeViewMap">
+    SELECT qlo.question_id,
+           lo.id AS learning_outcome_id,
+           lo.code AS learning_outcome_code,
+           lo.description AS learning_outcome_description
+    FROM question_learning_outcomes qlo
+    JOIN learning_outcomes lo ON lo.id = qlo.learning_outcome_id
+    JOIN questions q ON q.id = qlo.question_id
+    WHERE q.quiz_id = #{quizId}
     ORDER BY lo.code
   </select>
 

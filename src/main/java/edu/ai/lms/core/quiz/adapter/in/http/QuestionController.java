@@ -169,13 +169,14 @@ public class QuestionController {
             @ApiResponse(responseCode = "404", description = "Question not found")
     })
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    @PutMapping()
+    @PutMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<List<ModifyQuestionResponse>> modifyQuestion(
             @PathVariable UUID quizId,
-            @Valid @RequestBody ModifyQuestionRequest request) {
+            @Valid @RequestPart("question") ModifyQuestionRequest request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images) {
         List<ModifyQuestionResponse> responses = request.getQuestions().stream()
                 .map(questionRequest -> {
-                    ModifyQuestionCommand command = modifyQuestionCommandMapper.toCommand(quizId, questionRequest);
+                    ModifyQuestionCommand command = modifyQuestionCommandMapper.toCommand(quizId, questionRequest, images);
                     return modifyQuestionUseCase.modifyQuestion(command);
                 })
                 .collect(Collectors.toList());

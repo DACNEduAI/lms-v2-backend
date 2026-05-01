@@ -49,4 +49,10 @@
         WHERE id = #{id}
     </update>
 
+    <update id="markAllAsReadByUserId">
+        UPDATE notifications 
+        SET is_read = true 
+        WHERE user_id = #{userId} AND is_read = false
+    </update>
+
 </mapper>

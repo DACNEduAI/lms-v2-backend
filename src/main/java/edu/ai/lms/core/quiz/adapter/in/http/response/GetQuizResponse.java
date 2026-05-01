@@ -51,6 +51,7 @@ public class GetQuizResponse {
         private UUID questionId;
         private String content;
         private String type;
+        private List<LearningOutcomeSummary> learningOutcomes;
         private List<AnswerSummary> answers;
     }
 
@@ -62,7 +63,7 @@ public class GetQuizResponse {
     public static class AnswerSummary {
         private Long answerNumber;
         private String content;
-        private boolean isCorrect;
+        private boolean correct;
         private String explanation;
     }
 
