@@ -17,4 +17,6 @@ interface QuestionLearningOutcomeRepository {
     List<UUID> findLearningOutcomeIdsByQuestionId(@Param("questionId") UUID questionId);
 
     List<QuestionLearningOutcomeView> findLearningOutcomesByQuestionId(@Param("questionId") UUID questionId);
+
+    List<QuestionLearningOutcomeView> findLearningOutcomesByQuizId(@Param("quizId") UUID quizId);
 }

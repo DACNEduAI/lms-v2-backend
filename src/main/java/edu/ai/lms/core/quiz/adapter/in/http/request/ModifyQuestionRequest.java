@@ -36,6 +36,8 @@ public class ModifyQuestionRequest {
         private String content;
 
         private String type;
+        
+        private UUID learningOutcomeId;
 
         @Valid
         @Builder.Default

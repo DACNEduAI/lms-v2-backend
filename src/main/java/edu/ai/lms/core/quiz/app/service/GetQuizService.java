@@ -12,6 +12,7 @@ import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.domain.QuestionLearningOutcomeView;
 import edu.ai.lms.core.quiz.app.domain.QuizLearningOutcomeView;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotVisible;
@@ -19,6 +20,7 @@ import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.port.in.usecase.GetQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
+import edu.ai.lms.core.quiz.app.port.out.LoadQuestionLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ public class GetQuizService implements GetQuizUseCase {
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadCourseMembershipPort loadCourseMembershipPort;
     private final LoadCourseLearningOutcomePort loadCourseLearningOutcomePort;
+    private final LoadQuestionLearningOutcomePort loadQuestionLearningOutcomePort;
 
     @Override
     @Transactional(readOnly = true)
@@ -53,20 +56,37 @@ public class GetQuizService implements GetQuizUseCase {
             throw new QuizNotVisible("Quiz is not visible for student to view: " + quiz.getId());
         }
 
+        List<QuestionLearningOutcomeView> allQuestionOutcomes = loadQuestionLearningOutcomePort
+                .findLearningOutcomesByQuizId(quizId);
+        Map<UUID, List<QuestionLearningOutcomeView>> outcomesByQuestion = allQuestionOutcomes.stream()
+                .collect(Collectors.groupingBy(QuestionLearningOutcomeView::getQuestionId));
+
         List<GetQuizResponse.QuestionSummary> questionSummaries = quiz.getQuestions().stream()
-                .map(q -> GetQuizResponse.QuestionSummary.builder()
-                        .questionId(q.getId())
-                        .content(q.getContent())
-                        .type(q.getType() != null ? q.getType().name() : null)
-                        .answers(q.getAnswers().stream()
-                                .map(a -> GetQuizResponse.AnswerSummary.builder()
-                                        .answerNumber(a.getAnswerNumber())
-                                        .content(a.getContent())
-                                        .isCorrect(a.isCorrect())
-                                        .explanation(a.getExplanation())
-                                        .build())
-                                .collect(Collectors.toList()))
-                        .build())
+                .map(q -> {
+                    List<GetQuizResponse.LearningOutcomeSummary> loSummaries = outcomesByQuestion.getOrDefault(q.getId(), List.of())
+                            .stream()
+                            .map(lo -> GetQuizResponse.LearningOutcomeSummary.builder()
+                                    .id(lo.getLearningOutcomeId())
+                                    .code(lo.getLearningOutcomeCode())
+                                    .description(lo.getLearningOutcomeDescription())
+                                    .build())
+                            .toList();
+
+                    return GetQuizResponse.QuestionSummary.builder()
+                            .questionId(q.getId())
+                            .content(q.getContent())
+                            .type(q.getType() != null ? q.getType().name() : null)
+                            .learningOutcomes(loSummaries)
+                            .answers(q.getAnswers().stream()
+                                    .map(a -> GetQuizResponse.AnswerSummary.builder()
+                                            .answerNumber(a.getAnswerNumber())
+                                            .content(a.getContent())
+                                            .correct(a.isCorrect())
+                                            .explanation(a.getExplanation())
+                                            .build())
+                                    .collect(Collectors.toList()))
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         List<QuizLearningOutcomeView> quizLearningOutcomes = loadCourseLearningOutcomePort

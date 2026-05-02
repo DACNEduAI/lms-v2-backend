@@ -23,7 +23,7 @@ public class NotificationEventListener {
     @Async
     @EventListener
     public void handleSystemNotification(SystemNotificationEvent event) {
-        log.info("Received system notification event: {}", event.title());
+        log.info("Received system notification event: {} for {} users", event.title(), event.userIds().size());
 
         // Lặp qua danh sách user cần thông báo (ví dụ: cả lớp học)
         for (UUID userId : event.userIds()) {

@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 
 import edu.ai.lms.core.quiz.adapter.in.http.request.CreateAnswerRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.request.ModifyQuestionRequest;
@@ -16,7 +17,7 @@ import edu.ai.lms.core.quiz.app.port.in.command.ModifyQuestionCommand;
 @Component
 public class ModifyQuestionCommandMapper {
 
-    public ModifyQuestionCommand toCommand(UUID quizId, ModifyQuestionRequest.ModifyQuestionItem request) {
+    public ModifyQuestionCommand toCommand(UUID quizId, ModifyQuestionRequest.ModifyQuestionItem request, List<MultipartFile> images) {
         List<Answer> answers = new ArrayList<>();
         if (request.getAnswers() != null) {
             answers = request.getAnswers().stream()
@@ -34,6 +35,8 @@ public class ModifyQuestionCommandMapper {
                 .quizId(quizId)
                 .questionId(request.getQuestionId())
                 .question(question)
+                .learningOutcomeId(request.getLearningOutcomeId())
+                .images(images)
                 .build();
     }
 

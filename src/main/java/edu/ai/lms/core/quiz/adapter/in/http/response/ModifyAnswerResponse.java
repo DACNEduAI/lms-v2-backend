@@ -16,7 +16,7 @@ import java.util.UUID;
 public class ModifyAnswerResponse {
     private Long answerNumber;
     private String content;
-    private boolean isCorrect;
+    private boolean correct;
     private String explanation;
     private UUID questionId;
     @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)

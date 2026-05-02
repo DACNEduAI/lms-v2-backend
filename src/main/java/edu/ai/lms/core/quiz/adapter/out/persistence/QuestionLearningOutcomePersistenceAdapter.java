@@ -40,4 +40,9 @@ class QuestionLearningOutcomePersistenceAdapter implements SaveQuestionLearningO
     public List<UUID> findLearningOutcomeIdsByQuestionId(UUID questionId) {
         return questionLearningOutcomeRepository.findLearningOutcomeIdsByQuestionId(questionId);
     }
+
+    @Override
+    public List<QuestionLearningOutcomeView> findLearningOutcomesByQuizId(UUID quizId) {
+        return questionLearningOutcomeRepository.findLearningOutcomesByQuizId(quizId);
+    }
 }

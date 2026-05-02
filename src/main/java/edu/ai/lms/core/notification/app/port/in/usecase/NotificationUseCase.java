@@ -10,5 +10,6 @@ public interface NotificationUseCase {
     Page<Notification> getMyNotifications(UUID userId, Pageable pageable);
     long getUnreadCount(UUID userId);
     void markAsRead(UUID notificationId, UUID userId);
+    void markAllAsRead(UUID userId);
     Notification createNotification(UUID userId, String title, String message, String type, String linkUrl);
 }

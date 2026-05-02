@@ -43,4 +43,9 @@ class NotificationPersistenceAdapter implements NotificationPort {
     public Notification save(Notification notification) {
         return repository.save(notification);
     }
+
+    @Override
+    public void markAllAsReadByUserId(UUID userId) {
+        repository.markAllAsReadByUserId(userId);
+    }
 }

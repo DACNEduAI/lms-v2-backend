@@ -51,7 +51,7 @@ public class CreateAnswerService implements CreateAnswerUseCase {
         return CreateAnswerResponse.builder()
                 .answerNumber(savedAnswer.getAnswerNumber())
                 .content(savedAnswer.getContent())
-                .isCorrect(savedAnswer.isCorrect())
+                .correct(savedAnswer.isCorrect())
                 .explanation(savedAnswer.getExplanation())
                 .questionId(savedAnswer.getQuestionId())
                 .createdAt(savedAnswer.getCreatedAt())

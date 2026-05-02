@@ -42,7 +42,7 @@ public class GetQuestionService implements GetQuestionUseCase {
                 .map(a -> GetQuestionResponse.AnswerDto.builder()
                         .answerNumber(a.getAnswerNumber())
                         .content(a.getContent())
-                        .isCorrect(a.isCorrect())
+                        .correct(a.isCorrect())
                         .explanation(a.getExplanation())
                         .build())
                 .collect(Collectors.toList());

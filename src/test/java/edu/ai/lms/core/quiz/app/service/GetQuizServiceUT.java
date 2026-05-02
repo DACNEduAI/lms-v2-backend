@@ -37,6 +37,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadCourseLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.quiz.app.port.out.LoadQuestionLearningOutcomePort;
 
 @ExtendWith(MockitoExtension.class)
 class GetQuizServiceUT {
@@ -52,6 +53,9 @@ class GetQuizServiceUT {
 
         @Mock
         private LoadCourseLearningOutcomePort loadCourseLearningOutcomePort;
+
+        @Mock
+        private LoadQuestionLearningOutcomePort loadQuestionLearningOutcomePort;
 
     @InjectMocks
     private GetQuizService getQuizService;
@@ -132,6 +136,7 @@ class GetQuizServiceUT {
                         .learningOutcomeCode("CLO-2")
                         .learningOutcomeDescription("Ungrouped child")
                         .build()));
+        when(loadQuestionLearningOutcomePort.findLearningOutcomesByQuizId(quizId)).thenReturn(List.of());
 
         // Act
         GetQuizResponse response = getQuizService.getQuiz(courseId, quizId);
@@ -163,6 +168,7 @@ class GetQuizServiceUT {
                 when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
                 when(loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)).thenReturn(Optional.of(existingQuiz));
                 when(loadCourseLearningOutcomePort.findQuizLearningOutcomes(courseId, quizId)).thenReturn(List.of());
+                when(loadQuestionLearningOutcomePort.findLearningOutcomesByQuizId(quizId)).thenReturn(List.of());
 
                 GetQuizResponse response = getQuizService.getQuiz(courseId, quizId);
 
@@ -265,6 +271,7 @@ class GetQuizServiceUT {
         when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
         when(loadQuizPort.getByIdWithQuestionsAndAnswers(courseId, quizId)).thenReturn(Optional.of(unlimitedQuiz));
         when(loadCourseLearningOutcomePort.findQuizLearningOutcomes(courseId, quizId)).thenReturn(List.of());
+        when(loadQuestionLearningOutcomePort.findLearningOutcomesByQuizId(quizId)).thenReturn(List.of());
 
         GetQuizResponse response = getQuizService.getQuiz(courseId, quizId);
 

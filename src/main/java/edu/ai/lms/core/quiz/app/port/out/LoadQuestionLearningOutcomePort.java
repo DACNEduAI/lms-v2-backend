@@ -10,4 +10,6 @@ public interface LoadQuestionLearningOutcomePort {
     List<QuestionLearningOutcomeView> findLearningOutcomesByQuestionId(UUID questionId);
 
     List<UUID> findLearningOutcomeIdsByQuestionId(UUID questionId);
+
+    List<QuestionLearningOutcomeView> findLearningOutcomesByQuizId(UUID quizId);
 }

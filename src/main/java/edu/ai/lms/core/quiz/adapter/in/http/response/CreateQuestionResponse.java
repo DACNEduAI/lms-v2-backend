@@ -32,7 +32,7 @@ public class CreateQuestionResponse {
     public static class AnswerSummary {
         private Long answerNumber;
         private String content;
-        private boolean isCorrect;
+        private boolean correct;
         private String explanation;
     }
 }

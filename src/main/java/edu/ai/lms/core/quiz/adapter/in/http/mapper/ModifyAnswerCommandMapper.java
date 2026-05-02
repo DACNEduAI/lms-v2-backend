@@ -14,7 +14,7 @@ public class ModifyAnswerCommandMapper {
     public ModifyAnswerCommand toCommand(UUID questionId, Long answerNumber, ModifyAnswerRequest request) {
         Answer answer = Answer.builder()
                 .content(request.getContent())
-                .isCorrect(request.getIsCorrect() != null ? request.getIsCorrect() : false)
+                .isCorrect(request.isCorrect())
                 .explanation(request.getExplanation())
                 .build();
 

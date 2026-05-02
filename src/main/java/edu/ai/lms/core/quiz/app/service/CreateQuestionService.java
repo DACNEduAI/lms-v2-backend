@@ -101,7 +101,7 @@ public class CreateQuestionService implements CreateQuestionUseCase {
                         return CreateQuestionResponse.AnswerSummary.builder()
                                 .answerNumber(savedAnswer.getAnswerNumber())
                                 .content(savedAnswer.getContent())
-                                .isCorrect(savedAnswer.isCorrect())
+                                .correct(savedAnswer.isCorrect())
                                 .explanation(savedAnswer.getExplanation())
                                 .build();
                     })

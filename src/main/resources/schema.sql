@@ -21,7 +21,8 @@ DROP TABLE IF EXISTS
     quiz_learning_outcomes,
     question_learning_outcomes,
     student_learning_outcomes,
-    activity_logs
+    activity_logs,
+    course_announcements
     CASCADE;
 
 -- Below is the actual schema of the code
@@ -301,3 +302,18 @@ CREATE TABLE IF NOT EXISTS user_chat_messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_chat_messages_participants ON user_chat_messages(sender_id, recipient_id, created_at DESC);
+
+-- ==========================================
+-- COURSE ANNOUNCEMENT MODULE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS course_announcements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    teacher_id UUID NOT NULL REFERENCES users(id),
+    type VARCHAR(50) DEFAULT 'INFO',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_course_announcements_course_id ON course_announcements(course_id);
