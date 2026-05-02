@@ -24,7 +24,9 @@ DROP TABLE IF EXISTS
     question_learning_outcomes,
     student_learning_outcomes,
     activity_logs,
-    course_announcements
+    course_announcements,
+    notifications,
+    user_chat_messages,
     CASCADE;
 
 -- Below is the actual schema of the code
