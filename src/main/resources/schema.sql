@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS edu;
+
 -- Drop existing tables to start fresh on every application boot
 DROP TABLE IF EXISTS
     users,
