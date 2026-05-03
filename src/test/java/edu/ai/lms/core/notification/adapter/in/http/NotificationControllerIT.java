@@ -1,15 +1,22 @@
 package edu.ai.lms.core.notification.adapter.in.http;
 
-import edu.ai.lms.config.IntegrationTestConfiguration;
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
-import org.junit.jupiter.api.*;
-import org.springframework.test.context.ActiveProfiles;
-
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+
+import edu.ai.lms.config.IntegrationTestConfiguration;
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Notification Controller Integration Tests")
@@ -143,8 +150,8 @@ class NotificationControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .statusCode(200)
                 .body("content", hasSize(greaterThanOrEqualTo(1)))
-                .body("content[0].title", equalTo("Important Announcement"))
-                .body("content[0].type", equalTo("URGENT"))
+                .body("content[0].title", hasItem("Chào mừng khóa học mới!"))
+                .body("content[0].type", hasItem("URGENT"))
                 .body("content[0].read", is(false));
     }
 

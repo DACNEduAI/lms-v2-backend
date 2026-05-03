@@ -26,6 +26,7 @@ public class CreateQuizCommandMapper {
         return CreateQuizCommand.builder()
                 .courseId(courseId)
                 .quiz(quiz)
+                .learningOutcomeIds(request.getLearningOutcomeIds())
                 .build();
     }
 }

@@ -38,6 +38,7 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
     private static UUID untimedQuizId;
     private static UUID timedQuestionId;
     private static Long timedCorrectAnswerNumber;
+    private static UUID quizLearningOutcomeId;
 
     @Test
     @Order(1)
@@ -145,6 +146,27 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
     @Order(3)
     @DisplayName("Should create timed and non-timed quizzes")
     void createQuizzes() {
+        String learningOutcomeBody = """
+                {
+                    "learningOutcomes": [
+                        {"code": "ATT-BASE", "description": "Base quiz LO for attempt tests"}
+                    ]
+                }
+                """;
+
+        Response learningOutcomeResponse = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(learningOutcomeBody)
+                .when()
+                .post("/api/" + courseId + "/learning-outcome")
+                .then()
+                .statusCode(201)
+                .extract().response();
+
+        quizLearningOutcomeId = UUID
+                .fromString(learningOutcomeResponse.path("learningOutcomes[0].id"));
+
         String timedDueTime = LocalDateTime.now().plusMinutes(2).format(DATE_TIME_FORMATTER);
         String timedQuizBody = """
                 {
@@ -154,9 +176,10 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
                     "passScore": 5.0,
                     "dueTime": "%s",
                     "attemptLimited": 2,
-                    "display": true
+                    "display": true,
+                    "learningOutcomeIds": ["%s"]
                 }
-                """.formatted(timedDueTime);
+                """.formatted(timedDueTime, quizLearningOutcomeId);
 
         Response timedQuizResponse = given()
                 .contentType(ContentType.JSON)
@@ -179,9 +202,10 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
                     "passScore": 5.0,
                     "attemptLimited": 2,
                     "dueTime": "%s",
-                    "display": true
+                    "display": true,
+                    "learningOutcomeIds": ["%s"]
                 }
-                """.formatted(dueTime);
+                """.formatted(dueTime, quizLearningOutcomeId);
 
         Response untimedQuizResponse = given()
                 .contentType(ContentType.JSON)
@@ -397,9 +421,10 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
                     "passScore": 5.0,
                     "dueTime": "%s",
                     "attemptLimited": 1,
-                    "display": true
+                    "display": true,
+                    "learningOutcomeIds": ["%s"]
                 }
-                """.formatted(nearDueTime);
+                """.formatted(nearDueTime, quizLearningOutcomeId);
 
         Response timedNearDueQuizResponse = given()
                 .contentType(ContentType.JSON)
