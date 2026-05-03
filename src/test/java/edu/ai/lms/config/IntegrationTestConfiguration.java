@@ -43,7 +43,11 @@ public abstract class IntegrationTestConfiguration {
         registry.add("spring.application.name", () -> "lms_platform_test");
         
         // Database configuration
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.url", () -> {
+            String jdbcUrl = postgres.getJdbcUrl();
+            String separator = jdbcUrl.contains("?") ? "&" : "?";
+            return jdbcUrl + separator + "currentSchema=edu";
+        });
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");

@@ -128,13 +128,35 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
     @Order(3)
     @DisplayName("Should create a quiz for question tests")
     void testCreateQuiz() {
+        String learningOutcomeBody = """
+                {
+                    "learningOutcomes": [
+                        {"code": "Q-BASE", "description": "Base quiz LO for question tests"}
+                    ]
+                }
+                """;
+
+        Response learningOutcomeResponse = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(learningOutcomeBody)
+                .when()
+                .post("/api/" + createdCourseId + "/learning-outcome")
+                .then()
+                .statusCode(201)
+                .extract().response();
+
+        UUID quizLearningOutcomeId = UUID
+                .fromString(learningOutcomeResponse.jsonPath().getString("learningOutcomes[0].id"));
+
         String requestBody = """
                 {
                     "quizTitle": "Algebra Quiz",
                     "unlimited": true,
-                    "passScore": 60.0
+                    "passScore": 60.0,
+                    "learningOutcomeIds": ["%s"]
                 }
-                """;
+                """.formatted(quizLearningOutcomeId);
 
         Response response = given()
                 .contentType(ContentType.JSON)

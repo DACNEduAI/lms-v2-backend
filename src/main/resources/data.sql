@@ -1,3 +1,6 @@
+-- Set the default schema for the rest of this script!
+SET search_path TO edu;
+
 -- 1. Insert Users
 INSERT INTO users (id, email, password, first_name, last_name, avatar_url, role)
 VALUES

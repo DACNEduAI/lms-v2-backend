@@ -5,7 +5,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import edu.ai.lms.config.DatePatternConstants;
 import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 
@@ -37,4 +41,8 @@ public class CreateQuizRequest {
     private Integer attemptLimited;
 
     private Boolean display;
+
+    @NotEmpty(message = "Learning outcomes are required")
+    @Builder.Default
+    private List<UUID> learningOutcomeIds = new ArrayList<>();
 }

@@ -34,6 +34,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     private static UUID studentBQuizId;
     private static UUID hiddenTeacherQuizId;
     private static UUID quizWithLearningOutcomeRelationId;
+    private static UUID defaultQuizLearningOutcomeId;
     private static UUID lo1;
     private static UUID lo2;
     private static UUID lo3;
@@ -129,6 +130,27 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     @Order(3)
     @DisplayName("Should successfully create a quiz")
     void testCreateQuiz_ShouldSucceed() {
+        String learningOutcomeBody = """
+                {
+                    "learningOutcomes": [
+                        {"code": "CLO-BASE", "description": "Base quiz learning outcome"}
+                    ]
+                }
+                """;
+
+        Response learningOutcomeResponse = given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(learningOutcomeBody)
+                .when()
+                .post("/api/" + createdCourseId + "/learning-outcome")
+                .then()
+                .statusCode(201)
+                .extract().response();
+
+        defaultQuizLearningOutcomeId = UUID
+                .fromString(learningOutcomeResponse.jsonPath().getString("learningOutcomes[0].id"));
+
         String requestBody = """
                 {
                     "quizTitle": "Midterm Quiz",
@@ -138,9 +160,10 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                     "startTime": "10-01-2026 09:00:00",
                     "dueTime": "10-01-2026 10:00:00",
                     "attemptLimited": 2,
-                    "display": true
+                    "display": true,
+                    "learningOutcomeIds": ["%s"]
                 }
-                """;
+                """.formatted(defaultQuizLearningOutcomeId);
 
         Response response = given()
                 .contentType(ContentType.JSON)
@@ -174,9 +197,10 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "Final Quiz",
                     "unlimited": true,
-                    "passScore": 80.0
+                    "passScore": 80.0,
+                    "learningOutcomeIds": ["%s"]
                 }
-                """;
+                """.formatted(defaultQuizLearningOutcomeId);
 
         Response response = given()
                 .contentType(ContentType.JSON)
@@ -202,9 +226,10 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "Practice Quiz",
                     "unlimited": true,
-                    "passScore": 65.0
+                    "passScore": 65.0,
+                    "learningOutcomeIds": ["%s"]
                 }
-                """;
+                """.formatted(defaultQuizLearningOutcomeId);
 
         Response response = given()
                 .contentType(ContentType.JSON)
@@ -229,9 +254,10 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 {
                     "quizTitle": "Unauthorized Quiz",
                     "unlimited": true,
-                    "passScore": 50.0
+                    "passScore": 50.0,
+                    "learningOutcomeIds": ["%s"]
                 }
-                """;
+                """.formatted(defaultQuizLearningOutcomeId);
 
         given()
                 .contentType(ContentType.JSON)
@@ -250,9 +276,10 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "unlimited": true,
-                    "passScore": 50.0
+                    "passScore": 50.0,
+                    "learningOutcomeIds": ["%s"]
                 }
-                """;
+                """.formatted(defaultQuizLearningOutcomeId);
 
         given()
                 .contentType(ContentType.JSON)
@@ -623,7 +650,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .statusCode(200)
                 .body("operation", equalTo("ADD"))
                 .body("totalAffected", equalTo(4))
-                .body("learningOutcomeIds", hasSize(4));
+            .body("learningOutcomeIds", hasSize(5));
     }
 
     @Test
@@ -709,8 +736,9 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .statusCode(200)
                 .body("groupedLearningOutcomes", hasSize(2))
-                .body("ungroupedLearningOutcomes", hasSize(1))
-                .body("ungroupedLearningOutcomes.code", hasItem("CLO-Q4"));
+            .body("ungroupedLearningOutcomes", hasSize(2))
+            .body("ungroupedLearningOutcomes.code", hasItem("CLO-Q4"))
+            .body("ungroupedLearningOutcomes.code", hasItem("CLO-BASE"));
     }
 
     @Test
@@ -734,7 +762,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .statusCode(200)
                 .body("operation", equalTo("REMOVE"))
                 .body("totalAffected", equalTo(2))
-                .body("learningOutcomeIds", hasSize(2));
+            .body("learningOutcomeIds", hasSize(3));
     }
 
     @Test
@@ -816,9 +844,10 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                     "quizTitle": "%s",
                     "unlimited": true,
                     "passScore": 50.0,
-                    "display": true
+                    "display": true,
+                    "learningOutcomeIds": ["%s"]
                 }
-                """.formatted(STUDENT_A_QUIZ_ONE_TITLE);
+                """.formatted(STUDENT_A_QUIZ_ONE_TITLE, defaultQuizLearningOutcomeId);
 
         given()
                 .contentType(ContentType.JSON)
@@ -840,9 +869,10 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                     "quizTitle": "%s",
                     "unlimited": true,
                     "passScore": 55.0,
-                    "display": true
+                    "display": true,
+                    "learningOutcomeIds": ["%s"]
                 }
-                """.formatted(STUDENT_A_QUIZ_TWO_TITLE);
+                """.formatted(STUDENT_A_QUIZ_TWO_TITLE, defaultQuizLearningOutcomeId);
 
         given()
                 .contentType(ContentType.JSON)
@@ -864,9 +894,10 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                     "quizTitle": "%s",
                     "unlimited": true,
                     "passScore": 45.0,
-                    "display": true
+                    "display": true,
+                    "learningOutcomeIds": ["%s"]
                 }
-                """.formatted(STUDENT_B_QUIZ_TITLE);
+                """.formatted(STUDENT_B_QUIZ_TITLE, defaultQuizLearningOutcomeId);
 
         Response response = given()
                 .contentType(ContentType.JSON)
@@ -934,9 +965,10 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                     "quizTitle": "%s",
                     "unlimited": true,
                     "passScore": 50.0,
-                    "display": false
+                    "display": false,
+                    "learningOutcomeIds": ["%s"]
                 }
-                """.formatted(HIDDEN_TEACHER_QUIZ_TITLE);
+                """.formatted(HIDDEN_TEACHER_QUIZ_TITLE, defaultQuizLearningOutcomeId);
 
         Response response = given()
                 .contentType(ContentType.JSON)
@@ -1045,9 +1077,10 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 "quizTitle": "Quiz With LO Relation",
                 "unlimited": true,
                 "passScore": 60.0,
-                "display": true
+                "display": true,
+                "learningOutcomeIds": ["%s"]
             }
-            """;
+            """.formatted(defaultQuizLearningOutcomeId);
 
         Response createQuizResponse = given()
             .contentType(ContentType.JSON)
@@ -1079,7 +1112,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
             .statusCode(200)
             .body("operation", equalTo("ADD"))
             .body("totalAffected", equalTo(1))
-            .body("learningOutcomeIds", hasSize(1));
+            .body("learningOutcomeIds", hasSize(2));
 
         given()
             .header("Authorization", "Bearer " + teacherToken)
