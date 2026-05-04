@@ -14,6 +14,7 @@ import edu.ai.lms.core.material.app.port.in.usecase.ConfirmUploadUseCase;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
 import edu.ai.lms.core.material.app.port.out.storage.VerifyFileUploadedPort;
+import edu.ai.lms.core.material.app.port.out.storage.CreateDownloadLinkPort;
 import edu.ai.lms.core.material.app.port.out.persistence.LoadSignedInUserPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -30,6 +31,7 @@ public class ConfirmUploadService implements ConfirmUploadUseCase {
     private final ModifyMaterialPort modifyMaterialPort;
     private final VerifyFileUploadedPort verifyFileUploadedPort;
     private final LoadSignedInUserPort loadSignedInUserPort;
+    private final CreateDownloadLinkPort createDownloadLinkPort;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -88,6 +90,14 @@ public class ConfirmUploadService implements ConfirmUploadUseCase {
                         "/student/courses/" + courseId // Link to course page
                 ));
             }
+            
+            // Publish event cho AI Server để Ingest tài liệu này vào RAG Vector DB
+            String presignedUrl = createDownloadLinkPort.createDownloadLink(updated.getFileKey(), null);
+            eventPublisher.publishEvent(edu.ai.lms.common.event.MaterialUploadedForAiEvent.builder()
+                    .courseId(courseId)
+                    .materialId(materialId)
+                    .fileUrl(presignedUrl)
+                    .build());
         }
 
         return response;
