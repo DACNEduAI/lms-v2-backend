@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
@@ -11,6 +12,7 @@ import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationJobResponse;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusResponse;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
+import edu.ai.lms.core.quiz.app.exception.InvalidQuizGenerationRequestException;
 import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
@@ -21,6 +23,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
+import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.ScheduleQuizGenerationJobPort;
 import lombok.RequiredArgsConstructor;
 
@@ -33,6 +36,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
     private final ScheduleQuizGenerationJobPort scheduleQuizGenerationJobPort;
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadCourseMembershipPort loadCourseMembershipPort;
+    private final SaveQuizGenerationJobLearningOutcomePort saveQuizGenerationJobLearningOutcomePort;
 
     @Override
     @Transactional
@@ -42,18 +46,39 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
 
         verifyCourseMembership(user, command.courseId());
 
+        boolean useOptions = Boolean.TRUE.equals(command.useOptions());
+        if (useOptions && !StringUtils.hasText(command.prompt())) {
+            if (!StringUtils.hasText(command.quizTitle())) {
+                throw new InvalidQuizGenerationRequestException("quizTitle is required when prompt is empty");
+            }
+            if (command.learningOutcomeIds() == null || command.learningOutcomeIds().isEmpty()) {
+                throw new InvalidQuizGenerationRequestException("learningOutcomeIds are required when prompt is empty");
+            }
+        }
+
         QuizGenerationJob job = QuizGenerationJob.builder()
                 .courseId(command.courseId())
                 .chapterId(command.chapterId())
                 .quizTitle(command.quizTitle())
-                .difficulty(command.difficulty())
                 .questionCount(command.questionCount())
+            .prompt(command.prompt())
+            .useOptions(useOptions)
+            .unlimited(command.unlimited())
+            .timeLimitMinutes(command.timeLimitMinutes())
+            .passScore(command.passScore())
+            .startTime(command.startTime())
+            .dueTime(command.dueTime())
+            .attemptLimited(command.attemptLimited())
+            .display(command.display())
                 .requestedBy(user.getId())
                 .requestedRole(user.getRole())
                 .status(QuizGenerationStatus.PENDING)
                 .build();
 
         QuizGenerationJob savedJob = saveQuizGenerationJobPort.save(job);
+        if (command.learningOutcomeIds() != null && !command.learningOutcomeIds().isEmpty()) {
+            saveQuizGenerationJobLearningOutcomePort.addLearningOutcomes(savedJob.getId(), command.learningOutcomeIds());
+        }
         scheduleQuizGenerationJobPort.schedule(savedJob.getId());
 
         return QuizGenerationJobResponse.builder()

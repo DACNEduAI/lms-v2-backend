@@ -1,4 +1,4 @@
-package edu.ai.lms.core.quiz.adapter.in.job;
+package edu.ai.lms.core.quiz.adapter.in.scheduler;
 
 import edu.ai.lms.common.event.SystemNotificationEvent;
 import edu.ai.lms.core.quiz.app.domain.PendingQuizTarget;

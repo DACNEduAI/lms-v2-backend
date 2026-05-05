@@ -1,4 +1,4 @@
-package edu.ai.lms.core.quiz.adapter.in.job;
+package edu.ai.lms.core.quiz.adapter.in.scheduler;
 
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class QuizQuartzConfig {
+public class QuizDeadlineConfig {
 
     @Bean
     public JobDetail deadlineReminderJobDetail() {

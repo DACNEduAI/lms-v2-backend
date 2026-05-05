@@ -23,6 +23,7 @@ DROP TABLE IF EXISTS
     answers,
     attempts,
     quiz_generation_jobs,
+    quiz_generation_job_learning_outcomes,
     quiz_chapters,
     quiz_learning_outcomes,
     question_learning_outcomes,
@@ -199,12 +200,26 @@ CREATE TABLE IF NOT EXISTS quiz_generation_jobs (
     requested_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     requested_role VARCHAR(50) NOT NULL,
     quiz_title VARCHAR(255),
-    difficulty VARCHAR(50),
     question_count INTEGER,
+    prompt TEXT,
+    use_options BOOLEAN,
+    unlimited BOOLEAN,
+    time_limit_minutes INTEGER,
+    pass_score DOUBLE PRECISION,
+    start_time TIMESTAMP,
+    due_time TIMESTAMP,
+    attempt_limited INTEGER,
+    display BOOLEAN,
     status VARCHAR(30) NOT NULL,
     error_message TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS quiz_generation_job_learning_outcomes (
+    job_id UUID REFERENCES quiz_generation_jobs(id) ON DELETE CASCADE,
+    learning_outcome_id UUID REFERENCES learning_outcomes(id) ON DELETE CASCADE,
+    PRIMARY KEY (job_id, learning_outcome_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_quiz_generation_jobs_status

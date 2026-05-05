@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import edu.ai.lms.common.ErrorResponse;
 import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
+import edu.ai.lms.core.quiz.app.exception.InvalidQuizGenerationRequestException;
 import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
@@ -57,6 +58,22 @@ public class QuizExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
+
+        /**
+         * Handles InvalidQuizGenerationRequestException.
+         */
+        @ApiResponse(responseCode = "400", description = "Invalid quiz generation request",
+                        content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+        @ExceptionHandler(InvalidQuizGenerationRequestException.class)
+        public ResponseEntity<ErrorResponse> handleInvalidQuizGenerationRequest(InvalidQuizGenerationRequestException ex) {
+                ErrorResponse errorResponse = ErrorResponse.builder()
+                                .status(HttpStatus.BAD_REQUEST.value())
+                                .error("Invalid Quiz Generation Request")
+                                .message(ex.getMessage())
+                                .build();
+
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
 
     /**
      * Handles QuizNotFoundException.

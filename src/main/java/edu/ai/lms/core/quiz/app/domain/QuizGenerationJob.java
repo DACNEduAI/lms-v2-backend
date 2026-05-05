@@ -31,9 +31,25 @@ public class QuizGenerationJob {
 
     private String quizTitle;
 
-    private String difficulty;
-
     private Integer questionCount;
+
+    private String prompt;
+
+    private Boolean useOptions;
+
+    private Boolean unlimited;
+
+    private Integer timeLimitMinutes;
+
+    private Double passScore;
+
+    private LocalDateTime startTime;
+
+    private LocalDateTime dueTime;
+
+    private Integer attemptLimited;
+
+    private Boolean display;
 
     private QuizGenerationStatus status;
 

@@ -1,6 +1,7 @@
 package edu.ai.lms.core.quiz.app.port.in.command;
 
 import java.util.UUID;
+import java.util.List;
 
 import lombok.Builder;
 
@@ -8,8 +9,17 @@ import lombok.Builder;
 public record GenerateQuizCommand(
         UUID courseId,
         UUID chapterId,
+        Boolean useOptions,
+        String prompt,
         String quizTitle,
-        String difficulty,
+        Boolean unlimited,
+        Integer timeLimitMinutes,
+        Double passScore,
+        java.time.LocalDateTime startTime,
+        java.time.LocalDateTime dueTime,
+        Integer attemptLimited,
+        Boolean display,
+        List<UUID> learningOutcomeIds,
         Integer questionCount
 ) {
 }
