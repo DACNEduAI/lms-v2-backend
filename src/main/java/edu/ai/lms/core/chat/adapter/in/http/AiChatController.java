@@ -3,7 +3,7 @@ package edu.ai.lms.core.chat.adapter.in.http;
 import edu.ai.lms.core.chat.adapter.in.http.request.AiChatRequest;
 import edu.ai.lms.core.chat.app.domain.AiCourseChatMessage;
 import edu.ai.lms.core.chat.app.service.AiChatService;
-import edu.ai.lms.core.chat.app.service.dto.ChatSessionDto;
+import edu.ai.lms.core.chat.app.dto.ChatSessionDto;
 import edu.ai.lms.core.chat.app.port.out.persistence.LoadSignedInUserPort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

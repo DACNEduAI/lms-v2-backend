@@ -1,4 +1,4 @@
-package edu.ai.lms.core.chat.app.service.dto;
+package edu.ai.lms.core.chat.adapter.out.python.dto;
 
 import edu.ai.lms.core.chat.adapter.in.http.request.AiChatRequest.ChatHistoryEntry;
 import lombok.Builder;
@@ -6,6 +6,10 @@ import lombok.Data;
 
 import java.util.List;
 
+/**
+ * DTO phục vụ việc gọi API sang Python RAG Server.
+ * Đặt tại adapter.out vì đây là dữ liệu đi ra (Outbound).
+ */
 @Data
 @Builder
 public class PythonChatRequest {
