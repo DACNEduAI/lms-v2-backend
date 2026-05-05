@@ -12,8 +12,16 @@
     <result property="requestedBy" column="requested_by" />
     <result property="requestedRole" column="requested_role" javaType="edu.ai.lms.common.Roles" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="quizTitle" column="quiz_title" />
-    <result property="difficulty" column="difficulty" />
     <result property="questionCount" column="question_count" />
+    <result property="prompt" column="prompt" />
+    <result property="useOptions" column="use_options" />
+    <result property="unlimited" column="unlimited" />
+    <result property="timeLimitMinutes" column="time_limit_minutes" />
+    <result property="passScore" column="pass_score" />
+    <result property="startTime" column="start_time" />
+    <result property="dueTime" column="due_time" />
+    <result property="attemptLimited" column="attempt_limited" />
+    <result property="display" column="display" />
     <result property="status" column="status" javaType="edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="errorMessage" column="error_message" />
     <result property="createdAt" column="created_at" />
@@ -29,8 +37,16 @@
         requested_by,
         requested_role,
         quiz_title,
-        difficulty,
         question_count,
+        prompt,
+        use_options,
+        unlimited,
+        time_limit_minutes,
+        pass_score,
+        start_time,
+        due_time,
+        attempt_limited,
+        display,
         status,
         error_message,
         created_at,
@@ -44,8 +60,16 @@
         #{requestedBy},
         #{requestedRole, javaType=edu.ai.lms.common.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         #{quizTitle},
-        #{difficulty},
         #{questionCount},
+        #{prompt},
+        #{useOptions},
+        #{unlimited},
+        #{timeLimitMinutes},
+        #{passScore},
+        #{startTime},
+        #{dueTime},
+        #{attemptLimited},
+        #{display},
         #{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         #{errorMessage},
         NOW(),
@@ -61,8 +85,16 @@
         requested_by = #{requestedBy},
         requested_role = #{requestedRole, javaType=edu.ai.lms.common.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         quiz_title = #{quizTitle},
-        difficulty = #{difficulty},
         question_count = #{questionCount},
+        prompt = #{prompt},
+        use_options = #{useOptions},
+        unlimited = #{unlimited},
+        time_limit_minutes = #{timeLimitMinutes},
+        pass_score = #{passScore},
+        start_time = #{startTime},
+        due_time = #{dueTime},
+        attempt_limited = #{attemptLimited},
+        display = #{display},
         status = #{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         error_message = #{errorMessage},
         updated_at = NOW()
@@ -77,8 +109,16 @@
            requested_by,
            requested_role,
            quiz_title,
-           difficulty,
            question_count,
+           prompt,
+           use_options,
+           unlimited,
+           time_limit_minutes,
+           pass_score,
+           start_time,
+           due_time,
+           attempt_limited,
+           display,
            status,
            error_message,
            created_at,

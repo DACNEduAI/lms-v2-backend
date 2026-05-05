@@ -20,6 +20,7 @@ import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
 import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
+import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,7 @@ public class QuizGenerationProcessingService {
     private final LoadCoursePort loadCoursePort;
     private final LoadChapterPort loadChapterPort;
     private final LoadLearningOutcomePort loadLearningOutcomePort;
+    private final LoadQuizGenerationJobLearningOutcomePort loadQuizGenerationJobLearningOutcomePort;
     private final SseQuizGenerationService sseQuizGenerationService;
     private final WebClient aiWebClient;
 
@@ -69,18 +71,32 @@ public class QuizGenerationProcessingService {
 
             List<LearningOutcome> learningOutcomes = resolveLearningOutcomes(processingJob, chapter);
 
+            QuizGenerationOptions options = null;
+            if (Boolean.TRUE.equals(processingJob.getUseOptions())) {
+                options = new QuizGenerationOptions(
+                        processingJob.getUnlimited(),
+                        processingJob.getTimeLimitMinutes(),
+                        processingJob.getPassScore(),
+                        processingJob.getStartTime(),
+                        processingJob.getDueTime(),
+                        processingJob.getAttemptLimited(),
+                        processingJob.getDisplay()
+                );
+            }
+
             QuizGenerationAiRequest payload = new QuizGenerationAiRequest(
                     processingJob.getId(),
                     processingJob.getCourseId(),
                     course.getCourseName(),
                     processingJob.getChapterId(),
                     chapter != null ? chapter.getTitle() : null,
-                    processingJob.getQuizTitle(),
-                    processingJob.getDifficulty(),
                     processingJob.getQuestionCount(),
                     learningOutcomes.stream()
                             .map(outcome -> new LearningOutcomeContext(outcome.getCode(), outcome.getDescription()))
                             .toList(),
+                        processingJob.getPrompt(),
+                        Boolean.TRUE.equals(processingJob.getUseOptions()),
+                        options,
                     buildWebhookUrl(),
                     webhookSecret
             );
@@ -102,7 +118,16 @@ public class QuizGenerationProcessingService {
     }
 
     private List<LearningOutcome> resolveLearningOutcomes(QuizGenerationJob job, Chapter chapter) {
+        List<UUID> requestedOutcomeIds = loadQuizGenerationJobLearningOutcomePort
+                .findLearningOutcomeIdsByJobId(job.getId());
         List<LearningOutcome> courseOutcomes = loadLearningOutcomePort.findByCourseId(job.getCourseId());
+
+        if (Boolean.TRUE.equals(job.getUseOptions()) && !requestedOutcomeIds.isEmpty()) {
+            return courseOutcomes.stream()
+                    .filter(outcome -> requestedOutcomeIds.contains(outcome.getId()))
+                    .toList();
+        }
+
         if (chapter == null || chapter.getLearningOutcomeIds() == null || chapter.getLearningOutcomeIds().isEmpty()) {
             return courseOutcomes;
         }
@@ -139,12 +164,24 @@ public class QuizGenerationProcessingService {
             String courseTitle,
             UUID chapterId,
             String chapterTitle,
-            String quizTitle,
-            String difficulty,
             Integer questionCount,
             List<LearningOutcomeContext> learningOutcomes,
+            String prompt,
+            boolean useOptions,
+            QuizGenerationOptions options,
             String webhookUrl,
             String webhookSecret
     ) {
     }
+
+        record QuizGenerationOptions(
+            Boolean unlimited,
+            Integer timeLimitMinutes,
+            Double passScore,
+            java.time.LocalDateTime startTime,
+            java.time.LocalDateTime dueTime,
+            Integer attemptLimited,
+            Boolean display
+        ) {
+        }
 }

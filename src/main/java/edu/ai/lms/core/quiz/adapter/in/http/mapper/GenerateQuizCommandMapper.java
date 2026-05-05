@@ -12,8 +12,17 @@ public class GenerateQuizCommandMapper {
         return GenerateQuizCommand.builder()
                 .courseId(request.getCourseId())
                 .chapterId(request.getChapterId())
+                .useOptions(request.getUseOptions())
+                .prompt(request.getPrompt())
                 .quizTitle(request.getQuizTitle())
-                .difficulty(request.getDifficulty())
+                .unlimited(request.getUnlimited())
+                .timeLimitMinutes(request.getTimeLimitMinutes())
+                .passScore(request.getPassScore())
+                .startTime(request.getStartTime())
+                .dueTime(request.getDueTime())
+                .attemptLimited(request.getAttemptLimited())
+                .display(request.getDisplay())
+                .learningOutcomeIds(request.getLearningOutcomeIds())
                 .questionCount(request.getQuestionCount())
                 .build();
     }

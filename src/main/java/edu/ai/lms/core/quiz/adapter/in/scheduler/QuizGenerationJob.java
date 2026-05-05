@@ -1,4 +1,4 @@
-package edu.ai.lms.core.quiz.adapter.in.job;
+package edu.ai.lms.core.quiz.adapter.in.scheduler;
 
 import java.util.UUID;
 
@@ -14,7 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class QuizGenerationQuartzJob extends QuartzJobBean {
+public class QuizGenerationJob extends QuartzJobBean {
 
     public static final String JOB_ID_KEY = "jobId";
 

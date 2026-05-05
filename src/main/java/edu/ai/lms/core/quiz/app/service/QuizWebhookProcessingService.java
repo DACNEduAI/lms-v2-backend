@@ -20,6 +20,7 @@ import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
 import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
+import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
@@ -41,6 +42,7 @@ public class QuizWebhookProcessingService {
     private final SaveQuizLearningOutcomePort saveQuizLearningOutcomePort;
     private final LoadChapterPort loadChapterPort;
     private final LoadLearningOutcomePort loadLearningOutcomePort;
+    private final LoadQuizGenerationJobLearningOutcomePort loadQuizGenerationJobLearningOutcomePort;
     private final SseQuizGenerationService sseQuizGenerationService;
 
     @Transactional
@@ -87,9 +89,7 @@ public class QuizWebhookProcessingService {
         }
 
         Quiz quiz = Quiz.builder()
-                .quizTitle(payload.getQuizTitle() != null ? payload.getQuizTitle() : job.getQuizTitle())
-                .unlimited(true)
-                .display(true)
+                .quizTitle(resolveQuizTitle(job, payload))
                 .courseId(job.getCourseId())
                 .build();
 
@@ -98,6 +98,8 @@ public class QuizWebhookProcessingService {
         } else {
             quiz.setStudentId(job.getRequestedBy());
         }
+
+        applyOptions(job, quiz);
 
         Quiz savedQuiz = saveQuizPort.save(quiz);
         saveQuizLearningOutcomePort.addLearningOutcomes(savedQuiz.getId(), resolveLearningOutcomeIds(job));
@@ -130,6 +132,11 @@ public class QuizWebhookProcessingService {
     }
 
     private List<UUID> resolveLearningOutcomeIds(QuizGenerationJob job) {
+        List<UUID> requestedIds = loadQuizGenerationJobLearningOutcomePort
+                .findLearningOutcomeIdsByJobId(job.getId());
+        if (Boolean.TRUE.equals(job.getUseOptions()) && !requestedIds.isEmpty()) {
+            return requestedIds;
+        }
         if (job.getChapterId() != null) {
             Chapter chapter = loadChapterPort.findByKey(job.getCourseId(), job.getChapterId())
                     .orElse(null);
@@ -141,6 +148,56 @@ public class QuizWebhookProcessingService {
         return loadLearningOutcomePort.findByCourseId(job.getCourseId()).stream()
                 .map(LearningOutcome::getId)
                 .toList();
+    }
+
+    private void applyOptions(QuizGenerationJob job, Quiz quiz) {
+        boolean isStudent = job.getRequestedRole() == Roles.STUDENT;
+        if (isStudent) {
+            quiz.setUnlimited(true);
+            quiz.setStartTime(null);
+            quiz.setDueTime(null);
+            quiz.setTimeLimitMinutes(null);
+            quiz.setAttemptLimited(null);
+            quiz.setDisplay(job.getDisplay() != null ? job.getDisplay() : Boolean.TRUE);
+            return;
+        }
+
+        if (Boolean.TRUE.equals(job.getUseOptions())) {
+            if (job.getUnlimited() != null) {
+                quiz.setUnlimited(job.getUnlimited());
+            }
+            quiz.setTimeLimitMinutes(job.getTimeLimitMinutes());
+            quiz.setPassScore(job.getPassScore());
+            quiz.setStartTime(job.getStartTime());
+            quiz.setDueTime(job.getDueTime());
+            quiz.setAttemptLimited(job.getAttemptLimited());
+            if (job.getDisplay() != null) {
+                quiz.setDisplay(job.getDisplay());
+            }
+        }
+
+        if (quiz.getUnlimited() == null) {
+            quiz.setUnlimited(false);
+        }
+        if (quiz.getDisplay() == null) {
+            quiz.setDisplay(true);
+        }
+
+        if (Boolean.TRUE.equals(quiz.getUnlimited())) {
+            quiz.setStartTime(null);
+            quiz.setDueTime(null);
+            quiz.setTimeLimitMinutes(null);
+        }
+    }
+
+    private String resolveQuizTitle(QuizGenerationJob job, QuizWebhookRequest.QuizPayload payload) {
+        if (job.getQuizTitle() != null && !job.getQuizTitle().isBlank()) {
+            return job.getQuizTitle();
+        }
+        if (payload.getQuizTitle() != null && !payload.getQuizTitle().isBlank()) {
+            return payload.getQuizTitle();
+        }
+        return "Generated Quiz";
     }
 
     private QuizGenerationStatus parseStatus(String status) {

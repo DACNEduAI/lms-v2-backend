@@ -14,13 +14,13 @@ import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.quiz.adapter.in.job.QuizGenerationQuartzJob;
+import edu.ai.lms.core.quiz.adapter.in.scheduler.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.port.out.ScheduleQuizGenerationJobPort;
 import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
-class QuizGenerationQuartzAdapter implements ScheduleQuizGenerationJobPort {
+class QuizGenerationConfig implements ScheduleQuizGenerationJobPort {
 
     private static final String JOB_GROUP = "quiz-generation";
     private static final String TRIGGER_GROUP = "quiz-generation-trigger";
@@ -33,10 +33,10 @@ class QuizGenerationQuartzAdapter implements ScheduleQuizGenerationJobPort {
         TriggerKey triggerKey = TriggerKey.triggerKey(jobId.toString(), TRIGGER_GROUP);
 
         JobDataMap jobDataMap = new JobDataMap();
-        jobDataMap.put(QuizGenerationQuartzJob.JOB_ID_KEY, jobId.toString());
+        jobDataMap.put(QuizGenerationJob.JOB_ID_KEY, jobId.toString());
 
         JobDetail jobDetail = JobBuilder
-                .newJob(QuizGenerationQuartzJob.class)
+                .newJob(QuizGenerationJob.class)
                 .withIdentity(jobKey)
                 .usingJobData(jobDataMap)
                 .build();
