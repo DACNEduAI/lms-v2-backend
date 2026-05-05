@@ -1,6 +1,7 @@
 package edu.ai.lms.core.material.app.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -32,6 +33,7 @@ import edu.ai.lms.core.material.app.exception.MaterialNotFoundException;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.LoadSignedInUserPort;
+import edu.ai.lms.core.material.app.port.out.storage.CreateDownloadLinkPort;
 import edu.ai.lms.core.material.app.port.out.storage.VerifyFileUploadedPort;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.common.Roles;
@@ -50,6 +52,9 @@ class ConfirmUploadServiceUT {
 
     @Mock
     private LoadSignedInUserPort loadSignedInUserPort;
+
+    @Mock
+    private CreateDownloadLinkPort createDownloadLinkPort;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -85,6 +90,8 @@ class ConfirmUploadServiceUT {
         when(getMaterialPort.findByIdAndCourseId(materialId, courseId)).thenReturn(Optional.of(material));
         when(verifyFileUploadedPort.isFileUploaded(material.getFileKey())).thenReturn(true);
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
+        when(getMaterialPort.getStudentIdsByCourseId(courseId)).thenReturn(List.of());
+        when(createDownloadLinkPort.createDownloadLink(material.getFileKey(), null)).thenReturn("https://example.com/download");
 
         Material updatedMaterial = Material.builder()
                 .id(materialId)
