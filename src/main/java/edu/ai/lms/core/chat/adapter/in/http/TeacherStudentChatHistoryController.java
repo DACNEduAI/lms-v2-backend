@@ -17,7 +17,7 @@ import java.util.UUID;
 @RequestMapping("/api/chat")
 @Tag(name = "Chat", description = "APIs for user-to-user chat")
 @RequiredArgsConstructor
-public class ChatHistoryController {
+public class TeacherStudentChatHistoryController {
 
     private final GetChatHistoryUseCase getChatHistoryUseCase;
     private final LoadAuthenticatedUserApi loadAuthenticatedUserApi;

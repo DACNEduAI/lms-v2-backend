@@ -23,16 +23,16 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ChatService Unit Tests")
-class ChatServiceUT {
+class TeacherStudentChatServiceUT {
 
     @Mock
     private ChatPersistencePort chatPersistencePort;
 
-    private ChatService chatService;
+    private TeacherStudentChatService teacherStudentChatService;
 
     @BeforeEach
     void setUp() {
-        chatService = new ChatService(chatPersistencePort);
+        teacherStudentChatService = new TeacherStudentChatService(chatPersistencePort);
     }
 
     @Test
@@ -51,7 +51,7 @@ class ChatServiceUT {
         when(chatPersistencePort.findChatHistory(user1, user2, pageable)).thenReturn(expectedPage);
 
         // Act
-        Page<ChatMessage> result = chatService.getChatHistory(user1, user2, pageable);
+        Page<ChatMessage> result = teacherStudentChatService.getChatHistory(user1, user2, pageable);
 
         // Assert
         assertThat(result.getContent()).hasSize(2);
@@ -80,7 +80,7 @@ class ChatServiceUT {
         when(chatPersistencePort.save(any(ChatMessage.class))).thenReturn(savedMsg);
 
         // Act
-        ChatMessage result = chatService.sendMessage(senderId, recipientId, content, tempId);
+        ChatMessage result = teacherStudentChatService.sendMessage(senderId, recipientId, content, tempId);
 
         // Assert
         assertThat(result).isNotNull();

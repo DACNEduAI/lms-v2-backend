@@ -16,7 +16,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ChatService implements SendChatMessageUseCase, GetChatHistoryUseCase {
+public class TeacherStudentChatService implements SendChatMessageUseCase, GetChatHistoryUseCase {
 
     private final ChatPersistencePort chatPersistencePort;
 
