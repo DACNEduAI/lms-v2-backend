@@ -28,6 +28,9 @@ DROP TABLE IF EXISTS
     student_learning_outcomes,
     activity_logs,
     course_announcements,
+    event_publication,
+    ai_course_chat_messages,
+    ai_chat_sessions
     notifications,
     user_chat_messages,
     CASCADE;
@@ -324,3 +327,46 @@ CREATE TABLE IF NOT EXISTS course_announcements (
 );
 
 CREATE INDEX IF NOT EXISTS idx_course_announcements_course_id ON course_announcements(course_id);
+
+-- ==========================================
+-- SPRING MODULITH EVENT PUBLICATION
+-- ==========================================
+CREATE TABLE IF NOT EXISTS event_publication (
+  id UUID NOT NULL,
+  completion_date TIMESTAMP WITH TIME ZONE,
+  event_type VARCHAR(512) NOT NULL,
+  listener_id VARCHAR(512) NOT NULL,
+  publication_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  serialized_event VARCHAR(4000) NOT NULL,
+  PRIMARY KEY (id)
+);
+
+-- ==========================================
+-- AI CHAT SESSIONS (Phiên chat / Threads)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS ai_chat_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    title VARCHAR(255) DEFAULT 'Đoạn chat mới',
+    is_pinned BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_chat_sessions_user_course ON ai_chat_sessions(user_id, course_id, updated_at DESC);
+
+-- ==========================================
+-- AI COURSE ASSISTANT CHAT MESSAGES
+-- ==========================================
+CREATE TABLE IF NOT EXISTS ai_course_chat_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id UUID NOT NULL REFERENCES ai_chat_sessions(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    role VARCHAR(20) NOT NULL, -- 'user' or 'assistant'
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_session ON ai_course_chat_messages(session_id, created_at ASC);
