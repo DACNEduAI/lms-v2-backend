@@ -1,6 +1,7 @@
 package edu.ai.lms.core.quiz.app.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -16,13 +17,17 @@ import edu.ai.lms.common.event.SystemNotificationEvent;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
+import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.TimeValidationException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
 import edu.ai.lms.core.quiz.app.port.in.command.CreateQuizCommand;
 import edu.ai.lms.core.quiz.app.port.in.usecase.CreateQuizUseCase;
+import edu.ai.lms.core.quiz.app.port.out.LoadCourseLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.quiz.app.port.out.SaveQuizLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
 import lombok.RequiredArgsConstructor;
 
@@ -48,6 +53,8 @@ public class CreateQuizService implements CreateQuizUseCase {
     private final SaveQuizPort saveQuizPort;
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadCourseMembershipPort loadCourseMembershipPort;
+    private final LoadCourseLearningOutcomePort loadCourseLearningOutcomePort;
+    private final SaveQuizLearningOutcomePort saveQuizLearningOutcomePort;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -90,8 +97,12 @@ public class CreateQuizService implements CreateQuizUseCase {
             quiz.setAttemptLimited(null);
         }
 
+        List<UUID> learningOutcomeIds = resolveLearningOutcomeIds(command.courseId(), command.learningOutcomeIds());
+
         // Save quiz
         Quiz savedQuiz = saveQuizPort.save(quiz);
+
+        saveQuizLearningOutcomePort.addLearningOutcomes(savedQuiz.getId(), learningOutcomeIds);
 
         // Publish activity event (lịch sử hoạt động của giảng viên)
         eventPublisher.publishEvent(SystemActivityEvent.builder()
@@ -176,6 +187,21 @@ public class CreateQuizService implements CreateQuizUseCase {
         if (startTime != null && dueTime.isBefore(startTime)) {
             throw new TimeValidationException("dueTime must be after or equal to startTime");
         }
+    }
+
+    private List<UUID> resolveLearningOutcomeIds(UUID courseId, List<UUID> learningOutcomeIds) {
+        if (learningOutcomeIds == null || learningOutcomeIds.isEmpty()) {
+            throw new MissingLearningOutcomeException("Quiz must include at least one learning outcome");
+        }
+
+        Set<UUID> uniqueIds = new HashSet<>(learningOutcomeIds);
+        List<UUID> existingIds = loadCourseLearningOutcomePort
+                .findExistingLearningOutcomeIdsByCourseIdAndIds(courseId, List.copyOf(uniqueIds));
+        if (existingIds.size() != uniqueIds.size()) {
+            throw new InvalidLearningOutcomeException("Some learning outcomes do not belong to this course");
+        }
+
+        return new ArrayList<>(uniqueIds);
     }
 
     /**

@@ -1,3 +1,8 @@
+CREATE SCHEMA IF NOT EXISTS edu;
+
+-- Set the default schema for the rest of this script!
+SET search_path TO edu;
+
 -- Drop existing tables to start fresh on every application boot
 DROP TABLE IF EXISTS
     users,
@@ -26,6 +31,8 @@ DROP TABLE IF EXISTS
     event_publication,
     ai_course_chat_messages,
     ai_chat_sessions
+    notifications,
+    user_chat_messages,
     CASCADE;
 
 -- Below is the actual schema of the code

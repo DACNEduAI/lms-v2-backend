@@ -137,7 +137,7 @@ public class QuizController {
                                                                                                                                                                 - courseId.
 
                                                                                                                                                                 Request fields:
-                                                                                                                                                                - quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, display.
+                                                                                                                                                                - quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, display, learningOutcomeIds.
 
                                                                                                                                                                 Response fields:
                                                                                                                                                                 - quizId, quizTitle, unlimited, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, courseId, display, createdAt.

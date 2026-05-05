@@ -1,9 +1,9 @@
 package edu.ai.lms.core.quiz.app.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.context.ApplicationEventPublisher;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -23,6 +23,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
@@ -32,8 +33,10 @@ import edu.ai.lms.core.quiz.app.exception.TimeValidationException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
 import edu.ai.lms.core.quiz.app.port.in.command.CreateQuizCommand;
+import edu.ai.lms.core.quiz.app.port.out.LoadCourseLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.quiz.app.port.out.SaveQuizLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,6 +51,12 @@ class CreateQuizServiceUT {
     @Mock
     private LoadCourseMembershipPort loadCourseMembershipPort;
 
+        @Mock
+        private LoadCourseLearningOutcomePort loadCourseLearningOutcomePort;
+
+        @Mock
+        private SaveQuizLearningOutcomePort saveQuizLearningOutcomePort;
+
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
@@ -60,6 +69,7 @@ class CreateQuizServiceUT {
     private UUID studentId;
     private UUID courseId;
     private UUID quizId;
+        private UUID learningOutcomeId;
     private CreateQuizCommand validCommand;
 
     @BeforeEach
@@ -68,6 +78,7 @@ class CreateQuizServiceUT {
         studentId = UUID.randomUUID();
         courseId = UUID.randomUUID();
         quizId = UUID.randomUUID();
+        learningOutcomeId = UUID.randomUUID();
 
         mockTeacher = UserAuth.builder()
                 .id(teacherId)
@@ -90,6 +101,7 @@ class CreateQuizServiceUT {
         validCommand = CreateQuizCommand.builder()
                 .courseId(courseId)
                 .quiz(quiz)
+                .learningOutcomeIds(List.of(learningOutcomeId))
                 .build();
     }
 
@@ -98,6 +110,8 @@ class CreateQuizServiceUT {
     void testCreateQuiz_AsTeacher_ShouldSucceed() {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
+        when(loadCourseLearningOutcomePort.findExistingLearningOutcomeIdsByCourseIdAndIds(courseId,
+                List.of(learningOutcomeId))).thenReturn(List.of(learningOutcomeId));
 
         Quiz savedQuiz = Quiz.builder()
                 .id(quizId)
@@ -120,6 +134,7 @@ class CreateQuizServiceUT {
         assertEquals(courseId, response.getCourseId());
         assertTrue(response.getDisplay());
         verify(saveQuizPort, times(1)).save(any(Quiz.class));
+                verify(saveQuizLearningOutcomePort, times(1)).addLearningOutcomes(quizId, List.of(learningOutcomeId));
     }
 
     @Test
@@ -127,6 +142,8 @@ class CreateQuizServiceUT {
     void testCreateQuiz_AsStudent_ShouldSucceed() {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
         when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
+        when(loadCourseLearningOutcomePort.findExistingLearningOutcomeIdsByCourseIdAndIds(courseId,
+                List.of(learningOutcomeId))).thenReturn(List.of(learningOutcomeId));
 
                 validCommand.quiz().setStartTime(LocalDateTime.of(2025, 1, 10, 9, 0));
                 validCommand.quiz().setDueTime(LocalDateTime.of(2025, 1, 10, 10, 0));
@@ -148,6 +165,7 @@ class CreateQuizServiceUT {
         assertEquals(quizId, response.getQuizId());
         assertEquals(courseId, response.getCourseId());
         verify(saveQuizPort, times(1)).save(any(Quiz.class));
+                verify(saveQuizLearningOutcomePort, times(1)).addLearningOutcomes(quizId, List.of(learningOutcomeId));
     }
 
     @Test
@@ -180,6 +198,8 @@ class CreateQuizServiceUT {
     void testCreateQuiz_ShouldSetCourseIdAndTeacherId() {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
+        when(loadCourseLearningOutcomePort.findExistingLearningOutcomeIdsByCourseIdAndIds(courseId,
+                List.of(learningOutcomeId))).thenReturn(List.of(learningOutcomeId));
 
         ArgumentCaptor<Quiz> quizCaptor = ArgumentCaptor.forClass(Quiz.class);
         Quiz savedQuiz = Quiz.builder()
@@ -199,6 +219,7 @@ class CreateQuizServiceUT {
         Quiz capturedQuiz = quizCaptor.getValue();
         assertEquals(courseId, capturedQuiz.getCourseId());
         assertEquals(teacherId, capturedQuiz.getTeacherId());
+                verify(saveQuizLearningOutcomePort, times(1)).addLearningOutcomes(quizId, List.of(learningOutcomeId));
     }
 
         @Test
@@ -206,6 +227,8 @@ class CreateQuizServiceUT {
         void testCreateQuiz_AsStudent_ShouldClearTeacherOnlyFields() {
                 when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
                 when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
+                when(loadCourseLearningOutcomePort.findExistingLearningOutcomeIdsByCourseIdAndIds(courseId,
+                                List.of(learningOutcomeId))).thenReturn(List.of(learningOutcomeId));
 
                 validCommand.quiz().setStartTime(LocalDateTime.of(2025, 4, 1, 8, 0));
                 validCommand.quiz().setDueTime(LocalDateTime.of(2025, 4, 1, 9, 0));
@@ -223,6 +246,7 @@ class CreateQuizServiceUT {
                 assertNull(capturedQuiz.getDueTime());
                 assertNull(capturedQuiz.getTimeLimitMinutes());
                 assertNull(capturedQuiz.getAttemptLimited());
+                verify(saveQuizLearningOutcomePort, times(1)).addLearningOutcomes(quizId, List.of(learningOutcomeId));
         }
 
     @Test

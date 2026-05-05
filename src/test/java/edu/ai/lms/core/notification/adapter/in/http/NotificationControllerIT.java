@@ -1,15 +1,24 @@
 package edu.ai.lms.core.notification.adapter.in.http;
 
-import edu.ai.lms.config.IntegrationTestConfiguration;
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
-import org.junit.jupiter.api.*;
-import org.springframework.test.context.ActiveProfiles;
-
+import java.time.Duration;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.awaitility.Awaitility.await;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+
+import edu.ai.lms.config.IntegrationTestConfiguration;
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Notification Controller Integration Tests")
@@ -133,19 +142,24 @@ class NotificationControllerIT extends IntegrationTestConfiguration {
                 .when()
                 .post("/api/notifications/courses/" + createdCourseId + "/announce")
                 .then()
+                .log().all()
                 .statusCode(200);
 
         // Student checks their notifications
-        given()
-                .header("Authorization", "Bearer " + studentToken)
-                .when()
-                .get("/api/notifications/me")
-                .then()
-                .statusCode(200)
-                .body("content", hasSize(greaterThanOrEqualTo(1)))
-                .body("content[0].title", equalTo("Important Announcement"))
-                .body("content[0].type", equalTo("URGENT"))
-                .body("content[0].read", is(false));
+        await()
+                .atMost(Duration.ofSeconds(5))
+                .pollInterval(Duration.ofMillis(200))
+                .untilAsserted(() -> given()
+                        .header("Authorization", "Bearer " + studentToken)
+                        .when()
+                        .get("/api/notifications/me")
+                        .then()
+                        .log().all()
+                        .statusCode(200)
+                        .body("content", hasSize(greaterThanOrEqualTo(1)))
+                        .body("content[0].title", equalTo("Important Announcement"))
+                        .body("content[0].type", equalTo("URGENT"))
+                        .body("content[0].read", is(false)));
     }
 
     @Test
@@ -153,22 +167,45 @@ class NotificationControllerIT extends IntegrationTestConfiguration {
     @DisplayName("Should mark a notification as read and verify unread count decreases")
     void testMarkAsRead_ShouldSucceed() {
         // Get student's notification ID
+        await()
+                .atMost(Duration.ofSeconds(5))
+                .pollInterval(Duration.ofMillis(200))
+                .untilAsserted(() -> given()
+                        .header("Authorization", "Bearer " + studentToken)
+                        .when()
+                        .get("/api/notifications/me")
+                        .then()
+                        .statusCode(200)
+                        .body("content", hasSize(greaterThanOrEqualTo(1))));
+
         Response response = given()
                 .header("Authorization", "Bearer " + studentToken)
                 .when()
                 .get("/api/notifications/me")
                 .then()
+                .log().all()
                 .statusCode(200)
                 .extract().response();
 
         String notificationId = response.jsonPath().getString("content[0].id");
 
-        // Get initial unread count
+        await()
+                .atMost(Duration.ofSeconds(5))
+                .pollInterval(Duration.ofMillis(200))
+                .untilAsserted(() -> given()
+                        .header("Authorization", "Bearer " + studentToken)
+                        .when()
+                        .get("/api/notifications/me/unread-count")
+                        .then()
+                        .statusCode(200)
+                        .body("unreadCount", greaterThanOrEqualTo(1)));
+
         int initialUnread = given()
                 .header("Authorization", "Bearer " + studentToken)
                 .when()
                 .get("/api/notifications/me/unread-count")
                 .then()
+                .log().all()
                 .statusCode(200)
                 .extract().path("unreadCount");
 
@@ -178,6 +215,7 @@ class NotificationControllerIT extends IntegrationTestConfiguration {
                 .when()
                 .put("/api/notifications/" + notificationId + "/read")
                 .then()
+                .log().all()
                 .statusCode(204);
 
         // Verify unread count decreased
@@ -186,6 +224,7 @@ class NotificationControllerIT extends IntegrationTestConfiguration {
                 .when()
                 .get("/api/notifications/me/unread-count")
                 .then()
+                .log().all()
                 .statusCode(200)
                 .body("unreadCount", equalTo(initialUnread - 1));
     }
