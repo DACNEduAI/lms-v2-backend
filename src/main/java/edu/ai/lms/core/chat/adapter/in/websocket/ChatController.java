@@ -16,6 +16,16 @@ import java.util.UUID;
 @Slf4j
 @Controller
 @RequiredArgsConstructor
+
+/**
+ * WebSocket controller for handling real-time chat message between teacher and students.
+ * This controller listens for messages sent to the "/chat.send" destination,
+ * processes them using the SendChatMessageUseCase, and then pushes the saved
+ * message to both the recipient and sender via WebSocket.
+ *
+ * This controller is not used for AI Chat, which is handled separately by AiChatController.
+    */
+
 public class ChatController {
 
     private final SendChatMessageUseCase sendChatMessageUseCase;
