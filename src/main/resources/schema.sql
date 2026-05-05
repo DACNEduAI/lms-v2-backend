@@ -30,7 +30,7 @@ DROP TABLE IF EXISTS
     course_announcements,
     event_publication,
     ai_course_chat_messages,
-    ai_chat_sessions
+    ai_chat_sessions,
     notifications,
     user_chat_messages,
     CASCADE;
