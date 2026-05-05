@@ -22,6 +22,7 @@ DROP TABLE IF EXISTS
     question_images,
     answers,
     attempts,
+    quiz_generation_jobs,
     quiz_chapters,
     quiz_learning_outcomes,
     question_learning_outcomes,
@@ -189,6 +190,28 @@ CREATE TABLE IF NOT EXISTS quizzes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS quiz_generation_jobs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    chapter_id UUID REFERENCES chapters(chapter_id) ON DELETE SET NULL,
+    quiz_id UUID REFERENCES quizzes(id) ON DELETE SET NULL,
+    requested_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    requested_role VARCHAR(50) NOT NULL,
+    quiz_title VARCHAR(255),
+    difficulty VARCHAR(50),
+    question_count INTEGER,
+    status VARCHAR(30) NOT NULL,
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_generation_jobs_status
+    ON quiz_generation_jobs(status);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_generation_jobs_requested_by
+    ON quiz_generation_jobs(requested_by);
 
 -- Questions table
 CREATE TABLE IF NOT EXISTS questions (

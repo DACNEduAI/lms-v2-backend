@@ -19,7 +19,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 
 @DisplayName("Chat History Controller Integration Tests")
-class ChatHistoryControllerIT extends IntegrationTestConfiguration {
+class TeacherStudentChatHistoryControllerIT extends IntegrationTestConfiguration {
 
     @Autowired
     private ChatMessageRepository chatMessageRepository;

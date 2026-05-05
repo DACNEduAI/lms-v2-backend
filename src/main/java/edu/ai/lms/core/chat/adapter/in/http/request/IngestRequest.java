@@ -1,4 +1,4 @@
-package edu.ai.lms.core.chat.app.service.dto;
+package edu.ai.lms.core.chat.adapter.in.http.request;
 
 import lombok.Builder;
 import lombok.Data;

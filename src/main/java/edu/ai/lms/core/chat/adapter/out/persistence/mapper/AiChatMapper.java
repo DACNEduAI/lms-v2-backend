@@ -2,7 +2,7 @@ package edu.ai.lms.core.chat.adapter.out.persistence.mapper;
 
 import edu.ai.lms.core.chat.app.domain.AiChatSession;
 import edu.ai.lms.core.chat.app.domain.AiCourseChatMessage;
-import edu.ai.lms.core.chat.app.service.dto.ChatSessionDto;
+import edu.ai.lms.core.chat.adapter.in.http.request.ChatSessionDto;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;

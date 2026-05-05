@@ -4,7 +4,7 @@ import edu.ai.lms.core.chat.adapter.out.persistence.mapper.AiChatMapper;
 import edu.ai.lms.core.chat.app.domain.AiChatSession;
 import edu.ai.lms.core.chat.app.domain.AiCourseChatMessage;
 import edu.ai.lms.core.chat.app.port.out.persistence.AiChatPersistencePort;
-import edu.ai.lms.core.chat.app.service.dto.ChatSessionDto;
+import edu.ai.lms.core.chat.adapter.in.http.request.ChatSessionDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
