@@ -201,6 +201,7 @@ CREATE TABLE IF NOT EXISTS quiz_generation_jobs (
     requested_role VARCHAR(50) NOT NULL,
     quiz_title VARCHAR(255),
     question_count INTEGER,
+    question_type VARCHAR(50),
     prompt TEXT,
     use_options BOOLEAN,
     unlimited BOOLEAN,

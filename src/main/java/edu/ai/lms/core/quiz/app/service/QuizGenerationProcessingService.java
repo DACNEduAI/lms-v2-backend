@@ -16,11 +16,12 @@ import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadLearningOutcomePort;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusResponse;
+import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
 import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
-import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobLearningOutcomePort;
+import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -91,6 +92,7 @@ public class QuizGenerationProcessingService {
                     processingJob.getChapterId(),
                     chapter != null ? chapter.getTitle() : null,
                     processingJob.getQuestionCount(),
+                    processingJob.getQuestionType(),
                     learningOutcomes.stream()
                             .map(outcome -> new LearningOutcomeContext(outcome.getCode(), outcome.getDescription()))
                             .toList(),
@@ -165,6 +167,7 @@ public class QuizGenerationProcessingService {
             UUID chapterId,
             String chapterTitle,
             Integer questionCount,
+            Question.QuestionType questionType,
             List<LearningOutcomeContext> learningOutcomes,
             String prompt,
             boolean useOptions,

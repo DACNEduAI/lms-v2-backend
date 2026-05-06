@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import edu.ai.lms.config.DatePatternConstants;
+import edu.ai.lms.core.quiz.app.domain.Question;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -58,4 +59,6 @@ public class GenerateQuizRequest {
 
     @Positive(message = "Question count must be greater than 0")
     private Integer questionCount;
+
+    private Question.QuestionType questionType;
 }
