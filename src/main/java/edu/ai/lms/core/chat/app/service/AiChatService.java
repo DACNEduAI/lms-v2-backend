@@ -6,7 +6,7 @@ import edu.ai.lms.core.chat.app.domain.AiCourseChatMessage;
 import edu.ai.lms.core.chat.app.port.out.persistence.AiChatPersistencePort;
 import edu.ai.lms.core.chat.adapter.in.http.request.IngestRequest;
 import edu.ai.lms.core.chat.adapter.out.python.dto.PythonChatRequest;
-import edu.ai.lms.core.chat.app.dto.ChatSessionDto;
+import edu.ai.lms.core.chat.adapter.in.http.response.ChatSessionResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -34,7 +34,7 @@ public class AiChatService {
     /**
      * Tạo một phiên chat mới cho người dùng trong khóa học.
      */
-    public ChatSessionDto createSession(UUID userId, UUID courseId) {
+    public ChatSessionResponse createSession(UUID userId, UUID courseId) {
         AiChatSession session = AiChatSession.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
@@ -46,14 +46,14 @@ public class AiChatService {
         aiChatPersistencePort.saveSession(session);
         log.info("Created new chat session {} for user {} in course {}", session.getId(), userId, courseId);
 
-        return new ChatSessionDto(session.getId(), session.getTitle(), false, null);
+        return new ChatSessionResponse(session.getId(), session.getTitle(), false, null);
     }
 
     /**
      * Lấy danh sách phiên chat (hiển thị trên Sidebar bên trái).
      * Sắp xếp: Ghim trước, sau đó mới nhất trước.
      */
-    public List<ChatSessionDto> getSessions(UUID userId, UUID courseId) {
+    public List<ChatSessionResponse> getSessions(UUID userId, UUID courseId) {
         return aiChatPersistencePort.getSessionsByUserAndCourse(userId, courseId);
     }
 

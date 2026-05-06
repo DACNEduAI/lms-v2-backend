@@ -4,7 +4,7 @@ import edu.ai.lms.core.chat.adapter.out.persistence.mapper.AiChatMapper;
 import edu.ai.lms.core.chat.app.domain.AiChatSession;
 import edu.ai.lms.core.chat.app.domain.AiCourseChatMessage;
 import edu.ai.lms.core.chat.app.port.out.persistence.AiChatPersistencePort;
-import edu.ai.lms.core.chat.app.dto.ChatSessionDto;
+import edu.ai.lms.core.chat.adapter.in.http.response.ChatSessionResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +27,7 @@ public class AiChatPersistenceAdapter implements AiChatPersistencePort {
     }
 
     @Override
-    public List<ChatSessionDto> getSessionsByUserAndCourse(UUID userId, UUID courseId) {
+    public List<ChatSessionResponse> getSessionsByUserAndCourse(UUID userId, UUID courseId) {
         return aiChatMapper.selectSessionsByUserAndCourse(userId, courseId);
     }
 

@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.quiz.adapter.out.persistence.QuizGenerationJobRepository">
+
+  <resultMap id="QuizGenerationJobResultMap" type="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob">
+    <id property="id" column="id" />
+    <result property="courseId" column="course_id" />
+    <result property="chapterId" column="chapter_id" />
+    <result property="quizId" column="quiz_id" />
+    <result property="requestedBy" column="requested_by" />
+    <result property="requestedRole" column="requested_role" javaType="edu.ai.lms.common.Roles" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="quizTitle" column="quiz_title" />
+    <result property="questionCount" column="question_count" />
+    <result property="prompt" column="prompt" />
+    <result property="useOptions" column="use_options" />
+    <result property="unlimited" column="unlimited" />
+    <result property="timeLimitMinutes" column="time_limit_minutes" />
+    <result property="passScore" column="pass_score" />
+    <result property="startTime" column="start_time" />
+    <result property="dueTime" column="due_time" />
+    <result property="attemptLimited" column="attempt_limited" />
+    <result property="display" column="display" />
+    <result property="status" column="status" javaType="edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="errorMessage" column="error_message" />
+    <result property="createdAt" column="created_at" />
+    <result property="updatedAt" column="updated_at" />
+  </resultMap>
+
+  <insert id="insert" parameterType="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob">
+    INSERT INTO quiz_generation_jobs (
+        id,
+        course_id,
+        chapter_id,
+        quiz_id,
+        requested_by,
+        requested_role,
+        quiz_title,
+        question_count,
+        prompt,
+        use_options,
+        unlimited,
+        time_limit_minutes,
+        pass_score,
+        start_time,
+        due_time,
+        attempt_limited,
+        display,
+        status,
+        error_message,
+        created_at,
+        updated_at
+    )
+    VALUES (
+        #{id},
+        #{courseId},
+        #{chapterId},
+        #{quizId},
+        #{requestedBy},
+        #{requestedRole, javaType=edu.ai.lms.common.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        #{quizTitle},
+        #{questionCount},
+        #{prompt},
+        #{useOptions},
+        #{unlimited},
+        #{timeLimitMinutes},
+        #{passScore},
+        #{startTime},
+        #{dueTime},
+        #{attemptLimited},
+        #{display},
+        #{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        #{errorMessage},
+        NOW(),
+        NOW()
+    )
+  </insert>
+
+  <update id="update" parameterType="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob">
+    UPDATE quiz_generation_jobs
+    SET course_id = #{courseId},
+        chapter_id = #{chapterId},
+        quiz_id = #{quizId},
+        requested_by = #{requestedBy},
+        requested_role = #{requestedRole, javaType=edu.ai.lms.common.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        quiz_title = #{quizTitle},
+        question_count = #{questionCount},
+        prompt = #{prompt},
+        use_options = #{useOptions},
+        unlimited = #{unlimited},
+        time_limit_minutes = #{timeLimitMinutes},
+        pass_score = #{passScore},
+        start_time = #{startTime},
+        due_time = #{dueTime},
+        attempt_limited = #{attemptLimited},
+        display = #{display},
+        status = #{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        error_message = #{errorMessage},
+        updated_at = NOW()
+    WHERE id = #{id}
+  </update>
+
+  <select id="getById" resultMap="QuizGenerationJobResultMap">
+    SELECT id,
+           course_id,
+           chapter_id,
+           quiz_id,
+           requested_by,
+           requested_role,
+           quiz_title,
+           question_count,
+           prompt,
+           use_options,
+           unlimited,
+           time_limit_minutes,
+           pass_score,
+           start_time,
+           due_time,
+           attempt_limited,
+           display,
+           status,
+           error_message,
+           created_at,
+           updated_at
+    FROM quiz_generation_jobs
+    WHERE id = #{jobId}
+  </select>
+
+</mapper>

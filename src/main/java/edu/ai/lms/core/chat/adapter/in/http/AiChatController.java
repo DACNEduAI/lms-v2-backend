@@ -3,7 +3,7 @@ package edu.ai.lms.core.chat.adapter.in.http;
 import edu.ai.lms.core.chat.adapter.in.http.request.AiChatRequest;
 import edu.ai.lms.core.chat.app.domain.AiCourseChatMessage;
 import edu.ai.lms.core.chat.app.service.AiChatService;
-import edu.ai.lms.core.chat.app.dto.ChatSessionDto;
+import edu.ai.lms.core.chat.adapter.in.http.response.ChatSessionResponse;
 import edu.ai.lms.core.chat.app.port.out.persistence.LoadSignedInUserPort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,7 +41,7 @@ public class AiChatController {
     @Operation(summary = "List chat sessions", description = "Lấy danh sách các phiên chat để hiển thị trên Sidebar.")
     @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER')")
     @GetMapping("/sessions")
-    public ResponseEntity<List<ChatSessionDto>> getSessions(@PathVariable UUID courseId) {
+    public ResponseEntity<List<ChatSessionResponse>> getSessions(@PathVariable UUID courseId) {
         UUID userId = getAuthenticatedUserId();
         return ResponseEntity.ok(aiChatService.getSessions(userId, courseId));
     }
@@ -49,7 +49,7 @@ public class AiChatController {
     @Operation(summary = "Create new chat session", description = "Tạo một đoạn chat mới.")
     @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER')")
     @PostMapping("/sessions")
-    public ResponseEntity<ChatSessionDto> createSession(@PathVariable UUID courseId) {
+    public ResponseEntity<ChatSessionResponse> createSession(@PathVariable UUID courseId) {
         UUID userId = getAuthenticatedUserId();
         return ResponseEntity.ok(aiChatService.createSession(userId, courseId));
     }

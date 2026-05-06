@@ -2,7 +2,7 @@ package edu.ai.lms.core.chat.adapter.out.persistence.mapper;
 
 import edu.ai.lms.core.chat.app.domain.AiChatSession;
 import edu.ai.lms.core.chat.app.domain.AiCourseChatMessage;
-import edu.ai.lms.core.chat.app.dto.ChatSessionDto;
+import edu.ai.lms.core.chat.adapter.in.http.response.ChatSessionResponse;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -23,7 +23,7 @@ public interface AiChatMapper {
             "FROM ai_chat_sessions " +
             "WHERE user_id = #{userId} AND course_id = #{courseId} " +
             "ORDER BY is_pinned DESC, updated_at DESC")
-    List<ChatSessionDto> selectSessionsByUserAndCourse(@Param("userId") UUID userId, @Param("courseId") UUID courseId);
+    List<ChatSessionResponse> selectSessionsByUserAndCourse(@Param("userId") UUID userId, @Param("courseId") UUID courseId);
 
     @Update("UPDATE ai_chat_sessions SET is_pinned = #{isPinned}, updated_at = CURRENT_TIMESTAMP WHERE id = #{id}")
     void updateSessionPin(@Param("id") UUID id, @Param("isPinned") boolean isPinned);

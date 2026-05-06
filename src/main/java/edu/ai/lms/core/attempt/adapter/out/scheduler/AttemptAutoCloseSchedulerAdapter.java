@@ -23,7 +23,7 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-class AttemptAutoCloseQuartzAdapter implements ScheduleAttemptAutoClosePort, UnscheduleAttemptAutoClosePort {
+class AttemptAutoCloseSchedulerAdapter implements ScheduleAttemptAutoClosePort, UnscheduleAttemptAutoClosePort {
 
     private static final String JOB_GROUP = "attempt-auto-close";
     private static final String TRIGGER_GROUP = "attempt-auto-close-trigger";
