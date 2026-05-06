@@ -30,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private final SseJwtAuthenticationFilter sseJwtAuthenticationFilter;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final LoadStudentPort loadStudentPort;
     private final LoadTeacherPort loadTeacherPort;
@@ -70,6 +71,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints - Authentication
                         .requestMatchers("/api/auth/**").permitAll()
+                    // Internal webhooks (guarded by shared secret header)
+                    .requestMatchers("/api/internal/webhooks/**").permitAll()
                         // Swagger UI endpoints
                         .requestMatchers(
                                 "/v3/api-docs/**",
@@ -89,7 +92,8 @@ public class SecurityConfig {
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                    .addFilterBefore(sseJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                    .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

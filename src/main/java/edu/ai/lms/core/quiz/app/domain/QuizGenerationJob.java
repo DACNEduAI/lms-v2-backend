@@ -3,6 +3,8 @@ package edu.ai.lms.core.quiz.app.domain;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import edu.ai.lms.core.quiz.app.domain.Question;
+
 import edu.ai.lms.common.Roles;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,6 +34,8 @@ public class QuizGenerationJob {
     private String quizTitle;
 
     private Integer questionCount;
+
+    private Question.QuestionType questionType;
 
     private String prompt;
 

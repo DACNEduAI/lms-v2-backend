@@ -13,6 +13,7 @@
     <result property="requestedRole" column="requested_role" javaType="edu.ai.lms.common.Roles" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="quizTitle" column="quiz_title" />
     <result property="questionCount" column="question_count" />
+    <result property="questionType" column="question_type" javaType="edu.ai.lms.core.quiz.app.domain.Question$QuestionType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="prompt" column="prompt" />
     <result property="useOptions" column="use_options" />
     <result property="unlimited" column="unlimited" />
@@ -38,6 +39,7 @@
         requested_role,
         quiz_title,
         question_count,
+        question_type,
         prompt,
         use_options,
         unlimited,
@@ -61,6 +63,7 @@
         #{requestedRole, javaType=edu.ai.lms.common.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         #{quizTitle},
         #{questionCount},
+        #{questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         #{prompt},
         #{useOptions},
         #{unlimited},
@@ -86,6 +89,7 @@
         requested_role = #{requestedRole, javaType=edu.ai.lms.common.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         quiz_title = #{quizTitle},
         question_count = #{questionCount},
+        question_type = #{questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         prompt = #{prompt},
         use_options = #{useOptions},
         unlimited = #{unlimited},
@@ -110,6 +114,7 @@
            requested_role,
            quiz_title,
            question_count,
+           question_type,
            prompt,
            use_options,
            unlimited,

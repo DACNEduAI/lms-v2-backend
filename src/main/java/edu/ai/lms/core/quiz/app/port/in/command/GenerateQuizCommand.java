@@ -3,6 +3,8 @@ package edu.ai.lms.core.quiz.app.port.in.command;
 import java.util.UUID;
 import java.util.List;
 
+import edu.ai.lms.core.quiz.app.domain.Question;
+
 import lombok.Builder;
 
 @Builder
@@ -20,6 +22,7 @@ public record GenerateQuizCommand(
         Integer attemptLimited,
         Boolean display,
         List<UUID> learningOutcomeIds,
-        Integer questionCount
+        Integer questionCount,
+        Question.QuestionType questionType
 ) {
 }
