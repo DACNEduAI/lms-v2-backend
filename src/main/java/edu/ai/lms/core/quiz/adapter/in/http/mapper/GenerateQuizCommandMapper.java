@@ -24,6 +24,7 @@ public class GenerateQuizCommandMapper {
                 .display(request.getDisplay())
                 .learningOutcomeIds(request.getLearningOutcomeIds())
                 .questionCount(request.getQuestionCount())
+                .questionType(request.getQuestionType())
                 .build();
     }
 }

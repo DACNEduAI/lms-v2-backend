@@ -22,8 +22,8 @@ import edu.ai.lms.core.quiz.app.port.in.usecase.GetQuizGenerationJobUseCase;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
-import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobLearningOutcomePort;
+import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.ScheduleQuizGenerationJobPort;
 import lombok.RequiredArgsConstructor;
 
@@ -61,6 +61,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
                 .chapterId(command.chapterId())
                 .quizTitle(command.quizTitle())
                 .questionCount(command.questionCount())
+                .questionType(command.questionType())
             .prompt(command.prompt())
             .useOptions(useOptions)
             .unlimited(command.unlimited())
