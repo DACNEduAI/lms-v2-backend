@@ -15,20 +15,31 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class WebClientConfig {
 
-    @Value("${ai.service.url:http://localhost:8000}")
-    private String aiServiceUrl;
+    @Value("${ai.rag.url:http://localhost:8000}")
+    private String aiRagUrl;
+
+    @Value("${ai.quiz.url:http://localhost:8001}")
+    private String aiQuizUrl;
 
     @Bean
-    public WebClient aiWebClient(WebClient.Builder webClientBuilder) {
-        // Cấu hình HttpClient với Netty để thiết lập Timeout chuyên sâu
+    public WebClient aiRagWebClient(WebClient.Builder webClientBuilder) {
+        return createWebClient(webClientBuilder, aiRagUrl);
+    }
+
+    @Bean
+    public WebClient aiQuizWebClient(WebClient.Builder webClientBuilder) {
+        return createWebClient(webClientBuilder, aiQuizUrl);
+    }
+
+    private WebClient createWebClient(WebClient.Builder webClientBuilder, String baseUrl) {
         HttpClient httpClient = HttpClient.create()
-                .responseTimeout(Duration.ofSeconds(60)) // Thời gian chờ response
-                .doOnConnected(conn -> 
+                .responseTimeout(Duration.ofSeconds(60))
+                .doOnConnected(conn ->
                         conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
                             .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS)));
 
         return webClientBuilder
-                .baseUrl(aiServiceUrl)
+                .baseUrl(baseUrl)
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }

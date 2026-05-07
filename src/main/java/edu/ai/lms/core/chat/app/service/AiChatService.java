@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class AiChatService {
 
-    private final WebClient aiWebClient;
+    private final WebClient aiRagWebClient;
     private final AiChatPersistencePort aiChatPersistencePort;
 
     // ==========================================
@@ -135,7 +135,7 @@ public class AiChatService {
                 .selected_material_ids(validatedMaterialIds) // Truyền danh sách đã validate sang Python
                 .build();
 
-        return aiWebClient.post()
+        return aiRagWebClient.post()
                 .uri("/api/chat")
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.TEXT_EVENT_STREAM)
@@ -212,7 +212,7 @@ public class AiChatService {
                 .file_url(fileUrl)
                 .build();
 
-        aiWebClient.post()
+        aiRagWebClient.post()
                 .uri("/api/ingest")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)

@@ -38,7 +38,7 @@ public class QuizGenerationProcessingService {
     private final LoadLearningOutcomePort loadLearningOutcomePort;
     private final LoadQuizGenerationJobLearningOutcomePort loadQuizGenerationJobLearningOutcomePort;
     private final SseQuizGenerationService sseQuizGenerationService;
-    private final WebClient aiWebClient;
+    private final WebClient aiQuizWebClient;
 
     @Value("${quiz.generation.webhook.base-url}")
     private String webhookBaseUrl;
@@ -78,8 +78,8 @@ public class QuizGenerationProcessingService {
                         processingJob.getUnlimited(),
                         processingJob.getTimeLimitMinutes(),
                         processingJob.getPassScore(),
-                        processingJob.getStartTime(),
-                        processingJob.getDueTime(),
+                        processingJob.getStartTime() != null ? processingJob.getStartTime().toString() : null,
+                        processingJob.getDueTime() != null ? processingJob.getDueTime().toString() : null,
                         processingJob.getAttemptLimited(),
                         processingJob.getDisplay()
                 );
@@ -103,7 +103,7 @@ public class QuizGenerationProcessingService {
                     webhookSecret
             );
 
-            aiWebClient.post()
+            aiQuizWebClient.post()
                     .uri("/quiz-gen/generate")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(payload)
@@ -181,8 +181,8 @@ public class QuizGenerationProcessingService {
             Boolean unlimited,
             Integer timeLimitMinutes,
             Double passScore,
-            java.time.LocalDateTime startTime,
-            java.time.LocalDateTime dueTime,
+            String startTime,
+            String dueTime,
             Integer attemptLimited,
             Boolean display
         ) {
