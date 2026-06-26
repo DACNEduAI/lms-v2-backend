@@ -17,39 +17,39 @@
 
   <select id="findById" resultMap="CourseResultMap">
     SELECT id, course_name, description, course_code, active, cover_image, start_date, end_date
-    FROM courses
+    FROM edu.courses
     WHERE id = #{id}
   </select>
 
   <select id="findByCourseCode" resultMap="CourseResultMap">
     SELECT id, course_name, description, course_code, active, cover_image, start_date, end_date
-    FROM courses
+    FROM edu.courses
     WHERE course_code = #{courseCode}
   </select>
 
   <select id="findAllByTeacherId" resultMap="CourseResultMap">
     SELECT c.id, c.course_name, c.description, c.course_code, c.active, c.cover_image, c.start_date, c.end_date
-    FROM courses c
-    INNER JOIN enrollments e ON c.id = e.course_id
-    INNER JOIN teachers t ON t.user_id = e.user_id
+    FROM edu.courses c
+    INNER JOIN edu.enrollments e ON c.id = e.course_id
+    INNER JOIN edu.teachers t ON t.user_id = e.user_id
     WHERE e.user_id = #{teacherId}
   </select>
 
   <select id="findAllByStudentId" resultMap="CourseResultMap">
     SELECT c.id, c.course_name, c.description, c.course_code, c.active, c.cover_image, c.start_date, c.end_date
-    FROM courses c
-    INNER JOIN enrollments e ON c.id = e.course_id
-    INNER JOIN students s ON s.user_id = e.user_id
+    FROM edu.courses c
+    INNER JOIN edu.enrollments e ON c.id = e.course_id
+    INNER JOIN edu.students s ON s.user_id = e.user_id
     WHERE e.user_id = #{studentId}
   </select>
 
   <insert id="insert" parameterType="edu.ai.lms.core.course.app.domain.Course">
-    INSERT INTO courses (id, course_name, description, course_code, active, cover_image, start_date, end_date, created_at, updated_at)
+    INSERT INTO edu.courses (id, course_name, description, course_code, active, cover_image, start_date, end_date, created_at, updated_at)
     VALUES (#{id}, #{courseName}, #{description}, #{courseCode}, #{active}, #{coverImage}, #{startDate}, #{endDate}, NOW(), NOW())
   </insert>
 
   <update id="update" parameterType="edu.ai.lms.core.course.app.domain.Course">
-    UPDATE courses
+    UPDATE edu.courses
     SET course_name = #{courseName},
         description = #{description},
         course_code = #{courseCode},
@@ -62,43 +62,43 @@
   </update>
 
   <delete id="deleteById">
-    DELETE FROM courses WHERE id = #{id}
+    DELETE FROM edu.courses WHERE id = #{id}
   </delete>
 
   <select id="findTeacherIdsByCourseId" resultType="java.util.UUID">
     SELECT e.user_id
-    FROM enrollments e
-    INNER JOIN teachers t ON t.user_id = e.user_id
+    FROM edu.enrollments e
+    INNER JOIN edu.teachers t ON t.user_id = e.user_id
     WHERE e.course_id = #{courseId}
   </select>
 
   <select id="findStudentIdsByCourseId" resultType="java.util.UUID">
     SELECT e.user_id
-    FROM enrollments e
-    INNER JOIN students s ON s.user_id = e.user_id
+    FROM edu.enrollments e
+    INNER JOIN edu.students s ON s.user_id = e.user_id
     WHERE e.course_id = #{courseId}
   </select>
 
   <delete id="deleteCourseStudentsByCourseIdAndStudentIds">
-    DELETE FROM enrollments
+    DELETE FROM edu.enrollments
     WHERE course_id = #{courseId}
       AND user_id IN
       <foreach collection="studentIds" item="studentId" open="(" separator="," close=")">
         #{studentId}
       </foreach>
       AND EXISTS (
-        SELECT 1 FROM students s WHERE s.user_id = enrollments.user_id
+        SELECT 1 FROM edu.students s WHERE s.user_id = enrollments.user_id
       )
   </delete>
 
   <insert id="insertCourseTeacher">
-    INSERT INTO enrollments (course_id, user_id, enrolled_date, created_at, updated_at)
+    INSERT INTO edu.enrollments (course_id, user_id, enrolled_date, created_at, updated_at)
     VALUES (#{courseId}, #{teacherId}, NOW(), NOW(), NOW())
     ON CONFLICT (course_id, user_id) DO NOTHING
   </insert>
 
   <insert id="insertCourseStudent">
-    INSERT INTO enrollments (course_id, user_id, enrolled_date, created_at, updated_at)
+    INSERT INTO edu.enrollments (course_id, user_id, enrolled_date, created_at, updated_at)
     VALUES (#{courseId}, #{studentId}, NOW(), NOW(), NOW())
     ON CONFLICT (course_id, user_id) DO NOTHING
   </insert>

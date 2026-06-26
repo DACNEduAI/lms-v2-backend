@@ -14,33 +14,33 @@
     </resultMap>
 
     <select id="findByUserId" resultMap="NotificationMap">
-        SELECT * FROM notifications 
+        SELECT * FROM edu.notifications 
         WHERE user_id = #{userId} 
         ORDER BY created_at DESC 
         LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="countByUserIdAndIsReadFalse" resultType="long">
-        SELECT COUNT(*) FROM notifications 
+        SELECT COUNT(*) FROM edu.notifications 
         WHERE user_id = #{userId} AND is_read = false
     </select>
 
     <select id="countByUserId" resultType="long">
-        SELECT COUNT(*) FROM notifications 
+        SELECT COUNT(*) FROM edu.notifications 
         WHERE user_id = #{userId}
     </select>
 
     <select id="findById" resultMap="NotificationMap">
-        SELECT * FROM notifications WHERE id = #{id}
+        SELECT * FROM edu.notifications WHERE id = #{id}
     </select>
 
     <insert id="insert" parameterType="edu.ai.lms.core.notification.app.domain.Notification">
-        INSERT INTO notifications (id, user_id, title, message, type, link_url, is_read, created_at)
+        INSERT INTO edu.notifications (id, user_id, title, message, type, link_url, is_read, created_at)
         VALUES (#{id}, #{userId}, #{title}, #{message}, #{type}, #{linkUrl}, #{isRead}, #{createdAt})
     </insert>
 
     <update id="update" parameterType="edu.ai.lms.core.notification.app.domain.Notification">
-        UPDATE notifications 
+        UPDATE edu.notifications 
         SET is_read = #{isRead},
             title = #{title},
             message = #{message},
@@ -50,7 +50,7 @@
     </update>
 
     <update id="markAllAsReadByUserId">
-        UPDATE notifications 
+        UPDATE edu.notifications 
         SET is_read = true 
         WHERE user_id = #{userId} AND is_read = false
     </update>

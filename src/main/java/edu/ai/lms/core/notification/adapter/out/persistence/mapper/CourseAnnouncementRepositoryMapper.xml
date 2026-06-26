@@ -13,23 +13,23 @@
     </resultMap>
 
     <insert id="insert">
-        INSERT INTO course_announcements (id, course_id, title, content, teacher_id, type, created_at)
+        INSERT INTO edu.course_announcements (id, course_id, title, content, teacher_id, type, created_at)
         VALUES (#{id}, #{courseId}, #{title}, #{content}, #{teacherId}, #{type}, #{createdAt})
     </insert>
 
     <select id="findByCourseId" resultMap="AnnouncementResultMap">
-        SELECT * FROM course_announcements 
+        SELECT * FROM edu.course_announcements 
         WHERE course_id = #{courseId}
         ORDER BY created_at DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="countByCourseId" resultType="long">
-        SELECT COUNT(*) FROM course_announcements WHERE course_id = #{courseId}
+        SELECT COUNT(*) FROM edu.course_announcements WHERE course_id = #{courseId}
     </select>
 
     <select id="findById" resultMap="AnnouncementResultMap">
-        SELECT * FROM course_announcements WHERE id = #{id}
+        SELECT * FROM edu.course_announcements WHERE id = #{id}
     </select>
 
 </mapper>

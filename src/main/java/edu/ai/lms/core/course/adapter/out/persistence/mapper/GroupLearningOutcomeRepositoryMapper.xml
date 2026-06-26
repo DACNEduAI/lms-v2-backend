@@ -14,12 +14,12 @@
   </resultMap>
 
   <insert id="insert" parameterType="edu.ai.lms.core.course.app.domain.GroupLearningOutcome">
-    INSERT INTO group_learning_outcomes (id, name, description, course_id, created_at, updated_at)
+    INSERT INTO edu.group_learning_outcomes (id, name, description, course_id, created_at, updated_at)
     VALUES (#{id}, #{name}, #{description}, #{courseId}, NOW(), NOW())
   </insert>
 
   <update id="update" parameterType="edu.ai.lms.core.course.app.domain.GroupLearningOutcome">
-    UPDATE group_learning_outcomes
+    UPDATE edu.group_learning_outcomes
     SET name = #{name},
         description = #{description},
         course_id = #{courseId},
@@ -29,18 +29,18 @@
 
   <select id="findByCourseId" resultMap="GroupLearningOutcomeResultMap">
     SELECT id, name, description, course_id, created_at, updated_at
-    FROM group_learning_outcomes
+    FROM edu.group_learning_outcomes
     WHERE course_id = #{courseId}
   </select>
 
   <select id="findById" resultMap="GroupLearningOutcomeResultMap">
     SELECT id, name, description, course_id, created_at, updated_at
-    FROM group_learning_outcomes
+    FROM edu.group_learning_outcomes
     WHERE id = #{id}
   </select>
 
   <delete id="deleteByCourseId">
-    DELETE FROM group_learning_outcomes WHERE course_id = #{courseId}
+    DELETE FROM edu.group_learning_outcomes WHERE course_id = #{courseId}
   </delete>
 
 </mapper>

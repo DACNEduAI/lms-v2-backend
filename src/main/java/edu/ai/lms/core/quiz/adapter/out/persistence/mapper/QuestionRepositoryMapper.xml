@@ -15,12 +15,12 @@
   </resultMap>
 
   <insert id="insert" parameterType="edu.ai.lms.core.quiz.app.domain.Question">
-    INSERT INTO questions (id, content, type, quiz_id, created_at, updated_at)
+    INSERT INTO edu.questions (id, content, type, quiz_id, created_at, updated_at)
     VALUES (#{id}, #{content}, #{type, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, #{quizId}, NOW(), NOW())
   </insert>
 
   <update id="update" parameterType="edu.ai.lms.core.quiz.app.domain.Question">
-    UPDATE questions
+    UPDATE edu.questions
     SET content = #{content},
         type = #{type, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         quiz_id = #{quizId},
@@ -29,35 +29,35 @@
   </update>
 
   <delete id="deleteById">
-    DELETE FROM questions WHERE id = #{id}
+    DELETE FROM edu.questions WHERE id = #{id}
   </delete>
 
   <select id="getById" resultMap="QuestionResultMap">
     SELECT id, content, type, quiz_id, created_at, updated_at
-    FROM questions
+    FROM edu.questions
     WHERE id = #{questionId}
   </select>
 
   <select id="getByQuizId" resultMap="QuestionResultMap">
     SELECT id, content, type, quiz_id, created_at, updated_at
-    FROM questions
+    FROM edu.questions
     WHERE quiz_id = #{quizId}
     ORDER BY created_at
   </select>
 
   <select id="getImagesByQuestionId" resultType="edu.ai.lms.core.quiz.app.domain.Question$Image">
     SELECT image_name, url
-    FROM question_images
+    FROM edu.question_images
     WHERE question_id = #{questionId}
     ORDER BY created_at
   </select>
 
   <delete id="deleteImagesByQuestionId">
-    DELETE FROM question_images WHERE question_id = #{questionId}
+    DELETE FROM edu.question_images WHERE question_id = #{questionId}
   </delete>
 
   <insert id="insertImage">
-    INSERT INTO question_images (id, question_id, image_name, url, created_at, updated_at)
+    INSERT INTO edu.question_images (id, question_id, image_name, url, created_at, updated_at)
     VALUES (gen_random_uuid(), #{questionId}, #{imageName}, #{url}, NOW(), NOW())
   </insert>
 

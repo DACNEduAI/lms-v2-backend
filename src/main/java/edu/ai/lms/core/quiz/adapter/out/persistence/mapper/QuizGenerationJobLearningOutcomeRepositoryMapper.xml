@@ -5,7 +5,7 @@
 <mapper namespace="edu.ai.lms.core.quiz.adapter.out.persistence.QuizGenerationJobLearningOutcomeRepository">
 
   <insert id="insertBatch">
-    INSERT INTO quiz_generation_job_learning_outcomes (job_id, learning_outcome_id)
+    INSERT INTO edu.quiz_generation_job_learning_outcomes (job_id, learning_outcome_id)
     VALUES
     <foreach collection="learningOutcomeIds" item="learningOutcomeId" separator=",">
       (#{jobId}, #{learningOutcomeId})
@@ -15,7 +15,7 @@
 
   <select id="findLearningOutcomeIdsByJobId" resultType="java.util.UUID">
     SELECT learning_outcome_id
-    FROM quiz_generation_job_learning_outcomes
+    FROM edu.quiz_generation_job_learning_outcomes
     WHERE job_id = #{jobId}
     ORDER BY learning_outcome_id
   </select>
