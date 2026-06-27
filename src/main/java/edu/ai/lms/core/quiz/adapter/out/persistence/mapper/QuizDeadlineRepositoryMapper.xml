@@ -15,9 +15,9 @@
             q.id AS quiz_id, 
             q.quiz_title, 
             q.course_id
-        FROM quizzes q
-        INNER JOIN enrollments e ON q.course_id = e.course_id
-        LEFT JOIN attempts a ON a.quiz_id = q.id 
+        FROM edu.quizzes q
+        INNER JOIN edu.enrollments e ON q.course_id = e.course_id
+        LEFT JOIN edu.attempts a ON a.quiz_id = q.id 
                             AND a.student_id = e.user_id 
                             AND a.status = 'FINISHED'
         WHERE q.due_time &gt;= #{fromTime} AND q.due_time &lt;= #{toTime}

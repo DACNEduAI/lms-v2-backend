@@ -28,7 +28,7 @@
           start_time AS quiz_start_time,
            due_time AS quiz_due_time,
            attempt_limited
-    FROM quizzes
+    FROM edu.quizzes
     WHERE id = #{quizId}
       AND course_id = #{courseId}
   </select>
@@ -41,7 +41,7 @@
           start_time AS quiz_start_time,
            due_time AS quiz_due_time,
            attempt_limited
-    FROM quizzes
+    FROM edu.quizzes
     WHERE id = #{quizId}
   </select>
 
@@ -49,8 +49,8 @@
     SELECT q.id AS question_id,
            q.type AS question_type,
            a.answer_number AS correct_answer_number
-    FROM questions q
-    LEFT JOIN answers a ON a.question_id = q.id AND a.is_correct = true
+    FROM edu.questions q
+    LEFT JOIN edu.answers a ON a.question_id = q.id AND a.is_correct = true
     WHERE q.quiz_id = #{quizId}
     ORDER BY q.created_at, a.answer_number
   </select>
@@ -58,7 +58,7 @@
   <select id="isStudentInCourse" resultType="boolean">
     SELECT EXISTS (
       SELECT 1
-      FROM enrollments
+      FROM edu.enrollments
       WHERE course_id = #{courseId}
         AND user_id = #{studentId}
     )
@@ -66,7 +66,7 @@
 
   <select id="quizHasTimer" resultType="boolean">
     SELECT COALESCE(unlimited = false AND time_limit_minutes IS NOT NULL AND time_limit_minutes &gt; 0, false)
-    FROM quizzes
+    FROM edu.quizzes
     WHERE id = #{quizId}
   </select>
 

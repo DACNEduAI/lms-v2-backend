@@ -15,36 +15,36 @@
 
   <select id="findByCourseId" resultMap="ChapterResultMap">
     SELECT chapter_id, title, description, course_id, created_at, updated_at
-    FROM chapters
+    FROM edu.chapters
     WHERE course_id = #{courseId}
     ORDER BY chapter_id
   </select>
 
   <select id="findByChapterIdAndCourseId" resultMap="ChapterResultMap">
     SELECT chapter_id, title, description, course_id, created_at, updated_at
-    FROM chapters
+    FROM edu.chapters
     WHERE chapter_id = #{chapterId}
       AND course_id = #{courseId}
   </select>
 
   <delete id="deleteByCourseId">
-    DELETE FROM chapters WHERE course_id = #{courseId}
+    DELETE FROM edu.chapters WHERE course_id = #{courseId}
   </delete>
 
   <delete id="deleteByChapterIdAndCourseId">
-    DELETE FROM chapters
+    DELETE FROM edu.chapters
     WHERE chapter_id = #{chapterId}
       AND course_id = #{courseId}
   </delete>
 
   <select id="insertAndReturnChapterId" resultType="java.util.UUID">
-    INSERT INTO chapters (course_id, title, description, created_at, updated_at)
+    INSERT INTO edu.chapters (course_id, title, description, created_at, updated_at)
     VALUES (#{courseId}, #{title}, #{description}, NOW(), NOW())
     RETURNING chapter_id
   </select>
 
   <update id="updateByCompositeKey">
-    UPDATE chapters
+    UPDATE edu.chapters
     SET title = #{title},
         description = #{description},
         updated_at = NOW()
@@ -54,18 +54,18 @@
 
   <select id="findLearningOutcomeIdsByChapterKey" resultType="java.util.UUID">
     SELECT learning_outcome_id
-    FROM chapter_learning_outcomes
+    FROM edu.chapter_learning_outcomes
     WHERE chapter_id = #{chapterId}
   </select>
 
   <insert id="insertChapterLearningOutcome">
-    INSERT INTO chapter_learning_outcomes (chapter_id, learning_outcome_id)
+    INSERT INTO edu.chapter_learning_outcomes (chapter_id, learning_outcome_id)
     VALUES (#{chapterId}, #{learningOutcomeId})
     ON CONFLICT DO NOTHING
   </insert>
 
   <delete id="deleteChapterLearningOutcome">
-    DELETE FROM chapter_learning_outcomes
+    DELETE FROM edu.chapter_learning_outcomes
     WHERE chapter_id = #{chapterId}
       AND learning_outcome_id = #{learningOutcomeId}
   </delete>

@@ -5,7 +5,7 @@
 <mapper namespace="edu.ai.lms.core.quiz.adapter.out.persistence.QuestionLearningOutcomeRepository">
 
   <insert id="insertBatch">
-    INSERT INTO question_learning_outcomes (question_id, learning_outcome_id)
+    INSERT INTO edu.question_learning_outcomes (question_id, learning_outcome_id)
     VALUES
     <foreach collection="learningOutcomeIds" item="learningOutcomeId" separator=",">
       (#{questionId}, #{learningOutcomeId})
@@ -14,7 +14,7 @@
   </insert>
 
   <delete id="deleteBatch">
-    DELETE FROM question_learning_outcomes
+    DELETE FROM edu.question_learning_outcomes
     WHERE question_id = #{questionId}
       AND learning_outcome_id IN
       <foreach collection="learningOutcomeIds" item="learningOutcomeId" open="(" separator="," close=")">
@@ -24,7 +24,7 @@
 
   <select id="findLearningOutcomeIdsByQuestionId" resultType="java.util.UUID">
     SELECT learning_outcome_id
-    FROM question_learning_outcomes
+    FROM edu.question_learning_outcomes
     WHERE question_id = #{questionId}
     ORDER BY learning_outcome_id
   </select>
@@ -40,8 +40,8 @@
     SELECT lo.id AS learning_outcome_id,
            lo.code AS learning_outcome_code,
            lo.description AS learning_outcome_description
-    FROM question_learning_outcomes qlo
-    JOIN learning_outcomes lo ON lo.id = qlo.learning_outcome_id
+    FROM edu.question_learning_outcomes qlo
+    JOIN edu.learning_outcomes lo ON lo.id = qlo.learning_outcome_id
     WHERE qlo.question_id = #{questionId}
     ORDER BY lo.code
   </select>
@@ -51,9 +51,9 @@
            lo.id AS learning_outcome_id,
            lo.code AS learning_outcome_code,
            lo.description AS learning_outcome_description
-    FROM question_learning_outcomes qlo
-    JOIN learning_outcomes lo ON lo.id = qlo.learning_outcome_id
-    JOIN questions q ON q.id = qlo.question_id
+    FROM edu.question_learning_outcomes qlo
+    JOIN edu.learning_outcomes lo ON lo.id = qlo.learning_outcome_id
+    JOIN edu.questions q ON q.id = qlo.question_id
     WHERE q.quiz_id = #{quizId}
     ORDER BY lo.code
   </select>

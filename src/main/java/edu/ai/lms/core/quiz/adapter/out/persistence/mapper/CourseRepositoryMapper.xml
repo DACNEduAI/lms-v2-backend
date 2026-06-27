@@ -6,23 +6,23 @@
 
   <select id="existsByCourseIdAndTeacherId" resultType="boolean">
     SELECT COUNT(*) > 0
-    FROM enrollments e
-    INNER JOIN teachers t ON t.user_id = e.user_id
+    FROM edu.enrollments e
+    INNER JOIN edu.teachers t ON t.user_id = e.user_id
     WHERE e.course_id = #{courseId}
       AND e.user_id = #{teacherId}
   </select>
 
   <select id="existsByCourseIdAndStudentId" resultType="boolean">
     SELECT COUNT(*) > 0
-    FROM enrollments e
-    INNER JOIN students s ON s.user_id = e.user_id
+    FROM edu.enrollments e
+    INNER JOIN edu.students s ON s.user_id = e.user_id
     WHERE e.course_id = #{courseId}
       AND e.user_id = #{studentId}
   </select>
   <select id="findStudentIdsByCourseId" resultType="java.util.UUID">
     SELECT e.user_id
-    FROM enrollments e
-    INNER JOIN students s ON s.user_id = e.user_id
+    FROM edu.enrollments e
+    INNER JOIN edu.students s ON s.user_id = e.user_id
     WHERE e.course_id = #{courseId}
   </select>
 

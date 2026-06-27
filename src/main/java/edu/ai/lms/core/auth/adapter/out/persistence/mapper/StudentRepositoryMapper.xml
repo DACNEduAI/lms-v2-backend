@@ -19,21 +19,21 @@
   <select id="findById" resultMap="StudentResultMap">
     SELECT u.id, u.email, u.password, u.first_name, u.last_name, u.avatar_url, u.role,
            s.student_id, s.enrollment_year
-    FROM users u
-    INNER JOIN students s ON s.user_id = u.id
+    FROM edu.users u
+    INNER JOIN edu.students s ON s.user_id = u.id
     WHERE u.id = #{userId}
   </select>
 
   <select id="findByEmail" resultMap="StudentResultMap">
     SELECT u.id, u.email, u.password, u.first_name, u.last_name, u.avatar_url, u.role,
            s.student_id, s.enrollment_year
-    FROM users u
-    INNER JOIN students s ON s.user_id = u.id
+    FROM edu.users u
+    INNER JOIN edu.students s ON s.user_id = u.id
     WHERE u.email = #{email}
   </select>
 
   <insert id="insertStudent" parameterType="edu.ai.lms.core.auth.app.domain.Student">
-    INSERT INTO students (user_id, student_id, enrollment_year)
+    INSERT INTO edu.students (user_id, student_id, enrollment_year)
     VALUES (#{id}, #{studentId}, #{enrollmentYear})
   </insert>
 
