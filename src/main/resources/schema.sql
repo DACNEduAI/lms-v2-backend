@@ -24,6 +24,7 @@ DROP TABLE IF EXISTS
     attempts,
     quiz_generation_jobs,
     quiz_generation_job_learning_outcomes,
+    quiz_generation_job_materials,
     quiz_chapters,
     quiz_learning_outcomes,
     question_learning_outcomes,
@@ -260,6 +261,8 @@ CREATE TABLE IF NOT EXISTS quiz_generation_jobs
     display            BOOLEAN,
     status             VARCHAR(30) NOT NULL,
     error_message      TEXT,
+    exam_matrix_id     UUID REFERENCES exam_matrices (id) ON DELETE SET NULL,
+    strict_mode        BOOLEAN          DEFAULT true,
     created_at         TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
     updated_at         TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
 );
@@ -269,6 +272,13 @@ CREATE TABLE IF NOT EXISTS quiz_generation_job_learning_outcomes
     job_id              UUID REFERENCES quiz_generation_jobs (id) ON DELETE CASCADE,
     learning_outcome_id UUID REFERENCES learning_outcomes (id) ON DELETE CASCADE,
     PRIMARY KEY (job_id, learning_outcome_id)
+);
+
+CREATE TABLE IF NOT EXISTS quiz_generation_job_materials
+(
+    job_id      UUID REFERENCES quiz_generation_jobs (id) ON DELETE CASCADE,
+    material_id UUID REFERENCES materials (id) ON DELETE CASCADE,
+    PRIMARY KEY (job_id, material_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_quiz_generation_jobs_status

@@ -1,7 +1,10 @@
 package edu.ai.lms.core.quiz.app.service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -21,8 +24,14 @@ import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
 import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobLearningOutcomePort;
+import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobMaterialPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
+import edu.ai.lms.core.course.app.port.out.LoadExamMatrixPort;
+import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
+import edu.ai.lms.core.course.app.domain.ExamMatrix;
+import edu.ai.lms.core.course.app.domain.ExamMatrixRow;
+import edu.ai.lms.core.material.app.domain.Material;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,6 +46,9 @@ public class QuizGenerationProcessingService {
     private final LoadChapterPort loadChapterPort;
     private final LoadLearningOutcomePort loadLearningOutcomePort;
     private final LoadQuizGenerationJobLearningOutcomePort loadQuizGenerationJobLearningOutcomePort;
+    private final LoadQuizGenerationJobMaterialPort loadQuizGenerationJobMaterialPort;
+    private final LoadExamMatrixPort loadExamMatrixPort;
+    private final GetMaterialPort getMaterialPort;
     private final SseQuizGenerationService sseQuizGenerationService;
     private final WebClient aiQuizWebClient;
 
@@ -85,6 +97,34 @@ public class QuizGenerationProcessingService {
                 );
             }
 
+            Map<UUID, LearningOutcome> outcomeById = learningOutcomes.stream()
+                    .collect(Collectors.toMap(LearningOutcome::getId, Function.identity(), (first, ignored) -> first));
+
+            List<ExamMatrixRowContext> examMatrixContext = null;
+            if (processingJob.getExamMatrixId() != null) {
+                ExamMatrix matrix = loadExamMatrixPort.findById(processingJob.getExamMatrixId())
+                        .orElseThrow(() -> new IllegalStateException("Exam matrix not found for quiz generation"));
+                if (!processingJob.getCourseId().equals(matrix.getCourseId())) {
+                    throw new IllegalStateException("Exam matrix does not belong to the quiz course");
+                }
+                if (matrix.getRows() != null) {
+                    examMatrixContext = matrix.getRows().stream()
+                            .map(row -> toExamMatrixContext(processingJob.getCourseId(), row, outcomeById))
+                            .toList();
+                }
+            }
+
+            List<UUID> materialIds = loadQuizGenerationJobMaterialPort.findMaterialIdsByJobId(processingJob.getId());
+            List<MaterialContext> materialsContext = null;
+            if (materialIds != null && !materialIds.isEmpty()) {
+                materialsContext = materialIds.stream()
+                        .map(materialId -> getMaterialPort.findByIdAndCourseId(materialId, processingJob.getCourseId()))
+                        .filter(java.util.Optional::isPresent)
+                        .map(java.util.Optional::get)
+                        .map(m -> new MaterialContext(m.getId(), m.getTitle(), m.getFileKey(), m.getType() != null ? m.getType().name() : null))
+                        .toList();
+            }
+
             QuizGenerationAiRequest payload = new QuizGenerationAiRequest(
                     processingJob.getId(),
                     processingJob.getCourseId(),
@@ -93,12 +133,15 @@ public class QuizGenerationProcessingService {
                     chapter != null ? chapter.getTitle() : null,
                     processingJob.getQuestionCount(),
                     processingJob.getQuestionType(),
+                    examMatrixContext,
+                    materialsContext,
                     learningOutcomes.stream()
                             .map(outcome -> new LearningOutcomeContext(outcome.getCode(), outcome.getDescription()))
                             .toList(),
-                        processingJob.getPrompt(),
-                        Boolean.TRUE.equals(processingJob.getUseOptions()),
-                        options,
+                    processingJob.getPrompt(),
+                    Boolean.TRUE.equals(processingJob.getUseOptions()),
+                    processingJob.getStrictMode() == null || Boolean.TRUE.equals(processingJob.getStrictMode()),
+                    options,
                     buildWebhookUrl(),
                     webhookSecret
             );
@@ -146,6 +189,36 @@ public class QuizGenerationProcessingService {
         return trimmedBase + "/api/internal/webhooks/quiz-ready";
     }
 
+    private ExamMatrixRowContext toExamMatrixContext(UUID courseId, ExamMatrixRow row, Map<UUID, LearningOutcome> outcomeById) {
+        LearningOutcome outcome = outcomeById.get(row.getLearningOutcomeId());
+        String clo = outcome != null ? outcome.getCode() : row.getLearningOutcomeId().toString();
+        String chapterTitle = resolveChapterTitle(courseId, row.getChapterId());
+        String topic = row.getTopic();
+        if (topic == null || topic.isBlank()) {
+            topic = chapterTitle != null ? chapterTitle : clo;
+        }
+
+        return new ExamMatrixRowContext(
+                clo,
+                row.getLearningOutcomeId(),
+                row.getChapterId(),
+                chapterTitle,
+                topic,
+                row.getUnderstandCount(),
+                row.getApplyCount(),
+                row.getApplyPlusCount()
+        );
+    }
+
+    private String resolveChapterTitle(UUID courseId, UUID chapterId) {
+        if (chapterId == null) {
+            return null;
+        }
+        return loadChapterPort.findByKey(courseId, chapterId)
+                .map(Chapter::getTitle)
+                .orElse(null);
+    }
+
     private QuizGenerationStatusResponse toStatusResponse(QuizGenerationJob job) {
         return QuizGenerationStatusResponse.builder()
                 .jobId(job.getId())
@@ -160,6 +233,24 @@ public class QuizGenerationProcessingService {
     record LearningOutcomeContext(String code, String description) {
     }
 
+    record ExamMatrixRowContext(
+            String clo,
+            UUID learningOutcomeId,
+            UUID chapterId,
+            String chapter,
+            String topic,
+            int hieu,
+            int van_dung,
+            int vdc
+    ) {}
+
+    record MaterialContext(
+            UUID id,
+            String title,
+            String fileKey,
+            String type
+    ) {}
+
     record QuizGenerationAiRequest(
             UUID jobId,
             UUID courseId,
@@ -168,9 +259,12 @@ public class QuizGenerationProcessingService {
             String chapterTitle,
             Integer questionCount,
             Question.QuestionType questionType,
+            List<ExamMatrixRowContext> examMatrix,
+            List<MaterialContext> materials,
             List<LearningOutcomeContext> learningOutcomes,
             String prompt,
             boolean useOptions,
+            boolean strictMode,
             QuizGenerationOptions options,
             String webhookUrl,
             String webhookSecret

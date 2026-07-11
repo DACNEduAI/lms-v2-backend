@@ -61,4 +61,11 @@ public class GenerateQuizRequest {
     private Integer questionCount;
 
     private Question.QuestionType questionType;
+
+    private UUID examMatrixId;
+
+    private Boolean strictMode;
+
+    @Builder.Default
+    private List<UUID> selectedMaterialIds = new ArrayList<>();
 }

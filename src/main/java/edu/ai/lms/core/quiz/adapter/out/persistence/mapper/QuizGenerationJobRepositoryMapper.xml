@@ -25,6 +25,8 @@
     <result property="display" column="display" />
     <result property="status" column="status" javaType="edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="errorMessage" column="error_message" />
+    <result property="examMatrixId" column="exam_matrix_id" />
+    <result property="strictMode" column="strict_mode" />
     <result property="createdAt" column="created_at" />
     <result property="updatedAt" column="updated_at" />
   </resultMap>
@@ -51,6 +53,8 @@
         display,
         status,
         error_message,
+        exam_matrix_id,
+        strict_mode,
         created_at,
         updated_at
     )
@@ -75,6 +79,8 @@
         #{display},
         #{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         #{errorMessage},
+        #{examMatrixId},
+        #{strictMode},
         NOW(),
         NOW()
     )
@@ -101,6 +107,8 @@
         display = #{display},
         status = #{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         error_message = #{errorMessage},
+        exam_matrix_id = #{examMatrixId},
+        strict_mode = #{strictMode},
         updated_at = NOW()
     WHERE id = #{id}
   </update>
@@ -126,6 +134,8 @@
            display,
            status,
            error_message,
+           exam_matrix_id,
+           strict_mode,
            created_at,
            updated_at
     FROM edu.quiz_generation_jobs

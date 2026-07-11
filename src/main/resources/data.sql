@@ -28,7 +28,7 @@ VALUES
 -- 4. Insert Courses (using valid hex 'c...')
 INSERT INTO courses (id, course_name, description, course_code, active, cover_image, start_date, end_date)
 VALUES
-    ('c1111111-1111-1111-1111-111111111111', 'Advanced Software Architecture', 'Exploring Domain-Driven Design, Hexagonal Architecture, and Microservices.', 'SE401', true, 'https://example.com/covers/se401.jpg', TO_TIMESTAMP('01-09-2025 08:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-12-2025 17:00:00', 'DD-MM-YYYY HH24:MI:SS')),
+    ('c1111111-1111-1111-1111-111111111111', 'Data Structures and Algorithms', 'Core DSA course focused on linked lists, sorting algorithms, complexity analysis, and implementation practice.', 'DSA201', true, 'https://example.com/covers/dsa201.jpg', TO_TIMESTAMP('01-09-2026 08:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-12-2026 17:00:00', 'DD-MM-YYYY HH24:MI:SS')),
     ('c2222222-2222-2222-2222-222222222222', 'Applied Artificial Intelligence', 'Practical AI implementation including RAG, Vector Databases, Perceptrons, and SVMs.', 'CS502', true, 'https://example.com/covers/cs502.jpg', TO_TIMESTAMP('15-01-2026 08:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('30-05-2026 17:00:00', 'DD-MM-YYYY HH24:MI:SS')),
     ('c3333333-3333-3333-3333-333333333333', 'Modern DevOps Practices', 'Mastering Docker, LocalStack, and GitHub Actions for CI/CD pipelines.', 'IT305', true, 'https://example.com/covers/it305.jpg', TO_TIMESTAMP('01-09-2025 08:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-12-2025 17:00:00', 'DD-MM-YYYY HH24:MI:SS'));
 
@@ -50,9 +50,9 @@ VALUES
 -- 6. Insert Chapters
 INSERT INTO chapters (chapter_id, title, description, course_id)
 VALUES
-    ('f1111111-1111-1111-1111-111111111111', 'Clean Architecture Foundations', 'Isolating domain logic from frameworks and delivery mechanisms.', 'c1111111-1111-1111-1111-111111111111'),
-    ('f1222222-2222-2222-2222-222222222222', 'Tactical Domain-Driven Design', 'Deep dive into Entities, Value Objects, and Aggregate Roots.', 'c1111111-1111-1111-1111-111111111111'),
-    ('f1333333-3333-3333-3333-333333333333', 'Strategic Design and Context Mapping', 'Defining Bounded Contexts and integrating external systems.', 'c1111111-1111-1111-1111-111111111111'),
+    ('f1111111-1111-1111-1111-111111111111', 'Linked Lists', 'Singly linked lists, insertion, deletion, traversal, pointer updates, and common edge cases.', 'c1111111-1111-1111-1111-111111111111'),
+    ('f1222222-2222-2222-2222-222222222222', 'Sorting Algorithms', 'Bubble sort, insertion sort, merge sort, quicksort, stability, and time-complexity tradeoffs.', 'c1111111-1111-1111-1111-111111111111'),
+    ('f1333333-3333-3333-3333-333333333333', 'Algorithm Complexity Review', 'Big-O notation, asymptotic reasoning, and comparing algorithmic costs.', 'c1111111-1111-1111-1111-111111111111'),
     ('f2111111-1111-1111-1111-111111111111', 'Foundational ML Algorithms', 'Understanding the math behind Perceptrons and Support Vector Machines (SVM).', 'c2222222-2222-2222-2222-222222222222'),
     ('f2222222-2222-2222-2222-222222222222', 'Vector Databases and Embeddings', 'High-dimensional vector spaces and similarity search mechanisms.', 'c2222222-2222-2222-2222-222222222222'),
     ('f2333333-3333-3333-3333-333333333333', 'Building Agents and RAG Pipelines', 'Integrating LangChain Agents with external knowledge bases.', 'c2222222-2222-2222-2222-222222222222'),
@@ -62,16 +62,16 @@ VALUES
 -- 7. Insert Group Learning Outcomes (using valid hex '7...')
 INSERT INTO group_learning_outcomes (id, code, description, sort_order, course_id)
 VALUES
-    ('71111111-1111-1111-1111-111111111111', 'L.O.1', 'Mastery of backend application layering.', 1, 'c1111111-1111-1111-1111-111111111111'),
+    ('71111111-1111-1111-1111-111111111111', 'L.O.1', 'Analyze and implement core data structures and algorithms.', 1, 'c1111111-1111-1111-1111-111111111111'),
     ('72222222-2222-2222-2222-222222222222', 'L.O.1', 'Designing applications that utilize ML models and LLMs.', 1, 'c2222222-2222-2222-2222-222222222222'),
     ('73333333-3333-3333-3333-333333333333', 'L.O.1', 'Managing environments through reproducible configuration.', 1, 'c3333333-3333-3333-3333-333333333333');
 
 -- 8. Insert Learning Outcomes (using valid hex '8...')
 INSERT INTO learning_outcomes (id, prefix_number, description, sort_order, course_id, group_learning_outcome_id)
 VALUES
-    ('81111111-1111-1111-1111-111111111111', 1, 'Implement dependency inversion in a Spring Boot application.', 1, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
-    ('82222222-2222-2222-2222-222222222222', 2, 'Design transactional boundaries using DDD Aggregate Roots.', 2, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
-    ('83333333-3333-3333-3333-333333333333', 3, 'Identify Bounded Contexts within a complex monolithic system.', 3, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
+    ('81111111-1111-1111-1111-111111111111', 1, 'Explain linked-list structure, traversal, insertion, deletion, and boundary cases.', 1, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
+    ('82222222-2222-2222-2222-222222222222', 2, 'Apply linked-list operations to solve implementation and pointer-manipulation problems.', 2, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
+    ('83333333-3333-3333-3333-333333333333', 3, 'Compare sorting algorithms by correctness, stability, and time-complexity behavior.', 3, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
     ('84444444-4444-4444-4444-444444444444', 1, 'Differentiate between linear and non-linear classification using SVMs.', 1, 'c2222222-2222-2222-2222-222222222222', '72222222-2222-2222-2222-222222222222'),
     ('85555555-5555-5555-5555-555555555555', 2, 'Construct a Retrieval-Augmented Generation workflow using LangChain.', 2, 'c2222222-2222-2222-2222-222222222222', '72222222-2222-2222-2222-222222222222'),
     ('86666666-6666-6666-6666-666666666666', 1, 'Containerize a full-stack application using Docker Compose.', 1, 'c3333333-3333-3333-3333-333333333333', '73333333-3333-3333-3333-333333333333'),
@@ -81,36 +81,48 @@ VALUES
 INSERT INTO chapter_learning_outcomes (chapter_id, learning_outcome_id)
 VALUES
     ('f1111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111'),
-    ('f1222222-2222-2222-2222-222222222222', '82222222-2222-2222-2222-222222222222'),
-    ('f1333333-3333-3333-3333-333333333333', '83333333-3333-3333-3333-333333333333'),
+    ('f1111111-1111-1111-1111-111111111111', '82222222-2222-2222-2222-222222222222'),
+    ('f1222222-2222-2222-2222-222222222222', '83333333-3333-3333-3333-333333333333'),
     ('f2111111-1111-1111-1111-111111111111', '84444444-4444-4444-4444-444444444444'),
     ('f2333333-3333-3333-3333-333333333333', '85555555-5555-5555-5555-555555555555'),
     ('f3111111-1111-1111-1111-111111111111', '86666666-6666-6666-6666-666666666666'),
     ('f3222222-2222-2222-2222-222222222222', '87777777-7777-7777-7777-777777777777');
 
--- 10. Insert AI Settings (using valid hex 'a...')
+-- 10. Insert DSA Exam Matrix for AI quiz generation testing
+INSERT INTO exam_matrices (id, course_id, title, description)
+VALUES
+    ('b1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', 'DSA Midterm Matrix - Linked Lists and Sorting', 'Official exam matrix for testing AI quiz generation with Linked Lists and Sorting Algorithms documents.');
+
+INSERT INTO exam_matrix_rows (id, matrix_id, learning_outcome_id, chapter_id, topic, understand_count, apply_count, apply_plus_count, order_index)
+VALUES
+    ('b2111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111', 'f1111111-1111-1111-1111-111111111111', 'Linked list concepts, node structure, traversal, insertion, and deletion basics', 3, 1, 0, 0),
+    ('b2222222-2222-2222-2222-222222222222', 'b1111111-1111-1111-1111-111111111111', '82222222-2222-2222-2222-222222222222', 'f1111111-1111-1111-1111-111111111111', 'Linked list pointer manipulation, edge cases, and implementation tracing', 1, 2, 1, 1),
+    ('b2333333-3333-3333-3333-333333333333', 'b1111111-1111-1111-1111-111111111111', '83333333-3333-3333-3333-333333333333', 'f1222222-2222-2222-2222-222222222222', 'Sorting algorithm properties, stability, and complexity comparison', 2, 1, 0, 2),
+    ('b2444444-4444-4444-4444-444444444444', 'b1111111-1111-1111-1111-111111111111', '83333333-3333-3333-3333-333333333333', 'f1222222-2222-2222-2222-222222222222', 'Merge sort, quicksort, implementation reasoning, and boundary cases', 0, 1, 1, 3);
+
+-- 11. Insert AI Settings (using valid hex 'a...')
 INSERT INTO ai_settings (id, generation_prompt, difficulty_level, focus_on_weak_areas, number_of_questions, setting_type, align_to_clo, include_answer_key, mode)
 VALUES
-    ('a1111111-1111-1111-1111-111111111111', 'Generate architecture scenario questions.', 'HARD', true, 5, 'QUIZ_GENERATION', true, true, 'STRICT'),
+    ('a1111111-1111-1111-1111-111111111111', 'Generate DSA questions about linked lists, pointer manipulation, sorting stability, and complexity.', 'HARD', true, 5, 'QUIZ_GENERATION', true, true, 'STRICT'),
     ('a2222222-2222-2222-2222-222222222222', 'Create conceptual ML questions.', 'MEDIUM', false, 10, 'QUIZ_GENERATION', true, true, 'RELAXED'),
     ('a3333333-3333-3333-3333-333333333333', 'Generate CI/CD troubleshooting scenarios.', 'HARD', true, 8, 'QUIZ_GENERATION', true, true, 'STRICT');
 
--- 11. Insert Quizzes (using valid hex '9...')
+-- 12. Insert Quizzes (using valid hex '9...')
 INSERT INTO quizzes (id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, ai_settings_id, course_id, teacher_id, display)
 VALUES
-    ('91111111-1111-1111-1111-111111111111', 'Arch Midterm: Clean Arch & DDD', false, 60, 70.0, TO_TIMESTAMP('15-10-2025 09:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2025 11:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'a1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
-    ('92222222-2222-2222-2222-222222222222', 'Arch Final: System Boundaries', false, 120, 75.0, TO_TIMESTAMP('10-12-2025 13:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('10-12-2025 15:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'a1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
+    ('91111111-1111-1111-1111-111111111111', 'DSA Midterm: Linked Lists & Sorting', false, 60, 70.0, TO_TIMESTAMP('15-10-2026 09:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2026 11:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'a1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
+    ('92222222-2222-2222-2222-222222222222', 'DSA Final: Complexity & Algorithm Reasoning', false, 120, 75.0, TO_TIMESTAMP('10-12-2026 13:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('10-12-2026 15:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'a1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
     ('93333333-3333-3333-3333-333333333333', 'ML Foundations Check', false, 30, 60.0, TO_TIMESTAMP('15-02-2026 10:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('20-02-2026 23:59:00', 'DD-MM-YYYY HH24:MI:SS'), 2, 'a2222222-2222-2222-2222-222222222222', 'c2222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', true),
     ('94444444-4444-4444-4444-444444444444', 'Applied RAG & Agents', false, 45, 80.0, TO_TIMESTAMP('10-04-2026 09:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-04-2026 23:59:00', 'DD-MM-YYYY HH24:MI:SS'), 3, 'a2222222-2222-2222-2222-222222222222', 'c2222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', true),
     ('95555555-5555-5555-5555-555555555555', 'Docker & CI/CD Practical', false, 90, 85.0, TO_TIMESTAMP('05-11-2025 14:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('05-11-2025 17:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'a3333333-3333-3333-3333-333333333333', 'c3333333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333', true);
 
--- 12. Insert Questions (using valid hex 'd...')
+-- 13. Insert Questions (using valid hex 'd...')
 INSERT INTO questions (id, content, type, quiz_id)
 VALUES
-    ('d1111111-1111-1111-1111-111111111111', 'In Clean Architecture, entities can depend on Use Case orchestrators.', 'TRUE_FALSE', '91111111-1111-1111-1111-111111111111'),
-    ('d2222222-2222-2222-2222-222222222222', 'Which DDD concept ensures transactional consistency?', 'MULTIPLE_CHOICE', '91111111-1111-1111-1111-111111111111'),
-    ('d3333333-3333-3333-3333-333333333333', 'Explain how Ports and Adapters isolate the core domain from a PostgreSQL database.', 'ESSAY', '91111111-1111-1111-1111-111111111111'),
-    ('d4444444-4444-4444-4444-444444444444', 'An Anti-Corruption Layer (ACL) is used to translate models between two bounded contexts.', 'TRUE_FALSE', '92222222-2222-2222-2222-222222222222'),
+    ('d1111111-1111-1111-1111-111111111111', 'In a singly linked list, deleting the head node requires updating the head reference.', 'TRUE_FALSE', '91111111-1111-1111-1111-111111111111'),
+    ('d2222222-2222-2222-2222-222222222222', 'Which pointer update is required when inserting a new node after node current in a singly linked list?', 'MULTIPLE_CHOICE', '91111111-1111-1111-1111-111111111111'),
+    ('d3333333-3333-3333-3333-333333333333', 'Explain how to handle deletion of a target value from a singly linked list, including empty-list and head-node edge cases.', 'ESSAY', '91111111-1111-1111-1111-111111111111'),
+    ('d4444444-4444-4444-4444-444444444444', 'Merge sort is stable when equal elements from the left subarray are chosen before equal elements from the right subarray.', 'TRUE_FALSE', '92222222-2222-2222-2222-222222222222'),
     ('d5555555-5555-5555-5555-555555555555', 'A single-layer perceptron can perfectly classify XOR data.', 'TRUE_FALSE', '93333333-3333-3333-3333-333333333333'),
     ('d6666666-6666-6666-6666-666666666666', 'What technique does an SVM use to handle non-linearly separable data?', 'MULTIPLE_CHOICE', '93333333-3333-3333-3333-333333333333'),
     ('d7777777-7777-7777-7777-777777777777', 'Which LangChain component is responsible for dynamically deciding the next action step?', 'MULTIPLE_CHOICE', '94444444-4444-4444-4444-444444444444'),
@@ -119,16 +131,16 @@ VALUES
     ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A GitHub Action Workflow must be placed in the `.github/workflows` directory.', 'TRUE_FALSE', '95555555-5555-5555-5555-555555555555'),
     ('dbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Describe the steps to configure a multi-stage Docker build to optimize the final image size of a Spring Boot application.', 'ESSAY', '95555555-5555-5555-5555-555555555555');
 
--- 13. Insert Answers
+-- 14. Insert Answers
 INSERT INTO answers (content, is_correct, explanation, question_id)
 VALUES
-    ('True', false, 'Dependencies must point inward. Entities are at the center and depend on nothing.', 'd1111111-1111-1111-1111-111111111111'),
-    ('False', true, 'The Dependency Rule dictates that core entities cannot depend on outer layers like Use Cases.', 'd1111111-1111-1111-1111-111111111111'),
-    ('Value Object', false, 'Value objects describe characteristics but do not manage boundaries.', 'd2222222-2222-2222-2222-222222222222'),
-    ('Aggregate Root', true, 'Aggregates enforce invariants and serve as transactional boundaries.', 'd2222222-2222-2222-2222-222222222222'),
-    ('Domain Service', false, 'Services encapsulate logic that doesn''t naturally fit an entity.', 'd2222222-2222-2222-2222-222222222222'),
-    ('True', true, 'ACL acts as a buffer/translator to prevent a downstream context from being polluted by upstream models.', 'd4444444-4444-4444-4444-444444444444'),
-    ('False', false, 'This is exactly the purpose of an Anti-Corruption Layer.', 'd4444444-4444-4444-4444-444444444444'),
+    ('True', true, 'The head reference must move to the next node when the first node is removed.', 'd1111111-1111-1111-1111-111111111111'),
+    ('False', false, 'Leaving the head unchanged would keep the deleted node reachable as the first node.', 'd1111111-1111-1111-1111-111111111111'),
+    ('newNode.next = current.next; current.next = newNode', true, 'The new node must first point to the old successor, then current must point to the new node.', 'd2222222-2222-2222-2222-222222222222'),
+    ('current.next = newNode; newNode.next = current.next', false, 'This loses the original successor because current.next is overwritten too early.', 'd2222222-2222-2222-2222-222222222222'),
+    ('newNode = current.next; current = newNode.next', false, 'This changes local references but does not correctly link the new node into the list.', 'd2222222-2222-2222-2222-222222222222'),
+    ('True', true, 'Taking equal elements from the left side first preserves their original relative order.', 'd4444444-4444-4444-4444-444444444444'),
+    ('False', false, 'Merge sort can be implemented stably; stability depends on the merge tie-breaking rule.', 'd4444444-4444-4444-4444-444444444444'),
     ('True', false, 'XOR is not linearly separable; a single perceptron cannot solve it.', 'd5555555-5555-5555-5555-555555555555'),
     ('False', true, 'XOR requires a multi-layer network (MLP) due to its non-linear separability.', 'd5555555-5555-5555-5555-555555555555'),
     ('Gradient Descent', false, 'Gradient descent is an optimization algorithm, not specific to non-linear mapping.', 'd6666666-6666-6666-6666-666666666666'),

@@ -1,5 +1,6 @@
 package edu.ai.lms.core.quiz.app.service;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -8,6 +9,10 @@ import org.springframework.util.StringUtils;
 
 import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.course.app.domain.ExamMatrix;
+import edu.ai.lms.core.course.app.port.out.LoadExamMatrixPort;
+import edu.ai.lms.core.material.app.domain.Material;
+import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationJobResponse;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusResponse;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
@@ -23,6 +28,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobLearningOutcomePort;
+import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobMaterialPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.ScheduleQuizGenerationJobPort;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +43,9 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadCourseMembershipPort loadCourseMembershipPort;
     private final SaveQuizGenerationJobLearningOutcomePort saveQuizGenerationJobLearningOutcomePort;
+    private final SaveQuizGenerationJobMaterialPort saveQuizGenerationJobMaterialPort;
+    private final LoadExamMatrixPort loadExamMatrixPort;
+    private final GetMaterialPort getMaterialPort;
 
     @Override
     @Transactional
@@ -56,29 +65,36 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
             }
         }
 
+        validateGenerationSources(command);
+
         QuizGenerationJob job = QuizGenerationJob.builder()
                 .courseId(command.courseId())
                 .chapterId(command.chapterId())
                 .quizTitle(command.quizTitle())
                 .questionCount(command.questionCount())
                 .questionType(command.questionType())
-            .prompt(command.prompt())
-            .useOptions(useOptions)
-            .unlimited(command.unlimited())
-            .timeLimitMinutes(command.timeLimitMinutes())
-            .passScore(command.passScore())
-            .startTime(command.startTime())
-            .dueTime(command.dueTime())
-            .attemptLimited(command.attemptLimited())
-            .display(command.display())
+                .prompt(command.prompt())
+                .useOptions(useOptions)
+                .unlimited(command.unlimited())
+                .timeLimitMinutes(command.timeLimitMinutes())
+                .passScore(command.passScore())
+                .startTime(command.startTime())
+                .dueTime(command.dueTime())
+                .attemptLimited(command.attemptLimited())
+                .display(command.display())
                 .requestedBy(user.getId())
                 .requestedRole(user.getRole())
                 .status(QuizGenerationStatus.PENDING)
+                .examMatrixId(command.examMatrixId())
+                .strictMode(command.strictMode() == null ? Boolean.TRUE : command.strictMode())
                 .build();
 
         QuizGenerationJob savedJob = saveQuizGenerationJobPort.save(job);
         if (command.learningOutcomeIds() != null && !command.learningOutcomeIds().isEmpty()) {
             saveQuizGenerationJobLearningOutcomePort.addLearningOutcomes(savedJob.getId(), command.learningOutcomeIds());
+        }
+        if (command.selectedMaterialIds() != null && !command.selectedMaterialIds().isEmpty()) {
+            saveQuizGenerationJobMaterialPort.addMaterials(savedJob.getId(), command.selectedMaterialIds());
         }
         scheduleQuizGenerationJobPort.schedule(savedJob.getId());
 
@@ -122,6 +138,29 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
 
         if (!isMember) {
             throw new UserNotAuthorizedException("User is not a member of this course");
+        }
+    }
+
+    private void validateGenerationSources(GenerateQuizCommand command) {
+        if (command.examMatrixId() != null) {
+            ExamMatrix matrix = loadExamMatrixPort.findById(command.examMatrixId())
+                    .orElseThrow(() -> new InvalidQuizGenerationRequestException("examMatrixId does not exist"));
+            if (!command.courseId().equals(matrix.getCourseId())) {
+                throw new InvalidQuizGenerationRequestException("examMatrixId does not belong to this course");
+            }
+        }
+
+        List<UUID> materialIds = command.selectedMaterialIds();
+        if (materialIds == null || materialIds.isEmpty()) {
+            return;
+        }
+
+        for (UUID materialId : materialIds) {
+            Material material = getMaterialPort.findByIdAndCourseId(materialId, command.courseId())
+                    .orElseThrow(() -> new InvalidQuizGenerationRequestException("selectedMaterialIds contain material outside this course"));
+            if (material.getStatus() != Material.MaterialStatus.UPLOADED) {
+                throw new InvalidQuizGenerationRequestException("selectedMaterialIds contain material that is not uploaded");
+            }
         }
     }
 }

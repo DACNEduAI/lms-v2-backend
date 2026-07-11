@@ -25,6 +25,9 @@ public class GenerateQuizCommandMapper {
                 .learningOutcomeIds(request.getLearningOutcomeIds())
                 .questionCount(request.getQuestionCount())
                 .questionType(request.getQuestionType())
+                .examMatrixId(request.getExamMatrixId())
+                .strictMode(request.getStrictMode())
+                .selectedMaterialIds(request.getSelectedMaterialIds())
                 .build();
     }
 }

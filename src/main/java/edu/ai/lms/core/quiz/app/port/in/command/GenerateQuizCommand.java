@@ -23,6 +23,9 @@ public record GenerateQuizCommand(
         Boolean display,
         List<UUID> learningOutcomeIds,
         Integer questionCount,
-        Question.QuestionType questionType
+        Question.QuestionType questionType,
+        UUID examMatrixId,
+        Boolean strictMode,
+        List<UUID> selectedMaterialIds
 ) {
 }

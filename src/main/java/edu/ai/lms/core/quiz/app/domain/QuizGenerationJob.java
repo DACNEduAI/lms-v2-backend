@@ -27,6 +27,8 @@ public class QuizGenerationJob {
 
     private UUID quizId;
 
+    private UUID examMatrixId;
+
     private UUID requestedBy;
 
     private Roles requestedRole;
@@ -58,6 +60,8 @@ public class QuizGenerationJob {
     private QuizGenerationStatus status;
 
     private String errorMessage;
+
+    private Boolean strictMode;
 
     private LocalDateTime createdAt;
 
