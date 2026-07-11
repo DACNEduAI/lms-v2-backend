@@ -33,12 +33,17 @@
     <result property="questionId" column="question_id" />
     <result property="learningOutcomeId" column="learning_outcome_id" />
     <result property="learningOutcomeCode" column="learning_outcome_code" />
+    <result property="learningOutcomePrefixNumber" column="learning_outcome_prefix_number" />
     <result property="learningOutcomeDescription" column="learning_outcome_description" />
   </resultMap>
 
   <select id="findLearningOutcomesByQuestionId" resultMap="QuestionLearningOutcomeViewMap">
     SELECT lo.id AS learning_outcome_id,
-           CONCAT(glo.code, '.', lo.prefix_number) AS learning_outcome_code,
+           CASE
+             WHEN glo.code IS NULL THEN CAST(lo.prefix_number AS TEXT)
+             ELSE CONCAT(glo.code, '.', lo.prefix_number)
+           END AS learning_outcome_code,
+           lo.prefix_number AS learning_outcome_prefix_number,
            lo.description AS learning_outcome_description
     FROM edu.question_learning_outcomes qlo
     JOIN edu.learning_outcomes lo ON lo.id = qlo.learning_outcome_id
@@ -50,7 +55,11 @@
   <select id="findLearningOutcomesByQuizId" resultMap="QuestionLearningOutcomeViewMap">
     SELECT qlo.question_id,
            lo.id AS learning_outcome_id,
-           CONCAT(glo.code, '.', lo.prefix_number) AS learning_outcome_code,
+           CASE
+             WHEN glo.code IS NULL THEN CAST(lo.prefix_number AS TEXT)
+             ELSE CONCAT(glo.code, '.', lo.prefix_number)
+           END AS learning_outcome_code,
+           lo.prefix_number AS learning_outcome_prefix_number,
            lo.description AS learning_outcome_description
     FROM edu.question_learning_outcomes qlo
     JOIN edu.learning_outcomes lo ON lo.id = qlo.learning_outcome_id

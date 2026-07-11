@@ -81,7 +81,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
                     "endDate": "%s",
                     "learningOutcomes": [
                         {
-                            "code": "CLO-1",
+                            "prefixNumber": 1,
                             "description": "Understand basic physics"
                         }
                     ]
@@ -110,7 +110,7 @@ class AnswerControllerIT extends IntegrationTestConfiguration {
         String learningOutcomeBody = """
                 {
                     "learningOutcomes": [
-                        {"code": "A-BASE", "description": "Base quiz LO for answer tests"}
+                        {"prefixNumber": 99, "description": "Base quiz LO for answer tests"}
                     ]
                 }
                 """;

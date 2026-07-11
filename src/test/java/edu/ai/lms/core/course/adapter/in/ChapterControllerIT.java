@@ -79,7 +79,7 @@ class ChapterControllerIT extends IntegrationTestConfiguration {
                     "endDate": "%s",
                     "learningOutcomes": [
                         {
-                            "code": "CLO-1",
+                            "prefixNumber": 1,
                             "description": "Understand Java basics"
                         }
                     ]

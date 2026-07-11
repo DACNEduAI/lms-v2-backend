@@ -36,6 +36,7 @@ public class GetQuestionLearningOutcomesResponse {
         private UUID id;
 
         private String code;
+        private Integer prefixNumber;
 
         private String description;
     }

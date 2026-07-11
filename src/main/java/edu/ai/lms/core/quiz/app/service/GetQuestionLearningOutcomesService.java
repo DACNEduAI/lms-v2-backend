@@ -62,6 +62,7 @@ public class GetQuestionLearningOutcomesService implements GetQuestionLearningOu
         return GetQuestionLearningOutcomesResponse.LearningOutcomeSummary.builder()
                 .id(view.getLearningOutcomeId())
                 .code(view.getLearningOutcomeCode())
+                .prefixNumber(view.getLearningOutcomePrefixNumber())
                 .description(view.getLearningOutcomeDescription())
                 .build();
     }

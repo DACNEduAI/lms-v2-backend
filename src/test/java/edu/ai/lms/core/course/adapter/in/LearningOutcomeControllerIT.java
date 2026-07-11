@@ -115,15 +115,15 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 {
                     "learningOutcomes": [
                         {
-                            "code": "CLO-1",
+                            "prefixNumber": 1,
                             "description": "Understand basic Java syntax"
                         },
                         {
-                            "code": "CLO-2",
+                            "prefixNumber": 2,
                             "description": "Write simple Java programs"
                         },
                         {
-                            "code": "CLO-3",
+                            "prefixNumber": 3,
                             "description": "Apply OOP concepts"
                         }
                     ]
@@ -142,12 +142,12 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .body("courseId", equalTo(createdCourseId.toString()))
                 .body("totalCreated", equalTo(3))
                 .body("learningOutcomes", hasSize(3))
-                .body("learningOutcomes[0].code", equalTo("CLO-1"))
+                .body("learningOutcomes[0].prefixNumber", equalTo(1))
                 .body("learningOutcomes[0].description", equalTo("Understand basic Java syntax"))
                 .body("learningOutcomes[0].id", notNullValue())
                 .body("learningOutcomes[0].createdAt", notNullValue())
-                .body("learningOutcomes[1].code", equalTo("CLO-2"))
-                .body("learningOutcomes[2].code", equalTo("CLO-3"))
+                .body("learningOutcomes[1].prefixNumber", equalTo(2))
+                .body("learningOutcomes[2].prefixNumber", equalTo(3))
                 .extract().response();
 
         createdLoId1 = UUID.fromString(response.jsonPath().getString("learningOutcomes[0].id"));
@@ -163,7 +163,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 {
                     "learningOutcomes": [
                         {
-                            "code": "CLO-4",
+                            "prefixNumber": 4,
                             "description": "Debug Java applications"
                         }
                     ]
@@ -182,7 +182,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .body("courseId", equalTo(createdCourseId.toString()))
                 .body("totalCreated", equalTo(1))
                 .body("learningOutcomes", hasSize(1))
-                .body("learningOutcomes[0].code", equalTo("CLO-4"));
+                .body("learningOutcomes[0].prefixNumber", equalTo(4));
     }
 
     @Test
@@ -193,7 +193,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 {
                     "learningOutcomes": [
                         {
-                            "code": "CLO-X",
+                            "prefixNumber": 99,
                             "description": "Unauthorized CLO"
                         }
                     ]
@@ -233,14 +233,13 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(7)
-    @DisplayName("Should fail to create learning outcomes with blank code")
+    @DisplayName("Should fail to create learning outcomes with missing description")
     void testCreateLearningOutcomes_WithBlankCode() {
         String requestBody = """
                 {
                     "learningOutcomes": [
                         {
-                            "code": "",
-                            "description": "Missing code"
+                            "prefixNumber": 99
                         }
                     ]
                 }
@@ -265,7 +264,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 {
                     "learningOutcomes": [
                         {
-                            "code": "CLO-X",
+                            "prefixNumber": 99,
                             "description": ""
                         }
                     ]
@@ -293,7 +292,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 {
                     "learningOutcomes": [
                         {
-                            "code": "CLO-X",
+                            "prefixNumber": 99,
                             "description": "Orphan CLO"
                         }
                     ]
@@ -344,7 +343,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 {
                     "learningOutcomes": [
                         {
-                            "code": "CLO-HIJACK",
+                            "prefixNumber": 99,
                             "description": "Unauthorized CLO"
                         }
                     ]
@@ -370,7 +369,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
     void testModifySingleLearningOutcome_WithValidDetails() {
         String requestBody = """
                 {
-                    "code": "CLO-1-UPDATED",
+                    "prefixNumber": 1,
                     "description": "Updated: Understand basic Java syntax and semantics"
                 }
                 """;
@@ -385,7 +384,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .log().all()
                 .statusCode(200)
                 .body("id", equalTo(createdLoId1.toString()))
-                .body("code", equalTo("CLO-1-UPDATED"))
+                .body("prefixNumber", equalTo(1))
                 .body("description", equalTo("Updated: Understand basic Java syntax and semantics"))
                 .body("courseId", equalTo(createdCourseId.toString()))
                 .body("updatedAt", notNullValue());
@@ -397,7 +396,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
     void testModifySingleLearningOutcome_WithoutAuth() {
         String requestBody = """
                 {
-                    "code": "CLO-NOAUTH",
+                    "prefixNumber": 99,
                     "description": "No auth update"
                 }
                 """;
@@ -420,7 +419,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
 
         String requestBody = """
                 {
-                    "code": "CLO-GHOST",
+                    "prefixNumber": 99,
                     "description": "Ghost CLO"
                 }
                 """;
@@ -442,7 +441,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
     void testModifySingleLearningOutcome_ByUnauthorizedTeacher() {
         String requestBody = """
                 {
-                    "code": "CLO-HIJACK",
+                    "prefixNumber": 99,
                     "description": "Hijacked update"
                 }
                 """;
@@ -466,7 +465,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
 
         String requestBody = """
                 {
-                    "code": "CLO-ORPHAN",
+                    "prefixNumber": 99,
                     "description": "Orphan course update"
                 }
                 """;
@@ -493,12 +492,12 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                     "learningOutcomes": [
                         {
                             "id": "%s",
-                            "code": "CLO-2-BATCH",
+                            "prefixNumber": 2,
                             "description": "Batch updated: Write Java programs"
                         },
                         {
                             "id": "%s",
-                            "code": "CLO-3-BATCH",
+                            "prefixNumber": 3,
                             "description": "Batch updated: Apply OOP"
                         }
                     ]
@@ -517,10 +516,10 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .body("courseId", equalTo(createdCourseId.toString()))
                 .body("totalModified", equalTo(2))
                 .body("learningOutcomes", hasSize(2))
-                .body("learningOutcomes[0].code", equalTo("CLO-2-BATCH"))
+                .body("learningOutcomes[0].prefixNumber", equalTo(2))
                 .body("learningOutcomes[0].description", equalTo("Batch updated: Write Java programs"))
                 .body("learningOutcomes[0].updatedAt", notNullValue())
-                .body("learningOutcomes[1].code", equalTo("CLO-3-BATCH"));
+                .body("learningOutcomes[1].prefixNumber", equalTo(3));
     }
 
     @Test
@@ -532,7 +531,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                     "learningOutcomes": [
                         {
                             "id": "%s",
-                            "code": "CLO-NOAUTH",
+                            "prefixNumber": 99,
                             "description": "No auth"
                         }
                     ]
@@ -581,7 +580,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                     "learningOutcomes": [
                         {
                             "id": "%s",
-                            "code": "CLO-GHOST",
+                            "prefixNumber": 99,
                             "description": "Ghost CLO"
                         }
                     ]
@@ -608,7 +607,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                     "learningOutcomes": [
                         {
                             "id": "%s",
-                            "code": "CLO-HIJACK",
+                            "prefixNumber": 99,
                             "description": "Hijacked batch"
                         }
                     ]
@@ -634,7 +633,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 {
                     "learningOutcomes": [
                         {
-                            "code": "CLO-NOID",
+                            "prefixNumber": 99,
                             "description": "Missing ID"
                         }
                     ]
@@ -771,7 +770,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 {
                     "learningOutcomes": [
                         {
-                            "code": "CLO-DEL",
+                            "prefixNumber": 99,
                             "description": "To be deleted"
                         }
                     ]
@@ -823,11 +822,11 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 {
                     "learningOutcomes": [
                         {
-                            "code": "CLO-DEL-A",
+                            "prefixNumber": 99,
                             "description": "Batch delete A"
                         },
                         {
-                            "code": "CLO-DEL-B",
+                            "prefixNumber": 99,
                             "description": "Batch delete B"
                         }
                     ]
@@ -879,7 +878,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 {
                     "learningOutcomes": [
                         {
-                            "code": "CLO-TEMP",
+                            "prefixNumber": 99,
                             "description": "Temporary"
                         }
                     ]
@@ -1509,7 +1508,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .log().all()
                 .statusCode(200)
                 .body("id", equalTo(createdLoId1.toString()))
-                .body("code", notNullValue())
+                .body("prefixNumber", notNullValue())
                 .body("description", notNullValue());
     }
 
@@ -1535,8 +1534,8 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
         String createLoBody = """
                 {
                     "learningOutcomes": [
-                        {"code": "CLO-G-1", "description": "Group GET child 1"},
-                        {"code": "CLO-G-2", "description": "Group GET child 2"}
+                        {"prefixNumber": 1, "description": "Group GET child 1"},
+                        {"prefixNumber": 2, "description": "Group GET child 2"}
                     ]
                 }
                 """;
@@ -1556,7 +1555,7 @@ class LearningOutcomeControllerIT extends IntegrationTestConfiguration {
 
         String createGroupBody = """
                 {
-                    "name": "Grouping for GET",
+                    "code": "Grouping for GET",
                     "description": "Group for read endpoint",
                     "learningOutcomeIds": ["%s", "%s"]
                 }

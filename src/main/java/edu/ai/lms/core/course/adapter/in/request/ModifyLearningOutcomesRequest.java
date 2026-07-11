@@ -30,7 +30,7 @@ public class ModifyLearningOutcomesRequest {
         @NotNull(message = "Learning outcome ID cannot be null")
         private UUID id;
 
-        private String code;
+        private Integer prefixNumber;
         private String description;
     }
 }

@@ -15,7 +15,8 @@ public class CreateCourseCommandMapper {
     public CreateCourseCommand toCommand(CreateCourseRequest request) {
         List<LearningOutcome> learningOutcomes = request.getLearningOutcomes().stream()
                 .map(learningOutcomeRequest -> LearningOutcome.builder()
-                        .code(learningOutcomeRequest.getCode())
+                        .prefixNumber(learningOutcomeRequest.getPrefixNumber())
+                        .sortOrder(learningOutcomeRequest.getPrefixNumber())
                         .description(learningOutcomeRequest.getDescription())
                         .build())
                 .collect(Collectors.toList());

@@ -76,10 +76,12 @@ public class CreateGroupLearningOutcomeService implements TeacherCreateGroupLear
         int nextSortOrder = loadGroupLearningOutcomePort == null
                 ? 1
                 : loadGroupLearningOutcomePort.findMaxSortOrderByCourseId(command.courseId()) + 1;
+        String groupCode = command.name() == null || command.name().isBlank()
+                ? buildGroupCode(nextSortOrder)
+                : command.name();
         GroupLearningOutcome group = GroupLearningOutcome.builder()
-                .name(command.name())
-                .code(buildGroupCode(nextSortOrder))
-                .description(command.description() != null ? command.description() : command.name())
+                .code(groupCode)
+                .description(command.description() != null ? command.description() : groupCode)
                 .sortOrder(nextSortOrder)
                 .courseId(command.courseId())
                 .build();

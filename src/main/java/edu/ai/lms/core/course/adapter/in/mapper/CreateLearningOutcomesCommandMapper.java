@@ -16,6 +16,8 @@ public class CreateLearningOutcomesCommandMapper {
     public CreateLearningOutcomesCommand toCommand(UUID courseId, CreateLearningOutcomesRequest request) {
         List<LearningOutcome> learningOutcomes = request.getLearningOutcomes().stream()
                 .map(item -> LearningOutcome.builder()
+                        .prefixNumber(item.getPrefixNumber())
+                        .sortOrder(item.getPrefixNumber())
                         .description(item.getDescription())
                         .build())
                 .collect(Collectors.toList());

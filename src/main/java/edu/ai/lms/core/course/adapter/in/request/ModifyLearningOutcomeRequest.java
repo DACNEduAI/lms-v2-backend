@@ -8,6 +8,6 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class ModifyLearningOutcomeRequest {
-    private String code;
+    private Integer prefixNumber;
     private String description;
 }
