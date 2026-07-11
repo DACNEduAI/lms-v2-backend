@@ -27,7 +27,6 @@ DROP TABLE IF EXISTS
     quiz_chapters,
     quiz_learning_outcomes,
     question_learning_outcomes,
-    student_learning_outcomes,
     activity_logs,
     course_announcements,
     event_publication,
@@ -130,8 +129,9 @@ CREATE TABLE IF NOT EXISTS chapter_materials
 CREATE TABLE IF NOT EXISTS group_learning_outcomes
 (
     id          UUID UNIQUE DEFAULT gen_random_uuid(),
-    name        VARCHAR(255) NOT NULL,
+    code        VARCHAR(255) NOT NULL,
     description TEXT,
+    sort_order  INTEGER      NOT NULL DEFAULT 1,
     course_id   UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
     created_at  TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
@@ -142,8 +142,9 @@ CREATE TABLE IF NOT EXISTS group_learning_outcomes
 CREATE TABLE IF NOT EXISTS learning_outcomes
 (
     id                        UUID UNIQUE DEFAULT gen_random_uuid(),
-    code                      VARCHAR(255),
+    prefix_number             INTEGER,
     description               TEXT,
+    sort_order                INTEGER      NOT NULL DEFAULT 1,
     course_id                 UUID NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
     group_learning_outcome_id UUID,
     created_at                TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
@@ -354,12 +355,6 @@ CREATE TABLE IF NOT EXISTS question_learning_outcomes
     PRIMARY KEY (question_id, learning_outcome_id)
 );
 
-CREATE TABLE IF NOT EXISTS student_learning_outcomes
-(
-    student_id          UUID REFERENCES students (user_id),
-    learning_outcome_id UUID REFERENCES learning_outcomes (id),
-    PRIMARY KEY (student_id, learning_outcome_id)
-);
 
 -- Activity Logs table for History module
 CREATE TABLE IF NOT EXISTS activity_logs

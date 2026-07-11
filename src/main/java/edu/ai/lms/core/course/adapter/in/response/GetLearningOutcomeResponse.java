@@ -21,6 +21,9 @@ public class GetLearningOutcomeResponse {
 
     private UUID id;
     private String code;
+    private Integer prefixNumber;
+    private Integer sortOrder;
+    private String displayCode;
     private String description;
     private UUID courseId;
     private UUID groupLearningOutcomeId;

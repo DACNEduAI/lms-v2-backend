@@ -82,6 +82,8 @@ public class GetChapterService implements GetChapterUseCase, GetAllChaptersUseCa
                     return GetChapterResponse.GroupLearningOutcomeSummary.builder()
                             .id(group.getId())
                             .name(group.getName())
+                            .code(group.getCode())
+                            .displayCode(group.getCode())
                             .description(group.getDescription())
                             .learningOutcomes(entry.getValue().stream()
                                     .map(this::toLearningOutcomeSummary)
@@ -108,6 +110,9 @@ public class GetChapterService implements GetChapterUseCase, GetAllChaptersUseCa
         return GetChapterResponse.LearningOutcomeSummary.builder()
                 .id(learningOutcome.getId())
                 .code(learningOutcome.getCode())
+                .prefixNumber(learningOutcome.getPrefixNumber())
+                .sortOrder(learningOutcome.getSortOrder())
+                .displayCode(learningOutcome.getCode())
                 .description(learningOutcome.getDescription())
                 .build();
     }

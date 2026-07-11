@@ -39,6 +39,21 @@ class GroupLearningOutcomePersistenceAdapter implements SaveGroupLearningOutcome
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public int findMaxSortOrderByCourseId(UUID courseId) {
+        return groupLearningOutcomeRepository.findMaxSortOrderByCourseId(courseId);
+    }
+
+    @Override
+    public void updateTreePosition(UUID groupLearningOutcomeId, UUID courseId, String code, int sortOrder) {
+        groupLearningOutcomeRepository.updateTreePosition(groupLearningOutcomeId, courseId, code, sortOrder);
+    }
+
+    @Override
+    public void deleteById(UUID groupLearningOutcomeId, UUID courseId) {
+        groupLearningOutcomeRepository.deleteById(groupLearningOutcomeId, courseId);
+    }
+
     private GroupLearningOutcome loadWithLearningOutcomes(GroupLearningOutcome entity) {
         List<LearningOutcome> learningOutcomes =
                 learningOutcomeRepository.findByGroupLearningOutcomeId(entity.getId());

@@ -24,6 +24,4 @@ public class Student extends UserAuth {
 //    @Builder.Default
 //    private List<Course> courses = new ArrayList<>();
 
-    @Builder.Default
-    private List<LearningOutcome> masteredLearningOutcomes = new ArrayList<>();
 }

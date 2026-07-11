@@ -93,6 +93,9 @@ public class AddLearningOutcomesToGroupService implements TeacherAddLearningOutc
                 .map(lo -> AddLearningOutcomesToGroupResponse.LearningOutcomeDto.builder()
                         .id(lo.getId())
                         .code(lo.getCode())
+                        .prefixNumber(lo.getPrefixNumber())
+                        .sortOrder(lo.getSortOrder())
+                        .displayCode(group.getCode() + "." + lo.getPrefixNumber())
                         .description(lo.getDescription())
                         .build())
                 .toList();
@@ -100,6 +103,7 @@ public class AddLearningOutcomesToGroupService implements TeacherAddLearningOutc
         return AddLearningOutcomesToGroupResponse.builder()
                 .groupId(group.getId())
                 .name(group.getName())
+                .code(group.getCode())
                 .courseId(group.getCourseId())
                 .learningOutcomes(allLoDtos)
                 .totalAdded(learningOutcomes.size())

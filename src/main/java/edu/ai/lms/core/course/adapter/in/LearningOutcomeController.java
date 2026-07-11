@@ -21,12 +21,14 @@ import edu.ai.lms.core.course.adapter.in.mapper.DeleteLearningOutcomesCommandMap
 import edu.ai.lms.core.course.adapter.in.mapper.ModifyLearningOutcomesCommandMapper;
 import edu.ai.lms.core.course.adapter.in.mapper.ModifySingleLearningOutcomeCommandMapper;
 import edu.ai.lms.core.course.adapter.in.mapper.RemoveLearningOutcomesFromChapterCommandMapper;
+import edu.ai.lms.core.course.adapter.in.mapper.ReorderLearningOutcomeTreeCommandMapper;
 import edu.ai.lms.core.course.adapter.in.request.AddLearningOutcomesToChapterRequest;
 import edu.ai.lms.core.course.adapter.in.request.CreateLearningOutcomesRequest;
 import edu.ai.lms.core.course.adapter.in.request.DeleteLearningOutcomesRequest;
 import edu.ai.lms.core.course.adapter.in.request.ModifyLearningOutcomeRequest;
 import edu.ai.lms.core.course.adapter.in.request.ModifyLearningOutcomesRequest;
 import edu.ai.lms.core.course.adapter.in.request.RemoveLearningOutcomesFromChapterRequest;
+import edu.ai.lms.core.course.adapter.in.request.ReorderLearningOutcomeTreeRequest;
 import edu.ai.lms.core.course.adapter.in.response.AddLearningOutcomesToChapterResponse;
 import edu.ai.lms.core.course.adapter.in.response.CreateLearningOutcomesResponse;
 import edu.ai.lms.core.course.adapter.in.response.DeleteLearningOutcomesResponse;
@@ -41,6 +43,7 @@ import edu.ai.lms.core.course.app.port.in.command.DeleteLearningOutcomesCommand;
 import edu.ai.lms.core.course.app.port.in.command.ModifyLearningOutcomesCommand;
 import edu.ai.lms.core.course.app.port.in.command.ModifySingleLearningOutcomeCommand;
 import edu.ai.lms.core.course.app.port.in.command.RemoveLearningOutcomesFromChapterCommand;
+import edu.ai.lms.core.course.app.port.in.command.ReorderLearningOutcomeTreeCommand;
 import edu.ai.lms.core.course.app.port.in.usecase.GetGroupLearningOutcomeUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.GetLearningOutcomeUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherAddLearningOutcomesToChapterUseCase;
@@ -49,6 +52,7 @@ import edu.ai.lms.core.course.app.port.in.usecase.TeacherDeleteLearningOutcomesU
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifyLearningOutcomesUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifySingleLearningOutcomeUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherRemoveLearningOutcomesFromChapterUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherReorderLearningOutcomeTreeUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -67,6 +71,7 @@ public class LearningOutcomeController {
     private final TeacherModifySingleLearningOutcomeUseCase teacherModifySingleLearningOutcomeUseCase;
     private final TeacherModifyLearningOutcomesUseCase teacherModifyLearningOutcomesUseCase;
     private final TeacherDeleteLearningOutcomesUseCase teacherDeleteLearningOutcomesUseCase;
+    private final TeacherReorderLearningOutcomeTreeUseCase teacherReorderLearningOutcomeTreeUseCase;
         private final TeacherAddLearningOutcomesToChapterUseCase teacherAddLearningOutcomesToChapterUseCase;
         private final TeacherRemoveLearningOutcomesFromChapterUseCase teacherRemoveLearningOutcomesFromChapterUseCase;
         private final GetLearningOutcomeUseCase getLearningOutcomeUseCase;
@@ -77,6 +82,7 @@ public class LearningOutcomeController {
     private final DeleteLearningOutcomesCommandMapper deleteLearningOutcomesCommandMapper;
     private final AddLearningOutcomesToChapterCommandMapper addLearningOutcomesToChapterCommandMapper;
     private final RemoveLearningOutcomesFromChapterCommandMapper removeLearningOutcomesFromChapterCommandMapper;
+    private final ReorderLearningOutcomeTreeCommandMapper reorderLearningOutcomeTreeCommandMapper;
 
     // ==================== COURSE-LEVEL LEARNING OUTCOME MANAGEMENT ====================
 
@@ -135,6 +141,18 @@ public class LearningOutcomeController {
     public ResponseEntity<List<GetGroupLearningOutcomeResponse>> getGroupedLearningOutcomes(
             @PathVariable UUID courseId) {
         List<GetGroupLearningOutcomeResponse> response = getGroupLearningOutcomeUseCase.getGroupedLearningOutcomes(courseId);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Reorder learning outcome tree",
+            description = "Replaces the full ordered syllabus tree. Backend validates all groups and children, then renumbers group codes and child prefixes atomically.")
+    @PreAuthorize("hasRole('TEACHER')")
+    @PutMapping("/api/{courseId}/learning-outcome/tree")
+    public ResponseEntity<List<GetGroupLearningOutcomeResponse>> reorderLearningOutcomeTree(
+            @PathVariable UUID courseId,
+            @Valid @RequestBody ReorderLearningOutcomeTreeRequest request) {
+        ReorderLearningOutcomeTreeCommand command = reorderLearningOutcomeTreeCommandMapper.toCommand(courseId, request);
+        List<GetGroupLearningOutcomeResponse> response = teacherReorderLearningOutcomeTreeUseCase.reorderLearningOutcomeTree(command);
         return ResponseEntity.ok(response);
     }
 

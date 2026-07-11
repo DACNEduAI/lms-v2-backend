@@ -20,8 +20,10 @@ public class LearningOutcome {
 
     private UUID id;
 
-    private String code;   // e.g. "CLO-1"
+    private String code;
+    private Integer prefixNumber;
     private String description;
+    private Integer sortOrder;
 
     private UUID courseId;
 
@@ -29,9 +31,25 @@ public class LearningOutcome {
 
     private Course course;
 
-    @Builder.Default
-    private List<Student> students = new ArrayList<>();
-
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    public String getCode() {
+        return prefixNumber == null ? code : String.valueOf(prefixNumber);
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+        if (code == null || code.isBlank()) {
+            this.prefixNumber = null;
+            return;
+        }
+
+        String numericSuffix = code.replaceAll("^.*?(\\d+)$", "$1");
+        try {
+            this.prefixNumber = Integer.parseInt(numericSuffix);
+        } catch (NumberFormatException ignored) {
+            this.prefixNumber = null;
+        }
+    }
 }

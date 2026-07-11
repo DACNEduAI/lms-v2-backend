@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -16,15 +17,22 @@ import edu.ai.lms.core.course.adapter.in.mapper.CreateGroupLearningOutcomeComman
 import edu.ai.lms.core.course.adapter.in.mapper.RemoveLearningOutcomesFromGroupCommandMapper;
 import edu.ai.lms.core.course.adapter.in.request.AddLearningOutcomesToGroupRequest;
 import edu.ai.lms.core.course.adapter.in.request.CreateGroupLearningOutcomeRequest;
+import edu.ai.lms.core.course.adapter.in.request.ModifyGroupLearningOutcomeRequest;
 import edu.ai.lms.core.course.adapter.in.request.RemoveLearningOutcomesFromGroupRequest;
 import edu.ai.lms.core.course.adapter.in.response.AddLearningOutcomesToGroupResponse;
 import edu.ai.lms.core.course.adapter.in.response.CreateGroupLearningOutcomeResponse;
+import edu.ai.lms.core.course.adapter.in.response.DeleteGroupLearningOutcomeResponse;
+import edu.ai.lms.core.course.adapter.in.response.GetGroupLearningOutcomeResponse;
 import edu.ai.lms.core.course.adapter.in.response.RemoveLearningOutcomesFromGroupResponse;
 import edu.ai.lms.core.course.app.port.in.command.AddLearningOutcomesToGroupCommand;
 import edu.ai.lms.core.course.app.port.in.command.CreateGroupLearningOutcomeCommand;
+import edu.ai.lms.core.course.app.port.in.command.DeleteGroupLearningOutcomeCommand;
+import edu.ai.lms.core.course.app.port.in.command.ModifyGroupLearningOutcomeCommand;
 import edu.ai.lms.core.course.app.port.in.command.RemoveLearningOutcomesFromGroupCommand;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherAddLearningOutcomesToGroupUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateGroupLearningOutcomeUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherDeleteGroupLearningOutcomeUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifyGroupLearningOutcomeUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherRemoveLearningOutcomesFromGroupUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -43,6 +51,8 @@ public class GroupLearningOutcomeController {
     private final TeacherCreateGroupLearningOutcomeUseCase teacherCreateGroupLearningOutcomeUseCase;
     private final TeacherAddLearningOutcomesToGroupUseCase teacherAddLearningOutcomesToGroupUseCase;
     private final TeacherRemoveLearningOutcomesFromGroupUseCase teacherRemoveLearningOutcomesFromGroupUseCase;
+    private final TeacherDeleteGroupLearningOutcomeUseCase teacherDeleteGroupLearningOutcomeUseCase;
+    private final TeacherModifyGroupLearningOutcomeUseCase teacherModifyGroupLearningOutcomeUseCase;
     private final CreateGroupLearningOutcomeCommandMapper createGroupLearningOutcomeCommandMapper;
     private final AddLearningOutcomesToGroupCommandMapper addLearningOutcomesToGroupCommandMapper;
     private final RemoveLearningOutcomesFromGroupCommandMapper removeLearningOutcomesFromGroupCommandMapper;
@@ -102,6 +112,38 @@ public class GroupLearningOutcomeController {
             @Valid @RequestBody RemoveLearningOutcomesFromGroupRequest request) {
         RemoveLearningOutcomesFromGroupCommand command = removeLearningOutcomesFromGroupCommandMapper.toCommand(courseId, groupId, request);
         RemoveLearningOutcomesFromGroupResponse response = teacherRemoveLearningOutcomesFromGroupUseCase.removeLearningOutcomesFromGroup(command);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Delete a group learning outcome",
+            description = "Deletes a top-level learning outcome group and its child learning outcomes.")
+    @PreAuthorize("hasRole('TEACHER')")
+    @DeleteMapping("/api/{courseId}/group-learning-outcome/{groupId}")
+    public ResponseEntity<DeleteGroupLearningOutcomeResponse> deleteGroupLearningOutcome(
+            @PathVariable UUID courseId,
+            @PathVariable UUID groupId) {
+        DeleteGroupLearningOutcomeCommand command = DeleteGroupLearningOutcomeCommand.builder()
+                .courseId(courseId)
+                .groupLearningOutcomeId(groupId)
+                .build();
+        DeleteGroupLearningOutcomeResponse response = teacherDeleteGroupLearningOutcomeUseCase.deleteGroupLearningOutcome(command);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Modify a group learning outcome",
+            description = "Updates a top-level learning outcome group description.")
+    @PreAuthorize("hasRole('TEACHER')")
+    @PutMapping("/api/{courseId}/group-learning-outcome/{groupId}")
+    public ResponseEntity<GetGroupLearningOutcomeResponse> modifyGroupLearningOutcome(
+            @PathVariable UUID courseId,
+            @PathVariable UUID groupId,
+            @Valid @RequestBody ModifyGroupLearningOutcomeRequest request) {
+        ModifyGroupLearningOutcomeCommand command = ModifyGroupLearningOutcomeCommand.builder()
+                .courseId(courseId)
+                .groupLearningOutcomeId(groupId)
+                .description(request.getDescription())
+                .build();
+        GetGroupLearningOutcomeResponse response = teacherModifyGroupLearningOutcomeUseCase.modifyGroupLearningOutcome(command);
         return ResponseEntity.ok(response);
     }
 }

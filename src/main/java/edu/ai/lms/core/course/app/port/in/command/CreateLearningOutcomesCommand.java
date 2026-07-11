@@ -7,5 +7,5 @@ import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import lombok.Builder;
 
 @Builder
-public record CreateLearningOutcomesCommand(UUID courseId, List<LearningOutcome> learningOutcomes) {
+public record CreateLearningOutcomesCommand(UUID courseId, UUID groupLearningOutcomeId, List<LearningOutcome> learningOutcomes) {
 }

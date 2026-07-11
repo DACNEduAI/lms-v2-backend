@@ -14,7 +14,7 @@ public class CreateGroupLearningOutcomeCommandMapper {
         return CreateGroupLearningOutcomeCommand.builder()
                 .courseId(courseId)
                 .name(request.getName())
-                .description(request.getDescription())
+                .description(request.getDescription() != null ? request.getDescription() : request.getName())
                 .learningOutcomeIds(request.getLearningOutcomeIds())
                 .build();
     }
