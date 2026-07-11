@@ -35,6 +35,11 @@ class LearningOutcomePersistenceAdapter implements SaveLearningOutcomePort, Load
     }
 
     @Override
+    public void updateTreePosition(UUID learningOutcomeId, UUID courseId, UUID groupLearningOutcomeId, int prefixNumber, int sortOrder) {
+        learningOutcomeRepository.updateTreePosition(learningOutcomeId, courseId, groupLearningOutcomeId, prefixNumber, sortOrder);
+    }
+
+    @Override
     public Optional<LearningOutcome> findById(UUID id) {
         return learningOutcomeRepository.findById(id);
     }
@@ -42,6 +47,11 @@ class LearningOutcomePersistenceAdapter implements SaveLearningOutcomePort, Load
     @Override
     public List<LearningOutcome> findByCourseId(UUID courseId) {
         return learningOutcomeRepository.findByCourseId(courseId).stream().collect(Collectors.toList());
+    }
+
+    @Override
+    public int findMaxSortOrderByGroupId(UUID groupLearningOutcomeId) {
+        return learningOutcomeRepository.findMaxSortOrderByGroupId(groupLearningOutcomeId);
     }
 
     @Override

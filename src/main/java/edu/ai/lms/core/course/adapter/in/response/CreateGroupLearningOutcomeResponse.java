@@ -17,6 +17,9 @@ import java.util.UUID;
 public class CreateGroupLearningOutcomeResponse {
     private UUID id;
     private String name;
+    private String code;
+    private Integer sortOrder;
+    private String displayCode;
     private String description;
     private UUID courseId;
     private List<LearningOutcomeDto> learningOutcomes;
@@ -32,6 +35,9 @@ public class CreateGroupLearningOutcomeResponse {
     public static class LearningOutcomeDto {
         private UUID id;
         private String code;
+        private Integer prefixNumber;
+        private Integer sortOrder;
+        private String displayCode;
         private String description;
     }
 }

@@ -70,17 +70,17 @@
 
   <select id="findQuizLearningOutcomes" resultMap="QuizLearningOutcomeViewMap">
     SELECT lo.id AS learning_outcome_id,
-           lo.code AS learning_outcome_code,
+           CONCAT(glo.code, '.', lo.prefix_number) AS learning_outcome_code,
            lo.description AS learning_outcome_description,
            glo.id AS group_learning_outcome_id,
-           glo.name AS group_learning_outcome_name,
+           glo.code AS group_learning_outcome_name,
            glo.description AS group_learning_outcome_description
     FROM edu.quiz_learning_outcomes qlo
     JOIN edu.learning_outcomes lo ON lo.id = qlo.learning_outcome_id
     LEFT JOIN edu.group_learning_outcomes glo ON glo.id = lo.group_learning_outcome_id
     WHERE qlo.quiz_id = #{quizId}
       AND lo.course_id = #{courseId}
-    ORDER BY glo.name NULLS FIRST, lo.code
+    ORDER BY glo.sort_order NULLS FIRST, lo.sort_order
   </select>
 
 </mapper>

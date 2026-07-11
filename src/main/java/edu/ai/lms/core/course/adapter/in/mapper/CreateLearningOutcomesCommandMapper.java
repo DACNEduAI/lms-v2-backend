@@ -16,13 +16,13 @@ public class CreateLearningOutcomesCommandMapper {
     public CreateLearningOutcomesCommand toCommand(UUID courseId, CreateLearningOutcomesRequest request) {
         List<LearningOutcome> learningOutcomes = request.getLearningOutcomes().stream()
                 .map(item -> LearningOutcome.builder()
-                        .code(item.getCode())
                         .description(item.getDescription())
                         .build())
                 .collect(Collectors.toList());
 
         return CreateLearningOutcomesCommand.builder()
                 .courseId(courseId)
+                .groupLearningOutcomeId(request.getGroupLearningOutcomeId())
                 .learningOutcomes(learningOutcomes)
                 .build();
     }

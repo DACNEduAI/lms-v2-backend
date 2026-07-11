@@ -19,6 +19,7 @@ import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.in.command.CreateGroupLearningOutcomeCommand;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateGroupLearningOutcomeUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
+import edu.ai.lms.core.course.app.port.out.LoadGroupLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.LoadLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.SaveGroupLearningOutcomePort;
@@ -31,6 +32,7 @@ public class CreateGroupLearningOutcomeService implements TeacherCreateGroupLear
 
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadCoursePort loadCoursePort;
+    private final LoadGroupLearningOutcomePort loadGroupLearningOutcomePort;
     private final LoadLearningOutcomePort loadLearningOutcomePort;
     private final SaveGroupLearningOutcomePort saveGroupLearningOutcomePort;
     private final SaveLearningOutcomePort saveLearningOutcomePort;
@@ -48,10 +50,10 @@ public class CreateGroupLearningOutcomeService implements TeacherCreateGroupLear
             throw new IllegalArgumentException("Teacher is not authorized to modify this course");
         }
 
-        // Validate learning outcomes exist and belong to this course
         List<LearningOutcome> learningOutcomes = new ArrayList<>();
         List<UUID> alreadyInGroup = new ArrayList<>();
-        for (UUID loId : command.learningOutcomeIds()) {
+        List<UUID> requestedLearningOutcomeIds = command.learningOutcomeIds() == null ? List.of() : command.learningOutcomeIds();
+        for (UUID loId : requestedLearningOutcomeIds) {
             LearningOutcome lo = loadLearningOutcomePort.findById(loId)
                     .orElseThrow(() -> new LearningOutcomeNotFoundException("Learning outcome not found with id: " + loId));
 
@@ -71,14 +73,24 @@ public class CreateGroupLearningOutcomeService implements TeacherCreateGroupLear
                     alreadyInGroup);
         }
 
-        // Create and save the group
+        int nextSortOrder = loadGroupLearningOutcomePort == null
+                ? 1
+                : loadGroupLearningOutcomePort.findMaxSortOrderByCourseId(command.courseId()) + 1;
         GroupLearningOutcome group = GroupLearningOutcome.builder()
                 .name(command.name())
-                .description(command.description())
+                .code(buildGroupCode(nextSortOrder))
+                .description(command.description() != null ? command.description() : command.name())
+                .sortOrder(nextSortOrder)
                 .courseId(command.courseId())
                 .build();
 
         GroupLearningOutcome savedGroup = saveGroupLearningOutcomePort.save(group);
+        if (savedGroup.getCode() == null) {
+            savedGroup.setCode(group.getCode());
+        }
+        if (savedGroup.getSortOrder() == null) {
+            savedGroup.setSortOrder(group.getSortOrder());
+        }
 
         // Assign learning outcomes to the group
         for (LearningOutcome lo : learningOutcomes) {
@@ -90,6 +102,9 @@ public class CreateGroupLearningOutcomeService implements TeacherCreateGroupLear
                 .map(lo -> CreateGroupLearningOutcomeResponse.LearningOutcomeDto.builder()
                         .id(lo.getId())
                         .code(lo.getCode())
+                        .prefixNumber(lo.getPrefixNumber())
+                        .sortOrder(lo.getSortOrder())
+                        .displayCode(savedGroup.getCode() + "." + lo.getPrefixNumber())
                         .description(lo.getDescription())
                         .build())
                 .toList();
@@ -97,10 +112,17 @@ public class CreateGroupLearningOutcomeService implements TeacherCreateGroupLear
         return CreateGroupLearningOutcomeResponse.builder()
                 .id(savedGroup.getId())
                 .name(savedGroup.getName())
+                .code(savedGroup.getCode())
+                .sortOrder(savedGroup.getSortOrder())
+                .displayCode(savedGroup.getCode())
                 .description(savedGroup.getDescription())
                 .courseId(savedGroup.getCourseId())
                 .learningOutcomes(loDtos)
                 .createdAt(savedGroup.getCreatedAt())
                 .build();
+    }
+
+    private String buildGroupCode(int sortOrder) {
+        return "L.O." + sortOrder;
     }
 }

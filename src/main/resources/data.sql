@@ -60,22 +60,22 @@ VALUES
     ('f3222222-2222-2222-2222-222222222222', 'CI/CD Automation', 'Building robust deployment pipelines using GitHub Actions.', 'c3333333-3333-3333-3333-333333333333');
 
 -- 7. Insert Group Learning Outcomes (using valid hex '7...')
-INSERT INTO group_learning_outcomes (id, name, description, course_id)
+INSERT INTO group_learning_outcomes (id, code, description, sort_order, course_id)
 VALUES
-    ('71111111-1111-1111-1111-111111111111', 'Structural Patterns', 'Mastery of backend application layering.', 'c1111111-1111-1111-1111-111111111111'),
-    ('72222222-2222-2222-2222-222222222222', 'Applied AI Integration', 'Designing applications that utilize ML models and LLMs.', 'c2222222-2222-2222-2222-222222222222'),
-    ('73333333-3333-3333-3333-333333333333', 'Infrastructure as Code', 'Managing environments through reproducible configuration.', 'c3333333-3333-3333-3333-333333333333');
+    ('71111111-1111-1111-1111-111111111111', 'L.O.1', 'Mastery of backend application layering.', 1, 'c1111111-1111-1111-1111-111111111111'),
+    ('72222222-2222-2222-2222-222222222222', 'L.O.1', 'Designing applications that utilize ML models and LLMs.', 1, 'c2222222-2222-2222-2222-222222222222'),
+    ('73333333-3333-3333-3333-333333333333', 'L.O.1', 'Managing environments through reproducible configuration.', 1, 'c3333333-3333-3333-3333-333333333333');
 
 -- 8. Insert Learning Outcomes (using valid hex '8...')
-INSERT INTO learning_outcomes (id, code, description, course_id, group_learning_outcome_id)
+INSERT INTO learning_outcomes (id, prefix_number, description, sort_order, course_id, group_learning_outcome_id)
 VALUES
-    ('81111111-1111-1111-1111-111111111111', 'SE401-1', 'Implement dependency inversion in a Spring Boot application.', 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
-    ('82222222-2222-2222-2222-222222222222', 'SE401-2', 'Design transactional boundaries using DDD Aggregate Roots.', 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
-    ('83333333-3333-3333-3333-333333333333', 'SE401-3', 'Identify Bounded Contexts within a complex monolithic system.', 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
-    ('84444444-4444-4444-4444-444444444444', 'CS502-1', 'Differentiate between linear and non-linear classification using SVMs.', 'c2222222-2222-2222-2222-222222222222', '72222222-2222-2222-2222-222222222222'),
-    ('85555555-5555-5555-5555-555555555555', 'CS502-2', 'Construct a Retrieval-Augmented Generation workflow using LangChain.', 'c2222222-2222-2222-2222-222222222222', '72222222-2222-2222-2222-222222222222'),
-    ('86666666-6666-6666-6666-666666666666', 'IT305-1', 'Containerize a full-stack application using Docker Compose.', 'c3333333-3333-3333-3333-333333333333', '73333333-3333-3333-3333-333333333333'),
-    ('87777777-7777-7777-7777-777777777777', 'IT305-2', 'Automate testing and deployment using GitHub Actions workflows.', 'c3333333-3333-3333-3333-333333333333', '73333333-3333-3333-3333-333333333333');
+    ('81111111-1111-1111-1111-111111111111', 1, 'Implement dependency inversion in a Spring Boot application.', 1, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
+    ('82222222-2222-2222-2222-222222222222', 2, 'Design transactional boundaries using DDD Aggregate Roots.', 2, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
+    ('83333333-3333-3333-3333-333333333333', 3, 'Identify Bounded Contexts within a complex monolithic system.', 3, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
+    ('84444444-4444-4444-4444-444444444444', 1, 'Differentiate between linear and non-linear classification using SVMs.', 1, 'c2222222-2222-2222-2222-222222222222', '72222222-2222-2222-2222-222222222222'),
+    ('85555555-5555-5555-5555-555555555555', 2, 'Construct a Retrieval-Augmented Generation workflow using LangChain.', 2, 'c2222222-2222-2222-2222-222222222222', '72222222-2222-2222-2222-222222222222'),
+    ('86666666-6666-6666-6666-666666666666', 1, 'Containerize a full-stack application using Docker Compose.', 1, 'c3333333-3333-3333-3333-333333333333', '73333333-3333-3333-3333-333333333333'),
+    ('87777777-7777-7777-7777-777777777777', 2, 'Automate testing and deployment using GitHub Actions workflows.', 2, 'c3333333-3333-3333-3333-333333333333', '73333333-3333-3333-3333-333333333333');
 
 -- 9. Insert Chapter-Learning Outcome Relationships
 INSERT INTO chapter_learning_outcomes (chapter_id, learning_outcome_id)
@@ -187,8 +187,4 @@ VALUES
     ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '87777777-7777-7777-7777-777777777777'),
     ('dbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '86666666-6666-6666-6666-666666666666');
 
-INSERT INTO student_learning_outcomes (student_id, learning_outcome_id)
-VALUES
-    ('44444444-4444-4444-4444-444444444444', '81111111-1111-1111-1111-111111111111'),
-    ('44444444-4444-4444-4444-444444444444', '82222222-2222-2222-2222-222222222222'),
-    ('55555555-5555-5555-5555-555555555555', '84444444-4444-4444-4444-444444444444');
+

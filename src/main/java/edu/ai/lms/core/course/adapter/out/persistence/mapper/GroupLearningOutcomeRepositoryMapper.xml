@@ -6,38 +6,62 @@
 
   <resultMap id="GroupLearningOutcomeResultMap" type="edu.ai.lms.core.course.app.domain.GroupLearningOutcome">
     <id property="id" column="id" />
-    <result property="name" column="name" />
+    <result property="code" column="code" />
     <result property="description" column="description" />
+    <result property="sortOrder" column="sort_order" />
     <result property="courseId" column="course_id" />
     <result property="createdAt" column="created_at" />
     <result property="updatedAt" column="updated_at" />
   </resultMap>
 
   <insert id="insert" parameterType="edu.ai.lms.core.course.app.domain.GroupLearningOutcome">
-    INSERT INTO edu.group_learning_outcomes (id, name, description, course_id, created_at, updated_at)
-    VALUES (#{id}, #{name}, #{description}, #{courseId}, NOW(), NOW())
+    INSERT INTO edu.group_learning_outcomes (id, code, description, sort_order, course_id, created_at, updated_at)
+    VALUES (#{id}, #{code}, #{description}, #{sortOrder}, #{courseId}, NOW(), NOW())
   </insert>
 
   <update id="update" parameterType="edu.ai.lms.core.course.app.domain.GroupLearningOutcome">
     UPDATE edu.group_learning_outcomes
-    SET name = #{name},
+    SET code = #{code},
         description = #{description},
+        sort_order = #{sortOrder},
         course_id = #{courseId},
         updated_at = NOW()
     WHERE id = #{id}
   </update>
 
   <select id="findByCourseId" resultMap="GroupLearningOutcomeResultMap">
-    SELECT id, name, description, course_id, created_at, updated_at
+    SELECT id, code, description, sort_order, course_id, created_at, updated_at
+    FROM edu.group_learning_outcomes
+    WHERE course_id = #{courseId}
+    ORDER BY sort_order, created_at, id
+  </select>
+
+  <select id="findById" resultMap="GroupLearningOutcomeResultMap">
+    SELECT id, code, description, sort_order, course_id, created_at, updated_at
+    FROM edu.group_learning_outcomes
+    WHERE id = #{id}
+  </select>
+
+  <select id="findMaxSortOrderByCourseId" resultType="int">
+    SELECT COALESCE(MAX(sort_order), 0)
     FROM edu.group_learning_outcomes
     WHERE course_id = #{courseId}
   </select>
 
-  <select id="findById" resultMap="GroupLearningOutcomeResultMap">
-    SELECT id, name, description, course_id, created_at, updated_at
-    FROM edu.group_learning_outcomes
+  <update id="updateTreePosition">
+    UPDATE edu.group_learning_outcomes
+    SET code = #{code},
+        sort_order = #{sortOrder},
+        updated_at = NOW()
     WHERE id = #{id}
-  </select>
+      AND course_id = #{courseId}
+  </update>
+
+  <delete id="deleteById">
+    DELETE FROM edu.group_learning_outcomes
+    WHERE id = #{id}
+      AND course_id = #{courseId}
+  </delete>
 
   <delete id="deleteByCourseId">
     DELETE FROM edu.group_learning_outcomes WHERE course_id = #{courseId}

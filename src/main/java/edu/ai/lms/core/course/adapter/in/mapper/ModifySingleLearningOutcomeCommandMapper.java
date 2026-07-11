@@ -14,7 +14,6 @@ public class ModifySingleLearningOutcomeCommandMapper {
     public ModifySingleLearningOutcomeCommand toCommand(UUID courseId, UUID learningOutcomeId,
             ModifyLearningOutcomeRequest request) {
         LearningOutcome learningOutcome = LearningOutcome.builder()
-                .code(request.getCode())
                 .description(request.getDescription())
                 .build();
 

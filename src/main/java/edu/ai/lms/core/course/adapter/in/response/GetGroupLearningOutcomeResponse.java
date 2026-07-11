@@ -19,7 +19,11 @@ public class GetGroupLearningOutcomeResponse {
 
     private UUID id;
     private String name;
+    private String code;
+    private Integer sortOrder;
+    private String displayCode;
     private String description;
+    private UUID courseId;
 
     @Builder.Default
     private List<GetLearningOutcomeResponse> learningOutcomes = new ArrayList<>();

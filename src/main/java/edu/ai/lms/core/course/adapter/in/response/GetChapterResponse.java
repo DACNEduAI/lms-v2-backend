@@ -40,6 +40,9 @@ public class GetChapterResponse {
     public static class LearningOutcomeSummary {
         private UUID id;
         private String code;
+        private Integer prefixNumber;
+        private Integer sortOrder;
+        private String displayCode;
         private String description;
     }
 
@@ -51,6 +54,8 @@ public class GetChapterResponse {
     public static class GroupLearningOutcomeSummary {
         private UUID id;
         private String name;
+        private String code;
+        private String displayCode;
         private String description;
         @Builder.Default
         private List<LearningOutcomeSummary> learningOutcomes = new ArrayList<>();
