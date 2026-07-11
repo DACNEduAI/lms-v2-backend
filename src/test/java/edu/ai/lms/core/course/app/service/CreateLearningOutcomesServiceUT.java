@@ -26,11 +26,14 @@ import edu.ai.lms.common.Roles;
 import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.CreateLearningOutcomesResponse;
 import edu.ai.lms.core.course.app.domain.Course;
+import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.in.command.CreateLearningOutcomesCommand;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
+import edu.ai.lms.core.course.app.port.out.LoadGroupLearningOutcomePort;
+import edu.ai.lms.core.course.app.port.out.LoadLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.SaveLearningOutcomePort;
 
@@ -45,6 +48,12 @@ class CreateLearningOutcomesServiceUT {
 
     @Mock
     private LoadSignedInUserPort loadSignedInUserPort;
+
+    @Mock
+    private LoadGroupLearningOutcomePort loadGroupLearningOutcomePort;
+
+    @Mock
+    private LoadLearningOutcomePort loadLearningOutcomePort;
 
     @InjectMocks
     private CreateLearningOutcomesService createLearningOutcomesService;
@@ -149,6 +158,44 @@ class CreateLearningOutcomesServiceUT {
         assertEquals(1, response.getLearningOutcomes().size());
 
         verify(saveLearningOutcomePort, times(1)).save(any(LearningOutcome.class));
+    }
+
+    @Test
+    @DisplayName("Should number new grouped learning outcomes from one")
+    void testCreateLearningOutcomes_WithNewGroupChildren_ShouldAssignSequentialPrefixNumbers() {
+        UUID groupId = UUID.randomUUID();
+        GroupLearningOutcome group = GroupLearningOutcome.builder()
+                .id(groupId)
+                .code("L.O.2")
+                .courseId(courseId)
+                .build();
+        LearningOutcome lo1 = LearningOutcome.builder().description("ReactJS").build();
+        LearningOutcome lo2 = LearningOutcome.builder().description("TanStack Query").build();
+        CreateLearningOutcomesCommand command = CreateLearningOutcomesCommand.builder()
+                .courseId(courseId)
+                .groupLearningOutcomeId(groupId)
+                .learningOutcomes(List.of(lo1, lo2))
+                .build();
+
+        when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockUser));
+        when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
+        when(loadGroupLearningOutcomePort.findById(groupId)).thenReturn(Optional.of(group));
+        when(loadLearningOutcomePort.findMaxSortOrderByGroupId(groupId)).thenReturn(0);
+        when(saveLearningOutcomePort.save(any(LearningOutcome.class)))
+                .thenAnswer(invocation -> {
+                    LearningOutcome saved = invocation.getArgument(0);
+                    saved.setId(UUID.randomUUID());
+                    saved.setCreatedAt(LocalDateTime.now());
+                    return saved;
+                });
+
+        CreateLearningOutcomesResponse response = createLearningOutcomesService.createLearningOutcomes(command);
+
+        assertEquals(2, response.getTotalCreated());
+        assertEquals(1, response.getLearningOutcomes().get(0).getPrefixNumber());
+        assertEquals(2, response.getLearningOutcomes().get(1).getPrefixNumber());
+        assertEquals("L.O.2.1", response.getLearningOutcomes().get(0).getDisplayCode());
+        assertEquals("L.O.2.2", response.getLearningOutcomes().get(1).getDisplayCode());
     }
 
     @Test

@@ -57,6 +57,12 @@ class GroupLearningOutcomePersistenceAdapter implements SaveGroupLearningOutcome
     private GroupLearningOutcome loadWithLearningOutcomes(GroupLearningOutcome entity) {
         List<LearningOutcome> learningOutcomes =
                 learningOutcomeRepository.findByGroupLearningOutcomeId(entity.getId());
+        for (int index = 0; index < learningOutcomes.size(); index++) {
+            LearningOutcome learningOutcome = learningOutcomes.get(index);
+            int position = index + 1;
+            learningOutcome.setPrefixNumber(position);
+            learningOutcome.setSortOrder(position);
+        }
         entity.setLearningOutcomes(learningOutcomes.stream().collect(Collectors.toList()));
         return entity;
     }

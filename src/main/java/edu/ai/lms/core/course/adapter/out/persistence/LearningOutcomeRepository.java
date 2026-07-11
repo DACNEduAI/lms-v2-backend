@@ -23,6 +23,9 @@ interface LearningOutcomeRepository {
         if (entity.getPrefixNumber() == null && entity.getCode() != null) {
             entity.setCode(entity.getCode());
         }
+        if (entity.getPrefixNumber() == null && entity.getGroupLearningOutcomeId() != null) {
+            entity.setPrefixNumber(findMaxSortOrderByGroupId(entity.getGroupLearningOutcomeId()) + 1);
+        }
         if (entity.getSortOrder() == null) {
             entity.setSortOrder(entity.getPrefixNumber() == null ? 1 : entity.getPrefixNumber());
         }
