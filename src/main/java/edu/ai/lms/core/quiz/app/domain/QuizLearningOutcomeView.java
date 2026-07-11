@@ -16,6 +16,7 @@ import java.util.UUID;
 public class QuizLearningOutcomeView {
     private UUID learningOutcomeId;
     private String learningOutcomeCode;
+    private Integer learningOutcomePrefixNumber;
     private String learningOutcomeDescription;
     private UUID groupLearningOutcomeId;
     private String groupLearningOutcomeName;

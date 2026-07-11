@@ -20,6 +20,7 @@ public class QuestionLearningOutcomeView {
     private UUID learningOutcomeId;
 
     private String learningOutcomeCode;
+    private Integer learningOutcomePrefixNumber;
 
     private String learningOutcomeDescription;
 }

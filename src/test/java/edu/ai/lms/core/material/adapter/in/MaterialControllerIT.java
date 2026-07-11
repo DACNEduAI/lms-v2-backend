@@ -20,7 +20,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
 import edu.ai.lms.config.IntegrationTestConfiguration;
@@ -41,15 +42,26 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 class MaterialControllerIT extends IntegrationTestConfiguration {
 
     private static final String BUCKET_NAME = "lms-materials";
+    private static final String AWS_ACCESS_KEY = "test";
+    private static final String AWS_SECRET_KEY = "test";
+    private static final String AWS_REGION = "us-east-1";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
-    // Singleton LocalStack container – started once and reused across all tests
-    protected static final LocalStackContainer localStack;
+    // Singleton LocalStack container - started once and reused across all tests.
+    // Use GenericContainer to avoid LocalStackContainer's startup script copy,
+    // which can fail on Docker 29 with "mkdirat var/run: file exists".
+    protected static final GenericContainer<?> localStack;
     private static final URI virtualHostEndpoint;
 
     static {
-        localStack = new LocalStackContainer(DockerImageName.parse("localstack/localstack:3.0"))
-                .withServices(LocalStackContainer.Service.S3);
+        localStack = new GenericContainer<>(DockerImageName.parse("localstack/localstack:3.0"))
+                .withExposedPorts(4566)
+                .withEnv("SERVICES", "s3")
+                .withEnv("EAGER_SERVICE_LOADING", "1")
+                .withEnv("AWS_ACCESS_KEY_ID", AWS_ACCESS_KEY)
+                .withEnv("AWS_SECRET_ACCESS_KEY", AWS_SECRET_KEY)
+                .withEnv("AWS_DEFAULT_REGION", AWS_REGION)
+                .waitingFor(Wait.forLogMessage(".*Ready\\.\n", 1));
         localStack.start();
 
         // Build a virtual-hosted style endpoint.
@@ -62,8 +74,8 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
         try (S3Client setupClient = S3Client.builder()
                 .endpointOverride(virtualHostEndpoint)
                 .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(localStack.getAccessKey(), localStack.getSecretKey())))
-                .region(Region.of(localStack.getRegion()))
+                        AwsBasicCredentials.create(AWS_ACCESS_KEY, AWS_SECRET_KEY)))
+                .region(Region.of(AWS_REGION))
                 .build()) {
             setupClient.createBucket(CreateBucketRequest.builder().bucket(BUCKET_NAME).build());
         }
@@ -89,8 +101,8 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
                     return S3Client.builder()
                             .endpointOverride(virtualHostEndpoint)
                             .credentialsProvider(StaticCredentialsProvider.create(
-                                    AwsBasicCredentials.create(localStack.getAccessKey(), localStack.getSecretKey())))
-                            .region(Region.of(localStack.getRegion()))
+                                    AwsBasicCredentials.create(AWS_ACCESS_KEY, AWS_SECRET_KEY)))
+                            .region(Region.of(AWS_REGION))
                             .build();
                 }
 
@@ -99,8 +111,8 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
                     return S3Presigner.builder()
                             .endpointOverride(virtualHostEndpoint)
                             .credentialsProvider(StaticCredentialsProvider.create(
-                                    AwsBasicCredentials.create(localStack.getAccessKey(), localStack.getSecretKey())))
-                            .region(Region.of(localStack.getRegion()))
+                                    AwsBasicCredentials.create(AWS_ACCESS_KEY, AWS_SECRET_KEY)))
+                            .region(Region.of(AWS_REGION))
                             .build();
                 }
 
@@ -109,10 +121,10 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
                     return BUCKET_NAME;
                 }
 
-                                @Override
-                                public String getEndPoint() {
-                                        return virtualHostEndpoint.toString();
-                                }
+                @Override
+                public String getEndPoint() {
+                    return virtualHostEndpoint.toString();
+                }
             };
         }
     }
@@ -120,8 +132,8 @@ class MaterialControllerIT extends IntegrationTestConfiguration {
     @DynamicPropertySource
     static void configureStorageProperties(DynamicPropertyRegistry registry) {
         registry.add("dev.storage.bucket-name", () -> BUCKET_NAME);
-        registry.add("dev.storage.access-key", localStack::getAccessKey);
-        registry.add("dev.storage.secret-key", localStack::getSecretKey);
+        registry.add("dev.storage.access-key", () -> AWS_ACCESS_KEY);
+        registry.add("dev.storage.secret-key", () -> AWS_SECRET_KEY);
         registry.add("dev.storage.end-point", virtualHostEndpoint::toString);
     }
 

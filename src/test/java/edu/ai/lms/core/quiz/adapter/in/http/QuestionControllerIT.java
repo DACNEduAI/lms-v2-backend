@@ -102,7 +102,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                     "endDate": "%s",
                     "learningOutcomes": [
                         {
-                            "code": "CLO-1",
+                            "prefixNumber": 1,
                             "description": "Understand algebra"
                         }
                     ]
@@ -131,7 +131,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
         String learningOutcomeBody = """
                 {
                     "learningOutcomes": [
-                        {"code": "Q-BASE", "description": "Base quiz LO for question tests"}
+                        {"prefixNumber": 99, "description": "Base quiz LO for question tests"}
                     ]
                 }
                 """;
@@ -580,8 +580,8 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "learningOutcomes": [
-                        {"code": "QLO-1", "description": "Question mapped LO 1"},
-                        {"code": "QLO-2", "description": "Question mapped LO 2"}
+                        {"prefixNumber": 1, "description": "Question mapped LO 1"},
+                        {"prefixNumber": 2, "description": "Question mapped LO 2"}
                     ]
                 }
                 """;
@@ -635,9 +635,9 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
                 .statusCode(200)
                 .body("questionId", equalTo(createdQuestionId.toString()))
                 .body("learningOutcomes", hasSize(3))
-                .body("learningOutcomes.code", hasItem("DLO-1"))
-                .body("learningOutcomes.code", hasItem("QLO-1"))
-                .body("learningOutcomes.code", hasItem("QLO-2"));
+                .body("learningOutcomes.prefixNumber", hasItem(1))
+                .body("learningOutcomes.prefixNumber", hasItem(1))
+                .body("learningOutcomes.prefixNumber", hasItem(2));
     }
 
     @Test
@@ -697,7 +697,7 @@ class QuestionControllerIT extends IntegrationTestConfiguration {
         String createForeignLearningOutcomeRequest = """
                 {
                     "learningOutcomes": [
-                        {"code": "QLO-FOREIGN-1", "description": "Foreign question learning outcome"}
+                        {"prefixNumber": 1, "description": "Foreign question learning outcome"}
                     ]
                 }
                 """;

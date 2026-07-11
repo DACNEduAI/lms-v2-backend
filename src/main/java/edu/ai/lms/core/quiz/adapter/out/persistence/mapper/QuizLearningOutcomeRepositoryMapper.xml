@@ -59,9 +59,10 @@
       </foreach>
   </select>
 
-  <resultMap id="QuizLearningOutcomeViewMap" type="edu.ai.lms.core.quiz.app.domain.QuizLearningOutcomeView">
+    <resultMap id="QuizLearningOutcomeViewMap" type="edu.ai.lms.core.quiz.app.domain.QuizLearningOutcomeView">
     <result property="learningOutcomeId" column="learning_outcome_id" />
     <result property="learningOutcomeCode" column="learning_outcome_code" />
+    <result property="learningOutcomePrefixNumber" column="learning_outcome_prefix_number" />
     <result property="learningOutcomeDescription" column="learning_outcome_description" />
     <result property="groupLearningOutcomeId" column="group_learning_outcome_id" />
     <result property="groupLearningOutcomeName" column="group_learning_outcome_name" />
@@ -70,7 +71,11 @@
 
   <select id="findQuizLearningOutcomes" resultMap="QuizLearningOutcomeViewMap">
     SELECT lo.id AS learning_outcome_id,
-           CONCAT(glo.code, '.', lo.prefix_number) AS learning_outcome_code,
+           CASE
+             WHEN glo.code IS NULL THEN CAST(lo.prefix_number AS TEXT)
+             ELSE CONCAT(glo.code, '.', lo.prefix_number)
+           END AS learning_outcome_code,
+           lo.prefix_number AS learning_outcome_prefix_number,
            lo.description AS learning_outcome_description,
            glo.id AS group_learning_outcome_id,
            glo.code AS group_learning_outcome_name,

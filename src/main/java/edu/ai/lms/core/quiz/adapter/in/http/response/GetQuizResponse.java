@@ -75,6 +75,7 @@ public class GetQuizResponse {
     public static class LearningOutcomeSummary {
         private UUID id;
         private String code;
+        private Integer prefixNumber;
         private String description;
     }
 

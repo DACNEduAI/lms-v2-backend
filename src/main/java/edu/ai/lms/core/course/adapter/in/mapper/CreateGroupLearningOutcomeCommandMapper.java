@@ -11,10 +11,11 @@ import edu.ai.lms.core.course.app.port.in.command.CreateGroupLearningOutcomeComm
 public class CreateGroupLearningOutcomeCommandMapper {
 
     public CreateGroupLearningOutcomeCommand toCommand(UUID courseId, CreateGroupLearningOutcomeRequest request) {
+        String code = request.getCode() != null ? request.getCode() : request.getName();
         return CreateGroupLearningOutcomeCommand.builder()
                 .courseId(courseId)
-                .name(request.getName())
-                .description(request.getDescription() != null ? request.getDescription() : request.getName())
+                .name(code)
+                .description(request.getDescription() != null ? request.getDescription() : code)
                 .learningOutcomeIds(request.getLearningOutcomeIds())
                 .build();
     }

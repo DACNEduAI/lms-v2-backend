@@ -102,7 +102,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                     "endDate": "%s",
                     "learningOutcomes": [
                         {
-                            "code": "CLO-1",
+                            "prefixNumber": 1,
                             "description": "Understand Java basics"
                         }
                     ]
@@ -133,7 +133,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         String learningOutcomeBody = """
                 {
                     "learningOutcomes": [
-                        {"code": "CLO-BASE", "description": "Base quiz learning outcome"}
+                        {"prefixNumber": 99, "description": "Base quiz learning outcome"}
                     ]
                 }
                 """;
@@ -554,10 +554,10 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         String requestBody = """
                 {
                     "learningOutcomes": [
-                        {"code": "CLO-Q1", "description": "Understand fundamentals"},
-                        {"code": "CLO-Q2", "description": "Apply fundamentals"},
-                        {"code": "CLO-Q3", "description": "Analyze scenarios"},
-                        {"code": "CLO-Q4", "description": "Evaluate solutions"}
+                        {"prefixNumber": 1, "description": "Understand fundamentals"},
+                        {"prefixNumber": 2, "description": "Apply fundamentals"},
+                        {"prefixNumber": 3, "description": "Analyze scenarios"},
+                        {"prefixNumber": 4, "description": "Evaluate solutions"}
                     ]
                 }
                 """;
@@ -585,7 +585,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     void testCreateGroupOne() {
         String requestBody = """
                 {
-                    "name": "Group One",
+                    "code": "Group One",
                     "description": "First group",
                     "learningOutcomeIds": ["%s", "%s"]
                 }
@@ -610,7 +610,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
     void testCreateGroupTwo() {
         String requestBody = """
                 {
-                    "name": "Group Two",
+                    "code": "Group Two",
                     "description": "Second group",
                     "learningOutcomeIds": ["%s"]
                 }
@@ -688,7 +688,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
         String createForeignLearningOutcomeRequest = """
                 {
                     "learningOutcomes": [
-                        {"code": "CLO-FOREIGN-1", "description": "Foreign course learning outcome"}
+                        {"prefixNumber": 1, "description": "Foreign course learning outcome"}
                     ]
                 }
                 """;
@@ -737,8 +737,8 @@ class QuizControllerIT extends IntegrationTestConfiguration {
                 .statusCode(200)
                 .body("groupedLearningOutcomes", hasSize(2))
             .body("ungroupedLearningOutcomes", hasSize(2))
-            .body("ungroupedLearningOutcomes.code", hasItem("CLO-Q4"))
-            .body("ungroupedLearningOutcomes.code", hasItem("CLO-BASE"));
+            .body("ungroupedLearningOutcomes.prefixNumber", hasItem(4))
+            .body("ungroupedLearningOutcomes.prefixNumber", hasItem(99));
     }
 
     @Test
@@ -1120,7 +1120,7 @@ class QuizControllerIT extends IntegrationTestConfiguration {
             .get("/api/" + createdCourseId + "/quiz/" + quizWithLearningOutcomeRelationId)
             .then()
             .statusCode(200)
-            .body("ungroupedLearningOutcomes.code", hasItem("CLO-Q4"));
+            .body("ungroupedLearningOutcomes.prefixNumber", hasItem(4));
         }
 
         @Test

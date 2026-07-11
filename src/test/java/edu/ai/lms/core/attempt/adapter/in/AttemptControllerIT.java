@@ -106,7 +106,7 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
                     "endDate": "%s",
                     "learningOutcomes": [
                         {
-                            "code": "CLO-ATT-1",
+                            "prefixNumber": 1,
                             "description": "Understand attempt flows"
                         }
                     ]
@@ -149,7 +149,7 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
         String learningOutcomeBody = """
                 {
                     "learningOutcomes": [
-                        {"code": "ATT-BASE", "description": "Base quiz LO for attempt tests"}
+                        {"prefixNumber": 99, "description": "Base quiz LO for attempt tests"}
                     ]
                 }
                 """;

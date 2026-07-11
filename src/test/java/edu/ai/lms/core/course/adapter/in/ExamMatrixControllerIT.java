@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -85,8 +86,8 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
                     "startDate": "%s",
                     "endDate": "%s",
                     "learningOutcomes": [
-                        {"code": "CLO-1", "description": "Understand algorithms"},
-                        {"code": "CLO-2", "description": "Apply data structures"}
+                        {"prefixNumber": 1, "description": "Understand algorithms"},
+                        {"prefixNumber": 2, "description": "Apply data structures"}
                     ]
                 }
                 """.formatted(start, end);
@@ -119,12 +120,13 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
                 .statusCode(200)
                 .extract().response();
 
-        // Extract first ungrouped CLO id (may vary per implementation)
-        String lo = response.jsonPath().getString("learningOutcomes[0].id");
+        // Extract first ungrouped CLO id (course responses expose ungrouped LOs separately).
+        String lo = response.jsonPath().getString("ungroupedLearningOutcomes[0].id");
         if (lo == null) {
             // Try grouped CLO
             lo = response.jsonPath().getString("groupLearningOutcomes[0].learningOutcomes[0].id");
         }
+        assertNotNull(lo, "Expected course setup to create at least one learning outcome");
         learningOutcomeId = UUID.fromString(lo);
     }
 
@@ -172,7 +174,7 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
     @Test
     @Order(5)
     @DisplayName("Should fail to create an exam matrix without authentication")
-    void testCreateExamMatrix_Unauthenticated_ShouldReturn401() {
+    void testCreateExamMatrix_Unauthenticated_ShouldReturn403() {
         given()
                 .contentType(ContentType.JSON)
                 .body("{\"title\": \"No auth\", \"rows\": []}")
@@ -180,7 +182,7 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
                 .post("/api/courses/{courseId}/exam-matrices", courseId)
                 .then()
                 .log().all()
-                .statusCode(401);
+                .statusCode(403);
     }
 
     @Test

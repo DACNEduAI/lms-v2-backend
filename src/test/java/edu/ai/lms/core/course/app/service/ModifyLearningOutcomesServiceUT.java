@@ -88,11 +88,11 @@ class ModifyLearningOutcomesServiceUT {
                 .build();
 
         existingLo1 = LearningOutcome.builder()
-                .id(loId1).code("CLO-1").description("Original description 1")
+                .id(loId1).prefixNumber(1).sortOrder(1).description("Original description 1")
                 .courseId(courseId).createdAt(LocalDateTime.now().minusDays(1)).build();
 
         existingLo2 = LearningOutcome.builder()
-                .id(loId2).code("CLO-2").description("Original description 2")
+                .id(loId2).prefixNumber(2).sortOrder(2).description("Original description 2")
                 .courseId(courseId).createdAt(LocalDateTime.now().minusDays(1)).build();
     }
 
@@ -100,8 +100,8 @@ class ModifyLearningOutcomesServiceUT {
     @DisplayName("Should successfully modify multiple learning outcomes")
     void testModifyLearningOutcomes_WithValidDetails_ShouldSucceed() {
         // Arrange
-        LearningOutcome update1 = LearningOutcome.builder().id(loId1).code("CLO-1-UPD").description("Updated 1").build();
-        LearningOutcome update2 = LearningOutcome.builder().id(loId2).code("CLO-2-UPD").description("Updated 2").build();
+        LearningOutcome update1 = LearningOutcome.builder().id(loId1).prefixNumber(11).sortOrder(11).description("Updated 1").build();
+        LearningOutcome update2 = LearningOutcome.builder().id(loId2).prefixNumber(12).sortOrder(12).description("Updated 2").build();
 
         ModifyLearningOutcomesCommand command = ModifyLearningOutcomesCommand.builder()
                 .courseId(courseId)
@@ -118,7 +118,10 @@ class ModifyLearningOutcomesServiceUT {
                 .thenAnswer(invocation -> {
                     LearningOutcome lo = invocation.getArgument(0);
                     return LearningOutcome.builder()
-                            .id(lo.getId()).code(lo.getCode()).description(lo.getDescription())
+                            .id(lo.getId())
+                            .prefixNumber(lo.getPrefixNumber())
+                            .sortOrder(lo.getSortOrder())
+                            .description(lo.getDescription())
                             .courseId(lo.getCourseId()).createdAt(lo.getCreatedAt()).updatedAt(updatedAt).build();
                 });
 
@@ -130,8 +133,8 @@ class ModifyLearningOutcomesServiceUT {
         assertEquals(courseId, response.getCourseId());
         assertEquals(2, response.getTotalModified());
         assertEquals(2, response.getLearningOutcomes().size());
-        assertEquals("CLO-1-UPD", response.getLearningOutcomes().get(0).getCode());
-        assertEquals("CLO-2-UPD", response.getLearningOutcomes().get(1).getCode());
+        assertEquals(11, response.getLearningOutcomes().get(0).getPrefixNumber());
+        assertEquals(12, response.getLearningOutcomes().get(1).getPrefixNumber());
 
         verify(loadLearningOutcomePort, times(2)).findById(any());
         verify(saveLearningOutcomePort, times(2)).save(any(LearningOutcome.class));

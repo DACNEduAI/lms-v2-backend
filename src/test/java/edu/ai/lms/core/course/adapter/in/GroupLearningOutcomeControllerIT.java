@@ -139,19 +139,19 @@ class GroupLearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 {
                     "learningOutcomes": [
                         {
-                            "code": "CLO-1",
+                            "prefixNumber": 1,
                             "description": "Understand basic Java syntax"
                         },
                         {
-                            "code": "CLO-2",
+                            "prefixNumber": 2,
                             "description": "Write simple Java programs"
                         },
                         {
-                            "code": "CLO-3",
+                            "prefixNumber": 3,
                             "description": "Apply OOP concepts"
                         },
                         {
-                            "code": "CLO-4",
+                            "prefixNumber": 4,
                             "description": "Design software architecture"
                         }
                     ]
@@ -184,7 +184,7 @@ class GroupLearningOutcomeControllerIT extends IntegrationTestConfiguration {
     void testCreateGroupLearningOutcome_Success() {
         String requestBody = """
                 {
-                    "name": "Fundamentals",
+                    "code": "Fundamentals",
                     "description": "Basic programming fundamentals",
                     "learningOutcomeIds": ["%s", "%s"]
                 }
@@ -200,12 +200,12 @@ class GroupLearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .log().all()
                 .statusCode(201)
                 .body("id", notNullValue())
-                .body("name", equalTo("Fundamentals"))
+                .body("code", equalTo("Fundamentals"))
                 .body("description", equalTo("Basic programming fundamentals"))
                 .body("courseId", equalTo(createdCourseId.toString()))
                 .body("learningOutcomes", hasSize(2))
-                .body("learningOutcomes[0].code", equalTo("CLO-1"))
-                .body("learningOutcomes[1].code", equalTo("CLO-2"))
+                .body("learningOutcomes[0].prefixNumber", equalTo(1))
+                .body("learningOutcomes[1].prefixNumber", equalTo(2))
                 .body("createdAt", notNullValue())
                 .extract().response();
 
@@ -218,7 +218,7 @@ class GroupLearningOutcomeControllerIT extends IntegrationTestConfiguration {
     void testCreateGroupLearningOutcome_LOsAlreadyInGroup() {
         String requestBody = """
                 {
-                    "name": "Duplicate Group",
+                    "code": "Duplicate Group",
                     "description": "Trying to use already grouped LOs",
                     "learningOutcomeIds": ["%s"]
                 }
@@ -242,7 +242,7 @@ class GroupLearningOutcomeControllerIT extends IntegrationTestConfiguration {
     void testCreateGroupLearningOutcome_Unauthorized() {
         String requestBody = """
                 {
-                    "name": "Unauthorized Group",
+                    "code": "Unauthorized Group",
                     "description": "No auth",
                     "learningOutcomeIds": ["%s"]
                 }
@@ -264,7 +264,7 @@ class GroupLearningOutcomeControllerIT extends IntegrationTestConfiguration {
     void testCreateGroupLearningOutcome_TeacherNotAuthorized() {
         String requestBody = """
                 {
-                    "name": "Unauthorized Group",
+                    "code": "Unauthorized Group",
                     "description": "Wrong teacher",
                     "learningOutcomeIds": ["%s"]
                 }
@@ -288,7 +288,7 @@ class GroupLearningOutcomeControllerIT extends IntegrationTestConfiguration {
         UUID nonExistentCourseId = UUID.randomUUID();
         String requestBody = """
                 {
-                    "name": "Ghost Group",
+                    "code": "Ghost Group",
                     "description": "Non-existent course",
                     "learningOutcomeIds": ["%s"]
                 }
@@ -311,7 +311,7 @@ class GroupLearningOutcomeControllerIT extends IntegrationTestConfiguration {
     void testCreateGroupLearningOutcome_SecondGroup() {
         String requestBody = """
                 {
-                    "name": "Advanced Topics",
+                    "code": "Advanced Topics",
                     "description": "A group for advanced LOs",
                     "learningOutcomeIds": ["%s"]
                 }
@@ -326,7 +326,7 @@ class GroupLearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .log().all()
                 .statusCode(201)
-                .body("name", equalTo("Advanced Topics"))
+                .body("code", equalTo("Advanced Topics"))
                 .body("learningOutcomes", hasSize(1))
                 .extract().response();
 
@@ -375,7 +375,7 @@ class GroupLearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .log().all()
                 .statusCode(200)
                 .body("groupId", equalTo(createdGroupId.toString()))
-                .body("name", equalTo("Fundamentals"))
+                .body("code", equalTo("Fundamentals"))
                 .body("courseId", equalTo(createdCourseId.toString()))
                 .body("totalAdded", equalTo(1))
                 .body("learningOutcomes", hasSize(3));
@@ -469,7 +469,7 @@ class GroupLearningOutcomeControllerIT extends IntegrationTestConfiguration {
                 .log().all()
                 .statusCode(200)
                 .body("groupId", equalTo(createdGroupId.toString()))
-                .body("name", equalTo("Fundamentals"))
+                .body("code", equalTo("Fundamentals"))
                 .body("courseId", equalTo(createdCourseId.toString()))
                 .body("totalRemoved", equalTo(1))
                 .body("message", containsString("Successfully removed 1 learning outcomes"));

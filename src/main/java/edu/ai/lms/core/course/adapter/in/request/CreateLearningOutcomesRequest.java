@@ -4,7 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.util.List;
@@ -21,7 +20,6 @@ public class CreateLearningOutcomesRequest {
     @Valid
     private List<LearningOutcomeItem> learningOutcomes;
 
-    @NotNull(message = "Group learning outcome ID cannot be null")
     private UUID groupLearningOutcomeId;
 
     @Getter
@@ -31,7 +29,7 @@ public class CreateLearningOutcomesRequest {
     @Builder
     @Schema(name = "CreateLearningOutcomeItemRequest")
     public static class LearningOutcomeItem {
-        private String code;
+        private Integer prefixNumber;
 
         @NotBlank(message = "CLO description cannot be blank")
         private String description;

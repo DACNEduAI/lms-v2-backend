@@ -57,14 +57,17 @@ public class ModifySingleLearningOutcomeService implements TeacherModifySingleLe
                 .id(existing.getId())
                 .courseId(existing.getCourseId())
                 .groupLearningOutcomeId(existing.getGroupLearningOutcomeId())
-                .prefixNumber(existing.getPrefixNumber())
-                .sortOrder(existing.getSortOrder())
+                .prefixNumber(command.learningOutcome().getPrefixNumber() != null
+                        ? command.learningOutcome().getPrefixNumber()
+                        : existing.getPrefixNumber())
+                .sortOrder(command.learningOutcome().getSortOrder() != null
+                        ? command.learningOutcome().getSortOrder()
+                        : existing.getSortOrder())
                 .description(command.learningOutcome().getDescription() != null
                         ? command.learningOutcome().getDescription()
                         : existing.getDescription())
                 .createdAt(existing.getCreatedAt())
                 .build();
-        updated.setCode(command.learningOutcome().getCode());
 
         LearningOutcome saved = saveLearningOutcomePort.save(updated);
 

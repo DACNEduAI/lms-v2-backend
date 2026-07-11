@@ -78,11 +78,11 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                     "endDate": "%s",
                     "learningOutcomes": [
                         {
-                            "code": "CLO-1",
+                            "prefixNumber": 1,
                             "description": "Understand basic Java syntax"
                         },
                         {
-                            "code": "CLO-2",
+                            "prefixNumber": 2,
                             "description": "Write simple Java programs"
                         }
                     ]
@@ -502,19 +502,19 @@ class CourseControllerIT extends IntegrationTestConfiguration {
                     "endDate": "%s",
                     "learningOutcomes": [
                         {
-                            "code": "CLO-1",
+                            "prefixNumber": 1,
                             "description": "Understand arrays and linked lists"
                         },
                         {
-                            "code": "CLO-2",
+                            "prefixNumber": 2,
                             "description": "Implement sorting algorithms"
                         },
                         {
-                            "code": "CLO-3",
+                            "prefixNumber": 3,
                             "description": "Apply graph algorithms"
                         },
                         {
-                            "code": "CLO-4",
+                            "prefixNumber": 4,
                             "description": "Analyze algorithm complexity"
                         }
                     ]

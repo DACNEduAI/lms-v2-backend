@@ -10,8 +10,7 @@ import lombok.*;
 @Builder
 public class CreateLearningOutcomeRequest {
 
-    @NotBlank(message = "Learning outcome code cannot be blank")
-    private String code;   // e.g. "CLO-1"
+    private Integer prefixNumber;
 
     @NotBlank(message = "Learning outcome description cannot be blank")
     private String description;

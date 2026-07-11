@@ -68,6 +68,7 @@ public class GetQuizService implements GetQuizUseCase {
                             .map(lo -> GetQuizResponse.LearningOutcomeSummary.builder()
                                     .id(lo.getLearningOutcomeId())
                                     .code(lo.getLearningOutcomeCode())
+                                    .prefixNumber(lo.getLearningOutcomePrefixNumber())
                                     .description(lo.getLearningOutcomeDescription())
                                     .build())
                             .toList();
@@ -140,6 +141,7 @@ public class GetQuizService implements GetQuizUseCase {
         return GetQuizResponse.LearningOutcomeSummary.builder()
                 .id(learningOutcome.getLearningOutcomeId())
                 .code(learningOutcome.getLearningOutcomeCode())
+                .prefixNumber(learningOutcome.getLearningOutcomePrefixNumber())
                 .description(learningOutcome.getLearningOutcomeDescription())
                 .build();
     }
