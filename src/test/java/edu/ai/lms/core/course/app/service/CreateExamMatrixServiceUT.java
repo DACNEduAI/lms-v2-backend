@@ -25,8 +25,10 @@ import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.CreateExamMatrixResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.ExamMatrix;
+import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
+import edu.ai.lms.core.course.app.exception.UnauthorizedTeacherException;
 import edu.ai.lms.core.course.app.port.in.command.CreateExamMatrixCommand;
 import edu.ai.lms.core.course.app.port.in.command.ExamMatrixRowCommand;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
@@ -66,6 +68,7 @@ class CreateExamMatrixServiceUT {
         mockCourse = Course.builder()
                 .id(courseId)
                 .teacherIds(List.of(teacherId))
+                .learningOutcomes(List.of(LearningOutcome.builder().id(loId).build()))
                 .build();
 
         validCommand = CreateExamMatrixCommand.builder()
@@ -129,7 +132,7 @@ class CreateExamMatrixServiceUT {
     }
 
     @Test
-    @DisplayName("Should throw IllegalArgumentException when teacher does not own course")
+    @DisplayName("Should throw UnauthorizedTeacherException when teacher does not own course")
     void testCreate_TeacherNotOwner_ShouldThrow() {
         Course otherCourse = Course.builder()
                 .id(courseId)
@@ -139,7 +142,7 @@ class CreateExamMatrixServiceUT {
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(otherCourse));
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
 
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(UnauthorizedTeacherException.class,
                 () -> createExamMatrixService.createExamMatrix(validCommand));
 
         verify(saveExamMatrixPort, never()).save(any());
