@@ -6,8 +6,9 @@
 
   <resultMap id="LearningOutcomeResultMap" type="edu.ai.lms.core.course.app.domain.LearningOutcome">
     <id property="id" column="id" />
-    <result property="code" column="code" />
+    <result property="prefixNumber" column="prefix_number" />
     <result property="description" column="description" />
+    <result property="sortOrder" column="sort_order" />
     <result property="courseId" column="course_id" />
     <result property="groupLearningOutcomeId" column="group_learning_outcome_id" />
     <result property="createdAt" column="created_at" />
@@ -15,20 +16,21 @@
   </resultMap>
 
   <select id="findById" resultMap="LearningOutcomeResultMap">
-    SELECT id, code, description, course_id, group_learning_outcome_id, created_at, updated_at
-    FROM learning_outcomes
+    SELECT id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at
+    FROM edu.learning_outcomes
     WHERE id = #{id}
   </select>
 
   <insert id="insert" parameterType="edu.ai.lms.core.course.app.domain.LearningOutcome">
-    INSERT INTO learning_outcomes (id, code, description, course_id, group_learning_outcome_id, created_at, updated_at)
-    VALUES (#{id}, #{code}, #{description}, #{courseId}, #{groupLearningOutcomeId}, NOW(), NOW())
+    INSERT INTO edu.learning_outcomes (id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at)
+    VALUES (#{id}, #{prefixNumber}, #{description}, #{sortOrder}, #{courseId}, #{groupLearningOutcomeId}, NOW(), NOW())
   </insert>
 
   <update id="update" parameterType="edu.ai.lms.core.course.app.domain.LearningOutcome">
-    UPDATE learning_outcomes
-    SET code = #{code},
+    UPDATE edu.learning_outcomes
+    SET prefix_number = #{prefixNumber},
         description = #{description},
+        sort_order = #{sortOrder},
         course_id = #{courseId},
         group_learning_outcome_id = #{groupLearningOutcomeId},
         updated_at = NOW()
@@ -36,11 +38,11 @@
   </update>
 
   <delete id="deleteById">
-    DELETE FROM learning_outcomes WHERE id = #{id}
+    DELETE FROM edu.learning_outcomes WHERE id = #{id}
   </delete>
 
   <delete id="deleteAllById">
-    DELETE FROM learning_outcomes
+    DELETE FROM edu.learning_outcomes
     WHERE id IN
     <foreach collection="ids" item="id" open="(" separator="," close=")">
       #{id}
@@ -48,34 +50,53 @@
   </delete>
 
   <select id="findByCourseId" resultMap="LearningOutcomeResultMap">
-    SELECT id, code, description, course_id, group_learning_outcome_id, created_at, updated_at
-    FROM learning_outcomes
+    SELECT id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at
+    FROM edu.learning_outcomes
     WHERE course_id = #{courseId}
+    ORDER BY sort_order, created_at, id
   </select>
 
   <select id="findByGroupLearningOutcomeId" resultMap="LearningOutcomeResultMap">
-    SELECT id, code, description, course_id, group_learning_outcome_id, created_at, updated_at
-    FROM learning_outcomes
+    SELECT id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at
+    FROM edu.learning_outcomes
     WHERE group_learning_outcome_id = #{groupId}
+    ORDER BY sort_order, created_at, id
   </select>
 
   <select id="findUngroupedByCourseId" resultMap="LearningOutcomeResultMap">
-    SELECT id, code, description, course_id, group_learning_outcome_id, created_at, updated_at
-    FROM learning_outcomes
+    SELECT id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at
+    FROM edu.learning_outcomes
     WHERE course_id = #{courseId}
       AND group_learning_outcome_id IS NULL
+    ORDER BY sort_order, created_at, id
   </select>
 
   <update id="updateGroupLearningOutcomeId">
-    UPDATE learning_outcomes
+    UPDATE edu.learning_outcomes
     SET group_learning_outcome_id = #{groupId},
         updated_at = NOW()
     WHERE id = #{id}
       AND course_id = #{courseId}
   </update>
 
+  <update id="updateTreePosition">
+    UPDATE edu.learning_outcomes
+    SET group_learning_outcome_id = #{groupId},
+        prefix_number = #{prefixNumber},
+        sort_order = #{sortOrder},
+        updated_at = NOW()
+    WHERE id = #{id}
+      AND course_id = #{courseId}
+  </update>
+
+  <select id="findMaxSortOrderByGroupId" resultType="int">
+    SELECT COALESCE(MAX(sort_order), 0)
+    FROM edu.learning_outcomes
+    WHERE group_learning_outcome_id = #{groupId}
+  </select>
+
   <update id="removeFromGroup">
-    UPDATE learning_outcomes
+    UPDATE edu.learning_outcomes
     SET group_learning_outcome_id = NULL,
         updated_at = NOW()
     WHERE id = #{id}
@@ -83,7 +104,7 @@
   </update>
 
   <delete id="deleteByCourseId">
-    DELETE FROM learning_outcomes WHERE course_id = #{courseId}
+    DELETE FROM edu.learning_outcomes WHERE course_id = #{courseId}
   </delete>
 
 </mapper>

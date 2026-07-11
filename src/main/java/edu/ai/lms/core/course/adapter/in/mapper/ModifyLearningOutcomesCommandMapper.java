@@ -17,7 +17,6 @@ public class ModifyLearningOutcomesCommandMapper {
         List<LearningOutcome> learningOutcomes = request.getLearningOutcomes().stream()
                 .map(item -> LearningOutcome.builder()
                         .id(item.getId())
-                        .code(item.getCode())
                         .description(item.getDescription())
                         .build())
                 .collect(Collectors.toList());

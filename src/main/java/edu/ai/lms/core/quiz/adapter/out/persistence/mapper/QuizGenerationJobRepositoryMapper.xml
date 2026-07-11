@@ -30,7 +30,7 @@
   </resultMap>
 
   <insert id="insert" parameterType="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob">
-    INSERT INTO quiz_generation_jobs (
+    INSERT INTO edu.quiz_generation_jobs (
         id,
         course_id,
         chapter_id,
@@ -81,7 +81,7 @@
   </insert>
 
   <update id="update" parameterType="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob">
-    UPDATE quiz_generation_jobs
+    UPDATE edu.quiz_generation_jobs
     SET course_id = #{courseId},
         chapter_id = #{chapterId},
         quiz_id = #{quizId},
@@ -128,7 +128,7 @@
            error_message,
            created_at,
            updated_at
-    FROM quiz_generation_jobs
+    FROM edu.quiz_generation_jobs
     WHERE id = #{jobId}
   </select>
 

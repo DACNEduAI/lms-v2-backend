@@ -4,7 +4,7 @@
 
     <select id="findByUserId" resultType="edu.ai.lms.core.history.app.domain.ActivityLog">
         SELECT *
-        FROM activity_logs
+        FROM edu.activity_logs
         WHERE user_id = #{userId}
         ORDER BY created_at DESC
         LIMIT #{limit} OFFSET #{offset}
@@ -12,12 +12,12 @@
 
     <select id="countByUserId" resultType="long">
         SELECT COUNT(*)
-        FROM activity_logs
+        FROM edu.activity_logs
         WHERE user_id = #{userId}
     </select>
 
     <insert id="insert">
-        INSERT INTO activity_logs (
+        INSERT INTO edu.activity_logs (
             id, user_id, action_type, entity_type, entity_id, entity_name, description, created_at
         ) VALUES (
             COALESCE(#{id}, gen_random_uuid()),

@@ -21,7 +21,9 @@ public class GroupLearningOutcome {
     private UUID id;
 
     private String name;
+    private String code;
     private String description;
+    private Integer sortOrder;
 
     private UUID courseId;
 
@@ -30,4 +32,13 @@ public class GroupLearningOutcome {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    public String getName() {
+        return name != null ? name : code;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+        this.code = name;
+    }
 }

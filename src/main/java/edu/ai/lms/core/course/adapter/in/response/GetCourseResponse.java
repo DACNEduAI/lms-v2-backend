@@ -39,6 +39,9 @@ public class GetCourseResponse {
     public static class GroupLearningOutcomeDto {
         private UUID id;
         private String name;
+        private String code;
+        private Integer sortOrder;
+        private String displayCode;
         private String description;
         private List<LearningOutcomeDto> learningOutcomes;
     }
@@ -51,6 +54,9 @@ public class GetCourseResponse {
     public static class LearningOutcomeDto {
         private UUID id;
         private String code;
+        private Integer prefixNumber;
+        private Integer sortOrder;
+        private String displayCode;
         private String description;
     }
 }

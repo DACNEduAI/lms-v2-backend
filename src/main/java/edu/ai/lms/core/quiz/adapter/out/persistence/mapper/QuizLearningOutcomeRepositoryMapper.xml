@@ -5,7 +5,7 @@
 <mapper namespace="edu.ai.lms.core.quiz.adapter.out.persistence.QuizLearningOutcomeRepository">
 
   <insert id="insertBatch">
-    INSERT INTO quiz_learning_outcomes (quiz_id, learning_outcome_id)
+    INSERT INTO edu.quiz_learning_outcomes (quiz_id, learning_outcome_id)
     VALUES
     <foreach collection="learningOutcomeIds" item="learningOutcomeId" separator=",">
       (#{quizId}, #{learningOutcomeId})
@@ -14,7 +14,7 @@
   </insert>
 
   <delete id="deleteBatch">
-    DELETE FROM quiz_learning_outcomes
+    DELETE FROM edu.quiz_learning_outcomes
     WHERE quiz_id = #{quizId}
       AND learning_outcome_id IN
       <foreach collection="learningOutcomeIds" item="learningOutcomeId" open="(" separator="," close=")">
@@ -24,14 +24,14 @@
 
   <select id="findLearningOutcomeIdsByQuizId" resultType="java.util.UUID">
     SELECT learning_outcome_id
-    FROM quiz_learning_outcomes
+    FROM edu.quiz_learning_outcomes
     WHERE quiz_id = #{quizId}
     ORDER BY learning_outcome_id
   </select>
 
   <select id="findExistingLearningOutcomeIdsByCourseIdAndIds" resultType="java.util.UUID">
     SELECT id
-    FROM learning_outcomes
+    FROM edu.learning_outcomes
     WHERE course_id = #{courseId}
       AND id IN
       <foreach collection="learningOutcomeIds" item="learningOutcomeId" open="(" separator="," close=")">
@@ -41,7 +41,7 @@
 
   <select id="findExistingGroupLearningOutcomeIdsByCourseIdAndIds" resultType="java.util.UUID">
     SELECT id
-    FROM group_learning_outcomes
+    FROM edu.group_learning_outcomes
     WHERE course_id = #{courseId}
       AND id IN
       <foreach collection="groupLearningOutcomeIds" item="groupLearningOutcomeId" open="(" separator="," close=")">
@@ -51,7 +51,7 @@
 
   <select id="findLearningOutcomeIdsByCourseIdAndGroupIds" resultType="java.util.UUID">
     SELECT id
-    FROM learning_outcomes
+    FROM edu.learning_outcomes
     WHERE course_id = #{courseId}
       AND group_learning_outcome_id IN
       <foreach collection="groupLearningOutcomeIds" item="groupLearningOutcomeId" open="(" separator="," close=")">
@@ -70,17 +70,17 @@
 
   <select id="findQuizLearningOutcomes" resultMap="QuizLearningOutcomeViewMap">
     SELECT lo.id AS learning_outcome_id,
-           lo.code AS learning_outcome_code,
+           CONCAT(glo.code, '.', lo.prefix_number) AS learning_outcome_code,
            lo.description AS learning_outcome_description,
            glo.id AS group_learning_outcome_id,
-           glo.name AS group_learning_outcome_name,
+           glo.code AS group_learning_outcome_name,
            glo.description AS group_learning_outcome_description
-    FROM quiz_learning_outcomes qlo
-    JOIN learning_outcomes lo ON lo.id = qlo.learning_outcome_id
-    LEFT JOIN group_learning_outcomes glo ON glo.id = lo.group_learning_outcome_id
+    FROM edu.quiz_learning_outcomes qlo
+    JOIN edu.learning_outcomes lo ON lo.id = qlo.learning_outcome_id
+    LEFT JOIN edu.group_learning_outcomes glo ON glo.id = lo.group_learning_outcome_id
     WHERE qlo.quiz_id = #{quizId}
       AND lo.course_id = #{courseId}
-    ORDER BY glo.name NULLS FIRST, lo.code
+    ORDER BY glo.sort_order NULLS FIRST, lo.sort_order
   </select>
 
 </mapper>

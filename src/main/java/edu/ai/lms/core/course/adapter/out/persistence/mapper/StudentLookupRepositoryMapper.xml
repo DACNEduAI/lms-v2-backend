@@ -17,8 +17,8 @@
 
   <select id="findStudentsByEmailIn" resultMap="StudentLookupResultMap">
     SELECT u.id, u.email, u.password, u.first_name, u.last_name, u.avatar_url, u.role, s.enrollment_year
-    FROM users u
-    INNER JOIN students s ON u.id = s.user_id
+    FROM edu.users u
+    INNER JOIN edu.students s ON u.id = s.user_id
     WHERE u.email IN
     <foreach collection="emails" item="email" open="(" separator="," close=")">
       #{email}

@@ -16,19 +16,19 @@
 
   <select id="findById" resultMap="UserResultMap">
     SELECT id, email, password, first_name, last_name, avatar_url, role
-    FROM users
+    FROM edu.users
     WHERE id = #{id}
   </select>
 
   <select id="findByEmail" resultMap="UserResultMap">
     SELECT id, email, password, first_name, last_name, avatar_url, role
-    FROM users
+    FROM edu.users
     WHERE email = #{email}
   </select>
 
   <select id="findByIds" resultMap="UserResultMap">
     SELECT id, email, password, first_name, last_name, avatar_url, role
-    FROM users
+    FROM edu.users
     WHERE id IN
     <foreach item="id" collection="ids" open="(" separator="," close=")">
       #{id}
@@ -36,12 +36,12 @@
   </select>
 
   <insert id="insert" parameterType="edu.ai.lms.core.auth.app.domain.UserAuth">
-    INSERT INTO users (id, email, password, first_name, last_name, avatar_url, role, created_at, updated_at)
+    INSERT INTO edu.users (id, email, password, first_name, last_name, avatar_url, role, created_at, updated_at)
     VALUES (#{id}, #{email}, #{password}, #{firstName}, #{lastName}, #{avatarUrl}, #{role, javaType=edu.ai.lms.common.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, NOW(), NOW())
   </insert>
 
   <update id="update" parameterType="edu.ai.lms.core.auth.app.domain.UserAuth">
-    UPDATE users
+    UPDATE edu.users
     SET email = #{email},
         password = #{password},
         first_name = #{firstName},
@@ -53,7 +53,7 @@
   </update>
 
   <delete id="deleteById">
-    DELETE FROM users WHERE id = #{id}
+    DELETE FROM edu.users WHERE id = #{id}
   </delete>
 
 </mapper>

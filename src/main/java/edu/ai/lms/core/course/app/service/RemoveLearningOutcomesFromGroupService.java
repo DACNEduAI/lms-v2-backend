@@ -76,6 +76,7 @@ public class RemoveLearningOutcomesFromGroupService implements TeacherRemoveLear
         return RemoveLearningOutcomesFromGroupResponse.builder()
                 .groupId(group.getId())
                 .name(group.getName())
+                .code(group.getCode())
                 .courseId(group.getCourseId())
                 .totalRemoved(learningOutcomes.size())
                 .message("Successfully removed " + learningOutcomes.size() + " learning outcomes from group '" + group.getName() + "'")

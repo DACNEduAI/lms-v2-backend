@@ -27,6 +27,9 @@ public class CreateLearningOutcomesResponse {
     public static class LearningOutcomeDto {
         private UUID id;
         private String code;
+        private Integer prefixNumber;
+        private Integer sortOrder;
+        private String displayCode;
         private String description;
     @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN)

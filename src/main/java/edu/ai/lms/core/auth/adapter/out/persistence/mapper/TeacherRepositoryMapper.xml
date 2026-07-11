@@ -21,21 +21,21 @@
   <select id="findById" resultMap="TeacherResultMap">
     SELECT u.id, u.email, u.password, u.first_name, u.last_name, u.avatar_url, u.role,
            t.employee_id, t.phone_number, t.department, t.specialization
-    FROM users u
-    INNER JOIN teachers t ON t.user_id = u.id
+    FROM edu.users u
+    INNER JOIN edu.teachers t ON t.user_id = u.id
     WHERE u.id = #{userId}
   </select>
 
   <select id="findByEmail" resultMap="TeacherResultMap">
     SELECT u.id, u.email, u.password, u.first_name, u.last_name, u.avatar_url, u.role,
            t.employee_id, t.phone_number, t.department, t.specialization
-    FROM users u
-    INNER JOIN teachers t ON t.user_id = u.id
+    FROM edu.users u
+    INNER JOIN edu.teachers t ON t.user_id = u.id
     WHERE u.email = #{email}
   </select>
 
   <insert id="insertTeacher" parameterType="edu.ai.lms.core.auth.app.domain.Teacher">
-    INSERT INTO teachers (user_id, employee_id, phone_number, department, specialization)
+    INSERT INTO edu.teachers (user_id, employee_id, phone_number, department, specialization)
     VALUES (#{id}, #{employeeId}, #{phoneNumber}, #{department}, #{specialization})
   </insert>
 

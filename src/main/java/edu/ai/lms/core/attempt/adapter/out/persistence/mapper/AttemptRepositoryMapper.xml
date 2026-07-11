@@ -20,7 +20,7 @@
   </resultMap>
 
   <insert id="insert" parameterType="edu.ai.lms.core.attempt.app.domain.Attempt">
-    INSERT INTO attempts (
+    INSERT INTO edu.attempts (
       id, student_id, quiz_id, score, start_time, due_time, submitted_time,
       time_spent_seconds, status, error_reason, created_at, updated_at
     )
@@ -31,7 +31,7 @@
   </insert>
 
   <update id="update" parameterType="edu.ai.lms.core.attempt.app.domain.Attempt">
-    UPDATE attempts
+    UPDATE edu.attempts
     SET student_id = #{studentId},
         quiz_id = #{quizId},
         score = #{score},
@@ -48,12 +48,12 @@
   <select id="getById" resultMap="AttemptResultMap">
     SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
            time_spent_seconds, status, error_reason, created_at, updated_at
-    FROM attempts
+    FROM edu.attempts
     WHERE id = #{attemptId}
   </select>
 
   <update id="closeIfStarted">
-    UPDATE attempts
+    UPDATE edu.attempts
     SET status = #{status, javaType=edu.ai.lms.core.attempt.app.domain.Attempt$AttemptStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         score = #{score},
         error_reason = #{errorReason},
@@ -66,7 +66,7 @@
   <select id="getByIdAndStudentId" resultMap="AttemptResultMap">
     SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
            time_spent_seconds, status, error_reason, created_at, updated_at
-    FROM attempts
+    FROM edu.attempts
     WHERE id = #{attemptId}
       AND student_id = #{studentId}
   </select>
@@ -74,7 +74,7 @@
   <select id="getLatestStartedAttempt" resultMap="AttemptResultMap">
     SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
            time_spent_seconds, status, error_reason, created_at, updated_at
-    FROM attempts
+    FROM edu.attempts
     WHERE student_id = #{studentId}
       AND quiz_id = #{quizId}
       AND status = 'STARTED'
@@ -84,7 +84,7 @@
 
   <select id="countFinishedAttempts" resultType="long">
     SELECT COUNT(*)
-    FROM attempts
+    FROM edu.attempts
     WHERE student_id = #{studentId}
       AND quiz_id = #{quizId}
       AND status IN ('FINISHED', 'ERROR')
@@ -93,7 +93,7 @@
   <select id="getByStudentAndQuiz" resultMap="AttemptResultMap">
     SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
            time_spent_seconds, status, error_reason, created_at, updated_at
-    FROM attempts
+    FROM edu.attempts
     WHERE student_id = #{studentId}
       AND quiz_id = #{quizId}
     ORDER BY created_at DESC

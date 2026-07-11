@@ -63,15 +63,21 @@ public class ModifyLearningOutcomesService implements TeacherModifyLearningOutco
             LearningOutcome updated = LearningOutcome.builder()
                     .id(existing.getId())
                     .courseId(existing.getCourseId())
-                    .code(lo.getCode())
-                    .description(lo.getDescription())
+                    .groupLearningOutcomeId(existing.getGroupLearningOutcomeId())
+                    .prefixNumber(existing.getPrefixNumber())
+                    .sortOrder(existing.getSortOrder())
+                    .description(lo.getDescription() != null ? lo.getDescription() : existing.getDescription())
                     .createdAt(existing.getCreatedAt())
                     .build();
+            updated.setCode(lo.getCode());
 
             LearningOutcome saved = saveLearningOutcomePort.save(updated);
             modifiedDtos.add(ModifyLearningOutcomesResponse.LearningOutcomeDto.builder()
                     .id(saved.getId())
                     .code(saved.getCode())
+                    .prefixNumber(saved.getPrefixNumber())
+                    .sortOrder(saved.getSortOrder())
+                    .displayCode(saved.getCode())
                     .description(saved.getDescription())
                     .updatedAt(saved.getUpdatedAt())
                     .build());

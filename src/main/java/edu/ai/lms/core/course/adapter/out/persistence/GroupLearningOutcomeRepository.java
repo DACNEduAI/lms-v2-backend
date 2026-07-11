@@ -16,6 +16,12 @@ interface GroupLearningOutcomeRepository {
     int update(GroupLearningOutcome entity);
 
     default GroupLearningOutcome save(GroupLearningOutcome entity) {
+        if (entity.getSortOrder() == null) {
+            entity.setSortOrder(1);
+        }
+        if (entity.getCode() == null) {
+            entity.setCode("L.O." + entity.getSortOrder());
+        }
         if (entity.getId() == null) {
             entity.setId(java.util.UUID.randomUUID());
             insert(entity);
@@ -31,6 +37,12 @@ interface GroupLearningOutcomeRepository {
     List<GroupLearningOutcome> findByCourseId(@Param("courseId") UUID courseId);
 
     Optional<GroupLearningOutcome> findById(@Param("id") UUID id);
+
+    int findMaxSortOrderByCourseId(@Param("courseId") UUID courseId);
+
+    void updateTreePosition(@Param("id") UUID id, @Param("courseId") UUID courseId, @Param("code") String code, @Param("sortOrder") int sortOrder);
+
+    void deleteById(@Param("id") UUID id, @Param("courseId") UUID courseId);
 
     void deleteByCourseId(@Param("courseId") UUID courseId);
 }

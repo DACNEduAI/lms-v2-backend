@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.course.adapter.out.persistence.ExamMatrixRepository">
+
+  <!-- ──────────────────────────────────────────────────────────────
+       Result Maps
+  ────────────────────────────────────────────────────────────────── -->
+
+  <resultMap id="ExamMatrixResultMap" type="edu.ai.lms.core.course.app.domain.ExamMatrix">
+    <id     property="id"          column="id" />
+    <result property="courseId"    column="course_id" />
+    <result property="title"       column="title" />
+    <result property="description" column="description" />
+    <result property="createdAt"   column="created_at" />
+    <result property="updatedAt"   column="updated_at" />
+  </resultMap>
+
+  <resultMap id="ExamMatrixRowResultMap" type="edu.ai.lms.core.course.app.domain.ExamMatrixRow">
+    <id     property="id"                 column="id" />
+    <result property="matrixId"           column="matrix_id" />
+    <result property="learningOutcomeId"  column="learning_outcome_id" />
+    <result property="chapterId"          column="chapter_id" />
+    <result property="topic"              column="topic" />
+    <result property="understandCount"    column="understand_count" />
+    <result property="applyCount"         column="apply_count" />
+    <result property="applyPlusCount"     column="apply_plus_count" />
+    <result property="orderIndex"         column="order_index" />
+  </resultMap>
+
+  <!-- ──────────────────────────────────────────────────────────────
+       ExamMatrix Queries
+  ────────────────────────────────────────────────────────────────── -->
+
+  <select id="findById" resultMap="ExamMatrixResultMap">
+    SELECT id, course_id, title, description, created_at, updated_at
+    FROM edu.exam_matrices
+    WHERE id = #{id}
+  </select>
+
+  <select id="findAllByCourseId" resultMap="ExamMatrixResultMap">
+    SELECT id, course_id, title, description, created_at, updated_at
+    FROM edu.exam_matrices
+    WHERE course_id = #{courseId}
+    ORDER BY created_at ASC
+  </select>
+
+  <insert id="insertMatrix" parameterType="edu.ai.lms.core.course.app.domain.ExamMatrix">
+    INSERT INTO edu.exam_matrices (id, course_id, title, description, created_at, updated_at)
+    VALUES (#{id}, #{courseId}, #{title}, #{description}, NOW(), NOW())
+  </insert>
+
+  <update id="updateMatrix" parameterType="edu.ai.lms.core.course.app.domain.ExamMatrix">
+    UPDATE edu.exam_matrices
+    SET title       = #{title},
+        description = #{description},
+        updated_at  = NOW()
+    WHERE id = #{id}
+  </update>
+
+  <delete id="deleteById">
+    DELETE FROM edu.exam_matrices WHERE id = #{id}
+  </delete>
+
+  <!-- ──────────────────────────────────────────────────────────────
+       ExamMatrixRow Queries
+  ────────────────────────────────────────────────────────────────── -->
+
+  <select id="findRowsByMatrixId" resultMap="ExamMatrixRowResultMap">
+    SELECT id, matrix_id, learning_outcome_id, chapter_id, topic,
+           understand_count, apply_count, apply_plus_count, order_index
+    FROM edu.exam_matrix_rows
+    WHERE matrix_id = #{matrixId}
+    ORDER BY order_index ASC
+  </select>
+
+  <insert id="insertRow" parameterType="edu.ai.lms.core.course.app.domain.ExamMatrixRow">
+    INSERT INTO edu.exam_matrix_rows
+      (id, matrix_id, learning_outcome_id, chapter_id, topic,
+       understand_count, apply_count, apply_plus_count, order_index)
+    VALUES
+      (#{id}, #{matrixId}, #{learningOutcomeId}, #{chapterId}, #{topic},
+       #{understandCount}, #{applyCount}, #{applyPlusCount}, #{orderIndex})
+  </insert>
+
+  <delete id="deleteRowsByMatrixId">
+    DELETE FROM edu.exam_matrix_rows WHERE matrix_id = #{matrixId}
+  </delete>
+
+</mapper>

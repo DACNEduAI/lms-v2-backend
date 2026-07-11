@@ -9,4 +9,5 @@ import edu.ai.lms.core.course.app.domain.LearningOutcome;
 public interface LoadLearningOutcomePort {
     Optional<LearningOutcome> findById(UUID id);
     List<LearningOutcome> findByCourseId(UUID courseId);
+    int findMaxSortOrderByGroupId(UUID groupLearningOutcomeId);
 }

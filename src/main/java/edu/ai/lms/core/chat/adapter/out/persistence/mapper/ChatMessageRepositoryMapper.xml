@@ -13,12 +13,12 @@
     </resultMap>
 
     <insert id="insert" parameterType="edu.ai.lms.core.chat.app.domain.ChatMessage">
-        INSERT INTO user_chat_messages (id, sender_id, recipient_id, content, status, created_at, client_temp_id)
+        INSERT INTO edu.user_chat_messages (id, sender_id, recipient_id, content, status, created_at, client_temp_id)
         VALUES (#{id}, #{senderId}, #{recipientId}, #{content}, #{status}, #{createdAt}, #{clientTempId})
     </insert>
 
     <select id="findChatHistory" resultMap="ChatMessageMap">
-        SELECT * FROM user_chat_messages 
+        SELECT * FROM edu.user_chat_messages 
         WHERE (sender_id = #{userId1} AND recipient_id = #{userId2})
            OR (sender_id = #{userId2} AND recipient_id = #{userId1})
         ORDER BY created_at DESC 
@@ -26,13 +26,13 @@
     </select>
 
     <select id="countChatHistory" resultType="long">
-        SELECT COUNT(*) FROM user_chat_messages 
+        SELECT COUNT(*) FROM edu.user_chat_messages 
         WHERE (sender_id = #{userId1} AND recipient_id = #{userId2})
            OR (sender_id = #{userId2} AND recipient_id = #{userId1})
     </select>
 
     <select id="findById" resultMap="ChatMessageMap">
-        SELECT * FROM user_chat_messages WHERE id = #{id}
+        SELECT * FROM edu.user_chat_messages WHERE id = #{id}
     </select>
 
 </mapper>
