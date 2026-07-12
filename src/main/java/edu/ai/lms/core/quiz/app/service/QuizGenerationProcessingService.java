@@ -9,7 +9,6 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import edu.ai.lms.core.course.app.domain.Chapter;
@@ -58,7 +57,6 @@ public class QuizGenerationProcessingService {
     @Value("${quiz.generation.webhook.secret}")
     private String webhookSecret;
 
-    @Transactional
     public void process(UUID jobId) {
         QuizGenerationJob job = loadQuizGenerationJobPort.getById(jobId)
                 .orElseThrow(() -> new QuizGenerationJobNotFoundException("Quiz generation job not found"));
