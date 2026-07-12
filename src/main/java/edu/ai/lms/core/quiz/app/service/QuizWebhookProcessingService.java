@@ -87,6 +87,9 @@ public class QuizWebhookProcessingService {
         if (payload == null) {
             throw new IllegalArgumentException("Quiz payload is missing");
         }
+        if (payload.getQuestions() == null || payload.getQuestions().isEmpty()) {
+            throw new IllegalArgumentException("Generated quiz contains no questions");
+        }
 
         Quiz quiz = Quiz.builder()
                 .quizTitle(resolveQuizTitle(job, payload))
