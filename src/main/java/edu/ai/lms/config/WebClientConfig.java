@@ -18,7 +18,7 @@ public class WebClientConfig {
     @Value("${ai.rag.url:http://localhost:8000}")
     private String aiRagUrl;
 
-    @Value("${ai.quiz.url:http://localhost:8001}")
+    @Value("${ai.quiz.url:http://localhost:8000}")
     private String aiQuizUrl;
 
     @Bean
@@ -33,10 +33,10 @@ public class WebClientConfig {
 
     private WebClient createWebClient(WebClient.Builder webClientBuilder, String baseUrl) {
         HttpClient httpClient = HttpClient.create()
-                .responseTimeout(Duration.ofSeconds(60))
+                .responseTimeout(Duration.ofSeconds(300))
                 .doOnConnected(conn ->
-                        conn.addHandlerLast(new ReadTimeoutHandler(60, TimeUnit.SECONDS))
-                            .addHandlerLast(new WriteTimeoutHandler(60, TimeUnit.SECONDS)));
+                        conn.addHandlerLast(new ReadTimeoutHandler(300, TimeUnit.SECONDS))
+                            .addHandlerLast(new WriteTimeoutHandler(300, TimeUnit.SECONDS)));
 
         return webClientBuilder
                 .baseUrl(baseUrl)

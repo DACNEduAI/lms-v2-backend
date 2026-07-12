@@ -75,7 +75,7 @@ public class QuizWebhookProcessingService {
         } catch (Exception ex) {
             log.error("Failed to persist quiz for job {}", job.getId(), ex);
             job.setStatus(QuizGenerationStatus.FAILED);
-            job.setErrorMessage(ex.getMessage());
+            job.setErrorMessage(toErrorMessage(ex));
             QuizGenerationJob failedJob = saveQuizGenerationJobPort.save(job);
             sseQuizGenerationService.pushStatus(job.getId(), toStatusResponse(failedJob));
             return toStatusResponse(failedJob);
@@ -223,5 +223,13 @@ public class QuizWebhookProcessingService {
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())
                 .build();
+    }
+
+    private String toErrorMessage(Exception ex) {
+        String message = ex.getMessage();
+        if (message == null || message.isBlank()) {
+            return ex.getClass().getSimpleName();
+        }
+        return ex.getClass().getSimpleName() + ": " + message;
     }
 }

@@ -154,7 +154,7 @@ public class QuizGenerationProcessingService {
         } catch (Exception ex) {
             log.error("Quiz generation job {} failed to start", jobId, ex);
             job.setStatus(QuizGenerationStatus.FAILED);
-            job.setErrorMessage(ex.getMessage());
+            job.setErrorMessage(toErrorMessage(ex));
             QuizGenerationJob failedJob = saveQuizGenerationJobPort.save(job);
             sseQuizGenerationService.pushStatus(jobId, toStatusResponse(failedJob));
         }
@@ -226,6 +226,14 @@ public class QuizGenerationProcessingService {
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())
                 .build();
+    }
+
+    private String toErrorMessage(Exception ex) {
+        String message = ex.getMessage();
+        if (message == null || message.isBlank()) {
+            return ex.getClass().getSimpleName();
+        }
+        return ex.getClass().getSimpleName() + ": " + message;
     }
 
     record LearningOutcomeContext(String code, String description) {
