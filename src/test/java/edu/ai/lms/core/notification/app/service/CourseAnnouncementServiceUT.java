@@ -1,11 +1,11 @@
 package edu.ai.lms.core.notification.app.service;
 
 import edu.ai.lms.common.event.SystemNotificationEvent;
-import edu.ai.lms.core.auth.adapter.in.internal.LoadAuthenticatedUserApi;
 import edu.ai.lms.core.notification.adapter.in.http.request.CourseAnnouncementRequest;
 import edu.ai.lms.core.notification.app.domain.CourseAnnouncement;
 import edu.ai.lms.core.notification.app.port.out.CourseAnnouncementPort;
 import edu.ai.lms.core.notification.app.port.out.LoadCourseStudentsPort;
+import edu.ai.lms.core.notification.app.port.out.LoadCurrentUserPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +29,7 @@ class CourseAnnouncementServiceUT {
     @Mock
     private CourseAnnouncementPort courseAnnouncementPort;
     @Mock
-    private LoadAuthenticatedUserApi loadAuthenticatedUserApi;
+    private LoadCurrentUserPort loadCurrentUserPort;
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
@@ -55,7 +55,8 @@ class CourseAnnouncementServiceUT {
         request.setMessage("Nghỉ học ngày mai");
         request.setType("URGENT");
 
-        when(loadAuthenticatedUserApi.getCurrentUserId()).thenReturn(teacherId);
+        when(loadCurrentUserPort.getCurrentUserId()).thenReturn(java.util.Optional.of(teacherId));
+        when(loadCourseStudentsPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
         when(loadCourseStudentsPort.findStudentIdsByCourseId(courseId)).thenReturn(studentIds);
 
         // 2. Act
@@ -88,7 +89,8 @@ class CourseAnnouncementServiceUT {
         request.setMessage("Nhớ làm bài tập");
         request.setType(null); // Type is null
 
-        when(loadAuthenticatedUserApi.getCurrentUserId()).thenReturn(teacherId);
+        when(loadCurrentUserPort.getCurrentUserId()).thenReturn(java.util.Optional.of(teacherId));
+        when(loadCourseStudentsPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
         when(loadCourseStudentsPort.findStudentIdsByCourseId(courseId)).thenReturn(studentIds);
 
         // 2. Act
@@ -111,7 +113,8 @@ class CourseAnnouncementServiceUT {
         request.setTitle("Thông báo");
         request.setMessage("Nội dung");
 
-        when(loadAuthenticatedUserApi.getCurrentUserId()).thenReturn(teacherId);
+        when(loadCurrentUserPort.getCurrentUserId()).thenReturn(java.util.Optional.of(teacherId));
+        when(loadCourseStudentsPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
         when(loadCourseStudentsPort.findStudentIdsByCourseId(courseId)).thenReturn(List.of()); // No students
 
         // 2. Act

@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.RemoveLearningOutcomesFromChapterResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
@@ -35,7 +35,7 @@ public class RemoveLearningOutcomesFromChapterService implements TeacherRemoveLe
     @Override
     @Transactional
     public RemoveLearningOutcomesFromChapterResponse removeLearningOutcomesFromChapter(RemoveLearningOutcomesFromChapterCommand command) {
-        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         Course course = loadCoursePort.findById(command.courseId())

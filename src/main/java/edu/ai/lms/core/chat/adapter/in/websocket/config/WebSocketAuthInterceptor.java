@@ -1,8 +1,7 @@
 package edu.ai.lms.core.chat.adapter.in.websocket.config;
 
-import edu.ai.lms.core.auth.adapter.out.security.JwtUtil;
-import edu.ai.lms.core.auth.app.port.out.LoadStudentPort;
-import edu.ai.lms.core.auth.app.port.out.LoadTeacherPort;
+import edu.ai.lms.core.auth.api.AuthenticatedPrincipal;
+import edu.ai.lms.core.auth.api.TokenAuthenticationApi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
@@ -12,8 +11,7 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -21,9 +19,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
-    private final JwtUtil jwtUtil;
-    private final LoadStudentPort loadStudentPort;
-    private final LoadTeacherPort loadTeacherPort;
+    private final TokenAuthenticationApi tokenAuthenticationApi;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -35,27 +31,14 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String jwt = authHeader.substring(7);
                 try {
-                    String userEmail = jwtUtil.extractEmail(jwt);
-                    String userRole = jwtUtil.extractRole(jwt);
-                    
-                    if (userEmail != null) {
-                        UserDetails userDetails = loadUserByEmailAndRole(userEmail, userRole);
-                        if (jwtUtil.validateToken(jwt, userDetails)) {
-                            // Extract UUID from UserDetails if possible.
-                            // In this system, UserAuth implements UserDetails. The Principal's name should be the UUID for @SendToUser mapping to work easily.
-                            // Assuming UserAuth's getUsername returns email, we might need a custom Principal or just use the UserDetails.
-                            // Wait, UserAuth implements UserDetails. So userDetails is UserAuth.
-                            edu.ai.lms.core.auth.app.domain.UserAuth userAuth = (edu.ai.lms.core.auth.app.domain.UserAuth) userDetails;
-                            
-                            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                                    userAuth.getId().toString(), // Use UUID string as principal name for ChatController and routing
-                                    null,
-                                    userDetails.getAuthorities()
-                            );
-                            accessor.setUser(authToken);
-                            log.debug("STOMP connection authenticated for user ID: {}", userAuth.getId());
-                        }
-                    }
+                    AuthenticatedPrincipal principal = tokenAuthenticationApi.authenticate(jwt);
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            principal.userId().toString(),
+                            null,
+                            principal.authorities().stream().map(SimpleGrantedAuthority::new).toList()
+                    );
+                    accessor.setUser(authToken);
+                    log.debug("STOMP connection authenticated for user ID: {}", principal.userId());
                 } catch (Exception e) {
                     log.error("Failed to authenticate STOMP connection for token: {}", jwt, e);
                     throw new IllegalArgumentException("Invalid token: " + e.getMessage());
@@ -73,13 +56,4 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
         return message;
     }
 
-    private UserDetails loadUserByEmailAndRole(String email, String role) {
-        if ("TEACHER".equals(role)) {
-            return loadTeacherPort.findByEmail(email)
-                    .orElseThrow(() -> new UsernameNotFoundException("Teacher not found: " + email));
-        } else {
-            return loadStudentPort.findByEmail(email)
-                    .orElseThrow(() -> new UsernameNotFoundException("Student not found: " + email));
-        }
-    }
 }

@@ -11,7 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import edu.ai.lms.common.ErrorResponse;
+import edu.ai.lms.common.api.ErrorResponse;
 import edu.ai.lms.core.course.app.exception.ChapterNotFoundException;
 import edu.ai.lms.core.course.app.exception.ExamMatrixNotFoundException;
 import edu.ai.lms.core.course.app.exception.CourseCodeAlreadyExistsException;

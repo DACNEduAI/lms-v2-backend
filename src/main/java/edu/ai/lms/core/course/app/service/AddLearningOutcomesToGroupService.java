@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.AddLearningOutcomesToGroupResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
@@ -39,7 +39,7 @@ public class AddLearningOutcomesToGroupService implements TeacherAddLearningOutc
     @Override
     @Transactional
     public AddLearningOutcomesToGroupResponse addLearningOutcomesToGroup(AddLearningOutcomesToGroupCommand command) {
-        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         Course course = loadCoursePort.findById(command.courseId())

@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.RemoveStudentsFromCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -35,7 +35,7 @@ public class RemoveStudentsFromCourseService implements TeacherRemoveStudentsFro
     @Transactional
     public RemoveStudentsFromCourseResponse removeStudentsFromCourse(RemoveStudentsFromCourseCommand command) {
         // Verify teacher is authenticated
-        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         // Verify course exists

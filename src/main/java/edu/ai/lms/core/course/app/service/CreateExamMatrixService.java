@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.CreateExamMatrixResponse;
 import edu.ai.lms.core.course.adapter.in.response.ExamMatrixRowResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
@@ -44,7 +44,7 @@ public class CreateExamMatrixService implements TeacherCreateExamMatrixUseCase {
                         "Course not found: " + command.courseId()));
 
         // Validate authenticated teacher and ownership
-        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         if (!course.getTeacherIds().contains(user.getId())) {

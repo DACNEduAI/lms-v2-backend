@@ -24,8 +24,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.DeleteLearningOutcomesResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
@@ -56,7 +56,7 @@ class DeleteLearningOutcomesServiceUT {
     @InjectMocks
     private DeleteLearningOutcomesService deleteLearningOutcomesService;
 
-    private UserAuth mockUser;
+    private CurrentActor mockUser;
     private UUID teacherId;
     private UUID courseId;
     private UUID loId1;
@@ -72,7 +72,7 @@ class DeleteLearningOutcomesServiceUT {
         loId1 = UUID.randomUUID();
         loId2 = UUID.randomUUID();
 
-        mockUser = UserAuth.builder()
+        mockUser = CurrentActor.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -197,7 +197,7 @@ class DeleteLearningOutcomesServiceUT {
     void testDeleteLearningOutcomes_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
         UUID anotherTeacherId = UUID.randomUUID();
-        UserAuth anotherUser = UserAuth.builder().id(anotherTeacherId).role(Roles.TEACHER).build();
+        CurrentActor anotherUser = CurrentActor.builder().id(anotherTeacherId).role(Roles.TEACHER).build();
 
         DeleteLearningOutcomesCommand command = DeleteLearningOutcomesCommand.builder()
                 .courseId(courseId).learningOutcomeIds(List.of(loId1)).build();

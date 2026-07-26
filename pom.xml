@@ -256,6 +256,7 @@
 					<!-- Include unit tests with UT prefix or postfix in app/service directory -->
 					<include>**/app/service/**/UT*.java</include>
 					<include>**/app/service/**/*UT.java</include>
+					<include>**/PackageStructureTest.java</include>
 				</includes>
 				</configuration>
 			</plugin>

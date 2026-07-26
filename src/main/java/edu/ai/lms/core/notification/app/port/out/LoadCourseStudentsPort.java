@@ -5,4 +5,6 @@ import java.util.UUID;
 
 public interface LoadCourseStudentsPort {
     List<UUID> findStudentIdsByCourseId(UUID courseId);
+
+    boolean isTeacherInCourse(UUID teacherId, UUID courseId);
 }

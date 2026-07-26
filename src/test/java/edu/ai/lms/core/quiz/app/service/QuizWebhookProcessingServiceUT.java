@@ -1,7 +1,6 @@
 package edu.ai.lms.core.quiz.app.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.ai.lms.core.course.app.port.out.LoadLearningOutcomePort;
 import edu.ai.lms.core.quiz.adapter.in.http.request.QuizWebhookRequest;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
@@ -14,6 +13,7 @@ import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.ScheduleQuizGenerationJobPort;
+import edu.ai.lms.core.quiz.app.port.out.ValidateLearningOutcomesPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +39,7 @@ class QuizWebhookProcessingServiceUT {
     @Mock private SaveAnswerPort saveAnswerPort;
     @Mock private SaveQuizLearningOutcomePort saveQuizLearningOutcomePort;
     @Mock private SaveQuestionLearningOutcomePort saveQuestionLearningOutcomePort;
-    @Mock private LoadLearningOutcomePort learningOutcomePort;
+    @Mock private ValidateLearningOutcomesPort learningOutcomesPort;
     @Mock private ScheduleQuizGenerationJobPort schedulerPort;
     @Mock private SseQuizGenerationService sseService;
 
@@ -49,7 +49,7 @@ class QuizWebhookProcessingServiceUT {
     void setUp() {
         service = new QuizWebhookProcessingService(loadJobPort, saveJobPort, saveQuizPort,
                 saveQuestionPort, saveAnswerPort, saveQuizLearningOutcomePort,
-                saveQuestionLearningOutcomePort, learningOutcomePort, schedulerPort,
+                saveQuestionLearningOutcomePort, learningOutcomesPort, schedulerPort,
                 sseService, new ObjectMapper());
     }
 

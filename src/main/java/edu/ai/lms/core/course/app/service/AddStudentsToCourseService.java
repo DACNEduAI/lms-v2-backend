@@ -13,7 +13,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import edu.ai.lms.common.event.SystemNotificationEvent;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.AddStudentsToCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -41,7 +41,7 @@ public class AddStudentsToCourseService implements TeacherAddStudentsToCourseUse
     @Transactional
     public AddStudentsToCourseResponse addStudentsToCourse(AddStudentsToCourseCommand command) {
         // Verify teacher is authenticated
-        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         // Verify course exists

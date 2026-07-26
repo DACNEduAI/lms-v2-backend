@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import edu.ai.lms.core.quiz.app.domain.Question;
 
-import edu.ai.lms.common.Roles;
+import edu.ai.lms.common.api.Roles;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

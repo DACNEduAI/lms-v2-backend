@@ -3,7 +3,7 @@ package edu.ai.lms.core.auth.adapter.in.http.mapper;
 import edu.ai.lms.core.auth.adapter.in.http.request.TeacherRegisterRequest;
 import edu.ai.lms.core.auth.app.domain.Teacher;
 import edu.ai.lms.core.auth.app.port.in.command.TeacherRegisterCommand;
-import edu.ai.lms.common.Roles;
+import edu.ai.lms.common.api.Roles;
 import org.springframework.stereotype.Component;
 
 @Component

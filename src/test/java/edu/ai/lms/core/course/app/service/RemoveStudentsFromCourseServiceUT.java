@@ -23,8 +23,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.RemoveStudentsFromCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -57,7 +57,7 @@ class RemoveStudentsFromCourseServiceUT {
 
     private UUID teacherId;
     private UUID courseId;
-    private UserAuth mockTeacher;
+    private CurrentActor mockTeacher;
     private Course mockCourse;
     private UUID student1Id;
     private UUID student2Id;
@@ -69,9 +69,8 @@ class RemoveStudentsFromCourseServiceUT {
         student1Id = UUID.randomUUID();
         student2Id = UUID.randomUUID();
 
-        mockTeacher = UserAuth.builder()
+        mockTeacher = CurrentActor.builder()
                 .id(teacherId)
-                .email("teacher@example.com")
                 .role(Roles.TEACHER)
                 .build();
 
@@ -171,9 +170,8 @@ class RemoveStudentsFromCourseServiceUT {
     @DisplayName("Should throw IllegalArgumentException when teacher does not own the course")
     void testRemoveStudentsFromCourse_UnauthorizedTeacher() {
         UUID anotherTeacherId = UUID.randomUUID();
-        UserAuth anotherTeacher = UserAuth.builder()
+        CurrentActor anotherTeacher = CurrentActor.builder()
                 .id(anotherTeacherId)
-                .email("other@example.com")
                 .role(Roles.TEACHER)
                 .build();
 

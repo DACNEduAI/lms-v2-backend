@@ -5,7 +5,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.DeleteExamMatrixResponse;
 import edu.ai.lms.core.course.app.domain.ExamMatrix;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -35,7 +35,7 @@ public class DeleteExamMatrixService implements TeacherDeleteExamMatrixUseCase {
                 .orElseThrow(() -> new CourseNotFoundException("Course not found: " + courseId));
 
         // Validate authenticated teacher and ownership
-        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         if (!course.getTeacherIds().contains(user.getId())) {

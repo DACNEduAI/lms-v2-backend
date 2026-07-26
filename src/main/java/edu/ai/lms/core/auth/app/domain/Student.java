@@ -1,6 +1,6 @@
 package edu.ai.lms.core.auth.app.domain;
 
-import edu.ai.lms.common.Roles;
+import edu.ai.lms.common.api.Roles;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 

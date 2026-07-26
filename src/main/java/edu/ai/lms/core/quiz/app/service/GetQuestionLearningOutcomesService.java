@@ -1,6 +1,6 @@
 package edu.ai.lms.core.quiz.app.service;
 
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuestionLearningOutcomesResponse;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.QuestionLearningOutcomeView;
@@ -30,7 +30,7 @@ public class GetQuestionLearningOutcomesService implements GetQuestionLearningOu
     @Override
     @Transactional(readOnly = true)
     public GetQuestionLearningOutcomesResponse getLearningOutcomes(UUID quizId, UUID questionId) {
-        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         Question question = loadQuestionPort.getByIdWithoutAnswers(questionId)

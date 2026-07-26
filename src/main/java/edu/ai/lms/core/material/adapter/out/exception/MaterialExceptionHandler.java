@@ -5,7 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import edu.ai.lms.common.ErrorResponse;
+import edu.ai.lms.common.api.ErrorResponse;
 import edu.ai.lms.core.material.app.exception.MaterialAlreadyUploadedException;
 import edu.ai.lms.core.material.app.exception.MaterialNotFoundException;
 import edu.ai.lms.core.material.app.exception.MaterialUploadPendingException;

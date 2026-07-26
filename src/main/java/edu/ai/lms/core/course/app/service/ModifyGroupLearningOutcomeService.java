@@ -3,7 +3,7 @@ package edu.ai.lms.core.course.app.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.GetGroupLearningOutcomeResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
@@ -32,7 +32,7 @@ public class ModifyGroupLearningOutcomeService implements TeacherModifyGroupLear
     @Override
     @Transactional
     public GetGroupLearningOutcomeResponse modifyGroupLearningOutcome(ModifyGroupLearningOutcomeCommand command) {
-        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
         Course course = loadCoursePort.findById(command.courseId())
                 .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + command.courseId()));

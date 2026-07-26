@@ -9,7 +9,7 @@ import java.util.UUID;
 import java.util.Set;
 
 import edu.ai.lms.common.event.SystemNotificationEvent;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.ModifyCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -40,7 +40,7 @@ public class ModifyCourseService implements TeacherModifyCourseUseCase {
                 .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + command.courseId()));
 
         // Validate teacher exists and get authenticated teacher
-        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Authenticated teacher not found"));
 
         // Business rule: Validate that the teacher is associated with the course

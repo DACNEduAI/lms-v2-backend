@@ -20,8 +20,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.GetCourseEnrollmentsResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -29,6 +29,7 @@ import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.LoadUsersPort;
+import edu.ai.lms.core.course.app.port.out.UserSummaryView;
 import edu.ai.lms.core.course.adapter.in.response.ParticipantDto;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,7 +49,7 @@ class GetCourseEnrollmentsServiceUT {
 
     private UUID teacherId;
     private UUID courseId;
-    private UserAuth mockTeacher;
+    private CurrentActor mockTeacher;
     private Course mockCourse;
 
     @BeforeEach
@@ -56,11 +57,8 @@ class GetCourseEnrollmentsServiceUT {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
 
-        mockTeacher = UserAuth.builder()
+        mockTeacher = CurrentActor.builder()
                 .id(teacherId)
-                .email("teacher@example.com")
-                .firstName("Martin")
-                .lastName("Fowler")
                 .role(Roles.TEACHER)
                 .build();
 
@@ -79,17 +77,15 @@ class GetCourseEnrollmentsServiceUT {
         UUID studentId = UUID.randomUUID();
         mockCourse.setStudentIds(List.of(studentId));
 
-        UserAuth studentAuth = UserAuth.builder()
-                .id(studentId)
-                .firstName("Alice")
-                .lastName("Chen")
-                .role(Roles.STUDENT)
-                .build();
+        UserSummaryView teacherSummary = new UserSummaryView(
+                teacherId, "teacher@example.com", "Martin", "Fowler", null, Roles.TEACHER);
+        UserSummaryView studentSummary = new UserSummaryView(
+                studentId, null, "Alice", "Chen", null, Roles.STUDENT);
 
         when(loadSignedInUserPort.findAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
         when(loadCoursePort.findById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(loadUsersPort.findAllByIds(List.of(teacherId))).thenReturn(List.of(mockTeacher));
-        when(loadUsersPort.findAllByIds(List.of(studentId))).thenReturn(List.of(studentAuth));
+        when(loadUsersPort.findAllByIds(List.of(teacherId))).thenReturn(List.of(teacherSummary));
+        when(loadUsersPort.findAllByIds(List.of(studentId))).thenReturn(List.of(studentSummary));
 
         GetCourseEnrollmentsResponse response = getCourseEnrollmentsService.getCourseEnrollments(courseId);
 
@@ -99,7 +95,7 @@ class GetCourseEnrollmentsServiceUT {
         assertEquals(1, response.getStudents().size());
         assertEquals(teacherId, response.getTeachers().get(0).getId());
         assertEquals(studentId, response.getStudents().get(0).getId());
-        assertEquals(mockTeacher.getFirstName(), response.getTeachers().get(0).getFirstName());
+        assertEquals("Martin", response.getTeachers().get(0).getFirstName());
         assertEquals("Alice", response.getStudents().get(0).getFirstName());
     }
 
@@ -128,9 +124,8 @@ class GetCourseEnrollmentsServiceUT {
     @DisplayName("Should throw IllegalArgumentException when teacher is not course owner")
     void testGetCourseEnrollments_UnauthorizedTeacher() {
         UUID anotherTeacherId = UUID.randomUUID();
-        UserAuth anotherTeacher = UserAuth.builder()
+        CurrentActor anotherTeacher = CurrentActor.builder()
                 .id(anotherTeacherId)
-                .email("other@example.com")
                 .role(Roles.TEACHER)
                 .build();
 

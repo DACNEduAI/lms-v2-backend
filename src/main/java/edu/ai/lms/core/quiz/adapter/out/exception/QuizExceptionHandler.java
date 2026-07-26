@@ -11,7 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import edu.ai.lms.common.ErrorResponse;
+import edu.ai.lms.common.api.ErrorResponse;
 import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.InvalidQuizGenerationRequestException;
 import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;

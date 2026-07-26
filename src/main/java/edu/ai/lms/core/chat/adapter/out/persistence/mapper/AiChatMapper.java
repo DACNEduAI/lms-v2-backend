@@ -54,16 +54,4 @@ public interface AiChatMapper {
     @Select("SELECT COUNT(*) FROM ai_course_chat_messages WHERE session_id = #{sessionId}")
     int countMessagesBySession(@Param("sessionId") UUID sessionId);
 
-    // ==========================================
-    // MATERIAL VALIDATION (Source Selection - Anti-IDOR)
-    // ==========================================
-
-    @Select("<script>" +
-            "SELECT COUNT(*) FROM materials " +
-            "WHERE course_id = #{courseId} AND status = 'UPLOADED' AND id IN " +
-            "<foreach item='id' collection='materialIds' open='(' separator=',' close=')'>" +
-            "#{id}" +
-            "</foreach>" +
-            "</script>")
-    int countValidMaterials(@Param("courseId") UUID courseId, @Param("materialIds") List<UUID> materialIds);
 }

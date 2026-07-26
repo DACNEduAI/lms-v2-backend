@@ -19,8 +19,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.DeleteExamMatrixResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.ExamMatrix;
@@ -44,7 +44,7 @@ class DeleteExamMatrixServiceUT {
     private UUID teacherId;
     private UUID courseId;
     private UUID matrixId;
-    private UserAuth mockTeacher;
+    private CurrentActor mockTeacher;
     private Course mockCourse;
     private ExamMatrix existingMatrix;
 
@@ -54,7 +54,7 @@ class DeleteExamMatrixServiceUT {
         courseId  = UUID.randomUUID();
         matrixId  = UUID.randomUUID();
 
-        mockTeacher = UserAuth.builder().id(teacherId).role(Roles.TEACHER).build();
+        mockTeacher = CurrentActor.builder().id(teacherId).role(Roles.TEACHER).build();
         mockCourse  = Course.builder().id(courseId).teacherIds(List.of(teacherId)).build();
         existingMatrix = ExamMatrix.builder().id(matrixId).courseId(courseId).rows(List.of()).build();
     }

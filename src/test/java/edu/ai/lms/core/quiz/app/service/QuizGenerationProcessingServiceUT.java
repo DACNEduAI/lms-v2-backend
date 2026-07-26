@@ -30,7 +30,7 @@ class QuizGenerationProcessingServiceUT {
                 }]
                 """.formatted(learningOutcomeId));
         QuizGenerationProcessingService service = new QuizGenerationProcessingService(
-                null, null, null, null, null, null, objectMapper);
+                null, null, null, null, null, objectMapper);
 
         QuizGenerationProcessingService.AiExamMatrix result = service.toAiExamMatrix(snapshotRows);
         JsonNode row = result.rows().get(0);

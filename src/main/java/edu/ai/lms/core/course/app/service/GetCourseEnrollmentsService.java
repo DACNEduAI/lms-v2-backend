@@ -1,12 +1,12 @@
 package edu.ai.lms.core.course.app.service;
 
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.UserAuth;
 import edu.ai.lms.core.course.adapter.in.response.GetCourseEnrollmentsResponse;
 import edu.ai.lms.core.course.adapter.in.response.ParticipantDto;
 import edu.ai.lms.core.course.app.domain.Course;
@@ -15,6 +15,8 @@ import edu.ai.lms.core.course.app.exception.TeacherNotFoundException;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherGetCourseEnrollmentsUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.course.app.port.out.LoadUsersPort;
+import edu.ai.lms.core.course.app.port.out.UserSummaryView;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -23,12 +25,12 @@ public class GetCourseEnrollmentsService implements TeacherGetCourseEnrollmentsU
 
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInUserPort loadSignedInUserPort;
-    private final edu.ai.lms.core.course.app.port.out.LoadUsersPort loadUsersPort;
+    private final LoadUsersPort loadUsersPort;
 
     @Override
     @Transactional(readOnly = true)
     public GetCourseEnrollmentsResponse getCourseEnrollments(UUID courseId) {
-        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not authenticated"));
 
         Course course = loadCoursePort.findById(courseId)
@@ -41,8 +43,8 @@ public class GetCourseEnrollmentsService implements TeacherGetCourseEnrollmentsU
             throw new IllegalArgumentException("User is not authorized to access enrollments of this course");
         }
 
-        List<UserAuth> teacherUsers = loadUsersPort.findAllByIds(course.getTeacherIds());
-        List<UserAuth> studentUsers = loadUsersPort.findAllByIds(course.getStudentIds());
+        List<UserSummaryView> teacherUsers = loadUsersPort.findAllByIds(course.getTeacherIds());
+        List<UserSummaryView> studentUsers = loadUsersPort.findAllByIds(course.getStudentIds());
 
         return GetCourseEnrollmentsResponse.builder()
                 .courseId(courseId)
@@ -51,14 +53,14 @@ public class GetCourseEnrollmentsService implements TeacherGetCourseEnrollmentsU
                 .build();
     }
 
-    private ParticipantDto toDto(UserAuth user) {
+    private ParticipantDto toDto(UserSummaryView user) {
         return ParticipantDto.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .avatarUrl(user.getAvatarUrl())
-                .role(user.getRoleAsString())
+                .id(user.id())
+                .email(user.email())
+                .firstName(user.firstName())
+                .lastName(user.lastName())
+                .avatarUrl(user.avatarUrl())
+                .role(user.role().name())
                 .build();
     }
 }

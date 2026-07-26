@@ -1,7 +1,7 @@
 package edu.ai.lms.core.quiz.app.service;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuestionLearningOutcomeOperationResponse;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
@@ -37,7 +37,7 @@ public class RemoveQuestionLearningOutcomesService implements RemoveQuestionLear
     @Override
     @Transactional
     public QuestionLearningOutcomeOperationResponse removeLearningOutcomes(RemoveQuestionLearningOutcomesCommand command) {
-        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         Quiz quiz = loadQuizPort.getById(command.quizId())
@@ -69,7 +69,7 @@ public class RemoveQuestionLearningOutcomesService implements RemoveQuestionLear
                 .build();
     }
 
-    private void verifyQuizOwnership(UserAuth user, Quiz quiz) {
+    private void verifyQuizOwnership(CurrentActor user, Quiz quiz) {
         boolean isOwner = (user.getRole() == Roles.TEACHER && user.getId().equals(quiz.getTeacherId()))
                 || (user.getRole() == Roles.STUDENT && user.getId().equals(quiz.getStudentId()));
 

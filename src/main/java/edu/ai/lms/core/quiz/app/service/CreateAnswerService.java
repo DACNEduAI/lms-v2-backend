@@ -3,8 +3,8 @@ package edu.ai.lms.core.quiz.app.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateAnswerResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
@@ -32,7 +32,7 @@ public class CreateAnswerService implements CreateAnswerUseCase {
     @Override
     @Transactional
     public CreateAnswerResponse createAnswer(CreateAnswerCommand command) {
-        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         Question question = loadQuestionPort.getByIdWithoutAnswers(command.questionId())
@@ -58,7 +58,7 @@ public class CreateAnswerService implements CreateAnswerUseCase {
                 .build();
     }
 
-    private void verifyQuizOwnership(UserAuth user, Quiz quiz) {
+    private void verifyQuizOwnership(CurrentActor user, Quiz quiz) {
         boolean isOwner = (user.getRole() == Roles.TEACHER && user.getId().equals(quiz.getTeacherId()))
                 || (user.getRole() == Roles.STUDENT && user.getId().equals(quiz.getStudentId()));
 

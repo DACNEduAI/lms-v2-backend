@@ -8,8 +8,8 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.domain.QuestionLearningOutcomeView;
@@ -38,7 +38,7 @@ public class GetQuizService implements GetQuizUseCase {
     @Override
     @Transactional(readOnly = true)
     public GetQuizResponse getQuiz(UUID courseId, UUID quizId) {
-        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         if (user.getRole() == Roles.TEACHER) {
@@ -146,13 +146,13 @@ public class GetQuizService implements GetQuizUseCase {
                 .build();
     }
 
-    private void verifyTeacherInCourse(UserAuth user, UUID courseId) {
+    private void verifyTeacherInCourse(CurrentActor user, UUID courseId) {
         if (!loadCourseMembershipPort.isTeacherInCourse(user.getId(), courseId)) {
             throw new IllegalArgumentException("User is not a member of this course");
         }
     }
 
-    private void verifyStudentInCourse(UserAuth user, UUID courseId) {
+    private void verifyStudentInCourse(CurrentActor user, UUID courseId) {
         if (!loadCourseMembershipPort.isStudentInCourse(user.getId(), courseId)) {
             throw new IllegalArgumentException("User is not a member of this course");
         }

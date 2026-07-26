@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.event.SystemActivityEvent;
-import edu.ai.lms.common.event.SystemNotificationEvent;
 import edu.ai.lms.core.material.adapter.in.response.ConfirmUploadResponse;
 import edu.ai.lms.core.material.app.domain.Material;
 import edu.ai.lms.core.material.app.exception.MaterialNotFoundException;
@@ -15,12 +14,10 @@ import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
 import edu.ai.lms.core.material.app.port.out.storage.VerifyFileUploadedPort;
 import edu.ai.lms.core.material.app.port.out.persistence.LoadSignedInUserPort;
+import edu.ai.lms.core.material.events.MaterialUploadConfirmedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -89,17 +86,8 @@ public class ConfirmUploadService implements ConfirmUploadUseCase {
                     .timestamp(LocalDateTime.now())
                     .build());
 
-            List<UUID> studentIdList = getMaterialPort.getStudentIdsByCourseId(courseId);
-            if (!studentIdList.isEmpty()) {
-                Set<UUID> studentIds = new HashSet<>(studentIdList);
-                eventPublisher.publishEvent(new SystemNotificationEvent(
-                        studentIds,
-                        "Tài liệu mới!",
-                        "Giảng viên vừa tải lên tài liệu: " + updated.getTitle(),
-                        "COURSE_UPDATE",
-                        "/student/courses/" + courseId // Link to course page
-                ));
-            }
+            eventPublisher.publishEvent(new MaterialUploadConfirmedEvent(
+                    courseId, updated.getId(), updated.getTitle()));
             
             if (updated.getType() == Material.MaterialType.PDF) {
                 materialIndexingService.queueIngest(updated);

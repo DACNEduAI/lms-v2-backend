@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import edu.ai.lms.common.ErrorResponse;
+import edu.ai.lms.common.api.ErrorResponse;
 import edu.ai.lms.core.quiz.app.exception.QuestionNotFoundException;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

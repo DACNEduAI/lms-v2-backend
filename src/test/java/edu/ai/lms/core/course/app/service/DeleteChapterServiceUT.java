@@ -23,8 +23,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.DeleteChapterResponse;
 import edu.ai.lms.core.course.app.domain.Chapter;
 import edu.ai.lms.core.course.app.domain.Course;
@@ -54,7 +54,7 @@ class DeleteChapterServiceUT {
     @InjectMocks
     private DeleteChapterService deleteChapterService;
 
-    private UserAuth mockUser;
+    private CurrentActor mockUser;
     private UUID teacherId;
     private UUID courseId;
     private UUID chapterId;
@@ -67,7 +67,7 @@ class DeleteChapterServiceUT {
         courseId = UUID.randomUUID();
         chapterId = UUID.randomUUID();
 
-        mockUser = UserAuth.builder()
+        mockUser = CurrentActor.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -158,7 +158,7 @@ class DeleteChapterServiceUT {
     @DisplayName("Should throw IllegalArgumentException when teacher is not authorized for the course")
     void testDeleteChapter_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
-        UserAuth anotherUser = UserAuth.builder()
+        CurrentActor anotherUser = CurrentActor.builder()
                 .id(UUID.randomUUID())
                 .role(Roles.TEACHER)
                 .build();

@@ -1,10 +1,7 @@
 package edu.ai.lms.core.attempt.adapter.out.persistence;
 
 import edu.ai.lms.core.attempt.app.domain.Attempt;
-import edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey;
-import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
-import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -16,10 +13,9 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-class AttemptPersistenceAdapter implements SaveAttemptPort, LoadAttemptPort, LoadQuizAttemptPolicyPort {
+class AttemptPersistenceAdapter implements SaveAttemptPort, LoadAttemptPort {
 
     private final AttemptRepository attemptRepository;
-    private final QuizAttemptPolicyRepository quizAttemptPolicyRepository;
 
     @Override
     public Attempt save(Attempt attempt) {
@@ -62,26 +58,4 @@ class AttemptPersistenceAdapter implements SaveAttemptPort, LoadAttemptPort, Loa
         return attemptRepository.getByStudentAndQuiz(studentId, quizId);
     }
 
-    @Override
-    public Optional<QuizAttemptPolicy> getQuizAttemptPolicy(UUID courseId, UUID quizId) {
-        if (courseId == null) {
-            return quizAttemptPolicyRepository.getQuizAttemptPolicyByQuizId(quizId);
-        }
-        return quizAttemptPolicyRepository.getQuizAttemptPolicy(courseId, quizId);
-    }
-
-    @Override
-    public List<QuestionAnswerKey> getQuestionAnswerKeys(UUID quizId) {
-        return quizAttemptPolicyRepository.getQuestionAnswerKeys(quizId);
-    }
-
-    @Override
-    public boolean isStudentInCourse(UUID studentId, UUID courseId) {
-        return quizAttemptPolicyRepository.isStudentInCourse(studentId, courseId);
-    }
-
-    @Override
-    public boolean quizHasTimer(UUID quizId) {
-        return quizAttemptPolicyRepository.quizHasTimer(quizId);
-    }
 }

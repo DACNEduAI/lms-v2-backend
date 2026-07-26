@@ -5,8 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
@@ -33,7 +31,6 @@ public class QuizGenerationProcessingService {
     private final LoadQuizGenerationJobPort loadJobPort;
     private final SaveQuizGenerationJobPort saveJobPort;
     private final ScheduleQuizGenerationJobPort schedulerPort;
-    private final LoadCoursePort coursePort;
     private final SseQuizGenerationService sseService;
     private final WebClient aiWebClient;
     private final ObjectMapper objectMapper;
@@ -72,13 +69,11 @@ public class QuizGenerationProcessingService {
         sseService.pushStatus(jobId, QuizGenerationService.toStatusResponse(job));
         try {
             JsonNode snapshot = objectMapper.readTree(job.getRequestSnapshot());
-            Course course = coursePort.findById(job.getCourseId())
-                    .orElseThrow(() -> new IllegalStateException("Course not found for generation"));
             List<UUID> materialIds = new ArrayList<>();
             snapshot.path("selectedMaterials").forEach(node -> materialIds.add(UUID.fromString(node.path("materialId").asText())));
             AiExamMatrix aiExamMatrix = toAiExamMatrix(snapshot.path("examMatrix"));
             AiGenerationRequest request = new AiGenerationRequest(
-                    job.getId(), job.getCourseId(), course.getCourseName(), job.getQuizTitle(),
+                    job.getId(), job.getCourseId(), snapshot.path("courseTitle").asText(), job.getQuizTitle(),
                     aiExamMatrix.rows(), aiExamMatrix.learningOutcomeIds(), materialIds, job.getPrompt(),
                     Boolean.TRUE.equals(job.getStrictMode()), job.getCodeRunnerPolicy(),
                     callbackUrl(), webhookSecret);

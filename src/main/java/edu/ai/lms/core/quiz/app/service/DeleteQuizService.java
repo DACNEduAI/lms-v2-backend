@@ -5,8 +5,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.DeleteQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
@@ -28,7 +28,7 @@ public class DeleteQuizService implements DeleteQuizUseCase {
     @Override
     @Transactional
     public DeleteQuizResponse deleteQuiz(UUID courseId, UUID quizId) {
-        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         Quiz existingQuiz = loadQuizPort.getById(quizId)

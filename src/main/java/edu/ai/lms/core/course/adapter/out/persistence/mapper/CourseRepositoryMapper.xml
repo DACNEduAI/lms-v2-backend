@@ -31,7 +31,6 @@
     SELECT c.id, c.course_name, c.description, c.course_code, c.active, c.cover_image, c.start_date, c.end_date
     FROM edu.courses c
     INNER JOIN edu.enrollments e ON c.id = e.course_id
-    INNER JOIN edu.teachers t ON t.user_id = e.user_id
     WHERE e.user_id = #{teacherId}
   </select>
 
@@ -39,7 +38,6 @@
     SELECT c.id, c.course_name, c.description, c.course_code, c.active, c.cover_image, c.start_date, c.end_date
     FROM edu.courses c
     INNER JOIN edu.enrollments e ON c.id = e.course_id
-    INNER JOIN edu.students s ON s.user_id = e.user_id
     WHERE e.user_id = #{studentId}
   </select>
 
@@ -65,17 +63,9 @@
     DELETE FROM edu.courses WHERE id = #{id}
   </delete>
 
-  <select id="findTeacherIdsByCourseId" resultType="java.util.UUID">
+  <select id="findEnrollmentIdsByCourseId" resultType="java.util.UUID">
     SELECT e.user_id
     FROM edu.enrollments e
-    INNER JOIN edu.teachers t ON t.user_id = e.user_id
-    WHERE e.course_id = #{courseId}
-  </select>
-
-  <select id="findStudentIdsByCourseId" resultType="java.util.UUID">
-    SELECT e.user_id
-    FROM edu.enrollments e
-    INNER JOIN edu.students s ON s.user_id = e.user_id
     WHERE e.course_id = #{courseId}
   </select>
 
@@ -86,9 +76,6 @@
       <foreach collection="studentIds" item="studentId" open="(" separator="," close=")">
         #{studentId}
       </foreach>
-      AND EXISTS (
-        SELECT 1 FROM edu.students s WHERE s.user_id = enrollments.user_id
-      )
   </delete>
 
   <insert id="insertCourseTeacher">

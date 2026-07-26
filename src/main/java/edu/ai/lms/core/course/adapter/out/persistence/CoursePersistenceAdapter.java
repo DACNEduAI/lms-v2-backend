@@ -11,6 +11,7 @@ import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.port.out.DeleteCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
+import edu.ai.lms.core.course.app.port.out.LoadUsersPort;
 import edu.ai.lms.core.course.app.port.out.SaveCoursePort;
 import edu.ai.lms.core.course.app.port.out.SaveCourseEnrollmentPort;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 class CoursePersistenceAdapter implements SaveCoursePort, SaveCourseEnrollmentPort, LoadCoursePort, DeleteCoursePort {
 
     private final CourseRepository courseRepository;
+    private final LoadUsersPort loadUsersPort;
     private final LearningOutcomePersistenceAdapter learningOutcomePersistenceAdapter;
     private final GroupLearningOutcomePersistenceAdapter groupLearningOutcomePersistenceAdapter;
     private final ChapterPersistenceAdapter chapterPersistenceAdapter;
@@ -123,8 +125,16 @@ class CoursePersistenceAdapter implements SaveCoursePort, SaveCourseEnrollmentPo
      * Loads a full Course aggregate by explicitly fetching related entities.
      */
     private Course loadFullCourse(Course course) {
-        List<UUID> teacherIds = courseRepository.findTeacherIdsByCourseId(course.getId());
-        List<UUID> studentIds = courseRepository.findStudentIdsByCourseId(course.getId());
+        List<UUID> enrollmentIds = courseRepository.findEnrollmentIdsByCourseId(course.getId());
+        var enrolledUsers = loadUsersPort.findAllByIds(enrollmentIds);
+        List<UUID> teacherIds = enrolledUsers.stream()
+                .filter(user -> user.role() == edu.ai.lms.common.api.Roles.TEACHER)
+                .map(edu.ai.lms.core.course.app.port.out.UserSummaryView::id)
+                .toList();
+        List<UUID> studentIds = enrolledUsers.stream()
+                .filter(user -> user.role() == edu.ai.lms.common.api.Roles.STUDENT)
+                .map(edu.ai.lms.core.course.app.port.out.UserSummaryView::id)
+                .toList();
 
         course.setTeacherIds(teacherIds);
         course.setStudentIds(studentIds);

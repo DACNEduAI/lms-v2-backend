@@ -26,7 +26,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.core.course.adapter.in.response.ChangeCourseSettingResponse;
 import edu.ai.lms.core.course.app.domain.Course;
-import edu.ai.lms.core.course.app.domain.Teacher;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.port.in.command.ChangeCourseSettingCommand;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
@@ -45,7 +44,6 @@ class ChangeCourseSettingServiceUT {
     private ChangeCourseSettingService changeCourseSettingService;
 
     private ChangeCourseSettingCommand validCommand;
-    private Teacher mockTeacher;
     private Course existingCourse;
     private UUID teacherId;
     private UUID courseId;
@@ -54,13 +52,6 @@ class ChangeCourseSettingServiceUT {
     void setUp() {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
-
-        mockTeacher = Teacher.builder()
-                .id(teacherId)
-                .employeeId("EMP001")
-                .department("Computer Science")
-                .specialization("Software Engineering")
-                .build();
 
         existingCourse = Course.builder()
                 .id(courseId)

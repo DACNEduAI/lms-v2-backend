@@ -2,8 +2,7 @@ package edu.ai.lms.core.quiz.app.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.course.app.port.out.LoadLearningOutcomePort;
+import edu.ai.lms.common.api.Roles;
 import edu.ai.lms.core.quiz.adapter.in.http.request.QuizWebhookRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
@@ -20,6 +19,7 @@ import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.ScheduleQuizGenerationJobPort;
+import edu.ai.lms.core.quiz.app.port.out.ValidateLearningOutcomesPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -45,7 +45,7 @@ public class QuizWebhookProcessingService {
     private final SaveAnswerPort saveAnswerPort;
     private final SaveQuizLearningOutcomePort saveQuizLearningOutcomePort;
     private final SaveQuestionLearningOutcomePort saveQuestionLearningOutcomePort;
-    private final LoadLearningOutcomePort learningOutcomePort;
+    private final ValidateLearningOutcomesPort learningOutcomesPort;
     private final ScheduleQuizGenerationJobPort schedulerPort;
     private final SseQuizGenerationService sseService;
     private final ObjectMapper objectMapper;
@@ -177,12 +177,8 @@ public class QuizWebhookProcessingService {
 
         for (QuizWebhookRequest.QuestionPayload item : payload.getQuestions()) {
             List<UUID> outcomeIds = item.getLearningOutcomeIds() == null ? List.of() : item.getLearningOutcomeIds();
-            for (UUID outcomeId : outcomeIds) {
-                var outcome = learningOutcomePort.findById(outcomeId)
-                        .orElseThrow(() -> new IllegalArgumentException("Unknown learning outcome: " + outcomeId));
-                if (!job.getCourseId().equals(outcome.getCourseId())) {
-                    throw new IllegalArgumentException("Learning outcome is outside the job course");
-                }
+            if (!learningOutcomesPort.allBelongToCourse(job.getCourseId(), outcomeIds)) {
+                throw new IllegalArgumentException("Learning outcome is outside the job course");
             }
             Question savedQuestion = saveQuestionPort.save(Question.builder()
                     .content(item.getContent())

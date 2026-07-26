@@ -25,8 +25,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.ModifyCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -55,7 +55,7 @@ class ModifyCourseServiceUT {
     private ModifyCourseService modifyCourseService;
 
     private ModifyCourseCommand validCommand;
-    private UserAuth mockUser;
+    private CurrentActor mockUser;
     private Course existingCourse;
     private UUID teacherId;
     private UUID courseId;
@@ -65,7 +65,7 @@ class ModifyCourseServiceUT {
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
 
-        mockUser = UserAuth.builder()
+        mockUser = CurrentActor.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -171,7 +171,7 @@ class ModifyCourseServiceUT {
     void testModifyCourse_WithUnauthorizedTeacher_ShouldThrowException() {
         // Arrange
         UUID differentTeacherId = UUID.randomUUID();
-        UserAuth differentUser = UserAuth.builder()
+        CurrentActor differentUser = CurrentActor.builder()
                 .id(differentTeacherId)
                 .role(Roles.TEACHER)
                 .build();

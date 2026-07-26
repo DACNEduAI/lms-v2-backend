@@ -1,6 +1,6 @@
 package edu.ai.lms.core.attempt.app.service;
 
-import edu.ai.lms.common.Roles;
+import edu.ai.lms.common.api.Roles;
 import edu.ai.lms.core.attempt.adapter.in.response.StartAttemptResponse;
 import edu.ai.lms.core.attempt.app.domain.Attempt;
 import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
@@ -15,7 +15,7 @@ import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.attempt.app.port.out.ScheduleAttemptAutoClosePort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.attempt.app.domain.CurrentActor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +38,7 @@ public class StartAttemptService implements StartAttemptUseCase {
     @Override
     @Transactional
     public StartAttemptResponse startAttempt(StartAttemptCommand command) {
-        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedForAttemptException("User not authenticated"));
 
         if (user.getRole() != Roles.STUDENT) {

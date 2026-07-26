@@ -4,6 +4,7 @@ import edu.ai.lms.core.chat.adapter.in.http.request.AiChatRequest;
 import edu.ai.lms.core.chat.app.domain.AiChatSession;
 import edu.ai.lms.core.chat.app.domain.AiCourseChatMessage;
 import edu.ai.lms.core.chat.app.port.out.persistence.AiChatPersistencePort;
+import edu.ai.lms.core.chat.app.port.out.ValidateChatMaterialsPort;
 import edu.ai.lms.core.chat.adapter.in.http.request.ChatSessionDto;
 import edu.ai.lms.core.chat.adapter.in.http.request.PythonChatRequest;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class AiChatService {
 
     private final WebClient aiWebClient;
     private final AiChatPersistencePort aiChatPersistencePort;
+    private final ValidateChatMaterialsPort validateChatMaterialsPort;
 
     // ==========================================
     // SESSION MANAGEMENT
@@ -87,11 +89,8 @@ public class AiChatService {
         List<String> validatedMaterialIds = null;
         if (request.getSelectedMaterialIds() != null && !request.getSelectedMaterialIds().isEmpty()) {
             List<UUID> requestedIds = request.getSelectedMaterialIds();
-            int validCount = aiChatPersistencePort.countValidMaterials(courseId, requestedIds);
-            
-            if (validCount != requestedIds.size()) {
-                log.warn("IDOR attempt detected! User {} sent {} material IDs but only {} are valid for course {}",
-                        userId, requestedIds.size(), validCount, courseId);
+            if (!validateChatMaterialsPort.allAvailableInCourse(courseId, requestedIds)) {
+                log.warn("IDOR attempt detected for user {} and course {}", userId, courseId);
                 return Flux.just("{\"token\":\"\",\"done\":true,\"error\":\"Một số tài liệu bạn chọn không thuộc khóa học này hoặc chưa sẵn sàng.\"}");
             }
             

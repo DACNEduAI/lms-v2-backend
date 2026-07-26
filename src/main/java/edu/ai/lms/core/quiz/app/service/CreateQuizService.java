@@ -11,10 +11,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.common.Roles;
+import edu.ai.lms.common.api.Roles;
 import edu.ai.lms.common.event.SystemActivityEvent;
 import edu.ai.lms.common.event.SystemNotificationEvent;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
@@ -68,7 +68,7 @@ public class CreateQuizService implements CreateQuizUseCase {
     @Transactional
     public CreateQuizResponse createQuiz(CreateQuizCommand command) {
         // Verify user is authenticated
-        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         // Verify user belongs to the course
@@ -210,7 +210,7 @@ public class CreateQuizService implements CreateQuizUseCase {
      * @param user     authenticated user identity
      * @param courseId target course
      */
-    private void verifyCourseMembership(UserAuth user, java.util.UUID courseId) {
+    private void verifyCourseMembership(CurrentActor user, java.util.UUID courseId) {
         boolean isMember = user.getRole() == Roles.TEACHER
                 ? loadCourseMembershipPort.isTeacherInCourse(user.getId(), courseId)
                 : loadCourseMembershipPort.isStudentInCourse(user.getId(), courseId);

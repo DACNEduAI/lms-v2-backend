@@ -8,8 +8,8 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetAllQuizzesResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
@@ -31,7 +31,7 @@ public class GetAllQuizzesService implements GetAllQuizzesCreatedByTeacherUseCas
     @Override
     @Transactional(readOnly = true)
     public GetAllQuizzesResponse getAllQuizzesCreatedByTeacher(UUID courseId, int pageSize, String lastCreated) {
-        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         verifyCourseMembershipForTeacherCreatedListing(user, courseId);
@@ -49,7 +49,7 @@ public class GetAllQuizzesService implements GetAllQuizzesCreatedByTeacherUseCas
     @Override
     @Transactional(readOnly = true)
     public GetAllQuizzesResponse getAllQuizzesCreatedByStudent(UUID courseId, int pageSize, String lastCreated) {
-        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
         if (user.getRole() != Roles.STUDENT) {
@@ -115,7 +115,7 @@ public class GetAllQuizzesService implements GetAllQuizzesCreatedByTeacherUseCas
         }
     }
 
-    private void verifyCourseMembershipForTeacherCreatedListing(UserAuth user, UUID courseId) {
+    private void verifyCourseMembershipForTeacherCreatedListing(CurrentActor user, UUID courseId) {
         if (user.getRole() == Roles.TEACHER) {
             verifyTeacherMembership(user.getId(), courseId);
             return;

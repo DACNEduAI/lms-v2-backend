@@ -1,6 +1,6 @@
 package edu.ai.lms.core.attempt.app.service;
 
-import edu.ai.lms.common.Roles;
+import edu.ai.lms.common.api.Roles;
 import edu.ai.lms.core.attempt.adapter.in.response.SubmitAttemptResponse;
 import edu.ai.lms.core.attempt.app.domain.Attempt;
 import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
@@ -14,7 +14,7 @@ import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.UnscheduleAttemptAutoClosePort;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.attempt.app.domain.CurrentActor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,7 +41,7 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
     @Override
     @Transactional
     public SubmitAttemptResponse submitAttempt(SubmitAttemptCommand command) {
-        UserAuth user = loadSignedInUserPort.getAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedForAttemptException("User not authenticated"));
 
         if (user.getRole() != Roles.STUDENT) {

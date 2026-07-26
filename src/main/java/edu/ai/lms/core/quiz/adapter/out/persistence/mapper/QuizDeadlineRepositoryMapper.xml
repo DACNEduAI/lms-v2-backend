@@ -3,7 +3,6 @@
 <mapper namespace="edu.ai.lms.core.quiz.adapter.out.persistence.QuizDeadlineRepository">
 
     <resultMap id="PendingQuizTargetMap" type="edu.ai.lms.core.quiz.app.domain.PendingQuizTarget">
-        <result property="studentId" column="student_id"/>
         <result property="quizId" column="quiz_id"/>
         <result property="quizTitle" column="quiz_title"/>
         <result property="courseId" column="course_id"/>
@@ -11,18 +10,12 @@
 
     <select id="findStudentsWithApproachingDeadlines" resultMap="PendingQuizTargetMap">
         SELECT 
-            e.user_id AS student_id, 
             q.id AS quiz_id, 
             q.quiz_title, 
             q.course_id
         FROM edu.quizzes q
-        INNER JOIN edu.enrollments e ON q.course_id = e.course_id
-        LEFT JOIN edu.attempts a ON a.quiz_id = q.id 
-                            AND a.student_id = e.user_id 
-                            AND a.status = 'FINISHED'
         WHERE q.due_time &gt;= #{fromTime} AND q.due_time &lt;= #{toTime}
           AND q.display = true
-          AND a.id IS NULL
     </select>
 
 </mapper>

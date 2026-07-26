@@ -7,7 +7,7 @@
     <result property="examMatrixId" column="exam_matrix_id"/>
     <result property="quizId" column="quiz_id"/>
     <result property="requestedBy" column="requested_by"/>
-    <result property="requestedRole" column="requested_role" javaType="edu.ai.lms.common.Roles" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+    <result property="requestedRole" column="requested_role" javaType="edu.ai.lms.common.api.Roles" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
     <result property="quizTitle" column="quiz_title"/>
     <result property="prompt" column="prompt"/>
     <result property="requestSnapshot" column="request_snapshot" typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
@@ -49,7 +49,7 @@
       display, status, attempt_count, next_attempt_at, lease_until, error_code,
       error_message, callback_event_id, processing_at, completed_at, created_at, updated_at)
     VALUES (#{id}, #{courseId}, #{examMatrixId}, #{quizId}, #{requestedBy},
-      #{requestedRole, javaType=edu.ai.lms.common.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+      #{requestedRole, javaType=edu.ai.lms.common.api.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
       #{quizTitle}, #{prompt}, CAST(#{requestSnapshot} AS jsonb), #{payloadHash}, #{idempotencyKey},
       #{strictMode}, #{codeRunnerPolicy}, #{unlimited}, #{timeLimitMinutes}, #{passScore},
       #{startTime}, #{dueTime}, #{attemptLimited}, #{display},

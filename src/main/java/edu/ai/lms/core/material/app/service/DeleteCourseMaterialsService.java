@@ -6,7 +6,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.material.adapter.in.internal.DeleteCourseMaterialsApi;
+import edu.ai.lms.core.material.api.DeleteCourseMaterialsApi;
 import edu.ai.lms.core.material.app.domain.Material;
 import edu.ai.lms.core.material.app.port.out.persistence.DeleteMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;

@@ -35,8 +35,8 @@ import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.LoadSignedInUserPort;
 import edu.ai.lms.core.material.app.port.out.storage.CreateDownloadLinkPort;
 import edu.ai.lms.core.material.app.port.out.storage.VerifyFileUploadedPort;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
-import edu.ai.lms.common.Roles;
+import edu.ai.lms.core.material.app.domain.CurrentActor;
+import edu.ai.lms.common.api.Roles;
 
 @ExtendWith(MockitoExtension.class)
 class ConfirmUploadServiceUT {
@@ -90,7 +90,6 @@ class ConfirmUploadServiceUT {
         when(getMaterialPort.findByIdAndCourseId(materialId, courseId)).thenReturn(Optional.of(material));
         when(verifyFileUploadedPort.isFileUploaded(material.getFileKey())).thenReturn(true);
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
-        when(getMaterialPort.getStudentIdsByCourseId(courseId)).thenReturn(List.of());
         Material updatedMaterial = Material.builder()
                 .id(materialId)
                 .title("Lecture Notes")

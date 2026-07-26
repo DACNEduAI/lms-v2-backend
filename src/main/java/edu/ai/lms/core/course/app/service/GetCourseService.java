@@ -7,7 +7,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.GetCourseResponse;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
@@ -35,7 +35,7 @@ public class GetCourseService implements GetCourseUseCase {
                 .orElseThrow(() -> new CourseNotFoundException("Course not found with id: " + courseId));
 
         // Validate authenticated user exists
-        UserAuth user = loadSignedInUserPort.findAuthenticatedUser()
+        CurrentActor user = loadSignedInUserPort.findAuthenticatedUser()
                 .orElseThrow(() -> new TeacherNotFoundException("Authenticated user not found"));
 
         boolean teacherInCourse = course.getTeacherIds() != null && course.getTeacherIds().contains(user.getId());
