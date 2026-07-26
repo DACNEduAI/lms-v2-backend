@@ -54,7 +54,7 @@ class ConfirmUploadServiceUT {
     private LoadSignedInUserPort loadSignedInUserPort;
 
     @Mock
-    private CreateDownloadLinkPort createDownloadLinkPort;
+    private MaterialIndexingService materialIndexingService;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -91,14 +91,14 @@ class ConfirmUploadServiceUT {
         when(verifyFileUploadedPort.isFileUploaded(material.getFileKey())).thenReturn(true);
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
         when(getMaterialPort.getStudentIdsByCourseId(courseId)).thenReturn(List.of());
-        when(createDownloadLinkPort.createDownloadLink(material.getFileKey(), null)).thenReturn("https://example.com/download");
-
         Material updatedMaterial = Material.builder()
                 .id(materialId)
                 .title("Lecture Notes")
                 .type(MaterialType.PDF)
                 .fileKey(material.getFileKey())
                 .status(MaterialStatus.UPLOADED)
+                .ingestionStatus(Material.IngestionStatus.PENDING)
+                .ingestionRevision(UUID.randomUUID())
                 .courseId(courseId)
                 .createdAt(material.getCreatedAt())
                 .updatedAt(LocalDateTime.now())
@@ -119,6 +119,7 @@ class ConfirmUploadServiceUT {
         verify(getMaterialPort, times(1)).findByIdAndCourseId(materialId, courseId);
         verify(verifyFileUploadedPort, times(1)).isFileUploaded(material.getFileKey());
         verify(modifyMaterialPort, times(1)).update(any(Material.class));
+        verify(materialIndexingService, times(1)).queueIngest(updatedMaterial);
     }
 
     @Test
@@ -134,6 +135,7 @@ class ConfirmUploadServiceUT {
                 .type(MaterialType.PDF)
                 .fileKey(material.getFileKey())
                 .status(MaterialStatus.FAILED)
+                .ingestionStatus(Material.IngestionStatus.NOT_STARTED)
                 .courseId(courseId)
                 .build();
         when(modifyMaterialPort.update(any(Material.class))).thenReturn(updatedMaterial);
@@ -148,6 +150,7 @@ class ConfirmUploadServiceUT {
         assertTrue(response.getMessage().contains("not found in storage"));
 
         verify(modifyMaterialPort, times(1)).update(any(Material.class));
+        verify(materialIndexingService, never()).queueIngest(any());
     }
 
     @Test

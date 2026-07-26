@@ -38,6 +38,10 @@ public class ModifyMaterialService implements ModifyMaterialUseCase {
         // Reset status to PENDING when the file key changes (new upload expected)
         if (fileKeyChanged) {
             existing.setStatus(Material.MaterialStatus.PENDING);
+            existing.setIngestionStatus(Material.IngestionStatus.NOT_STARTED);
+            existing.setIngestionError(null);
+            existing.setIngestionRevision(null);
+            existing.setIngestedAt(null);
         }
 
         Material updated = modifyMaterialPort.update(existing);
@@ -56,6 +60,7 @@ public class ModifyMaterialService implements ModifyMaterialUseCase {
                 .fileKey(updated.getFileKey())
                 .isDownloadable(updated.isDownloadable())
                 .status(updated.getStatus() != null ? updated.getStatus().name() : null)
+                .ingestionStatus(updated.getIngestionStatus() != null ? updated.getIngestionStatus().name() : null)
                 .presignedUploadUrl(presignedUploadUrl)
                 .courseId(updated.getCourseId())
                 .updatedAt(updated.getUpdatedAt())

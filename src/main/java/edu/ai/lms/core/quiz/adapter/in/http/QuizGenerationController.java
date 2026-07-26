@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -38,13 +39,16 @@ public class QuizGenerationController {
     private final SseQuizGenerationService sseQuizGenerationService;
 
     @Operation(summary = "Start async quiz generation")
-    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @PreAuthorize("hasRole('TEACHER')")
     @PostMapping("/quizzes/generate")
     public ResponseEntity<QuizGenerationJobResponse> generateQuiz(
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody GenerateQuizRequest request) {
-        GenerateQuizCommand command = generateQuizCommandMapper.toCommand(request);
+        GenerateQuizCommand command = generateQuizCommandMapper.toCommand(request, idempotencyKey);
         QuizGenerationJobResponse response = generateQuizUseCase.generateQuiz(command);
-        return ResponseEntity.accepted().body(response);
+        return ResponseEntity.accepted()
+                .header("Location", response.getStatusUrl())
+                .body(response);
     }
 
     @Operation(summary = "Get quiz generation job status")

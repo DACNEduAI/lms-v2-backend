@@ -23,6 +23,8 @@ public class QuizGenerationJob {
 
     private UUID courseId;
 
+    private UUID examMatrixId;
+
     private UUID chapterId;
 
     private UUID quizId;
@@ -38,6 +40,16 @@ public class QuizGenerationJob {
     private Question.QuestionType questionType;
 
     private String prompt;
+
+    private String requestSnapshot;
+
+    private String payloadHash;
+
+    private String idempotencyKey;
+
+    private Boolean strictMode;
+
+    private String codeRunnerPolicy;
 
     private Boolean useOptions;
 
@@ -57,9 +69,23 @@ public class QuizGenerationJob {
 
     private QuizGenerationStatus status;
 
+    private Integer attemptCount;
+
+    private LocalDateTime nextAttemptAt;
+
+    private LocalDateTime leaseUntil;
+
+    private String errorCode;
+
     private String errorMessage;
 
+    private UUID callbackEventId;
+
     private LocalDateTime createdAt;
+
+    private LocalDateTime processingAt;
+
+    private LocalDateTime completedAt;
 
     private LocalDateTime updatedAt;
 }

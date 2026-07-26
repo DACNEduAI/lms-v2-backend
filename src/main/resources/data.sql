@@ -21,170 +21,211 @@ VALUES
 -- 3. Insert Teachers
 INSERT INTO teachers (user_id, employee_id, phone_number, department, specialization)
 VALUES
-    ('11111111-1111-1111-1111-111111111111', 'EMP-ARCH-01', '555-0199', 'Software Engineering', 'System Architecture & DDD'),
-    ('22222222-2222-2222-2222-222222222222', 'EMP-AI-01', '555-0200', 'Computer Science', 'Machine Learning & AI'),
-    ('33333333-3333-3333-3333-333333333333', 'EMP-DEV-01', '555-0201', 'Information Technology', 'DevOps & Containerization');
+    ('11111111-1111-1111-1111-111111111111', 'EMP-DSA-01', '555-0199', 'Computer Science', 'Data Structures'),
+    ('22222222-2222-2222-2222-222222222222', 'EMP-DSA-02', '555-0200', 'Computer Science', 'Algorithm Analysis'),
+    ('33333333-3333-3333-3333-333333333333', 'EMP-DSA-03', '555-0201', 'Computer Science', 'Graph Algorithms');
 
 -- 4. Insert Courses (using valid hex 'c...')
 INSERT INTO courses (id, course_name, description, course_code, active, cover_image, start_date, end_date)
 VALUES
-    ('c1111111-1111-1111-1111-111111111111', 'Advanced Software Architecture', 'Exploring Domain-Driven Design, Hexagonal Architecture, and Microservices.', 'SE401', true, 'https://example.com/covers/se401.jpg', TO_TIMESTAMP('01-09-2025 08:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-12-2025 17:00:00', 'DD-MM-YYYY HH24:MI:SS')),
-    ('c2222222-2222-2222-2222-222222222222', 'Applied Artificial Intelligence', 'Practical AI implementation including RAG, Vector Databases, Perceptrons, and SVMs.', 'CS502', true, 'https://example.com/covers/cs502.jpg', TO_TIMESTAMP('15-01-2026 08:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('30-05-2026 17:00:00', 'DD-MM-YYYY HH24:MI:SS')),
-    ('c3333333-3333-3333-3333-333333333333', 'Modern DevOps Practices', 'Mastering Docker, LocalStack, and GitHub Actions for CI/CD pipelines.', 'IT305', true, 'https://example.com/covers/it305.jpg', TO_TIMESTAMP('01-09-2025 08:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-12-2025 17:00:00', 'DD-MM-YYYY HH24:MI:SS'));
+    ('c1111111-1111-1111-1111-111111111111', 'Data Structures and Algorithm', 'Core data structures, algorithm design techniques, complexity analysis, sorting, searching, trees, graphs, hashing, and dynamic programming.', 'CS201', true, 'https://example.com/covers/cs201-dsa.jpg', TO_TIMESTAMP('01-09-2025 08:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-12-2025 17:00:00', 'DD-MM-YYYY HH24:MI:SS'));
 
 -- 5. Insert Enrollments
 INSERT INTO enrollments (course_id, user_id, enrolled_date)
 VALUES
     -- Teachers assigned
     ('c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', TO_TIMESTAMP('15-08-2025 09:00:00', 'DD-MM-YYYY HH24:MI:SS')),
-    ('c2222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', TO_TIMESTAMP('10-01-2026 09:00:00', 'DD-MM-YYYY HH24:MI:SS')),
-    ('c3333333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333', TO_TIMESTAMP('20-08-2025 09:00:00', 'DD-MM-YYYY HH24:MI:SS')),
+    ('c1111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', TO_TIMESTAMP('15-08-2025 09:05:00', 'DD-MM-YYYY HH24:MI:SS')),
+    ('c1111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', TO_TIMESTAMP('15-08-2025 09:10:00', 'DD-MM-YYYY HH24:MI:SS')),
     -- Students
     ('c1111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444444', TO_TIMESTAMP('20-08-2025 10:00:00', 'DD-MM-YYYY HH24:MI:SS')),
     ('c1111111-1111-1111-1111-111111111111', '55555555-5555-5555-5555-555555555555', TO_TIMESTAMP('21-08-2025 11:30:00', 'DD-MM-YYYY HH24:MI:SS')),
-    ('c2222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555', TO_TIMESTAMP('12-01-2026 08:30:00', 'DD-MM-YYYY HH24:MI:SS')),
-    ('c2222222-2222-2222-2222-222222222222', '66666666-6666-6666-6666-666666666666', TO_TIMESTAMP('13-01-2026 14:15:00', 'DD-MM-YYYY HH24:MI:SS')),
-    ('c3333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444', TO_TIMESTAMP('22-08-2025 09:15:00', 'DD-MM-YYYY HH24:MI:SS')),
-    ('c3333333-3333-3333-3333-333333333333', '66666666-6666-6666-6666-666666666666', TO_TIMESTAMP('23-08-2025 10:00:00', 'DD-MM-YYYY HH24:MI:SS'));
+    ('c1111111-1111-1111-1111-111111111111', '66666666-6666-6666-6666-666666666666', TO_TIMESTAMP('22-08-2025 09:15:00', 'DD-MM-YYYY HH24:MI:SS'));
 
 -- 6. Insert Chapters
-INSERT INTO chapters (chapter_id, title, description, course_id)
+INSERT INTO chapters (chapter_id, title, description, course_id, created_at, updated_at)
 VALUES
-    ('f1111111-1111-1111-1111-111111111111', 'Clean Architecture Foundations', 'Isolating domain logic from frameworks and delivery mechanisms.', 'c1111111-1111-1111-1111-111111111111'),
-    ('f1222222-2222-2222-2222-222222222222', 'Tactical Domain-Driven Design', 'Deep dive into Entities, Value Objects, and Aggregate Roots.', 'c1111111-1111-1111-1111-111111111111'),
-    ('f1333333-3333-3333-3333-333333333333', 'Strategic Design and Context Mapping', 'Defining Bounded Contexts and integrating external systems.', 'c1111111-1111-1111-1111-111111111111'),
-    ('f2111111-1111-1111-1111-111111111111', 'Foundational ML Algorithms', 'Understanding the math behind Perceptrons and Support Vector Machines (SVM).', 'c2222222-2222-2222-2222-222222222222'),
-    ('f2222222-2222-2222-2222-222222222222', 'Vector Databases and Embeddings', 'High-dimensional vector spaces and similarity search mechanisms.', 'c2222222-2222-2222-2222-222222222222'),
-    ('f2333333-3333-3333-3333-333333333333', 'Building Agents and RAG Pipelines', 'Integrating LangChain Agents with external knowledge bases.', 'c2222222-2222-2222-2222-222222222222'),
-    ('f3111111-1111-1111-1111-111111111111', 'Containerization with Docker', 'Creating Dockerfiles, managing images, and composing multi-container apps.', 'c3333333-3333-3333-3333-333333333333'),
-    ('f3222222-2222-2222-2222-222222222222', 'CI/CD Automation', 'Building robust deployment pipelines using GitHub Actions.', 'c3333333-3333-3333-3333-333333333333');
+    ('5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', NULL, 'c1111111-1111-1111-1111-111111111111', '2026-07-19 07:05:53.190081', '2026-07-19 07:20:21.950210'),
+    ('8a01575f-a418-4107-b1b1-5eef75c5b72d', 'Giới thiệu môn Cấu trúc dữ liệu và giải thuật', NULL, 'c1111111-1111-1111-1111-111111111111', '2026-07-19 07:05:41.769227', '2026-07-19 07:20:45.408590'),
+    ('fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', NULL, 'c1111111-1111-1111-1111-111111111111', '2026-07-19 07:06:23.214023', '2026-07-19 07:20:58.587976'),
+    ('069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'Cây nhị phân', NULL, 'c1111111-1111-1111-1111-111111111111', '2026-07-19 07:21:29.051404', '2026-07-19 07:21:29.051404'),
+    ('d8d35922-4538-4613-9fe8-5dcef719b520', 'Cấu trúc cây nâng cao', NULL, 'c1111111-1111-1111-1111-111111111111', '2026-07-19 07:21:49.823482', '2026-07-19 07:21:49.823482'),
+    ('69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'Heap', NULL, 'c1111111-1111-1111-1111-111111111111', '2026-07-19 07:22:07.547732', '2026-07-19 07:22:07.547732'),
+    ('6967be86-ae45-4e55-8faa-71318f50bbf6', 'Đồ thị', NULL, 'c1111111-1111-1111-1111-111111111111', '2026-07-19 07:22:26.545267', '2026-07-19 07:22:26.545267'),
+    ('c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Ngăn xếp và Hàng đợi', NULL, 'c1111111-1111-1111-1111-111111111111', '2026-07-19 07:19:51.782248', '2026-07-19 07:33:28.944068'),
+    ('a8c06712-6aa5-4993-901b-77008af766d3', 'Giải thuật sắp xếp', NULL, 'c1111111-1111-1111-1111-111111111111', '2026-07-19 07:22:20.266461', '2026-07-19 07:36:03.118431'),
+    ('d1f07793-cfd2-450f-887a-abfc5b189b4b', 'Giải thuật tìm kiếm', NULL, 'c1111111-1111-1111-1111-111111111111', '2026-07-19 07:22:38.409260', '2026-07-19 07:36:19.128899');
 
 -- 7. Insert Group Learning Outcomes (using valid hex '7...')
-INSERT INTO group_learning_outcomes (id, code, description, sort_order, course_id)
+INSERT INTO group_learning_outcomes (id, code, description, sort_order, course_id, created_at, updated_at)
 VALUES
-    ('71111111-1111-1111-1111-111111111111', 'L.O.1', 'Mastery of backend application layering.', 1, 'c1111111-1111-1111-1111-111111111111'),
-    ('72222222-2222-2222-2222-222222222222', 'L.O.1', 'Designing applications that utilize ML models and LLMs.', 1, 'c2222222-2222-2222-2222-222222222222'),
-    ('73333333-3333-3333-3333-333333333333', 'L.O.1', 'Managing environments through reproducible configuration.', 1, 'c3333333-3333-3333-3333-333333333333');
+    ('71111111-1111-1111-1111-111111111111', 'L.O.1', 'Xác định được độ phức tạp của các giải thuật đơn giản (độ phức tạp đa thức trên vòng lặp lồng nhau - không đệ quy', 1, 'c1111111-1111-1111-1111-111111111111', '2026-07-19 06:37:47.495347', '2026-07-19 07:14:25.820358'),
+    ('72222222-2222-2222-2222-222222222222', 'L.O.2', 'Thao tác được các cấu trúc dữ liệu cơ bản như danh sách, cây, đồ thị.', 2, 'c1111111-1111-1111-1111-111111111111', '2026-07-19 06:37:47.495347', '2026-07-19 07:14:25.852697'),
+    ('73333333-3333-3333-3333-333333333333', 'L.O.3', 'Cài đặt được các giải thuật cơ bản như sắp xếp, tìm kiếm', 3, 'c1111111-1111-1111-1111-111111111111', '2026-07-19 06:37:47.495347', '2026-07-19 07:14:25.881811');
 
 -- 8. Insert Learning Outcomes (using valid hex '8...')
-INSERT INTO learning_outcomes (id, prefix_number, description, sort_order, course_id, group_learning_outcome_id)
+INSERT INTO learning_outcomes (id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at)
 VALUES
-    ('81111111-1111-1111-1111-111111111111', 1, 'Implement dependency inversion in a Spring Boot application.', 1, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
-    ('82222222-2222-2222-2222-222222222222', 2, 'Design transactional boundaries using DDD Aggregate Roots.', 2, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
-    ('83333333-3333-3333-3333-333333333333', 3, 'Identify Bounded Contexts within a complex monolithic system.', 3, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111'),
-    ('84444444-4444-4444-4444-444444444444', 1, 'Differentiate between linear and non-linear classification using SVMs.', 1, 'c2222222-2222-2222-2222-222222222222', '72222222-2222-2222-2222-222222222222'),
-    ('85555555-5555-5555-5555-555555555555', 2, 'Construct a Retrieval-Augmented Generation workflow using LangChain.', 2, 'c2222222-2222-2222-2222-222222222222', '72222222-2222-2222-2222-222222222222'),
-    ('86666666-6666-6666-6666-666666666666', 1, 'Containerize a full-stack application using Docker Compose.', 1, 'c3333333-3333-3333-3333-333333333333', '73333333-3333-3333-3333-333333333333'),
-    ('87777777-7777-7777-7777-777777777777', 2, 'Automate testing and deployment using GitHub Actions workflows.', 2, 'c3333333-3333-3333-3333-333333333333', '73333333-3333-3333-3333-333333333333');
+    ('81111111-1111-1111-1111-111111111111', 1, 'Nêu định nghĩa về độ phức tạp “Big O” của giải thuật.', 1, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111', '2026-07-19 06:37:47.502246', '2026-07-19 07:14:25.919706'),
+    ('82222222-2222-2222-2222-222222222222', 2, 'Xác định độ phức tạp của các giải thuật đơn giản có thời gian tính toán đa thức', 2, 'c1111111-1111-1111-1111-111111111111', '71111111-1111-1111-1111-111111111111', '2026-07-19 06:37:47.502246', '2026-07-19 07:14:25.919706'),
+    ('84444444-4444-4444-4444-444444444444', 1, 'Thao tác được các cấu trúc dữ liệu cơ bản như danh sách, cây, đồ thị.', 1, 'c1111111-1111-1111-1111-111111111111', '72222222-2222-2222-2222-222222222222', '2026-07-19 06:37:47.502246', '2026-07-19 07:14:25.919706'),
+    ('85555555-5555-5555-5555-555555555555', 2, 'Hiện thực được các phương thức cần thiết cho từng cấu trúc dữ liệu như: mảng, danh sách liên kết, chồng, hàng đợi, cây, đồ thị.', 2, 'c1111111-1111-1111-1111-111111111111', '72222222-2222-2222-2222-222222222222', '2026-07-19 06:37:47.502246', '2026-07-19 07:14:25.919706'),
+    ('86666666-6666-6666-6666-666666666666', 1, 'Minh họa được hoạt động của các giải thuật tìm kiếm trên cấu trúc dữ liệu như: mảng, danh sách liên kết, chồng, hàng đợi, cây, đồ thị.', 1, 'c1111111-1111-1111-1111-111111111111', '73333333-3333-3333-3333-333333333333', '2026-07-19 06:37:47.502246', '2026-07-19 07:14:25.919706'),
+    ('87777777-7777-7777-7777-777777777777', 2, 'Minh họa được từng bước hoạt động của các giải thuật sắp xếp trên một danh sách.', 2, 'c1111111-1111-1111-1111-111111111111', '73333333-3333-3333-3333-333333333333', '2026-07-19 06:37:47.502246', '2026-07-19 07:14:25.919706'),
+    ('8854781e-efc8-4130-9451-3b0391a32419', 3, 'Hiện thực được các phương thức cần thiết và giải thuật đề xuất trên một cấu trúc dữ liệu cho sẵn để giải quyết bài toán', 3, 'c1111111-1111-1111-1111-111111111111', '73333333-3333-3333-3333-333333333333', '2026-07-19 07:06:38.928711', '2026-07-19 07:14:25.919706');
 
 -- 9. Insert Chapter-Learning Outcome Relationships
 INSERT INTO chapter_learning_outcomes (chapter_id, learning_outcome_id)
 VALUES
-    ('f1111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111'),
-    ('f1222222-2222-2222-2222-222222222222', '82222222-2222-2222-2222-222222222222'),
-    ('f1333333-3333-3333-3333-333333333333', '83333333-3333-3333-3333-333333333333'),
-    ('f2111111-1111-1111-1111-111111111111', '84444444-4444-4444-4444-444444444444'),
-    ('f2333333-3333-3333-3333-333333333333', '85555555-5555-5555-5555-555555555555'),
-    ('f3111111-1111-1111-1111-111111111111', '86666666-6666-6666-6666-666666666666'),
-    ('f3222222-2222-2222-2222-222222222222', '87777777-7777-7777-7777-777777777777');
+    ('8a01575f-a418-4107-b1b1-5eef75c5b72d', '84444444-4444-4444-4444-444444444444'),
+    ('5e055691-371a-4de5-b61a-f6d06712c36a', '81111111-1111-1111-1111-111111111111'),
+    ('5e055691-371a-4de5-b61a-f6d06712c36a', '82222222-2222-2222-2222-222222222222'),
+    ('fe369f65-27f3-4314-9885-2099b0ca2fd8', '84444444-4444-4444-4444-444444444444'),
+    ('fe369f65-27f3-4314-9885-2099b0ca2fd8', '85555555-5555-5555-5555-555555555555'),
+    ('fe369f65-27f3-4314-9885-2099b0ca2fd8', '8854781e-efc8-4130-9451-3b0391a32419'),
+    ('c5d67446-27f5-4fcf-97cd-a6de6109114e', '84444444-4444-4444-4444-444444444444'),
+    ('c5d67446-27f5-4fcf-97cd-a6de6109114e', '85555555-5555-5555-5555-555555555555'),
+    ('c5d67446-27f5-4fcf-97cd-a6de6109114e', '8854781e-efc8-4130-9451-3b0391a32419'),
+    ('069331da-fc65-45f3-bb7f-e23f8f9a3a50', '84444444-4444-4444-4444-444444444444'),
+    ('069331da-fc65-45f3-bb7f-e23f8f9a3a50', '85555555-5555-5555-5555-555555555555'),
+    ('069331da-fc65-45f3-bb7f-e23f8f9a3a50', '8854781e-efc8-4130-9451-3b0391a32419'),
+    ('d8d35922-4538-4613-9fe8-5dcef719b520', '84444444-4444-4444-4444-444444444444'),
+    ('d8d35922-4538-4613-9fe8-5dcef719b520', '85555555-5555-5555-5555-555555555555'),
+    ('d8d35922-4538-4613-9fe8-5dcef719b520', '8854781e-efc8-4130-9451-3b0391a32419'),
+    ('69c3255e-fbd2-4eb7-9a78-a5147b0da42d', '84444444-4444-4444-4444-444444444444'),
+    ('69c3255e-fbd2-4eb7-9a78-a5147b0da42d', '85555555-5555-5555-5555-555555555555'),
+    ('69c3255e-fbd2-4eb7-9a78-a5147b0da42d', '8854781e-efc8-4130-9451-3b0391a32419'),
+    ('6967be86-ae45-4e55-8faa-71318f50bbf6', '84444444-4444-4444-4444-444444444444'),
+    ('6967be86-ae45-4e55-8faa-71318f50bbf6', '85555555-5555-5555-5555-555555555555'),
+    ('6967be86-ae45-4e55-8faa-71318f50bbf6', '86666666-6666-6666-6666-666666666666'),
+    ('6967be86-ae45-4e55-8faa-71318f50bbf6', '8854781e-efc8-4130-9451-3b0391a32419'),
+    ('a8c06712-6aa5-4993-901b-77008af766d3', '86666666-6666-6666-6666-666666666666'),
+    ('a8c06712-6aa5-4993-901b-77008af766d3', '87777777-7777-7777-7777-777777777777'),
+    ('a8c06712-6aa5-4993-901b-77008af766d3', '8854781e-efc8-4130-9451-3b0391a32419'),
+    ('d1f07793-cfd2-450f-887a-abfc5b189b4b', '86666666-6666-6666-6666-666666666666'),
+    ('d1f07793-cfd2-450f-887a-abfc5b189b4b', '87777777-7777-7777-7777-777777777777'),
+    ('d1f07793-cfd2-450f-887a-abfc5b189b4b', '8854781e-efc8-4130-9451-3b0391a32419');
 
--- 10. Insert AI Settings (using valid hex 'a...')
-INSERT INTO ai_settings (id, generation_prompt, difficulty_level, focus_on_weak_areas, number_of_questions, setting_type, align_to_clo, include_answer_key, mode)
+-- 10. Insert Exam Matrix
+INSERT INTO exam_matrices (id, course_id, title, description, created_at, updated_at)
 VALUES
-    ('a1111111-1111-1111-1111-111111111111', 'Generate architecture scenario questions.', 'HARD', true, 5, 'QUIZ_GENERATION', true, true, 'STRICT'),
-    ('a2222222-2222-2222-2222-222222222222', 'Create conceptual ML questions.', 'MEDIUM', false, 10, 'QUIZ_GENERATION', true, true, 'RELAXED'),
-    ('a3333333-3333-3333-3333-333333333333', 'Generate CI/CD troubleshooting scenarios.', 'HARD', true, 8, 'QUIZ_GENERATION', true, true, 'STRICT');
+    ('b1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', 'DSA Final Exam Matrix', 'Balanced final exam blueprint for Data Structures and Algorithm covering complexity analysis, core data structures, trees, graphs, greedy algorithms, and dynamic programming.', '2026-07-19 06:37:47.516609', '2026-07-19 07:44:49.120831');
 
--- 11. Insert Quizzes (using valid hex '9...')
-INSERT INTO quizzes (id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, ai_settings_id, course_id, teacher_id, display)
+-- 11. Insert Exam Matrix Rows
+INSERT INTO exam_matrix_rows (id, matrix_id, learning_outcome_id, chapter_id, topic, understand_count, apply_count, apply_plus_count, order_index)
 VALUES
-    ('91111111-1111-1111-1111-111111111111', 'Arch Midterm: Clean Arch & DDD', false, 60, 70.0, TO_TIMESTAMP('15-10-2025 09:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2025 11:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'a1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
-    ('92222222-2222-2222-2222-222222222222', 'Arch Final: System Boundaries', false, 120, 75.0, TO_TIMESTAMP('10-12-2025 13:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('10-12-2025 15:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'a1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
-    ('93333333-3333-3333-3333-333333333333', 'ML Foundations Check', false, 30, 60.0, TO_TIMESTAMP('15-02-2026 10:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('20-02-2026 23:59:00', 'DD-MM-YYYY HH24:MI:SS'), 2, 'a2222222-2222-2222-2222-222222222222', 'c2222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', true),
-    ('94444444-4444-4444-4444-444444444444', 'Applied RAG & Agents', false, 45, 80.0, TO_TIMESTAMP('10-04-2026 09:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-04-2026 23:59:00', 'DD-MM-YYYY HH24:MI:SS'), 3, 'a2222222-2222-2222-2222-222222222222', 'c2222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', true),
-    ('95555555-5555-5555-5555-555555555555', 'Docker & CI/CD Practical', false, 90, 85.0, TO_TIMESTAMP('05-11-2025 14:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('05-11-2025 17:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'a3333333-3333-3333-3333-333333333333', 'c3333333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333', true);
+    ('8e513031-979a-49f1-9479-6cbfc325c97b', 'b1111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', 4, 0, 0, 0),
+    ('680a4f68-6203-41ea-bb53-d95152956b6d', 'b1111111-1111-1111-1111-111111111111', '82222222-2222-2222-2222-222222222222', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', 0, 6, 0, 1),
+    ('a2cde69d-3faf-470b-a50a-dcf29b3e09e4', 'b1111111-1111-1111-1111-111111111111', '84444444-4444-4444-4444-444444444444', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', 4, 0, 0, 2),
+    ('ec938999-eead-47c2-b2f6-02d68c7865b9', 'b1111111-1111-1111-1111-111111111111', '85555555-5555-5555-5555-555555555555', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', 0, 4, 0, 3),
+    ('6ad52dd8-32ea-4f6f-a0c7-8545601f8031', 'b1111111-1111-1111-1111-111111111111', '8854781e-efc8-4130-9451-3b0391a32419', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', 0, 0, 2, 4),
+    ('8ca0fdef-55cd-4dd8-bf61-5fbed2f1b8b4', 'b1111111-1111-1111-1111-111111111111', '84444444-4444-4444-4444-444444444444', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Ngăn xếp và Hàng đợi', 3, 0, 0, 5),
+    ('7ea27159-f06a-4cb8-93b4-17a0d98279ab', 'b1111111-1111-1111-1111-111111111111', '85555555-5555-5555-5555-555555555555', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Ngăn xếp và hàng đợi', 0, 4, 0, 6),
+    ('4078d7a9-6062-4f92-b84d-158ad29d90ed', 'b1111111-1111-1111-1111-111111111111', '8854781e-efc8-4130-9451-3b0391a32419', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Ngăn xếp và hàng đợi', 0, 0, 1, 7),
+    ('ec404589-3aeb-496c-ae2c-0d22ef6867de', 'b1111111-1111-1111-1111-111111111111', '86666666-6666-6666-6666-666666666666', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Giải thuật sắp xếp', 1, 0, 0, 8),
+    ('43f57a91-ce34-4d83-ba11-e7584bf57a88', 'b1111111-1111-1111-1111-111111111111', '87777777-7777-7777-7777-777777777777', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Giải thuật sắp xếp', 0, 2, 0, 9),
+    ('cb382f32-f447-4696-96fb-3c36be5b3c07', 'b1111111-1111-1111-1111-111111111111', '8854781e-efc8-4130-9451-3b0391a32419', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Giải thuật sắp xếp', 0, 0, 1, 10),
+    ('cfde2627-dd69-4418-b687-9c279208a73d', 'b1111111-1111-1111-1111-111111111111', '86666666-6666-6666-6666-666666666666', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Giải thuật tìm kiếm', 1, 0, 0, 11),
+    ('af0ce644-f164-414c-96c9-c8d604e14824', 'b1111111-1111-1111-1111-111111111111', '87777777-7777-7777-7777-777777777777', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Giải thuật tìm kiếm', 0, 2, 0, 12),
+    ('6c213801-20e3-4a98-9c1f-7f58729d7acb', 'b1111111-1111-1111-1111-111111111111', '8854781e-efc8-4130-9451-3b0391a32419', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Giải thuật tìm kiếm', 0, 0, 1, 13);
 
--- 12. Insert Questions (using valid hex 'd...')
+-- 12. Insert Quizzes (using valid hex '9...')
+INSERT INTO quizzes (id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, teacher_id, display)
+VALUES
+    ('91111111-1111-1111-1111-111111111111', 'DSA Quiz 1: Complexity and Linear Structures', false, 60, 70.0, TO_TIMESTAMP('15-10-2025 09:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2025 11:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
+    ('92222222-2222-2222-2222-222222222222', 'DSA Midterm: Sorting and Searching', false, 120, 75.0, TO_TIMESTAMP('10-11-2025 13:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('10-11-2025 15:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
+    ('93333333-3333-3333-3333-333333333333', 'DSA Quiz 2: Heaps and Priority Queues', false, 45, 70.0, TO_TIMESTAMP('20-11-2025 10:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('20-11-2025 11:00:00', 'DD-MM-YYYY HH24:MI:SS'), 2, 'c1111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', true),
+    ('94444444-4444-4444-4444-444444444444', 'DSA Quiz 3: Trees and Graphs', false, 75, 80.0, TO_TIMESTAMP('01-12-2025 09:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('01-12-2025 10:30:00', 'DD-MM-YYYY HH24:MI:SS'), 2, 'c1111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', true),
+    ('95555555-5555-5555-5555-555555555555', 'DSA Final: Sorting, Searching, and Graphs', false, 120, 85.0, TO_TIMESTAMP('12-12-2025 14:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('12-12-2025 16:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'c1111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', true);
+
+-- 13. Insert Questions (using valid hex 'd...')
 INSERT INTO questions (id, content, type, quiz_id)
 VALUES
-    ('d1111111-1111-1111-1111-111111111111', 'In Clean Architecture, entities can depend on Use Case orchestrators.', 'TRUE_FALSE', '91111111-1111-1111-1111-111111111111'),
-    ('d2222222-2222-2222-2222-222222222222', 'Which DDD concept ensures transactional consistency?', 'MULTIPLE_CHOICE', '91111111-1111-1111-1111-111111111111'),
-    ('d3333333-3333-3333-3333-333333333333', 'Explain how Ports and Adapters isolate the core domain from a PostgreSQL database.', 'ESSAY', '91111111-1111-1111-1111-111111111111'),
-    ('d4444444-4444-4444-4444-444444444444', 'An Anti-Corruption Layer (ACL) is used to translate models between two bounded contexts.', 'TRUE_FALSE', '92222222-2222-2222-2222-222222222222'),
-    ('d5555555-5555-5555-5555-555555555555', 'A single-layer perceptron can perfectly classify XOR data.', 'TRUE_FALSE', '93333333-3333-3333-3333-333333333333'),
-    ('d6666666-6666-6666-6666-666666666666', 'What technique does an SVM use to handle non-linearly separable data?', 'MULTIPLE_CHOICE', '93333333-3333-3333-3333-333333333333'),
-    ('d7777777-7777-7777-7777-777777777777', 'Which LangChain component is responsible for dynamically deciding the next action step?', 'MULTIPLE_CHOICE', '94444444-4444-4444-4444-444444444444'),
-    ('d8888888-8888-8888-8888-888888888888', 'In a RAG pipeline, semantic search is performed over the raw text strings rather than vector embeddings.', 'TRUE_FALSE', '94444444-4444-4444-4444-444444444444'),
-    ('d9999999-9999-9999-9999-999999999999', 'What instruction in a Dockerfile defines the base image?', 'MULTIPLE_CHOICE', '95555555-5555-5555-5555-555555555555'),
-    ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A GitHub Action Workflow must be placed in the `.github/workflows` directory.', 'TRUE_FALSE', '95555555-5555-5555-5555-555555555555'),
-    ('dbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Describe the steps to configure a multi-stage Docker build to optimize the final image size of a Spring Boot application.', 'ESSAY', '95555555-5555-5555-5555-555555555555');
+    ('d1111111-1111-1111-1111-111111111111', 'A binary search over a sorted array runs in O(log n) time.', 'TRUE_FALSE', '91111111-1111-1111-1111-111111111111'),
+    ('d2222222-2222-2222-2222-222222222222', 'Which data structure provides LIFO access?', 'MULTIPLE_CHOICE', '91111111-1111-1111-1111-111111111111'),
+    ('d3333333-3333-3333-3333-333333333333', 'Explain when you would choose a linked list over an array and include the trade-offs for insertion and random access.', 'ESSAY', '91111111-1111-1111-1111-111111111111'),
+    ('d4444444-4444-4444-4444-444444444444', 'Merge sort uses a divide-and-conquer strategy and has O(n log n) worst-case time complexity.', 'TRUE_FALSE', '92222222-2222-2222-2222-222222222222'),
+    ('d5555555-5555-5555-5555-555555555555', 'A binary heap is a complete binary tree that maintains the heap-order property.', 'TRUE_FALSE', '93333333-3333-3333-3333-333333333333'),
+    ('d6666666-6666-6666-6666-666666666666', 'Which structure is commonly used to implement a priority queue?', 'MULTIPLE_CHOICE', '93333333-3333-3333-3333-333333333333'),
+    ('d7777777-7777-7777-7777-777777777777', 'Which graph traversal finds shortest paths by edge count in an unweighted graph?', 'MULTIPLE_CHOICE', '94444444-4444-4444-4444-444444444444'),
+    ('d8888888-8888-8888-8888-888888888888', 'In a binary search tree, an in-order traversal visits keys in sorted order.', 'TRUE_FALSE', '94444444-4444-4444-4444-444444444444'),
+    ('d9999999-9999-9999-9999-999999999999', 'Which sorting algorithm guarantees O(n log n) worst-case time?', 'MULTIPLE_CHOICE', '95555555-5555-5555-5555-555555555555'),
+    ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Dijkstra''s algorithm can be used directly on graphs with negative edge weights.', 'TRUE_FALSE', '95555555-5555-5555-5555-555555555555'),
+    ('dbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Describe how to implement breadth-first search for a graph, including the data structures used and its time complexity.', 'ESSAY', '95555555-5555-5555-5555-555555555555');
 
--- 13. Insert Answers
+-- 14. Insert Answers
 INSERT INTO answers (content, is_correct, explanation, question_id)
 VALUES
-    ('True', false, 'Dependencies must point inward. Entities are at the center and depend on nothing.', 'd1111111-1111-1111-1111-111111111111'),
-    ('False', true, 'The Dependency Rule dictates that core entities cannot depend on outer layers like Use Cases.', 'd1111111-1111-1111-1111-111111111111'),
-    ('Value Object', false, 'Value objects describe characteristics but do not manage boundaries.', 'd2222222-2222-2222-2222-222222222222'),
-    ('Aggregate Root', true, 'Aggregates enforce invariants and serve as transactional boundaries.', 'd2222222-2222-2222-2222-222222222222'),
-    ('Domain Service', false, 'Services encapsulate logic that doesn''t naturally fit an entity.', 'd2222222-2222-2222-2222-222222222222'),
-    ('True', true, 'ACL acts as a buffer/translator to prevent a downstream context from being polluted by upstream models.', 'd4444444-4444-4444-4444-444444444444'),
-    ('False', false, 'This is exactly the purpose of an Anti-Corruption Layer.', 'd4444444-4444-4444-4444-444444444444'),
-    ('True', false, 'XOR is not linearly separable; a single perceptron cannot solve it.', 'd5555555-5555-5555-5555-555555555555'),
-    ('False', true, 'XOR requires a multi-layer network (MLP) due to its non-linear separability.', 'd5555555-5555-5555-5555-555555555555'),
-    ('Gradient Descent', false, 'Gradient descent is an optimization algorithm, not specific to non-linear mapping.', 'd6666666-6666-6666-6666-666666666666'),
-    ('The Kernel Trick', true, 'The Kernel Trick implicitly maps inputs into high-dimensional feature spaces.', 'd6666666-6666-6666-6666-666666666666'),
-    ('Sigmoid Activation', false, 'Common in Neural Networks, but not the primary mechanism of standard SVMs.', 'd6666666-6666-6666-6666-666666666666'),
-    ('Memory', false, 'Memory persists state between conversational turns.', 'd7777777-7777-7777-7777-777777777777'),
-    ('Agent', true, 'Agents use LLMs as reasoning engines to determine which tools to call and in what order.', 'd7777777-7777-7777-7777-777777777777'),
-    ('Chain', false, 'Chains are hardcoded sequences of calls, not dynamic reasoning loops.', 'd7777777-7777-7777-7777-777777777777'),
-    ('True', false, 'Semantic search relies on comparing mathematical vector representations, not raw strings.', 'd8888888-8888-8888-8888-888888888888'),
-    ('False', true, 'RAG retrieves context by comparing the query''s embedding vector against the database vectors.', 'd8888888-8888-8888-8888-888888888888'),
-    ('FROM', true, 'FROM initializes a new build stage and sets the Base Image.', 'd9999999-9999-9999-9999-999999999999'),
-    ('BASE', false, 'There is no BASE instruction in Dockerfiles.', 'd9999999-9999-9999-9999-999999999999'),
-    ('ENV', false, 'ENV sets environment variables.', 'd9999999-9999-9999-9999-999999999999'),
-    ('True', true, 'GitHub automatically detects and runs YAML workflows placed exactly in this directory.', 'daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
-    ('False', false, 'Workflows placed outside `.github/workflows` will not be recognized by GitHub Actions.', 'daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+    ('True', true, 'Binary search halves the remaining search interval each step, so it takes logarithmic time.', 'd1111111-1111-1111-1111-111111111111'),
+    ('False', false, 'Linear search is O(n), but binary search on sorted data is O(log n).', 'd1111111-1111-1111-1111-111111111111'),
+    ('Queue', false, 'A queue provides FIFO access: first in, first out.', 'd2222222-2222-2222-2222-222222222222'),
+    ('Stack', true, 'A stack provides LIFO access: last in, first out.', 'd2222222-2222-2222-2222-222222222222'),
+    ('Hash Table', false, 'A hash table maps keys to values and does not enforce LIFO behavior.', 'd2222222-2222-2222-2222-222222222222'),
+    ('True', true, 'Merge sort recursively splits the input and merges sorted halves in O(n log n) time.', 'd4444444-4444-4444-4444-444444444444'),
+    ('False', false, 'Merge sort has O(n log n) worst-case time, not quadratic worst-case behavior.', 'd4444444-4444-4444-4444-444444444444'),
+    ('True', true, 'A binary heap combines the complete-tree shape property with min-heap or max-heap ordering.', 'd5555555-5555-5555-5555-555555555555'),
+    ('False', false, 'Binary heaps must satisfy both the complete-tree shape property and the appropriate heap-order property.', 'd5555555-5555-5555-5555-555555555555'),
+    ('Binary Heap', true, 'A binary heap supports efficient insertion and removal of the highest or lowest priority item.', 'd6666666-6666-6666-6666-666666666666'),
+    ('Linked List', false, 'A linked list does not efficiently maintain priority order by itself.', 'd6666666-6666-6666-6666-666666666666'),
+    ('Stack', false, 'A stack is useful for LIFO processing, not priority-based retrieval.', 'd6666666-6666-6666-6666-666666666666'),
+    ('Depth-First Search', false, 'DFS explores deeply and does not guarantee shortest paths by edge count.', 'd7777777-7777-7777-7777-777777777777'),
+    ('Breadth-First Search', true, 'BFS explores the graph level by level, giving shortest paths in unweighted graphs.', 'd7777777-7777-7777-7777-777777777777'),
+    ('Topological Sort', false, 'Topological sort orders DAG vertices by dependency, but it is not a shortest-path traversal.', 'd7777777-7777-7777-7777-777777777777'),
+    ('True', true, 'In-order traversal visits left subtree, node, then right subtree, which yields sorted keys in a BST.', 'd8888888-8888-8888-8888-888888888888'),
+    ('False', false, 'Pre-order and post-order have different visit orders; in-order is the sorted traversal for BSTs.', 'd8888888-8888-8888-8888-888888888888'),
+    ('Merge Sort', true, 'Merge sort guarantees O(n log n) time in the best, average, and worst cases.', 'd9999999-9999-9999-9999-999999999999'),
+    ('Bubble Sort', false, 'Bubble sort has O(n squared) worst-case time.', 'd9999999-9999-9999-9999-999999999999'),
+    ('Insertion Sort', false, 'Insertion sort has O(n squared) worst-case time.', 'd9999999-9999-9999-9999-999999999999'),
+    ('True', false, 'Dijkstra''s algorithm assumes non-negative edge weights.', 'daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+    ('False', true, 'Graphs with negative edges require algorithms such as Bellman-Ford or careful reweighting.', 'daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
--- 14. Insert Attempts (using valid hex 'e...')
+-- 15. Insert Attempts (using valid hex 'e...')
 INSERT INTO attempts (id, student_id, quiz_id, score, start_time, due_time, submitted_time, time_spent_seconds, status, error_reason)
 VALUES
     ('e1111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444444', '91111111-1111-1111-1111-111111111111', 85.0, TO_TIMESTAMP('15-10-2025 09:10:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2025 10:10:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2025 10:05:00', 'DD-MM-YYYY HH24:MI:SS'), 3300, 'FINISHED', NULL),
-    ('e2222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555', '93333333-3333-3333-3333-333333333333', 90.0, TO_TIMESTAMP('16-02-2026 14:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('16-02-2026 14:30:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('16-02-2026 14:28:00', 'DD-MM-YYYY HH24:MI:SS'), 1680, 'FINISHED', NULL),
-    ('e3333333-3333-3333-3333-333333333333', '66666666-6666-6666-6666-666666666666', '95555555-5555-5555-5555-555555555555', NULL, TO_TIMESTAMP('05-11-2025 14:15:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('05-11-2025 15:45:00', 'DD-MM-YYYY HH24:MI:SS'), NULL, NULL, 'STARTED', NULL);
+    ('e2222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555', '93333333-3333-3333-3333-333333333333', 90.0, TO_TIMESTAMP('20-11-2025 10:05:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('20-11-2025 10:50:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('20-11-2025 10:43:00', 'DD-MM-YYYY HH24:MI:SS'), 2280, 'FINISHED', NULL),
+    ('e3333333-3333-3333-3333-333333333333', '66666666-6666-6666-6666-666666666666', '95555555-5555-5555-5555-555555555555', NULL, TO_TIMESTAMP('12-12-2025 14:15:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('12-12-2025 16:15:00', 'DD-MM-YYYY HH24:MI:SS'), NULL, NULL, 'STARTED', NULL);
 
--- 15. Insert Junction Tables
+-- 16. Insert Junction Tables
 INSERT INTO quiz_chapters (quiz_id, chapter_id)
 VALUES
-    ('91111111-1111-1111-1111-111111111111', 'f1111111-1111-1111-1111-111111111111'),
-    ('91111111-1111-1111-1111-111111111111', 'f1222222-2222-2222-2222-222222222222'),
-    ('92222222-2222-2222-2222-222222222222', 'f1333333-3333-3333-3333-333333333333'),
-    ('93333333-3333-3333-3333-333333333333', 'f2111111-1111-1111-1111-111111111111'),
-    ('94444444-4444-4444-4444-444444444444', 'f2333333-3333-3333-3333-333333333333'),
-    ('95555555-5555-5555-5555-555555555555', 'f3111111-1111-1111-1111-111111111111'),
-    ('95555555-5555-5555-5555-555555555555', 'f3222222-2222-2222-2222-222222222222');
+    ('91111111-1111-1111-1111-111111111111', '5e055691-371a-4de5-b61a-f6d06712c36a'),
+    ('91111111-1111-1111-1111-111111111111', 'fe369f65-27f3-4314-9885-2099b0ca2fd8'),
+    ('91111111-1111-1111-1111-111111111111', 'c5d67446-27f5-4fcf-97cd-a6de6109114e'),
+    ('92222222-2222-2222-2222-222222222222', 'a8c06712-6aa5-4993-901b-77008af766d3'),
+    ('92222222-2222-2222-2222-222222222222', 'd1f07793-cfd2-450f-887a-abfc5b189b4b'),
+    ('93333333-3333-3333-3333-333333333333', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d'),
+    ('94444444-4444-4444-4444-444444444444', '069331da-fc65-45f3-bb7f-e23f8f9a3a50'),
+    ('94444444-4444-4444-4444-444444444444', 'd8d35922-4538-4613-9fe8-5dcef719b520'),
+    ('94444444-4444-4444-4444-444444444444', '6967be86-ae45-4e55-8faa-71318f50bbf6'),
+    ('95555555-5555-5555-5555-555555555555', '6967be86-ae45-4e55-8faa-71318f50bbf6'),
+    ('95555555-5555-5555-5555-555555555555', 'a8c06712-6aa5-4993-901b-77008af766d3'),
+    ('95555555-5555-5555-5555-555555555555', 'd1f07793-cfd2-450f-887a-abfc5b189b4b');
 
 INSERT INTO quiz_learning_outcomes (quiz_id, learning_outcome_id)
 VALUES
     ('91111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111'),
-    ('91111111-1111-1111-1111-111111111111', '82222222-2222-2222-2222-222222222222'),
-    ('92222222-2222-2222-2222-222222222222', '83333333-3333-3333-3333-333333333333'),
+    ('91111111-1111-1111-1111-111111111111', '84444444-4444-4444-4444-444444444444'),
+    ('91111111-1111-1111-1111-111111111111', '85555555-5555-5555-5555-555555555555'),
+    ('92222222-2222-2222-2222-222222222222', '87777777-7777-7777-7777-777777777777'),
     ('93333333-3333-3333-3333-333333333333', '84444444-4444-4444-4444-444444444444'),
+    ('93333333-3333-3333-3333-333333333333', '85555555-5555-5555-5555-555555555555'),
     ('94444444-4444-4444-4444-444444444444', '85555555-5555-5555-5555-555555555555'),
     ('95555555-5555-5555-5555-555555555555', '86666666-6666-6666-6666-666666666666'),
-    ('95555555-5555-5555-5555-555555555555', '87777777-7777-7777-7777-777777777777');
+    ('94444444-4444-4444-4444-444444444444', '86666666-6666-6666-6666-666666666666'),
+    ('95555555-5555-5555-5555-555555555555', '87777777-7777-7777-7777-777777777777'),
+    ('95555555-5555-5555-5555-555555555555', '8854781e-efc8-4130-9451-3b0391a32419');
 
 INSERT INTO question_learning_outcomes (question_id, learning_outcome_id)
 VALUES
     ('d1111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111'),
-    ('d2222222-2222-2222-2222-222222222222', '82222222-2222-2222-2222-222222222222'),
-    ('d3333333-3333-3333-3333-333333333333', '81111111-1111-1111-1111-111111111111'),
-    ('d4444444-4444-4444-4444-444444444444', '83333333-3333-3333-3333-333333333333'),
+    ('d2222222-2222-2222-2222-222222222222', '84444444-4444-4444-4444-444444444444'),
+    ('d3333333-3333-3333-3333-333333333333', '85555555-5555-5555-5555-555555555555'),
+    ('d4444444-4444-4444-4444-444444444444', '87777777-7777-7777-7777-777777777777'),
     ('d5555555-5555-5555-5555-555555555555', '84444444-4444-4444-4444-444444444444'),
-    ('d6666666-6666-6666-6666-666666666666', '84444444-4444-4444-4444-444444444444'),
-    ('d7777777-7777-7777-7777-777777777777', '85555555-5555-5555-5555-555555555555'),
+    ('d6666666-6666-6666-6666-666666666666', '85555555-5555-5555-5555-555555555555'),
+    ('d7777777-7777-7777-7777-777777777777', '86666666-6666-6666-6666-666666666666'),
     ('d8888888-8888-8888-8888-888888888888', '85555555-5555-5555-5555-555555555555'),
-    ('d9999999-9999-9999-9999-999999999999', '86666666-6666-6666-6666-666666666666'),
-    ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '87777777-7777-7777-7777-777777777777'),
-    ('dbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '86666666-6666-6666-6666-666666666666');
-
-
+    ('d9999999-9999-9999-9999-999999999999', '87777777-7777-7777-7777-777777777777'),
+    ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '86666666-6666-6666-6666-666666666666'),
+    ('dbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '8854781e-efc8-4130-9451-3b0391a32419');

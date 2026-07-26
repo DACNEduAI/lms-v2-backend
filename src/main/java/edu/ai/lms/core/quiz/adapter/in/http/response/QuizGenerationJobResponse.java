@@ -22,4 +22,8 @@ public class QuizGenerationJobResponse {
     private QuizGenerationStatus status;
 
     private LocalDateTime createdAt;
+
+    private String statusUrl;
+
+    private String streamUrl;
 }

@@ -18,6 +18,8 @@ import lombok.Setter;
 @Builder
 public class QuizWebhookRequest {
 
+    private UUID eventId;
+
     private UUID jobId;
 
     private String status;
@@ -25,6 +27,8 @@ public class QuizWebhookRequest {
     private QuizPayload quiz;
 
     private String errorMessage;
+
+    private String errorCode;
 
     @Getter
     @Setter
@@ -49,6 +53,11 @@ public class QuizWebhookRequest {
         private String content;
 
         private Question.QuestionType type;
+
+        private String originalType;
+
+        @Builder.Default
+        private List<UUID> learningOutcomeIds = new ArrayList<>();
 
         @Builder.Default
         private List<AnswerPayload> answers = new ArrayList<>();

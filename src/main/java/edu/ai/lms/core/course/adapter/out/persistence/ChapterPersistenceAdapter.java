@@ -77,6 +77,7 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
 
     @Override
     public void deleteByKey(UUID courseId, UUID chapterId) {
+        chapterRepository.deleteQuizChapterLinks(chapterId);
         chapterRepository.deleteByChapterIdAndCourseId(chapterId, courseId);
     }
 

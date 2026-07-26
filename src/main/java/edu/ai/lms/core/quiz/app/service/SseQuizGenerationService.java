@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusResponse;
@@ -27,7 +28,11 @@ public class SseQuizGenerationService {
         emitter.onError(error -> removeEmitter(jobId, emitter));
 
         try {
-            emitter.send(SseEmitter.event().name("INIT").data(initialStatus));
+            emitter.send(SseEmitter.event().name("quiz-generation.status")
+                    .id(jobId + ":" + initialStatus.getUpdatedAt()).data(initialStatus));
+            if (isTerminal(initialStatus)) {
+                emitter.complete();
+            }
         } catch (IOException ex) {
             removeEmitter(jobId, emitter);
         }
@@ -43,12 +48,33 @@ public class SseQuizGenerationService {
 
         for (SseEmitter emitter : jobEmitters) {
             try {
-                emitter.send(SseEmitter.event().name("JOB_STATUS").data(status));
+                emitter.send(SseEmitter.event().name("quiz-generation.status")
+                        .id(jobId + ":" + status.getUpdatedAt()).data(status));
+                if (isTerminal(status)) {
+                    emitter.complete();
+                }
             } catch (IOException ex) {
                 log.warn("Failed to push quiz generation status for job {}. Removing emitter.", jobId);
                 removeEmitter(jobId, emitter);
             }
         }
+    }
+
+    @Scheduled(fixedRateString = "${quiz.generation.sse-heartbeat-ms:15000}")
+    void heartbeat() {
+        emitters.forEach((jobId, jobEmitters) -> jobEmitters.forEach(emitter -> {
+            try {
+                emitter.send(SseEmitter.event().comment("heartbeat"));
+            } catch (IOException ex) {
+                removeEmitter(jobId, emitter);
+            }
+        }));
+    }
+
+    private boolean isTerminal(QuizGenerationStatusResponse status) {
+        return status.getStatus() == edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus.COMPLETED
+                || status.getStatus() == edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus.FAILED
+                || status.getStatus() == edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus.TIMED_OUT;
     }
 
     private void removeEmitter(UUID jobId, SseEmitter emitter) {

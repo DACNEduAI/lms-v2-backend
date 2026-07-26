@@ -14,7 +14,6 @@ import edu.ai.lms.core.material.app.port.in.usecase.ConfirmUploadUseCase;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
 import edu.ai.lms.core.material.app.port.out.storage.VerifyFileUploadedPort;
-import edu.ai.lms.core.material.app.port.out.storage.CreateDownloadLinkPort;
 import edu.ai.lms.core.material.app.port.out.persistence.LoadSignedInUserPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -31,7 +30,7 @@ public class ConfirmUploadService implements ConfirmUploadUseCase {
     private final ModifyMaterialPort modifyMaterialPort;
     private final VerifyFileUploadedPort verifyFileUploadedPort;
     private final LoadSignedInUserPort loadSignedInUserPort;
-    private final CreateDownloadLinkPort createDownloadLinkPort;
+    private final MaterialIndexingService materialIndexingService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -45,8 +44,18 @@ public class ConfirmUploadService implements ConfirmUploadUseCase {
 
         if (uploaded) {
             material.setStatus(Material.MaterialStatus.UPLOADED);
+            material.setIngestionError(null);
+            material.setIngestedAt(null);
+            if (material.getType() == Material.MaterialType.PDF) {
+                material.setIngestionStatus(Material.IngestionStatus.PENDING);
+                material.setIngestionRevision(UUID.randomUUID());
+            } else {
+                material.setIngestionStatus(Material.IngestionStatus.NOT_APPLICABLE);
+                material.setIngestionRevision(null);
+            }
         } else {
             material.setStatus(Material.MaterialStatus.FAILED);
+            material.setIngestionStatus(Material.IngestionStatus.NOT_STARTED);
         }
 
         Material updated = modifyMaterialPort.update(material);
@@ -56,6 +65,7 @@ public class ConfirmUploadService implements ConfirmUploadUseCase {
                 .courseId(updated.getCourseId())
                 .fileKey(updated.getFileKey())
                 .status(updated.getStatus().name())
+                .ingestionStatus(updated.getIngestionStatus().name())
                 .uploaded(uploaded)
                 .message(uploaded
                         ? "File uploaded successfully. Status updated to UPLOADED."
@@ -91,13 +101,9 @@ public class ConfirmUploadService implements ConfirmUploadUseCase {
                 ));
             }
             
-            // Publish event cho AI Server để Ingest tài liệu này vào RAG Vector DB
-            String presignedUrl = createDownloadLinkPort.createDownloadLink(updated.getFileKey(), null);
-            eventPublisher.publishEvent(edu.ai.lms.common.event.MaterialUploadedForAiEvent.builder()
-                    .courseId(courseId)
-                    .materialId(materialId)
-                    .fileUrl(presignedUrl)
-                    .build());
+            if (updated.getType() == Material.MaterialType.PDF) {
+                materialIndexingService.queueIngest(updated);
+            }
         }
 
         return response;

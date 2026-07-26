@@ -23,6 +23,7 @@ class QuizPersistenceAdapter implements SaveQuizPort, LoadQuizPort, DeleteQuizPo
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
 
+
     @Override
     public Quiz save(Quiz quiz) {
         return quizRepository.save(quiz);

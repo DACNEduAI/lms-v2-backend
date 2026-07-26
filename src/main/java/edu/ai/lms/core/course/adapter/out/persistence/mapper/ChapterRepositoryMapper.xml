@@ -37,6 +37,11 @@
       AND course_id = #{courseId}
   </delete>
 
+  <delete id="deleteQuizChapterLinks">
+    DELETE FROM edu.quiz_chapters
+    WHERE chapter_id = #{chapterId}
+  </delete>
+
   <select id="insertAndReturnChapterId" resultType="java.util.UUID">
     INSERT INTO edu.chapters (course_id, title, description, created_at, updated_at)
     VALUES (#{courseId}, #{title}, #{description}, NOW(), NOW())

@@ -2,6 +2,8 @@ package edu.ai.lms.core.quiz.adapter.out.persistence;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
+import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Component;
 
@@ -24,5 +26,30 @@ class QuizGenerationJobPersistenceAdapter implements SaveQuizGenerationJobPort, 
     @Override
     public Optional<QuizGenerationJob> getById(UUID jobId) {
         return quizGenerationJobRepository.getById(jobId);
+    }
+
+    @Override
+    public Optional<QuizGenerationJob> getByIdForUpdate(UUID jobId) {
+        return quizGenerationJobRepository.getByIdForUpdate(jobId);
+    }
+
+    @Override
+    public Optional<QuizGenerationJob> findByIdempotencyKey(UUID requestedBy, String idempotencyKey) {
+        return quizGenerationJobRepository.findByIdempotencyKey(requestedBy, idempotencyKey);
+    }
+
+    @Override
+    public List<UUID> findRecoverableIds(int limit) {
+        return quizGenerationJobRepository.findRecoverableIds(limit);
+    }
+
+    @Override
+    public boolean claim(UUID jobId, LocalDateTime leaseUntil) {
+        return quizGenerationJobRepository.claim(jobId, leaseUntil) == 1;
+    }
+
+    @Override
+    public int deleteTerminalBefore(LocalDateTime cutoff) {
+        return quizGenerationJobRepository.deleteTerminalBefore(cutoff);
     }
 }

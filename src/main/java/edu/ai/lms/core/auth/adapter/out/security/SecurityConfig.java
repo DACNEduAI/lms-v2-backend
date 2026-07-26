@@ -71,8 +71,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints - Authentication
                         .requestMatchers("/api/auth/**").permitAll()
-                    // Internal webhooks (guarded by shared secret header)
-                    .requestMatchers("/api/internal/webhooks/**").permitAll()
+                        // Service-to-service callback; authenticated by HMAC in the controller.
+                        .requestMatchers("/api/internal/webhooks/quiz-generation").permitAll()
                         // Swagger UI endpoints
                         .requestMatchers(
                                 "/v3/api-docs/**",

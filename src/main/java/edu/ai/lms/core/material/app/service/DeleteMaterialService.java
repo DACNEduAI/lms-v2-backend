@@ -21,6 +21,7 @@ public class DeleteMaterialService implements DeleteMaterialUseCase {
     private final GetMaterialPort getMaterialPort;
     private final DeleteMaterialPort deleteMaterialPort;
     private final DeleteFilePort deleteFilePort;
+    private final MaterialIndexingService materialIndexingService;
 
     @Override
     @Transactional
@@ -34,6 +35,8 @@ public class DeleteMaterialService implements DeleteMaterialUseCase {
         if (material.getFileKey() != null) {
             deleteFilePort.deleteFile(material.getFileKey());
         }
+
+        materialIndexingService.queueDelete(courseId, materialId);
 
         // Then delete DB record
         deleteMaterialPort.deleteById(materialId);

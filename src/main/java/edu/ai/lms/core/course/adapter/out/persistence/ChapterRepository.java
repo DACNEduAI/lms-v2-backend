@@ -27,6 +27,8 @@ interface ChapterRepository {
             @Param("chapterId") UUID chapterId,
             @Param("courseId") UUID courseId);
 
+    void deleteQuizChapterLinks(@Param("chapterId") UUID chapterId);
+
     UUID insertAndReturnChapterId(
             @Param("courseId") UUID courseId,
             @Param("title") String title,
