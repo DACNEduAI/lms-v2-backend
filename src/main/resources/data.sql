@@ -112,22 +112,110 @@ VALUES
     ('b1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', 'DSA Final Exam Matrix', 'Balanced final exam blueprint for Data Structures and Algorithm covering complexity analysis, core data structures, trees, graphs, greedy algorithms, and dynamic programming.', '2026-07-19 06:37:47.516609', '2026-07-19 07:44:49.120831');
 
 -- 11. Insert Exam Matrix Rows
-INSERT INTO exam_matrix_rows (id, matrix_id, learning_outcome_id, chapter_id, topic, understand_count, apply_count, apply_plus_count, order_index)
+INSERT INTO exam_matrix_rows (id, matrix_id, chapter_id, topic, order_index)
 VALUES
-    ('8e513031-979a-49f1-9479-6cbfc325c97b', 'b1111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', 4, 0, 0, 0),
-    ('680a4f68-6203-41ea-bb53-d95152956b6d', 'b1111111-1111-1111-1111-111111111111', '82222222-2222-2222-2222-222222222222', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', 0, 6, 0, 1),
-    ('a2cde69d-3faf-470b-a50a-dcf29b3e09e4', 'b1111111-1111-1111-1111-111111111111', '84444444-4444-4444-4444-444444444444', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', 4, 0, 0, 2),
-    ('ec938999-eead-47c2-b2f6-02d68c7865b9', 'b1111111-1111-1111-1111-111111111111', '85555555-5555-5555-5555-555555555555', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', 0, 4, 0, 3),
-    ('6ad52dd8-32ea-4f6f-a0c7-8545601f8031', 'b1111111-1111-1111-1111-111111111111', '8854781e-efc8-4130-9451-3b0391a32419', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', 0, 0, 2, 4),
-    ('8ca0fdef-55cd-4dd8-bf61-5fbed2f1b8b4', 'b1111111-1111-1111-1111-111111111111', '84444444-4444-4444-4444-444444444444', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Ngăn xếp và Hàng đợi', 3, 0, 0, 5),
-    ('7ea27159-f06a-4cb8-93b4-17a0d98279ab', 'b1111111-1111-1111-1111-111111111111', '85555555-5555-5555-5555-555555555555', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Ngăn xếp và hàng đợi', 0, 4, 0, 6),
-    ('4078d7a9-6062-4f92-b84d-158ad29d90ed', 'b1111111-1111-1111-1111-111111111111', '8854781e-efc8-4130-9451-3b0391a32419', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Ngăn xếp và hàng đợi', 0, 0, 1, 7),
-    ('ec404589-3aeb-496c-ae2c-0d22ef6867de', 'b1111111-1111-1111-1111-111111111111', '86666666-6666-6666-6666-666666666666', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Giải thuật sắp xếp', 1, 0, 0, 8),
-    ('43f57a91-ce34-4d83-ba11-e7584bf57a88', 'b1111111-1111-1111-1111-111111111111', '87777777-7777-7777-7777-777777777777', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Giải thuật sắp xếp', 0, 2, 0, 9),
-    ('cb382f32-f447-4696-96fb-3c36be5b3c07', 'b1111111-1111-1111-1111-111111111111', '8854781e-efc8-4130-9451-3b0391a32419', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Giải thuật sắp xếp', 0, 0, 1, 10),
-    ('cfde2627-dd69-4418-b687-9c279208a73d', 'b1111111-1111-1111-1111-111111111111', '86666666-6666-6666-6666-666666666666', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Giải thuật tìm kiếm', 1, 0, 0, 11),
-    ('af0ce644-f164-414c-96c9-c8d604e14824', 'b1111111-1111-1111-1111-111111111111', '87777777-7777-7777-7777-777777777777', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Giải thuật tìm kiếm', 0, 2, 0, 12),
-    ('6c213801-20e3-4a98-9c1f-7f58729d7acb', 'b1111111-1111-1111-1111-111111111111', '8854781e-efc8-4130-9451-3b0391a32419', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Giải thuật tìm kiếm', 0, 0, 1, 13);
+    ('8e513031-979a-49f1-9479-6cbfc325c97b', 'b1111111-1111-1111-1111-111111111111', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', 0),
+    ('680a4f68-6203-41ea-bb53-d95152956b6d', 'b1111111-1111-1111-1111-111111111111', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', 1),
+    ('a2cde69d-3faf-470b-a50a-dcf29b3e09e4', 'b1111111-1111-1111-1111-111111111111', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', 2),
+    ('ec938999-eead-47c2-b2f6-02d68c7865b9', 'b1111111-1111-1111-1111-111111111111', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', 3),
+    ('6ad52dd8-32ea-4f6f-a0c7-8545601f8031', 'b1111111-1111-1111-1111-111111111111', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', 4),
+    ('8ca0fdef-55cd-4dd8-bf61-5fbed2f1b8b4', 'b1111111-1111-1111-1111-111111111111', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Ngăn xếp và Hàng đợi', 5),
+    ('7ea27159-f06a-4cb8-93b4-17a0d98279ab', 'b1111111-1111-1111-1111-111111111111', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Ngăn xếp và hàng đợi', 6),
+    ('4078d7a9-6062-4f92-b84d-158ad29d90ed', 'b1111111-1111-1111-1111-111111111111', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Ngăn xếp và hàng đợi', 7),
+    ('ec404589-3aeb-496c-ae2c-0d22ef6867de', 'b1111111-1111-1111-1111-111111111111', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Giải thuật sắp xếp', 8),
+    ('43f57a91-ce34-4d83-ba11-e7584bf57a88', 'b1111111-1111-1111-1111-111111111111', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Giải thuật sắp xếp', 9),
+    ('cb382f32-f447-4696-96fb-3c36be5b3c07', 'b1111111-1111-1111-1111-111111111111', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Giải thuật sắp xếp', 10),
+    ('cfde2627-dd69-4418-b687-9c279208a73d', 'b1111111-1111-1111-1111-111111111111', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Giải thuật tìm kiếm', 11),
+    ('af0ce644-f164-414c-96c9-c8d604e14824', 'b1111111-1111-1111-1111-111111111111', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Giải thuật tìm kiếm', 12),
+    ('6c213801-20e3-4a98-9c1f-7f58729d7acb', 'b1111111-1111-1111-1111-111111111111', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Giải thuật tìm kiếm', 13);
+
+-- 11a. Insert Exam Matrix Row-Learning Outcome Relationships
+INSERT INTO exam_matrix_row_learning_outcomes (exam_matrix_row_id, learning_outcome_id)
+VALUES
+    ('8e513031-979a-49f1-9479-6cbfc325c97b', '81111111-1111-1111-1111-111111111111'),
+    ('680a4f68-6203-41ea-bb53-d95152956b6d', '82222222-2222-2222-2222-222222222222'),
+    ('a2cde69d-3faf-470b-a50a-dcf29b3e09e4', '84444444-4444-4444-4444-444444444444'),
+    ('ec938999-eead-47c2-b2f6-02d68c7865b9', '85555555-5555-5555-5555-555555555555'),
+    ('6ad52dd8-32ea-4f6f-a0c7-8545601f8031', '8854781e-efc8-4130-9451-3b0391a32419'),
+    ('8ca0fdef-55cd-4dd8-bf61-5fbed2f1b8b4', '84444444-4444-4444-4444-444444444444'),
+    ('7ea27159-f06a-4cb8-93b4-17a0d98279ab', '85555555-5555-5555-5555-555555555555'),
+    ('4078d7a9-6062-4f92-b84d-158ad29d90ed', '8854781e-efc8-4130-9451-3b0391a32419'),
+    ('ec404589-3aeb-496c-ae2c-0d22ef6867de', '86666666-6666-6666-6666-666666666666'),
+    ('43f57a91-ce34-4d83-ba11-e7584bf57a88', '87777777-7777-7777-7777-777777777777'),
+    ('cb382f32-f447-4696-96fb-3c36be5b3c07', '8854781e-efc8-4130-9451-3b0391a32419'),
+    ('cfde2627-dd69-4418-b687-9c279208a73d', '86666666-6666-6666-6666-666666666666'),
+    ('af0ce644-f164-414c-96c9-c8d604e14824', '87777777-7777-7777-7777-777777777777'),
+    ('6c213801-20e3-4a98-9c1f-7f58729d7acb', '8854781e-efc8-4130-9451-3b0391a32419');
+
+-- 11b. Seed Custom Learning Levels for Existing Learning Outcomes
+INSERT INTO custom_learning_levels (course_id, code, name, description, sort_order)
+SELECT course.id, level.code, level.name, level.description, level.sort_order
+FROM courses course
+CROSS JOIN (
+    VALUES
+        ('CLL1', 'Understand', 'Legacy understand cognitive level', 1),
+        ('CLL2', 'Apply', 'Legacy apply cognitive level', 2),
+        ('CLL3', 'Apply Plus', 'Legacy advanced apply cognitive level', 3)
+) AS level(code, name, description, sort_order);
+
+INSERT INTO custom_learning_level_learning_outcomes (custom_learning_level_id, learning_outcome_id)
+SELECT custom_level.id, mapping.learning_outcome_id
+FROM (
+    VALUES
+        -- Understand: definition, foundational data-structure operation, and algorithm illustration.
+        ('CLL1', '81111111-1111-1111-1111-111111111111'::uuid),
+        ('CLL1', '84444444-4444-4444-4444-444444444444'::uuid),
+        ('CLL1', '86666666-6666-6666-6666-666666666666'::uuid),
+        -- Apply: complexity calculation, data-structure implementation, and sorting execution.
+        ('CLL2', '82222222-2222-2222-2222-222222222222'::uuid),
+        ('CLL2', '85555555-5555-5555-5555-555555555555'::uuid),
+        ('CLL2', '87777777-7777-7777-7777-777777777777'::uuid),
+        -- Apply Plus: advanced implementation for solving a supplied problem.
+        ('CLL3', '8854781e-efc8-4130-9451-3b0391a32419'::uuid)
+) AS mapping(level_code, learning_outcome_id)
+JOIN learning_outcomes learning_outcome
+  ON learning_outcome.id = mapping.learning_outcome_id
+JOIN custom_learning_levels custom_level
+  ON custom_level.course_id = learning_outcome.course_id
+ AND custom_level.code = mapping.level_code;
+
+-- 11c. Preserve Legacy Question Counts by Row and Custom Learning Level
+INSERT INTO exam_matrix_row_learning_level_counts
+    (exam_matrix_row_id, custom_learning_level_id, question_count)
+SELECT legacy.exam_matrix_row_id,
+       custom_level.id,
+       level_count.question_count
+FROM (
+    VALUES
+        ('8e513031-979a-49f1-9479-6cbfc325c97b'::uuid, '81111111-1111-1111-1111-111111111111'::uuid, 4, 0, 0),
+        ('680a4f68-6203-41ea-bb53-d95152956b6d'::uuid, '82222222-2222-2222-2222-222222222222'::uuid, 0, 6, 0),
+        ('a2cde69d-3faf-470b-a50a-dcf29b3e09e4'::uuid, '84444444-4444-4444-4444-444444444444'::uuid, 4, 0, 0),
+        ('ec938999-eead-47c2-b2f6-02d68c7865b9'::uuid, '85555555-5555-5555-5555-555555555555'::uuid, 0, 4, 0),
+        ('6ad52dd8-32ea-4f6f-a0c7-8545601f8031'::uuid, '8854781e-efc8-4130-9451-3b0391a32419'::uuid, 0, 0, 2),
+        ('8ca0fdef-55cd-4dd8-bf61-5fbed2f1b8b4'::uuid, '84444444-4444-4444-4444-444444444444'::uuid, 3, 0, 0),
+        ('7ea27159-f06a-4cb8-93b4-17a0d98279ab'::uuid, '85555555-5555-5555-5555-555555555555'::uuid, 0, 4, 0),
+        ('4078d7a9-6062-4f92-b84d-158ad29d90ed'::uuid, '8854781e-efc8-4130-9451-3b0391a32419'::uuid, 0, 0, 1),
+        ('ec404589-3aeb-496c-ae2c-0d22ef6867de'::uuid, '86666666-6666-6666-6666-666666666666'::uuid, 1, 0, 0),
+        ('43f57a91-ce34-4d83-ba11-e7584bf57a88'::uuid, '87777777-7777-7777-7777-777777777777'::uuid, 0, 2, 0),
+        ('cb382f32-f447-4696-96fb-3c36be5b3c07'::uuid, '8854781e-efc8-4130-9451-3b0391a32419'::uuid, 0, 0, 1),
+        ('cfde2627-dd69-4418-b687-9c279208a73d'::uuid, '86666666-6666-6666-6666-666666666666'::uuid, 1, 0, 0),
+        ('af0ce644-f164-414c-96c9-c8d604e14824'::uuid, '87777777-7777-7777-7777-777777777777'::uuid, 0, 2, 0),
+        ('6c213801-20e3-4a98-9c1f-7f58729d7acb'::uuid, '8854781e-efc8-4130-9451-3b0391a32419'::uuid, 0, 0, 1)
+) AS legacy(exam_matrix_row_id, learning_outcome_id, understand_count, apply_count, apply_plus_count)
+CROSS JOIN LATERAL (
+    VALUES
+        ('Understand', legacy.understand_count),
+        ('Apply', legacy.apply_count),
+        ('Apply Plus', legacy.apply_plus_count)
+) AS level_count(level_name, question_count)
+JOIN custom_learning_levels custom_level
+  ON custom_level.course_id = (
+      SELECT learning_outcome.course_id
+      FROM learning_outcomes learning_outcome
+      WHERE learning_outcome.id = legacy.learning_outcome_id
+  )
+ AND custom_level.name = level_count.level_name
+WHERE level_count.question_count > 0;
 
 -- 12. Insert Quizzes (using valid hex '9...')
 INSERT INTO quizzes (id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, teacher_id, display)

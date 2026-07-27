@@ -9,17 +9,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Response DTO wrapping a list of exam matrices for a course.
- */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class ExamMatrixListResponse {
-
     private UUID courseId;
     private int total;
-    private List<ExamMatrixResponse> matrices;
+    private List<ExamMatrixSummaryResponse> matrices;
 }

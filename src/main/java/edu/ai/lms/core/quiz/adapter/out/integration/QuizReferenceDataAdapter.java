@@ -9,6 +9,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationContextPort;
 import edu.ai.lms.core.quiz.app.port.out.QuizGenerationContextView;
 import edu.ai.lms.core.quiz.app.port.out.ValidateLearningOutcomesPort;
 import edu.ai.lms.core.quiz.app.port.out.ValidateMaterialSelectionPort;
+import edu.ai.lms.core.quiz.app.exception.InvalidQuizGenerationRequestException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -44,8 +45,9 @@ class QuizReferenceDataAdapter implements LoadCourseMembershipPort, LoadQuizGene
 
     @Override
     public Optional<QuizGenerationContextView> load(UUID courseId, UUID examMatrixId) {
-        return generationContextApi.load(courseId, examMatrixId)
-                .map(context -> new QuizGenerationContextView(
+        try {
+            return generationContextApi.load(courseId, examMatrixId)
+                    .map(context -> new QuizGenerationContextView(
                         context.courseId(),
                         context.courseTitle(),
                         context.examMatrixId(),
@@ -61,6 +63,9 @@ class QuizReferenceDataAdapter implements LoadCourseMembershipPort, LoadQuizGene
                                         row.applyCount(),
                                         row.applyPlusCount()))
                                 .toList()));
+        } catch (IllegalStateException ex) {
+            throw new InvalidQuizGenerationRequestException(ex.getMessage());
+        }
     }
 
     @Override

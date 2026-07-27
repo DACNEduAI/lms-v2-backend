@@ -15,21 +15,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import edu.ai.lms.core.course.adapter.in.mapper.CreateExamMatrixCommandMapper;
-import edu.ai.lms.core.course.adapter.in.mapper.ModifyExamMatrixCommandMapper;
+import edu.ai.lms.core.course.adapter.in.mapper.BatchEditExamMatrixCommandMapper;
+import edu.ai.lms.core.course.adapter.in.request.BatchEditExamMatrixRequest;
 import edu.ai.lms.core.course.adapter.in.request.CreateExamMatrixRequest;
-import edu.ai.lms.core.course.adapter.in.request.ModifyExamMatrixRequest;
-import edu.ai.lms.core.course.adapter.in.response.CreateExamMatrixResponse;
+import edu.ai.lms.core.course.adapter.in.response.BatchEditExamMatrixResponse;
 import edu.ai.lms.core.course.adapter.in.response.DeleteExamMatrixResponse;
 import edu.ai.lms.core.course.adapter.in.response.ExamMatrixListResponse;
 import edu.ai.lms.core.course.adapter.in.response.ExamMatrixResponse;
-import edu.ai.lms.core.course.adapter.in.response.ModifyExamMatrixResponse;
-import edu.ai.lms.core.course.app.port.in.command.CreateExamMatrixCommand;
-import edu.ai.lms.core.course.app.port.in.command.ModifyExamMatrixCommand;
 import edu.ai.lms.core.course.app.port.in.usecase.GetAllExamMatricesUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.GetExamMatrixUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherCreateExamMatrixUseCase;
+import edu.ai.lms.core.course.app.port.in.usecase.TeacherBatchEditExamMatrixUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherDeleteExamMatrixUseCase;
-import edu.ai.lms.core.course.app.port.in.usecase.TeacherModifyExamMatrixUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -52,12 +49,12 @@ import lombok.RequiredArgsConstructor;
 public class ExamMatrixController {
 
     private final TeacherCreateExamMatrixUseCase teacherCreateExamMatrixUseCase;
-    private final TeacherModifyExamMatrixUseCase teacherModifyExamMatrixUseCase;
+    private final TeacherBatchEditExamMatrixUseCase teacherBatchEditExamMatrixUseCase;
     private final TeacherDeleteExamMatrixUseCase teacherDeleteExamMatrixUseCase;
     private final GetExamMatrixUseCase getExamMatrixUseCase;
     private final GetAllExamMatricesUseCase getAllExamMatricesUseCase;
     private final CreateExamMatrixCommandMapper createExamMatrixCommandMapper;
-    private final ModifyExamMatrixCommandMapper modifyExamMatrixCommandMapper;
+    private final BatchEditExamMatrixCommandMapper batchEditExamMatrixCommandMapper;
 
     // ── GET all ──────────────────────────────────────────────────────────────
 
@@ -70,7 +67,7 @@ public class ExamMatrixController {
                     - courseId: Target course ID.
 
                     Response fields:
-                    - courseId, total, matrices[]: list of exam matrix summaries with rows.
+                    - courseId, total, matrices[]: lightweight summaries with row and question totals.
                     """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Exam matrices retrieved successfully",
@@ -123,34 +120,35 @@ public class ExamMatrixController {
                     - title: Matrix title (required).
                     - description: Optional description.
                     - rows[]: List of exam matrix rows.
-                      - learningOutcomeId: CLO ID (required).
-                      - chapterId: Optional chapter scope.
+                      - chapterId: Chapter ID (required).
                       - topic: Optional topic label.
-                      - understandCount, applyCount, applyPlusCount: Question counts (>= 0).
                       - orderIndex: Display order.
+                      - learningOutcomeIds: One or more outcomes assigned to the chapter.
+                      - levelCounts: Custom learning-level IDs and non-negative question counts.
                     """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Exam matrix created successfully",
-                    content = @Content(schema = @Schema(implementation = CreateExamMatrixResponse.class))),
+                    content = @Content(schema = @Schema(implementation = ExamMatrixResponse.class))),
             @ApiResponse(responseCode = "400", description = "Validation failed"),
             @ApiResponse(responseCode = "404", description = "Course not found"),
             @ApiResponse(responseCode = "403", description = "Not authorized")
     })
     @PostMapping
-    public ResponseEntity<CreateExamMatrixResponse> createExamMatrix(
+    public ResponseEntity<ExamMatrixResponse> createExamMatrix(
             @Parameter(description = "Course ID") @PathVariable UUID courseId,
             @Valid @RequestBody CreateExamMatrixRequest request) {
-        CreateExamMatrixCommand command = createExamMatrixCommandMapper.toCommand(courseId, request);
-        CreateExamMatrixResponse response = teacherCreateExamMatrixUseCase.createExamMatrix(command);
+        var command = createExamMatrixCommandMapper.toCommand(courseId, request);
+        ExamMatrixResponse response = teacherCreateExamMatrixUseCase.createExamMatrix(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // ── PUT modify ────────────────────────────────────────────────────────────
+    // ── PUT transactional delta batch ─────────────────────────────────────────
 
     @Operation(
-            summary = "Update an existing exam matrix",
+            summary = "Apply a transactional batch of exam matrix changes",
             description = """
-                    Replaces the title, description and full row list of an existing exam matrix.
+                    Applies row creates, updates, and deletes in one transaction.
+                    Updated row child relationships are replaced by the submitted lists.
 
                     Path fields:
                     - courseId: Target course ID.
@@ -158,18 +156,18 @@ public class ExamMatrixController {
                     """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Exam matrix updated successfully",
-                    content = @Content(schema = @Schema(implementation = ModifyExamMatrixResponse.class))),
+                    content = @Content(schema = @Schema(implementation = BatchEditExamMatrixResponse.class))),
             @ApiResponse(responseCode = "400", description = "Validation failed"),
             @ApiResponse(responseCode = "404", description = "Course or exam matrix not found"),
             @ApiResponse(responseCode = "403", description = "Not authorized")
     })
-    @PutMapping("/{matrixId}")
-    public ResponseEntity<ModifyExamMatrixResponse> modifyExamMatrix(
+    @PutMapping("/{matrixId}/rows/batch")
+    public ResponseEntity<BatchEditExamMatrixResponse> batchEditExamMatrix(
             @Parameter(description = "Course ID") @PathVariable UUID courseId,
             @Parameter(description = "Exam matrix ID") @PathVariable UUID matrixId,
-            @Valid @RequestBody ModifyExamMatrixRequest request) {
-        ModifyExamMatrixCommand command = modifyExamMatrixCommandMapper.toCommand(courseId, matrixId, request);
-        ModifyExamMatrixResponse response = teacherModifyExamMatrixUseCase.modifyExamMatrix(command);
+            @Valid @RequestBody BatchEditExamMatrixRequest request) {
+        var command = batchEditExamMatrixCommandMapper.toCommand(courseId, matrixId, request);
+        BatchEditExamMatrixResponse response = teacherBatchEditExamMatrixUseCase.batchEdit(command);
         return ResponseEntity.ok(response);
     }
 

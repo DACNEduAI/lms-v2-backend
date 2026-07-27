@@ -33,8 +33,12 @@ DROP TABLE IF EXISTS
     ai_chat_sessions,
     notifications,
     user_chat_messages,
-    exam_matrices,
-    exam_matrix_rows
+    exam_matrix_row_learning_level_counts,
+    exam_matrix_row_learning_outcomes,
+    custom_learning_level_learning_outcomes,
+    custom_learning_levels,
+    exam_matrix_rows,
+    exam_matrices
     CASCADE;
 
 -- Below is the actual schema of the code
@@ -236,18 +240,74 @@ CREATE TABLE IF NOT EXISTS exam_matrix_rows
 (
     id                  uuid              not null default gen_random_uuid(),
     matrix_id           uuid              not null,
-    learning_outcome_id uuid              not null,
-    chapter_id          uuid              null,
+    chapter_id          uuid              not null,
     topic               character varying null,
-    understand_count    integer           not null default 0,
-    apply_count         integer           not null default 0,
-    apply_plus_count    integer           not null default 0,
     order_index         integer           not null,
     constraint exam_matrix_rows_pkey primary key (id),
-    constraint exam_matrix_rows_chapter_id_fkey foreign KEY (chapter_id) references chapters (chapter_id) on delete set null,
-    constraint exam_matrix_rows_learning_outcome_id_fkey foreign KEY (learning_outcome_id) references learning_outcomes (id) on delete CASCADE,
+    constraint exam_matrix_rows_chapter_id_fkey foreign KEY (chapter_id) references chapters (chapter_id) on delete CASCADE,
     constraint exam_matrix_rows_matrix_id_fkey foreign KEY (matrix_id) references exam_matrices (id) on delete CASCADE
 ) TABLESPACE pg_default;
+
+-- A matrix row can assess multiple learning outcomes. Learning outcomes can be
+-- reused by rows in the same or different exam matrices.
+CREATE TABLE IF NOT EXISTS exam_matrix_row_learning_outcomes
+(
+    exam_matrix_row_id UUID NOT NULL,
+    learning_outcome_id UUID NOT NULL,
+    constraint exam_matrix_row_learning_outcomes_pkey primary key (exam_matrix_row_id, learning_outcome_id),
+    constraint exam_matrix_row_learning_outcomes_row_id_fkey
+        foreign key (exam_matrix_row_id) references exam_matrix_rows (id) on delete CASCADE,
+    constraint exam_matrix_row_learning_outcomes_learning_outcome_id_fkey
+        foreign key (learning_outcome_id) references learning_outcomes (id) on delete CASCADE
+);
+
+-- Custom learning levels belong to a course and can be mapped to multiple
+-- learning outcomes through custom_learning_level_learning_outcomes.
+CREATE TABLE IF NOT EXISTS custom_learning_levels
+(
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id           UUID         NOT NULL,
+    code                VARCHAR(255) NOT NULL CHECK (btrim(code) <> ''),
+    name                VARCHAR(255) NOT NULL,
+    description         TEXT,
+    sort_order          INTEGER      NOT NULL DEFAULT 1,
+    created_at          TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
+    constraint custom_learning_levels_course_id_fkey
+        foreign key (course_id) references courses (id) on delete CASCADE,
+    constraint custom_learning_levels_course_name_key unique (course_id, name)
+);
+
+CREATE UNIQUE INDEX custom_learning_levels_course_code_key
+    ON custom_learning_levels (course_id, lower(btrim(code)));
+
+CREATE TABLE IF NOT EXISTS custom_learning_level_learning_outcomes
+(
+    custom_learning_level_id UUID NOT NULL,
+    learning_outcome_id      UUID NOT NULL,
+    constraint custom_learning_level_learning_outcomes_pkey
+        primary key (custom_learning_level_id, learning_outcome_id),
+    constraint custom_learning_level_learning_outcomes_level_id_fkey
+        foreign key (custom_learning_level_id) references custom_learning_levels (id) on delete CASCADE,
+    constraint custom_learning_level_learning_outcomes_outcome_id_fkey
+        foreign key (learning_outcome_id) references learning_outcomes (id) on delete CASCADE
+);
+
+-- Store one question count for each custom learning level used by a matrix row.
+-- The API requires the level to share at least one mapped learning outcome
+-- with the row.
+CREATE TABLE IF NOT EXISTS exam_matrix_row_learning_level_counts
+(
+    exam_matrix_row_id       UUID    NOT NULL,
+    custom_learning_level_id UUID    NOT NULL,
+    question_count           INTEGER NOT NULL DEFAULT 0 CHECK (question_count >= 0),
+    constraint exam_matrix_row_learning_level_counts_pkey
+        primary key (exam_matrix_row_id, custom_learning_level_id),
+    constraint exam_matrix_row_learning_level_counts_row_id_fkey
+        foreign key (exam_matrix_row_id) references exam_matrix_rows (id) on delete CASCADE,
+    constraint exam_matrix_row_learning_level_counts_level_id_fkey
+        foreign key (custom_learning_level_id) references custom_learning_levels (id) on delete CASCADE
+);
 
 -- Enrollments table
 CREATE TABLE IF NOT EXISTS enrollments
