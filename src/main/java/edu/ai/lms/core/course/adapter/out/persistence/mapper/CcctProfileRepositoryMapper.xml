@@ -55,6 +55,31 @@
     WHERE course_id = #{courseId} AND id = #{profileId}
   </select>
 
+  <select id="findPublishedByCourseId" resultMap="CcctProfileResultMap">
+    SELECT id, course_id, name, template_title, status, version, last_mode,
+           markdown_content, created_by, published_at, created_at, updated_at
+    FROM edu.ccct_profiles
+    WHERE course_id = #{courseId} AND status = 'PUBLISHED'
+  </select>
+
+  <select id="findAllByCourseId" resultMap="CcctProfileResultMap">
+    SELECT id, course_id, name, template_title, status, version, last_mode,
+           markdown_content, created_by, published_at, created_at, updated_at
+    FROM edu.ccct_profiles
+    WHERE course_id = #{courseId}
+    ORDER BY updated_at DESC, id
+  </select>
+
+  <select id="existsByCourseIdAndNameExcludingId" resultType="boolean">
+    SELECT EXISTS (
+      SELECT 1
+      FROM edu.ccct_profiles
+      WHERE course_id = #{courseId}
+        AND lower(btrim(name)) = lower(btrim(#{name}))
+        AND (#{excludedProfileId}::uuid IS NULL OR id != #{excludedProfileId})
+    )
+  </select>
+
   <select id="findChaptersByProfileId" resultMap="CcctChapterResultMap">
     SELECT id, profile_id, course_chapter_id, title, order_index
     FROM edu.ccct_chapters
@@ -153,4 +178,25 @@
       AND id = #{profileId}
       AND status = 'DRAFT'
   </delete>
+
+  <update id="archivePublished">
+    UPDATE edu.ccct_profiles
+    SET status = 'ARCHIVED',
+        updated_at = NOW()
+    WHERE course_id = #{courseId}
+      AND status = 'PUBLISHED'
+      AND id = #{publishedProfileId}
+  </update>
+
+  <update id="publishDraft">
+    UPDATE edu.ccct_profiles
+    SET status = 'PUBLISHED',
+        published_at = #{publishedAt},
+        version = version + 1,
+        updated_at = NOW()
+    WHERE course_id = #{courseId}
+      AND id = #{profileId}
+      AND status = 'DRAFT'
+      AND version = #{expectedVersion}
+  </update>
 </mapper>

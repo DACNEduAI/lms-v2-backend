@@ -58,9 +58,44 @@ class CcctProfilePersistenceAdapter
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<CcctProfile> findPublishedByCourseId(UUID courseId) {
+        return repository.findPublishedByCourseId(courseId).map(this::loadTree);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CcctProfile> findAllByCourseId(UUID courseId) {
+        return repository.findAllByCourseId(courseId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByCourseIdAndNameExcludingId(
+            UUID courseId,
+            String name,
+            UUID excludedProfileId) {
+        return repository.existsByCourseIdAndNameExcludingId(courseId, name, excludedProfileId);
+    }
+
+    @Override
     @Transactional
     public boolean deleteDraft(UUID courseId, UUID profileId) {
         return repository.deleteDraft(courseId, profileId) == 1;
+    }
+
+    @Override
+    public boolean archivePublished(UUID courseId, UUID publishedProfileId) {
+        return repository.archivePublished(courseId, publishedProfileId) == 1;
+    }
+
+    @Override
+    public boolean publishDraft(
+            UUID courseId,
+            UUID profileId,
+            long expectedVersion,
+            java.time.LocalDateTime publishedAt) {
+        return repository.publishDraft(courseId, profileId, expectedVersion, publishedAt) == 1;
     }
 
     private void prepareNewProfile(CcctProfile profile) {
