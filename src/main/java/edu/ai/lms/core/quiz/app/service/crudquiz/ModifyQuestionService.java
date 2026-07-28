@@ -1,6 +1,5 @@
-package edu.ai.lms.core.quiz.app.service;
+package edu.ai.lms.core.quiz.app.service.crudquiz;
 
-import java.time.LocalDateTime;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -13,38 +12,36 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import edu.ai.lms.common.api.Roles;
-import edu.ai.lms.common.event.SystemActivityEvent;
 import edu.ai.lms.core.quiz.app.domain.CurrentActor;
-import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuestionResponse;
+import edu.ai.lms.core.quiz.adapter.in.http.response.ModifyQuestionResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
-import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
-import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;
+import edu.ai.lms.core.quiz.app.exception.QuestionNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
-import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
-import edu.ai.lms.core.quiz.app.port.in.command.CreateQuestionCommand;
-import edu.ai.lms.core.quiz.app.port.in.usecase.CreateQuestionUseCase;
-import edu.ai.lms.core.quiz.app.port.out.LoadQuestionImagePublicUrlPort;
+import edu.ai.lms.core.quiz.app.port.in.command.ModifyQuestionCommand;
+import edu.ai.lms.core.quiz.app.port.in.usecase.ModifyQuestionUseCase;
+import edu.ai.lms.core.quiz.app.port.out.DeleteAnswerPort;
+import edu.ai.lms.core.quiz.app.port.out.LoadAnswerPort;
+import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
-import edu.ai.lms.core.quiz.app.port.out.UploadQuestionImagePort;
-import edu.ai.lms.core.quiz.app.port.out.LoadCourseLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionLearningOutcomePort;
+import edu.ai.lms.core.quiz.app.port.out.UploadQuestionImagePort;
+import edu.ai.lms.core.quiz.app.port.out.LoadQuestionImagePublicUrlPort;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class CreateQuestionService implements CreateQuestionUseCase {
+public class ModifyQuestionService implements ModifyQuestionUseCase {
 
     private static final Pattern IMG_TAG_SRC_PATTERN = Pattern.compile(
             "(<img\\b[^>]*\\bsrc\\s*=\\s*['\"])([^'\">]+)(['\"][^>]*>)",
@@ -52,21 +49,18 @@ public class CreateQuestionService implements CreateQuestionUseCase {
 
     private final SaveQuestionPort saveQuestionPort;
     private final SaveAnswerPort saveAnswerPort;
+    private final LoadAnswerPort loadAnswerPort;
+    private final DeleteAnswerPort deleteAnswerPort;
+    private final LoadQuestionPort loadQuestionPort;
     private final LoadQuizPort loadQuizPort;
     private final LoadSignedInUserPort loadSignedInUserPort;
-    private final ApplicationEventPublisher eventPublisher;
+    private final SaveQuestionLearningOutcomePort saveQuestionLearningOutcomePort;
     private final UploadQuestionImagePort uploadQuestionImagePort;
     private final LoadQuestionImagePublicUrlPort loadQuestionImagePublicUrlPort;
-    private final LoadCourseLearningOutcomePort loadCourseLearningOutcomePort;
-    private final SaveQuestionLearningOutcomePort saveQuestionLearningOutcomePort;
 
     @Override
     @Transactional
-    public CreateQuestionResponse createQuestion(CreateQuestionCommand command) {
-        if (command.learningOutcomeId() == null) {
-            throw new MissingLearningOutcomeException("Question must belong to exactly one learning outcome");
-        }
-
+    public ModifyQuestionResponse modifyQuestion(ModifyQuestionCommand command) {
         CurrentActor user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
@@ -76,29 +70,40 @@ public class CreateQuestionService implements CreateQuestionUseCase {
         // Verify user is the creator of the quiz
         verifyQuizOwnership(user, quiz);
 
-        List<UUID> validOutcomeIds = loadCourseLearningOutcomePort
-                .findExistingLearningOutcomeIdsByCourseIdAndIds(quiz.getCourseId(), List.of(command.learningOutcomeId()));
-        if (validOutcomeIds.isEmpty() || !validOutcomeIds.contains(command.learningOutcomeId())) {
-            throw new InvalidLearningOutcomeException("The learning outcome does not belong to this course");
+        Question existingQuestion = loadQuestionPort.getByIdWithoutAnswers(command.questionId())
+                .orElseThrow(() -> new QuestionNotFoundException("Question not found with id: " + command.questionId()));
+
+        if (!existingQuestion.getQuizId().equals(command.quizId())) {
+            throw new IllegalArgumentException("Question does not belong to this quiz");
         }
 
-        // set quizId in question (to know that which quiz this question belongs to)
-        Question question = command.question();
-        question.setQuizId(quiz.getId());
+        Question updatedQuestion = command.question();
+        updatedQuestion.setId(existingQuestion.getId());
+        updatedQuestion.setQuizId(existingQuestion.getQuizId());
 
-        processQuestionImages(question, command.quizId(), command.images());
+        // Xử lý ảnh nếu có
+        processQuestionImages(updatedQuestion, command.quizId(), command.images());
 
-        // save question to database
-        Question savedQuestion = saveQuestionPort.save(question);
-        List<CreateQuestionResponse.AnswerSummary> answerSummaries = new ArrayList<>();
+        Question savedQuestion = saveQuestionPort.save(updatedQuestion);
 
-        // return the question as a response
-        if (question.getAnswers() != null && !question.getAnswers().isEmpty()) {
-            answerSummaries = question.getAnswers().stream()
+        // --- Cập nhật Learning Outcome ---
+        if (command.learningOutcomeId() != null) {
+            saveQuestionLearningOutcomePort.removeLearningOutcomes(savedQuestion.getId(), null);
+            saveQuestionLearningOutcomePort.addLearningOutcomes(savedQuestion.getId(), List.of(command.learningOutcomeId()));
+        }
+
+        List<Answer> existingAnswers = loadAnswerPort.getByQuestionId(existingQuestion.getId());
+        List<ModifyQuestionResponse.AnswerSummary> answerSummaries = new ArrayList<>();
+
+        if (updatedQuestion.getAnswers() != null) {
+            existingAnswers.forEach(answer ->
+                    deleteAnswerPort.deleteByKey(existingQuestion.getId(), answer.getAnswerNumber()));
+
+            answerSummaries = updatedQuestion.getAnswers().stream()
                     .map(answer -> {
                         answer.setQuestionId(savedQuestion.getId());
                         Answer savedAnswer = saveAnswerPort.save(answer);
-                        return CreateQuestionResponse.AnswerSummary.builder()
+                        return ModifyQuestionResponse.AnswerSummary.builder()
                                 .answerNumber(savedAnswer.getAnswerNumber())
                                 .content(savedAnswer.getContent())
                                 .correct(savedAnswer.isCorrect())
@@ -106,28 +111,24 @@ public class CreateQuestionService implements CreateQuestionUseCase {
                                 .build();
                     })
                     .collect(Collectors.toList());
+        } else {
+            answerSummaries = existingAnswers.stream()
+                    .map(answer -> ModifyQuestionResponse.AnswerSummary.builder()
+                            .answerNumber(answer.getAnswerNumber())
+                            .content(answer.getContent())
+                            .correct(answer.isCorrect())
+                            .explanation(answer.getExplanation())
+                            .build())
+                    .collect(Collectors.toList());
         }
 
-        saveQuestionLearningOutcomePort.addLearningOutcomes(savedQuestion.getId(), List.of(command.learningOutcomeId()));
-
-        // Publish activity event
-        eventPublisher.publishEvent(SystemActivityEvent.builder()
-                .userId(user.getId())
-                .actionType("CREATE")
-                .entityType("QUESTION")
-                .entityId(savedQuestion.getId())
-                .entityName("Câu hỏi trong " + quiz.getQuizTitle())
-                .description("Giảng viên vừa thêm câu hỏi mới vào bài kiểm tra: " + quiz.getQuizTitle())
-                .timestamp(LocalDateTime.now())
-                .build());
-
-        return CreateQuestionResponse.builder()
+        return ModifyQuestionResponse.builder()
                 .questionId(savedQuestion.getId())
                 .content(savedQuestion.getContent())
                 .type(savedQuestion.getType() != null ? savedQuestion.getType().name() : null)
                 .quizId(savedQuestion.getQuizId())
                 .answers(answerSummaries)
-                .createdAt(savedQuestion.getCreatedAt())
+                .updatedAt(savedQuestion.getUpdatedAt())
                 .build();
     }
 
@@ -144,7 +145,6 @@ public class CreateQuestionService implements CreateQuestionUseCase {
             return;
         }
 
-        // Step 1: upload all images sequentially
         for (ImageUploadCandidate candidate : candidatesByImageName.values()) {
             try {
                 uploadQuestionImagePort.uploadQuestionImage(
@@ -157,7 +157,6 @@ public class CreateQuestionService implements CreateQuestionUseCase {
             }
         }
 
-        // Step 2: resolve public links after uploads are completed
         Map<String, String> publicUrlByImageName = new LinkedHashMap<>();
         List<Question.Image> uploadedImages = new ArrayList<>();
 
@@ -194,7 +193,7 @@ public class CreateQuestionService implements CreateQuestionUseCase {
 
             MultipartFile matchingFile = filesByName.get(imageName);
             if (matchingFile == null) {
-                throw new IllegalArgumentException("Missing uploaded file for question image: " + imageName);
+                continue; // Trong trường hợp edit, ảnh có thể đã tồn tại trên server, không cần upload lại
             }
 
             candidatesByImageName.put(imageName, new ImageUploadCandidate(
@@ -304,7 +303,7 @@ public class CreateQuestionService implements CreateQuestionUseCase {
                 || (user.getRole() == Roles.STUDENT && user.getId().equals(quiz.getStudentId()));
 
         if (!isOwner) {
-            throw new IllegalArgumentException("User is not authorized to add questions to this quiz");
+            throw new IllegalArgumentException("User is not authorized to modify questions in this quiz");
         }
     }
 

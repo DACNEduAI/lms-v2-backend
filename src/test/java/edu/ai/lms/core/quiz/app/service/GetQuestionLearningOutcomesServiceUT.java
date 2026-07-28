@@ -10,6 +10,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadQuestionLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.quiz.app.service.crudquiz.GetQuestionLearningOutcomesService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

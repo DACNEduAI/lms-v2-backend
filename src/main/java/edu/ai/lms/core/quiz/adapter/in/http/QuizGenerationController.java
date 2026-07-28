@@ -21,7 +21,7 @@ import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusRespons
 import edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand;
 import edu.ai.lms.core.quiz.app.port.in.usecase.GenerateQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.GetQuizGenerationJobUseCase;
-import edu.ai.lms.core.quiz.app.service.SseQuizGenerationService;
+import edu.ai.lms.core.quiz.app.service.genquiz.SseQuizGenerationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

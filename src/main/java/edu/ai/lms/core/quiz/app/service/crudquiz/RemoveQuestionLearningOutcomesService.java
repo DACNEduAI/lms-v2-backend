@@ -1,4 +1,4 @@
-package edu.ai.lms.core.quiz.app.service;
+package edu.ai.lms.core.quiz.app.service.crudquiz;
 
 import edu.ai.lms.common.api.Roles;
 import edu.ai.lms.core.quiz.app.domain.CurrentActor;

@@ -1,4 +1,4 @@
-package edu.ai.lms.core.quiz.app.service;
+package edu.ai.lms.core.quiz.app.service.genquiz;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -85,6 +85,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         validateTiming(command);
         List<Map<String, Object>> rows = context.rows().stream().map(this::toRowSnapshot).toList();
         Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("snapshotVersion", 2);
         snapshot.put("courseId", command.courseId());
         snapshot.put("courseTitle", context.courseTitle());
         snapshot.put("examMatrixId", context.examMatrixId());
@@ -187,13 +188,27 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
     private Map<String, Object> toRowSnapshot(QuizGenerationContextView.Row row) {
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("rowId", row.rowId());
-        snapshot.put("learningOutcomeId", row.learningOutcomeId());
-        snapshot.put("clo", row.learningOutcomeCode());
+        snapshot.put("chapterId", row.chapterId());
         snapshot.put("chapter", row.chapterTitle());
         snapshot.put("topic", row.topic());
-        snapshot.put("hieu", row.understandCount());
-        snapshot.put("van_dung", row.applyCount());
-        snapshot.put("vdc", row.applyPlusCount());
+        snapshot.put("learningOutcomes", row.learningOutcomes().stream().map(outcome -> {
+            Map<String, Object> value = new LinkedHashMap<>();
+            value.put("id", outcome.id());
+            value.put("code", outcome.code());
+            value.put("description", outcome.description());
+            return value;
+        }).toList());
+        snapshot.put("levelCounts", row.levelCounts().stream().map(level -> {
+            Map<String, Object> value = new LinkedHashMap<>();
+            value.put("customLearningLevelId", level.customLearningLevelId());
+            value.put("code", level.code());
+            value.put("name", level.name());
+            value.put("description", level.description());
+            value.put("sortOrder", level.sortOrder());
+            value.put("learningOutcomeIds", level.learningOutcomeIds());
+            value.put("questionCount", level.questionCount());
+            return value;
+        }).toList());
         return snapshot;
     }
 

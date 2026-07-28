@@ -1,4 +1,4 @@
-package edu.ai.lms.core.quiz.app.service;
+package edu.ai.lms.core.quiz.app.service.crudquiz;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

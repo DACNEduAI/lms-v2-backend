@@ -16,13 +16,36 @@ public record QuizGenerationContext(
 
     public record QuizGenerationRow(
             UUID rowId,
-            UUID learningOutcomeId,
-            String learningOutcomeCode,
+            UUID chapterId,
             String chapterTitle,
             String topic,
-            int understandCount,
-            int applyCount,
-            int applyPlusCount
+            List<LearningOutcomeRequirement> learningOutcomes,
+            List<LearningLevelRequirement> levelCounts
     ) {
+        public QuizGenerationRow {
+            learningOutcomes = learningOutcomes == null ? List.of() : List.copyOf(learningOutcomes);
+            levelCounts = levelCounts == null ? List.of() : List.copyOf(levelCounts);
+        }
+    }
+
+    public record LearningOutcomeRequirement(
+            UUID id,
+            String code,
+            String description
+    ) {
+    }
+
+    public record LearningLevelRequirement(
+            UUID customLearningLevelId,
+            String code,
+            String name,
+            String description,
+            int sortOrder,
+            List<UUID> learningOutcomeIds,
+            int questionCount
+    ) {
+        public LearningLevelRequirement {
+            learningOutcomeIds = learningOutcomeIds == null ? List.of() : List.copyOf(learningOutcomeIds);
+        }
     }
 }

@@ -3,7 +3,7 @@ package edu.ai.lms.core.quiz.adapter.in.http;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.ai.lms.core.quiz.adapter.in.http.request.QuizWebhookRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusResponse;
-import edu.ai.lms.core.quiz.app.service.QuizWebhookProcessingService;
+import edu.ai.lms.core.quiz.app.service.genquiz.QuizWebhookProcessingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;

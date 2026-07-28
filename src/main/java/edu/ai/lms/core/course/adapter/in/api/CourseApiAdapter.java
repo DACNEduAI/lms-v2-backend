@@ -72,30 +72,39 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
                     "MATRIX_CONFIGURATION_INCOMPLETE: configure custom learning levels and row outcomes before generation");
         }
         List<QuizGenerationContext.QuizGenerationRow> rows = matrix.getRows().stream()
-                .flatMap(row -> {
-                    boolean unsupported = row.getLevelCounts().stream()
-                            .anyMatch(count -> count.getQuestionCount() > 0
-                                    && !Set.of("Understand", "Apply", "Apply Plus").contains(count.getName()));
-                    if (unsupported) {
-                        throw new IllegalStateException(
-                                "Quiz generation does not yet support non-legacy custom learning levels");
-                    }
+                .map(row -> {
                     String chapterTitle = chapterPort.findByKey(courseId, row.getChapterId())
                             .map(chapter -> chapter.getTitle())
                             .orElseThrow(() -> new IllegalStateException("Matrix chapter is invalid"));
-                    return row.getLearningOutcomeIds().stream().map(outcomeId -> {
-                        LearningOutcome outcome = learningOutcomePort.findById(outcomeId)
-                                .filter(value -> courseId.equals(value.getCourseId()))
-                                .orElseThrow(() -> new IllegalStateException("Matrix learning outcome is invalid"));
-                        int understand = legacyCount(row, outcomeId, "Understand");
-                        int apply = legacyCount(row, outcomeId, "Apply");
-                        int applyPlus = legacyCount(row, outcomeId, "Apply Plus");
-                        return new QuizGenerationContext.QuizGenerationRow(
-                                row.getId(), outcome.getId(), formatLearningOutcomeCode(courseId, outcome),
-                                chapterTitle == null ? "" : chapterTitle,
-                                row.getTopic() == null ? "" : row.getTopic(),
-                                understand, apply, applyPlus);
-                    });
+                    List<QuizGenerationContext.LearningOutcomeRequirement> outcomes =
+                            row.getLearningOutcomeIds().stream().map(outcomeId -> {
+                                LearningOutcome outcome = learningOutcomePort.findById(outcomeId)
+                                        .filter(value -> courseId.equals(value.getCourseId()))
+                                        .orElseThrow(() ->
+                                                new IllegalStateException("Matrix learning outcome is invalid"));
+                                return new QuizGenerationContext.LearningOutcomeRequirement(
+                                        outcome.getId(),
+                                        formatLearningOutcomeCode(courseId, outcome),
+                                        outcome.getDescription());
+                            }).toList();
+                    List<QuizGenerationContext.LearningLevelRequirement> levelCounts =
+                            row.getLevelCounts().stream()
+                                    .filter(edu.ai.lms.core.course.app.domain.ExamMatrixLevelCount::isActive)
+                                    .filter(count -> count.getQuestionCount() > 0)
+                                    .map(count -> new QuizGenerationContext.LearningLevelRequirement(
+                                            count.getCustomLearningLevelId(),
+                                            count.getCode(),
+                                            count.getName(),
+                                            count.getDescription(),
+                                            count.getSortOrder(),
+                                            List.copyOf(count.getLearningOutcomeIds()),
+                                            count.getQuestionCount()))
+                                    .toList();
+                    return new QuizGenerationContext.QuizGenerationRow(
+                            row.getId(), row.getChapterId(),
+                            chapterTitle == null ? "" : chapterTitle,
+                            row.getTopic() == null ? "" : row.getTopic(),
+                            outcomes, levelCounts);
                 })
                 .toList();
         return Optional.of(new QuizGenerationContext(
@@ -104,15 +113,6 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
                 matrix.getId(),
                 matrix.getTitle(),
                 rows));
-    }
-
-    private int legacyCount(edu.ai.lms.core.course.app.domain.ExamMatrixRow row,
-                            UUID learningOutcomeId, String levelName) {
-        return row.getLevelCounts().stream()
-                .filter(count -> count.getLearningOutcomeIds().contains(learningOutcomeId))
-                .filter(count -> levelName.equals(count.getName()))
-                .mapToInt(value -> value.getQuestionCount())
-                .sum();
     }
 
     @Override

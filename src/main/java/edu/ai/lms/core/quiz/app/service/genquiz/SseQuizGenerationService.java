@@ -1,4 +1,4 @@
-package edu.ai.lms.core.quiz.app.service;
+package edu.ai.lms.core.quiz.app.service.genquiz;
 
 import java.io.IOException;
 import java.util.Map;

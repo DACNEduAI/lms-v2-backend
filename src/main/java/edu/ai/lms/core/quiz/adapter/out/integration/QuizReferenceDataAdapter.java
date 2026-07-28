@@ -55,13 +55,23 @@ class QuizReferenceDataAdapter implements LoadCourseMembershipPort, LoadQuizGene
                         context.rows().stream()
                                 .map(row -> new QuizGenerationContextView.Row(
                                         row.rowId(),
-                                        row.learningOutcomeId(),
-                                        row.learningOutcomeCode(),
+                                        row.chapterId(),
                                         row.chapterTitle(),
                                         row.topic(),
-                                        row.understandCount(),
-                                        row.applyCount(),
-                                        row.applyPlusCount()))
+                                        row.learningOutcomes().stream()
+                                                .map(outcome -> new QuizGenerationContextView.LearningOutcome(
+                                                        outcome.id(), outcome.code(), outcome.description()))
+                                                .toList(),
+                                        row.levelCounts().stream()
+                                                .map(level -> new QuizGenerationContextView.LearningLevel(
+                                                        level.customLearningLevelId(),
+                                                        level.code(),
+                                                        level.name(),
+                                                        level.description(),
+                                                        level.sortOrder(),
+                                                        level.learningOutcomeIds(),
+                                                        level.questionCount()))
+                                                .toList()))
                                 .toList()));
         } catch (IllegalStateException ex) {
             throw new InvalidQuizGenerationRequestException(ex.getMessage());

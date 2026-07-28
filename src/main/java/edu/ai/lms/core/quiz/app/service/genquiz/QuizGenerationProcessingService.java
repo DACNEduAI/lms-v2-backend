@@ -1,4 +1,4 @@
-package edu.ai.lms.core.quiz.app.service;
+package edu.ai.lms.core.quiz.app.service.genquiz;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -71,12 +71,13 @@ public class QuizGenerationProcessingService {
             JsonNode snapshot = objectMapper.readTree(job.getRequestSnapshot());
             List<UUID> materialIds = new ArrayList<>();
             snapshot.path("selectedMaterials").forEach(node -> materialIds.add(UUID.fromString(node.path("materialId").asText())));
-            AiExamMatrix aiExamMatrix = toAiExamMatrix(snapshot.path("examMatrix"));
+            AiExamMatrix aiExamMatrix = toAiExamMatrixFromSnapshot(snapshot);
             AiGenerationRequest request = new AiGenerationRequest(
-                    job.getId(), job.getCourseId(), snapshot.path("courseTitle").asText(), job.getQuizTitle(),
+                    job.getId(), aiExamMatrix.contractVersion(), job.getCourseId(),
+                    snapshot.path("courseTitle").asText(), job.getQuizTitle(),
                     aiExamMatrix.rows(), aiExamMatrix.learningOutcomeIds(), materialIds, job.getPrompt(),
                     Boolean.TRUE.equals(job.getStrictMode()), job.getCodeRunnerPolicy(),
-                    callbackUrl(), webhookSecret);
+                    job.getIdempotencyKey(), callbackUrl(), webhookSecret);
 
             WebClient.RequestBodySpec call = aiWebClient.post().uri("/quiz-gen/generate")
                     .contentType(MediaType.APPLICATION_JSON);
@@ -159,14 +160,29 @@ public class QuizGenerationProcessingService {
             row.put("vdc", source.path("vdc").asInt());
             learningOutcomeIds.add(UUID.fromString(source.path("learningOutcomeId").asText()));
         });
-        return new AiExamMatrix(rows, List.copyOf(learningOutcomeIds));
+        return new AiExamMatrix(1, rows, List.copyOf(learningOutcomeIds));
     }
 
-    record AiExamMatrix(JsonNode rows, List<UUID> learningOutcomeIds) {
+    AiExamMatrix toAiExamMatrixFromSnapshot(JsonNode snapshot) {
+        if (snapshot.path("snapshotVersion").asInt(1) < 2) {
+            return toAiExamMatrix(snapshot.path("examMatrix"));
+        }
+        ArrayNode rows = objectMapper.createArrayNode();
+        java.util.LinkedHashSet<UUID> learningOutcomeIds = new java.util.LinkedHashSet<>();
+        snapshot.path("examMatrix").forEach(source -> {
+            rows.add(source.deepCopy());
+            source.path("learningOutcomes").forEach(outcome ->
+                    learningOutcomeIds.add(UUID.fromString(outcome.path("id").asText())));
+        });
+        return new AiExamMatrix(2, rows, List.copyOf(learningOutcomeIds));
+    }
+
+    record AiExamMatrix(int contractVersion, JsonNode rows, List<UUID> learningOutcomeIds) {
     }
 
     public record AiGenerationRequest(
             UUID jobId,
+            int contractVersion,
             @JsonProperty("course_id") UUID courseId,
             String courseTitle,
             String quizTitle,
@@ -176,6 +192,7 @@ public class QuizGenerationProcessingService {
             String teacherInstruction,
             boolean strictMode,
             String codeRunnerPolicy,
+            String idempotencyKey,
             String webhookUrl,
             String webhookSecret) {
     }

@@ -56,6 +56,10 @@ public class QuizWebhookRequest {
 
         private String originalType;
 
+        private UUID matrixRowId;
+
+        private UUID customLearningLevelId;
+
         @Builder.Default
         private List<UUID> learningOutcomeIds = new ArrayList<>();
 

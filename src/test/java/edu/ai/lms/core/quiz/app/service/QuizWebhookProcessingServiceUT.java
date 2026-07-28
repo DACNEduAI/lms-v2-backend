@@ -3,6 +3,7 @@ package edu.ai.lms.core.quiz.app.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.ai.lms.core.quiz.adapter.in.http.request.QuizWebhookRequest;
 import edu.ai.lms.core.quiz.app.domain.Question;
+import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
@@ -14,6 +15,8 @@ import edu.ai.lms.core.quiz.app.port.out.SaveQuizLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.ScheduleQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.ValidateLearningOutcomesPort;
+import edu.ai.lms.core.quiz.app.service.genquiz.QuizWebhookProcessingService;
+import edu.ai.lms.core.quiz.app.service.genquiz.SseQuizGenerationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 class QuizWebhookProcessingServiceUT {
@@ -90,5 +94,122 @@ class QuizWebhookProcessingServiceUT {
 
         assertThrows(IllegalArgumentException.class, () -> service.handleWebhook(request));
         verify(saveQuizPort, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void acceptsMixedTypesAndAllApplicableOutcomesForDynamicRequirement() {
+        UUID jobId = UUID.randomUUID();
+        UUID courseId = UUID.randomUUID();
+        UUID rowId = UUID.randomUUID();
+        UUID levelId = UUID.randomUUID();
+        UUID firstOutcomeId = UUID.randomUUID();
+        UUID secondOutcomeId = UUID.randomUUID();
+        String snapshot = """
+                {
+                  "snapshotVersion":2,
+                  "questionCount":2,
+                  "examMatrix":[{
+                    "rowId":"%s",
+                    "levelCounts":[{
+                      "customLearningLevelId":"%s",
+                      "learningOutcomeIds":["%s","%s"],
+                      "questionCount":2
+                    }]
+                  }]
+                }
+                """.formatted(rowId, levelId, firstOutcomeId, secondOutcomeId);
+        QuizGenerationJob job = QuizGenerationJob.builder().id(jobId).courseId(courseId)
+                .status(QuizGenerationStatus.PROCESSING).requestSnapshot(snapshot).build();
+        when(loadJobPort.getByIdForUpdate(jobId)).thenReturn(Optional.of(job));
+        when(saveQuizPort.save(any())).thenAnswer(invocation -> {
+            Quiz quiz = invocation.getArgument(0);
+            quiz.setId(UUID.randomUUID());
+            return quiz;
+        });
+        when(saveQuestionPort.save(any())).thenAnswer(invocation -> {
+            Question question = invocation.getArgument(0);
+            question.setId(UUID.randomUUID());
+            return question;
+        });
+        when(learningOutcomesPort.allBelongToCourse(
+                org.mockito.ArgumentMatchers.eq(courseId), any())).thenReturn(true);
+        when(saveJobPort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        QuizWebhookRequest.QuestionPayload multipleChoice =
+                dynamicQuestion(rowId, levelId, firstOutcomeId, secondOutcomeId)
+                        .type(Question.QuestionType.MULTIPLE_CHOICE)
+                        .originalType("MULTIPLE_CHOICE")
+                        .answers(List.of(
+                                QuizWebhookRequest.AnswerPayload.builder()
+                                        .content("A").isCorrect(true).build(),
+                                QuizWebhookRequest.AnswerPayload.builder()
+                                        .content("B").isCorrect(false).build()))
+                        .build();
+        QuizWebhookRequest.QuestionPayload shortAnswer =
+                dynamicQuestion(rowId, levelId, secondOutcomeId, firstOutcomeId)
+                        .type(Question.QuestionType.ESSAY)
+                        .originalType("SHORT_ANSWER")
+                        .build();
+        QuizWebhookRequest request = QuizWebhookRequest.builder()
+                .eventId(UUID.randomUUID()).jobId(jobId).status("COMPLETED")
+                .quiz(QuizWebhookRequest.QuizPayload.builder()
+                        .questions(List.of(multipleChoice, shortAnswer)).build())
+                .build();
+
+        var response = service.handleWebhook(request);
+
+        assertEquals(QuizGenerationStatus.COMPLETED, response.getStatus());
+        verify(saveQuestionLearningOutcomePort,
+                org.mockito.Mockito.times(2))
+                .addLearningOutcomes(any(), any());
+    }
+
+    @Test
+    void rejectsDynamicQuestionWithWrongProvenanceOrOutcomeSet() {
+        UUID jobId = UUID.randomUUID();
+        UUID rowId = UUID.randomUUID();
+        UUID levelId = UUID.randomUUID();
+        UUID outcomeId = UUID.randomUUID();
+        String snapshot = """
+                {
+                  "snapshotVersion":2,
+                  "questionCount":1,
+                  "examMatrix":[{
+                    "rowId":"%s",
+                    "levelCounts":[{
+                      "customLearningLevelId":"%s",
+                      "learningOutcomeIds":["%s"],
+                      "questionCount":1
+                    }]
+                  }]
+                }
+                """.formatted(rowId, levelId, outcomeId);
+        QuizGenerationJob job = QuizGenerationJob.builder().id(jobId)
+                .status(QuizGenerationStatus.PROCESSING).requestSnapshot(snapshot).build();
+        when(loadJobPort.getByIdForUpdate(jobId)).thenReturn(Optional.of(job));
+        QuizWebhookRequest.QuestionPayload question =
+                dynamicQuestion(rowId, UUID.randomUUID(), outcomeId)
+                        .type(Question.QuestionType.ESSAY)
+                        .originalType("SHORT_ANSWER")
+                        .build();
+
+        QuizWebhookRequest request = QuizWebhookRequest.builder()
+                .eventId(UUID.randomUUID()).jobId(jobId).status("COMPLETED")
+                .quiz(QuizWebhookRequest.QuizPayload.builder()
+                        .questions(List.of(question)).build())
+                .build();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.handleWebhook(request));
+        verify(saveQuizPort, never()).save(any());
+    }
+
+    private QuizWebhookRequest.QuestionPayload.QuestionPayloadBuilder dynamicQuestion(
+            UUID rowId, UUID levelId, UUID... outcomeIds) {
+        return QuizWebhookRequest.QuestionPayload.builder()
+                .content("Generated question")
+                .matrixRowId(rowId)
+                .customLearningLevelId(levelId)
+                .learningOutcomeIds(List.of(outcomeIds));
     }
 }

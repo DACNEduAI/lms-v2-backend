@@ -8,7 +8,7 @@ import org.quartz.DisallowConcurrentExecution;
 import org.springframework.scheduling.quartz.QuartzJobBean;
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.quiz.app.service.QuizGenerationProcessingService;
+import edu.ai.lms.core.quiz.app.service.genquiz.QuizGenerationProcessingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 

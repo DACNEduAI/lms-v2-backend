@@ -1,21 +1,19 @@
-package edu.ai.lms.core.quiz.app.service;
+package edu.ai.lms.core.quiz.app.service.crudquiz;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.api.Roles;
 import edu.ai.lms.core.quiz.app.domain.CurrentActor;
-import edu.ai.lms.core.quiz.adapter.in.http.response.ModifyAnswerResponse;
+import edu.ai.lms.core.quiz.adapter.in.http.response.CreateAnswerResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
-import edu.ai.lms.core.quiz.app.exception.AnswerNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuestionNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
-import edu.ai.lms.core.quiz.app.port.in.command.ModifyAnswerCommand;
-import edu.ai.lms.core.quiz.app.port.in.usecase.ModifyAnswerUseCase;
-import edu.ai.lms.core.quiz.app.port.out.LoadAnswerPort;
+import edu.ai.lms.core.quiz.app.port.in.command.CreateAnswerCommand;
+import edu.ai.lms.core.quiz.app.port.in.usecase.CreateAnswerUseCase;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
@@ -24,17 +22,16 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class ModifyAnswerService implements ModifyAnswerUseCase {
+public class CreateAnswerService implements CreateAnswerUseCase {
 
     private final SaveAnswerPort saveAnswerPort;
-    private final LoadAnswerPort loadAnswerPort;
     private final LoadQuestionPort loadQuestionPort;
     private final LoadQuizPort loadQuizPort;
     private final LoadSignedInUserPort loadSignedInUserPort;
 
     @Override
     @Transactional
-    public ModifyAnswerResponse modifyAnswer(ModifyAnswerCommand command) {
+    public CreateAnswerResponse createAnswer(CreateAnswerCommand command) {
         CurrentActor user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedException("User not authenticated"));
 
@@ -46,22 +43,18 @@ public class ModifyAnswerService implements ModifyAnswerUseCase {
 
         verifyQuizOwnership(user, quiz);
 
-        Answer existingAnswer = loadAnswerPort.getByKey(command.questionId(), command.answerNumber())
-                .orElseThrow(() -> new AnswerNotFoundException("Answer not found"));
+        Answer answer = command.answer();
+        answer.setQuestionId(question.getId());
 
-        Answer updatedAnswer = command.answer();
-        updatedAnswer.setAnswerNumber(existingAnswer.getAnswerNumber());
-        updatedAnswer.setQuestionId(existingAnswer.getQuestionId());
+        Answer savedAnswer = saveAnswerPort.save(answer);
 
-        Answer savedAnswer = saveAnswerPort.save(updatedAnswer);
-
-        return ModifyAnswerResponse.builder()
+        return CreateAnswerResponse.builder()
                 .answerNumber(savedAnswer.getAnswerNumber())
                 .content(savedAnswer.getContent())
                 .correct(savedAnswer.isCorrect())
                 .explanation(savedAnswer.getExplanation())
                 .questionId(savedAnswer.getQuestionId())
-                .updatedAt(savedAnswer.getUpdatedAt())
+                .createdAt(savedAnswer.getCreatedAt())
                 .build();
     }
 
@@ -70,7 +63,7 @@ public class ModifyAnswerService implements ModifyAnswerUseCase {
                 || (user.getRole() == Roles.STUDENT && user.getId().equals(quiz.getStudentId()));
 
         if (!isOwner) {
-            throw new IllegalArgumentException("User is not authorized to modify answers in this quiz");
+            throw new IllegalArgumentException("User is not authorized to add answers to this quiz's questions");
         }
     }
 }

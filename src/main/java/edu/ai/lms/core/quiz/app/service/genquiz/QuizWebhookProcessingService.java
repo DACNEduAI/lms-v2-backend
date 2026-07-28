@@ -1,4 +1,4 @@
-package edu.ai.lms.core.quiz.app.service;
+package edu.ai.lms.core.quiz.app.service.genquiz;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -105,45 +106,119 @@ public class QuizWebhookProcessingService {
             if (request.getQuiz().getQuestions().size() != expected) {
                 throw new IllegalArgumentException("Generated question count does not match the accepted matrix");
             }
-            Map<String, Integer> expectedDistribution = new HashMap<>();
-            snapshot.path("examMatrix").forEach(row -> {
-                String outcomeId = row.path("learningOutcomeId").asText();
-                addExpected(expectedDistribution, outcomeId, "MULTIPLE_CHOICE", row.path("hieu").asInt());
-                addExpected(expectedDistribution, outcomeId, "SHORT_ANSWER", row.path("van_dung").asInt());
-                addExpected(expectedDistribution, outcomeId, "CODE_RUNNER", row.path("vdc").asInt());
-            });
-            Map<String, Integer> actualDistribution = new HashMap<>();
-            for (QuizWebhookRequest.QuestionPayload question : request.getQuiz().getQuestions()) {
-                if (question.getContent() == null || question.getContent().isBlank()) {
-                    throw new IllegalArgumentException("Generated question content is required");
-                }
-                if (question.getLearningOutcomeIds() == null || question.getLearningOutcomeIds().size() != 1
-                        || question.getOriginalType() == null || question.getOriginalType().isBlank()) {
-                    throw new IllegalArgumentException("Every generated question must identify one matrix outcome and original type");
-                }
-                boolean multipleChoice = "MULTIPLE_CHOICE".equalsIgnoreCase(question.getOriginalType());
-                boolean codeRunner = "CODE_RUNNER".equalsIgnoreCase(question.getOriginalType());
-                Question.QuestionType expectedLmsType = multipleChoice
-                        ? Question.QuestionType.MULTIPLE_CHOICE
-                        : codeRunner ? Question.QuestionType.CODE_RUNNER : Question.QuestionType.ESSAY;
-                if (question.getType() != expectedLmsType) {
-                    throw new IllegalArgumentException("Generated question type conversion is invalid");
-                }
-                if (multipleChoice && (question.getAnswers() == null || question.getAnswers().size() < 2
-                        || question.getAnswers().stream().noneMatch(answer -> Boolean.TRUE.equals(answer.getIsCorrect())))) {
-                    throw new IllegalArgumentException("Multiple-choice questions require answer options and a correct answer");
-                }
-                String key = distributionKey(question.getLearningOutcomeIds().get(0).toString(),
-                        question.getOriginalType());
-                actualDistribution.merge(key, 1, Integer::sum);
-            }
-            if (!expectedDistribution.equals(actualDistribution)) {
-                throw new IllegalArgumentException("Generated questions do not match the accepted matrix distribution");
+            if (snapshot.path("snapshotVersion").asInt(1) >= 2) {
+                validateDynamicDistribution(snapshot, request.getQuiz().getQuestions());
+            } else {
+                validateLegacyDistribution(snapshot, request.getQuiz().getQuestions());
             }
         } catch (IllegalArgumentException ex) {
             throw ex;
         } catch (Exception ex) {
             throw new IllegalStateException("Could not validate the request snapshot", ex);
+        }
+    }
+
+    private void validateDynamicDistribution(
+            JsonNode snapshot,
+            List<QuizWebhookRequest.QuestionPayload> questions) {
+        Map<String, DynamicRequirement> expectedRequirements = new HashMap<>();
+        snapshot.path("examMatrix").forEach(row -> row.path("levelCounts").forEach(level -> {
+            String rowId = row.path("rowId").asText();
+            String levelId = level.path("customLearningLevelId").asText();
+            LinkedHashSet<UUID> outcomeIds = new LinkedHashSet<>();
+            level.path("learningOutcomeIds").forEach(id -> outcomeIds.add(UUID.fromString(id.asText())));
+            expectedRequirements.put(dynamicKey(rowId, levelId), new DynamicRequirement(
+                    level.path("questionCount").asInt(), outcomeIds));
+        }));
+
+        Map<String, Integer> actualDistribution = new HashMap<>();
+        for (QuizWebhookRequest.QuestionPayload question : questions) {
+            validateQuestionShape(question);
+            if (question.getMatrixRowId() == null || question.getCustomLearningLevelId() == null) {
+                throw new IllegalArgumentException(
+                        "Every generated question must identify its matrix row and custom learning level");
+            }
+            String key = dynamicKey(
+                    question.getMatrixRowId().toString(),
+                    question.getCustomLearningLevelId().toString());
+            DynamicRequirement requirement = expectedRequirements.get(key);
+            if (requirement == null) {
+                throw new IllegalArgumentException(
+                        "Generated question references an unknown matrix row or custom learning level");
+            }
+            List<UUID> suppliedIds = question.getLearningOutcomeIds();
+            LinkedHashSet<UUID> suppliedSet = new LinkedHashSet<>(suppliedIds);
+            if (suppliedIds.size() != suppliedSet.size()
+                    || !suppliedSet.equals(requirement.learningOutcomeIds())) {
+                throw new IllegalArgumentException(
+                        "Generated question learning outcomes do not match the accepted matrix requirement");
+            }
+            actualDistribution.merge(key, 1, Integer::sum);
+        }
+        Map<String, Integer> expectedDistribution = new HashMap<>();
+        expectedRequirements.forEach((key, requirement) ->
+                expectedDistribution.put(key, requirement.questionCount()));
+        if (!expectedDistribution.equals(actualDistribution)) {
+            throw new IllegalArgumentException(
+                    "Generated questions do not match the accepted row and custom-level distribution");
+        }
+    }
+
+    private void validateLegacyDistribution(
+            JsonNode snapshot,
+            List<QuizWebhookRequest.QuestionPayload> questions) {
+        Map<String, Integer> expectedDistribution = new HashMap<>();
+        snapshot.path("examMatrix").forEach(row -> {
+            String outcomeId = row.path("learningOutcomeId").asText();
+            addExpected(expectedDistribution, outcomeId, "MULTIPLE_CHOICE", row.path("hieu").asInt());
+            addExpected(expectedDistribution, outcomeId, "SHORT_ANSWER", row.path("van_dung").asInt());
+            addExpected(expectedDistribution, outcomeId, "CODE_RUNNER", row.path("vdc").asInt());
+        });
+        Map<String, Integer> actualDistribution = new HashMap<>();
+        for (QuizWebhookRequest.QuestionPayload question : questions) {
+            validateQuestionShape(question);
+            if (question.getLearningOutcomeIds() == null || question.getLearningOutcomeIds().size() != 1
+                    || question.getOriginalType() == null) {
+                throw new IllegalArgumentException(
+                        "Every generated question must identify one matrix outcome and original type");
+            }
+            String key = distributionKey(question.getLearningOutcomeIds().get(0).toString(),
+                    question.getOriginalType());
+            actualDistribution.merge(key, 1, Integer::sum);
+        }
+        if (!expectedDistribution.equals(actualDistribution)) {
+            throw new IllegalArgumentException(
+                    "Generated questions do not match the accepted matrix distribution");
+        }
+    }
+
+    private void validateQuestionShape(QuizWebhookRequest.QuestionPayload question) {
+        if (question.getContent() == null || question.getContent().isBlank()) {
+            throw new IllegalArgumentException("Generated question content is required");
+        }
+        if (question.getLearningOutcomeIds() == null || question.getLearningOutcomeIds().isEmpty()
+                || question.getOriginalType() == null || question.getOriginalType().isBlank()) {
+            throw new IllegalArgumentException(
+                    "Every generated question must identify matrix outcomes and original type");
+        }
+        String originalType = question.getOriginalType().toUpperCase();
+        if (!Set.of("MULTIPLE_CHOICE", "SHORT_ANSWER", "CODE_RUNNER").contains(originalType)) {
+            throw new IllegalArgumentException("Generated question type is unsupported");
+        }
+        boolean multipleChoice = "MULTIPLE_CHOICE".equals(originalType);
+        Question.QuestionType expectedLmsType = multipleChoice
+                ? Question.QuestionType.MULTIPLE_CHOICE
+                : "CODE_RUNNER".equals(originalType)
+                        ? Question.QuestionType.CODE_RUNNER
+                        : Question.QuestionType.ESSAY;
+        if (question.getType() != expectedLmsType) {
+            throw new IllegalArgumentException("Generated question type conversion is invalid");
+        }
+        if (multipleChoice && (question.getAnswers() == null || question.getAnswers().size() < 2
+                || question.getAnswers().stream()
+                        .noneMatch(answer -> Boolean.TRUE.equals(answer.getIsCorrect())))) {
+            throw new IllegalArgumentException(
+                    "Multiple-choice questions require answer options and a correct answer");
         }
     }
 
@@ -155,6 +230,13 @@ public class QuizWebhookProcessingService {
 
     private static String distributionKey(String outcomeId, String type) {
         return outcomeId + "|" + type.toUpperCase();
+    }
+
+    private static String dynamicKey(String rowId, String levelId) {
+        return rowId + "|" + levelId;
+    }
+
+    private record DynamicRequirement(int questionCount, LinkedHashSet<UUID> learningOutcomeIds) {
     }
 
     private Quiz persistQuiz(QuizGenerationJob job, QuizWebhookRequest.QuizPayload payload) {
@@ -205,14 +287,21 @@ public class QuizWebhookProcessingService {
 
     private void deferTerminalNotification(QuizGenerationJob job) {
         QuizGenerationStatusResponse response = QuizGenerationService.toStatusResponse(job);
+        Runnable notify = () -> {
+            try {
+                schedulerPort.unschedule(job.getId());
+            } catch (RuntimeException ignored) {
+            }
+            sseService.pushStatus(job.getId(), response);
+        };
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            notify.run();
+            return;
+        }
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                try {
-                    schedulerPort.unschedule(job.getId());
-                } catch (RuntimeException ignored) {
-                }
-                sseService.pushStatus(job.getId(), response);
+                notify.run();
             }
         });
     }
