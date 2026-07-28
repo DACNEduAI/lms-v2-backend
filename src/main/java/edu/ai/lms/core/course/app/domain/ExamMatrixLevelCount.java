@@ -24,4 +24,5 @@ public class ExamMatrixLevelCount {
     private String description;
     private int sortOrder;
     private int questionCount;
+    private boolean active;
 }

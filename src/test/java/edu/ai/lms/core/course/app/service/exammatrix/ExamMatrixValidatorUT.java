@@ -26,14 +26,15 @@ class ExamMatrixValidatorUT {
     @Test
     void mapsValidChapterOutcomeAndLevelRelationships() {
         UUID chapterId = UUID.randomUUID(), outcomeId = UUID.randomUUID(), levelId = UUID.randomUUID();
+        UUID matrixId = UUID.randomUUID();
         Course course = course(chapterId, outcomeId);
         when(referencePort.findCustomLearningLevelsByIds(anyCollection())).thenReturn(List.of(
-                CustomLearningLevel.builder().id(levelId).courseId(course.getId())
+                CustomLearningLevel.builder().id(levelId).matrixId(matrixId)
                         .learningOutcomeIds(List.of(outcomeId))
                         .name("Understand").sortOrder(1).build()));
         var command = row(chapterId, outcomeId, levelId, 3, 0);
 
-        var result = validator.validateAndMap(course, UUID.randomUUID(), List.of(command));
+        var result = validator.validateAndMap(course, matrixId, List.of(command));
 
         assertEquals(List.of(outcomeId), result.getFirst().getLearningOutcomeIds());
         assertEquals(3, result.getFirst().getLevelCounts().getFirst().getQuestionCount());
@@ -73,6 +74,6 @@ class ExamMatrixValidatorUT {
         return ExamMatrixRowCommand.builder().chapterId(chapterId).orderIndex(order)
                 .learningOutcomeIds(List.of(outcomeId))
                 .levelCounts(levelId == null ? List.of() : List.of(
-                        new LearningLevelCountCommand(levelId, count))).build();
+                        new LearningLevelCountCommand(levelId, null, count))).build();
     }
 }

@@ -7,9 +7,9 @@ import edu.ai.lms.core.course.app.port.in.command.BatchEditCustomLearningLevelsC
 import edu.ai.lms.core.course.app.port.in.command.CustomLearningLevelValue;
 
 public interface CustomLearningLevelUseCase {
-    CustomLearningLevelResponse create(UUID courseId, CustomLearningLevelValue value);
-    CustomLearningLevelListResponse getAll(UUID courseId);
-    CustomLearningLevelResponse getOne(UUID courseId, UUID levelId);
+    CustomLearningLevelResponse create(UUID courseId, UUID matrixId, CustomLearningLevelValue value);
+    CustomLearningLevelListResponse getAll(UUID courseId, UUID matrixId);
+    CustomLearningLevelResponse getOne(UUID courseId, UUID matrixId, UUID levelId);
     BatchEditCustomLearningLevelsResponse batchEdit(BatchEditCustomLearningLevelsCommand command);
-    DeleteCustomLearningLevelResponse delete(UUID courseId, UUID levelId);
+    DeleteCustomLearningLevelResponse delete(UUID courseId, UUID matrixId, UUID levelId);
 }

@@ -4,5 +4,6 @@ import java.util.UUID;
 
 public record CustomLearningLevelOutcomeLink(
         UUID customLearningLevelId,
-        UUID learningOutcomeId) {
+        UUID learningOutcomeId,
+        boolean selected) {
 }

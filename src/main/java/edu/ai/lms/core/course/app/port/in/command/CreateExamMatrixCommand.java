@@ -13,5 +13,11 @@ public record CreateExamMatrixCommand(
         UUID courseId,
         String title,
         String description,
+        List<CustomLearningLevelValue> customLearningLevels,
         List<ExamMatrixRowCommand> rows
-) {}
+) {
+    public CreateExamMatrixCommand {
+        customLearningLevels = customLearningLevels == null ? List.of() : List.copyOf(customLearningLevels);
+        rows = rows == null ? List.of() : List.copyOf(rows);
+    }
+}

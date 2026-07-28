@@ -17,21 +17,24 @@ interface ExamMatrixRepository {
     Optional<ExamMatrix> lockByCourseIdAndId(@Param("courseId") UUID courseId, @Param("id") UUID id);
     List<ExamMatrixSummary> findAllSummariesByCourseId(@Param("courseId") UUID courseId);
     List<ExamMatrixRow> findRowsByMatrixId(@Param("matrixId") UUID matrixId);
+    List<UUID> findUncoveredLearningOutcomeIds(@Param("matrixId") UUID matrixId);
     List<ExamMatrixRowOutcomeLink> findOutcomeLinksByMatrixId(@Param("matrixId") UUID matrixId);
     List<ExamMatrixLevelCountRecord> findLevelCountsByMatrixId(@Param("matrixId") UUID matrixId);
     List<ExamMatrixLevelCountOutcomeLink> findLevelCountOutcomeLinksByMatrixId(@Param("matrixId") UUID matrixId);
     List<CustomLearningLevel> findCustomLearningLevelsByIds(@Param("ids") Collection<UUID> ids);
+    List<CustomLearningLevel> findCustomLearningLevelsByMatrixId(@Param("matrixId") UUID matrixId);
     List<CustomLearningLevelOutcomeLink> findCustomLearningLevelOutcomeLinksByIds(
             @Param("ids") Collection<UUID> ids);
     int insertMatrix(ExamMatrix matrix);
     int insertRow(ExamMatrixRow row);
-    int insertRowOutcome(@Param("rowId") UUID rowId, @Param("learningOutcomeId") UUID learningOutcomeId);
+    int reconcileRowOutcomeCandidates(@Param("rowId") UUID rowId);
+    int insertRowOutcomeCandidates(@Param("rowId") UUID rowId);
+    int clearRowOutcomeSelections(@Param("rowId") UUID rowId);
+    int selectRowOutcomes(@Param("rowId") UUID rowId, @Param("learningOutcomeIds") List<UUID> learningOutcomeIds);
     int insertLevelCount(@Param("rowId") UUID rowId, @Param("count") ExamMatrixLevelCount count);
     int updateRow(ExamMatrixRow row);
     int updateMetadata(@Param("id") UUID id, @Param("title") String title, @Param("description") String description);
     int touch(@Param("id") UUID id);
-    int deleteLevelCounts(@Param("rowId") UUID rowId);
-    int deleteRowOutcomes(@Param("rowId") UUID rowId);
     int deleteRow(@Param("matrixId") UUID matrixId, @Param("rowId") UUID rowId);
     void deleteById(@Param("id") UUID id);
 }

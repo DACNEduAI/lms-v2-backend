@@ -12,20 +12,20 @@ import edu.ai.lms.core.course.app.domain.CustomLearningLevelOutcomeLink;
 
 @Mapper
 interface CustomLearningLevelRepository {
-    List<CustomLearningLevel> findAllByCourseId(@Param("courseId") UUID courseId);
-    List<CustomLearningLevel> lockAllByCourseId(@Param("courseId") UUID courseId);
-    Optional<CustomLearningLevel> findByCourseIdAndId(
-            @Param("courseId") UUID courseId,
+    List<CustomLearningLevel> findAllByMatrixId(@Param("matrixId") UUID matrixId);
+    List<CustomLearningLevel> lockAllByMatrixId(@Param("matrixId") UUID matrixId);
+    Optional<CustomLearningLevel> findByMatrixIdAndId(
+            @Param("matrixId") UUID matrixId,
             @Param("id") UUID id);
-    long countMatrixUsages(@Param("id") UUID id);
-    long countIncompatibleMatrixUsages(
-            @Param("id") UUID id,
-            @Param("learningOutcomeIds") List<UUID> learningOutcomeIds);
-    List<CustomLearningLevelOutcomeLink> findOutcomeLinksByCourseId(@Param("courseId") UUID courseId);
+    List<CustomLearningLevelOutcomeLink> findOutcomeLinksByMatrixId(@Param("matrixId") UUID matrixId);
     int insert(CustomLearningLevel level);
     int stageUpdate(@Param("id") UUID id, @Param("temporaryValue") String temporaryValue);
     int update(CustomLearningLevel level);
-    int deleteOutcomeMappings(@Param("id") UUID id);
-    int insertOutcomeMapping(@Param("id") UUID id, @Param("learningOutcomeId") UUID learningOutcomeId);
+    int insertAllOutcomeMappings(@Param("id") UUID id, @Param("matrixId") UUID matrixId);
+    int clearOutcomeSelections(@Param("id") UUID id);
+    int selectOutcomeMappings(@Param("id") UUID id, @Param("learningOutcomeIds") List<UUID> learningOutcomeIds);
+    int insertOutcomeMappingsForCourseMatrices(
+            @Param("courseId") UUID courseId,
+            @Param("learningOutcomeIds") List<UUID> learningOutcomeIds);
     int delete(@Param("id") UUID id);
 }

@@ -18,8 +18,10 @@
 <text class="subtitle" x="55" y="82">Chen notation • relationship types use 1-N and N-N • derived from src/main/resources/schema.sql</text>
 <path class="edge" stroke="#dc2626" d="M1100,167 Q1100,300 1100,300 Q1100,300 1100,427"/>
 <path class="edge" stroke="#dc2626" d="M1100,427 Q1100,570 1100,570 Q1100,570 1100,742"/>
+<path class="edge" stroke="#dc2626" d="M1100,427 Q1370,700 1370,700 Q1370,700 1550,1052"/>
 <path class="edge" stroke="#7c3aed" d="M320,742 Q680,742 680,742 Q680,742 1100,742"/>
 <path class="edge" stroke="#dc2626" d="M1895,742 Q1510,742 1510,742 Q1510,742 1100,742"/>
+<path class="edge" stroke="#dc2626" d="M1895,742 Q1810,930 1810,930 Q1810,930 1550,1052"/>
 <path class="edge" stroke="#7c3aed" d="M1875,427 Q1895,575 1895,575 Q1895,575 1895,742"/>
 <path class="edge" stroke="#dc2626" d="M1100,167 Q430,355 430,355 Q430,355 320,742"/>
 <path class="edge" stroke="#dc2626" d="M1100,167 Q1575,250 1575,250 Q1575,250 1875,427"/>
@@ -43,6 +45,13 @@
 <rect class="card-badge" x="1069" y="503" width="62" height="25" rx="12"/>
 <text class="card-badge-text" x="1100" y="516">1-N</text>
 <text class="fk" x="1100" y="620">exam_matrix_rows.matrix_id • CASCADE</text>
+<polygon class="diamond" points="1370,669 1425,700 1370,731 1315,700"/>
+<text class="relation" x="1370" y="700">DEFINES</text>
+<text class="end-card" x="1186.4" y="502.36">1</text>
+<text class="end-card" x="1492.4" y="927.36">N</text>
+<rect class="card-badge" x="1339" y="633" width="62" height="25" rx="12"/>
+<text class="card-badge-text" x="1370" y="646">1-N</text>
+<text class="fk" x="1370" y="750">custom_learning_levels.matrix_id • CASCADE</text>
 <polygon class="diamond" points="680,711 735,742 680,773 625,742"/>
 <text class="relation" x="680" y="742">SCOPES</text>
 <text class="end-card" x="435.2" y="730">1</text>
@@ -51,12 +60,19 @@
 <text class="card-badge-text" x="680" y="688">1-N</text>
 <text class="fk" x="680" y="792">exam_matrix_rows.chapter_id • SET NULL • optional FK</text>
 <polygon class="diamond" points="1510,711 1565,742 1510,773 1455,742"/>
-<text class="relation" x="1510" y="742">TARGETS</text>
-<text class="end-card" x="1771.8" y="730">1</text>
+<text class="relation" x="1510" y="742">SELECTS</text>
+<text class="end-card" x="1771.8" y="730">N</text>
 <text class="end-card" x="1231.2" y="730">N</text>
 <rect class="card-badge" x="1479" y="675" width="62" height="25" rx="12"/>
-<text class="card-badge-text" x="1510" y="688">1-N</text>
-<text class="fk" x="1510" y="792">exam_matrix_rows.learning_outcome_id • CASCADE</text>
+<text class="card-badge-text" x="1510" y="688">N-N</text>
+<text class="fk" x="1510" y="792">exam_matrix_row_learning_outcomes · is_selected • CASCADE</text>
+<polygon class="diamond" points="1810,899 1870,930 1810,961 1750,930"/>
+<text class="relation" x="1810" y="930">CLASSIFIES</text>
+<text class="end-card" x="1867.8" y="790.16">N</text>
+<text class="end-card" x="1633.2" y="1000.96">N</text>
+<rect class="card-badge" x="1779" y="863" width="62" height="25" rx="12"/>
+<text class="card-badge-text" x="1810" y="876">N-N</text>
+<text class="fk" x="1810" y="980">custom_learning_level_learning_outcomes · is_selected • CASCADE</text>
 <polygon class="diamond" points="1895,544 1950,575 1895,606 1840,575"/>
 <text class="relation" x="1895" y="575">GROUPS</text>
 <text class="end-card" x="1881.4" y="462.36">1</text>
@@ -140,10 +156,18 @@
 <line class="attr-line" x1="1100" y1="742" x2="700" y2="855"/>
 <rect class="entity" x="890" y="700" width="420" height="84" rx="10"/>
 <text class="entity-name" x="1100" y="742">EXAM_MATRIX_ROWS</text>
-<ellipse class="attribute" cx="1150" cy="855" rx="218.4" ry="25"/>
-<text class="attr-text" x="1150" y="855">matrix_id, learning_outcome_id, chapter_id</text>
+<ellipse class="attribute" cx="1150" cy="855" rx="213.20000000000002" ry="25"/>
+<text class="attr-text" x="1150" y="855">matrix_id, chapter_id, topic, order_index</text>
 <ellipse class="key" cx="700" cy="855" rx="70" ry="25"/>
 <text class="key-text" x="700" y="855">id · PK</text>
+<line class="attr-line" x1="1550" y1="1052" x2="1550" y2="967"/>
+<line class="attr-line" x1="1550" y1="1052" x2="1550" y2="1147"/>
+<rect class="entity" x="1330" y="1010" width="440" height="84" rx="10"/>
+<text class="entity-name" x="1550" y="1052">CUSTOM_LEARNING_LEVELS</text>
+<ellipse class="attribute" cx="1550" cy="967" rx="197.6" ry="25"/>
+<text class="attr-text" x="1550" y="967">matrix_id · FK, code, name, sort_order</text>
+<ellipse class="key" cx="1550" cy="1147" rx="70" ry="25"/>
+<text class="key-text" x="1550" y="1147">id · PK</text>
 <line class="attr-line" x1="320" y1="742" x2="320" y2="657"/>
 <line class="attr-line" x1="320" y1="742" x2="320" y2="837"/>
 <rect class="entity" x="140" y="700" width="360" height="84" rx="10"/>
@@ -196,6 +220,6 @@
 <text class="note-title" x="80" y="1545">How to read cardinality</text>
 <text class="note" x="80" y="1572">1-N: one parent can relate to many children; each child references at most one parent. N-N: many entities on both sides, implemented here by a junction table.</text>
 <text class="note" x="80" y="1598">Nullable FKs are still classified by relationship type, with “optional FK” shown separately. There is no declared 1-1 relationship in this exam-matrix subgraph.</text>
-<text class="note" x="80" y="1624">The CHAPTERS N-N LEARNING_OUTCOMES relationship is implemented by CHAPTER_LEARNING_OUTCOMES; EXAM_MATRIX_ROWS independently references both dimensions.</text>
+<text class="note" x="80" y="1624">Row/outcome and custom-level/outcome junctions materialize every eligible pair and store the checkbox state in is_selected.</text>
 <text class="note" x="80" y="1650">Line colors: red = CASCADE, purple = SET NULL, orange = RESTRICT.</text>
 </svg>

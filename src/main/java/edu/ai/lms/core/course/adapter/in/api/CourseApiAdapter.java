@@ -62,6 +62,15 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
         if (course == null || matrix == null) {
             return Optional.empty();
         }
+        boolean incomplete = matrix.getCustomLearningLevels().size() < 3
+                || !matrix.getUncoveredLearningOutcomeIds().isEmpty()
+                || matrix.getCustomLearningLevels().stream()
+                        .anyMatch(level -> level.getLearningOutcomeIds().isEmpty())
+                || matrix.getRows().stream().anyMatch(row -> row.getLearningOutcomeIds().isEmpty());
+        if (incomplete) {
+            throw new IllegalStateException(
+                    "MATRIX_CONFIGURATION_INCOMPLETE: configure custom learning levels and row outcomes before generation");
+        }
         List<QuizGenerationContext.QuizGenerationRow> rows = matrix.getRows().stream()
                 .flatMap(row -> {
                     boolean unsupported = row.getLevelCounts().stream()

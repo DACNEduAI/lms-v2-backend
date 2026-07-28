@@ -14,7 +14,7 @@ import lombok.*;
 @Builder
 public class CustomLearningLevel {
     private UUID id;
-    private UUID courseId;
+    private UUID matrixId;
     @Builder.Default
     private List<UUID> learningOutcomeIds = new ArrayList<>();
     private String code;

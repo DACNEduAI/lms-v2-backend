@@ -67,8 +67,7 @@ class ExamMatrixPersistenceAdapter implements SaveExamMatrixPort, LoadExamMatrix
     @Override
     public void replaceRow(ExamMatrixRow row) {
         repository.updateRow(row);
-        repository.deleteLevelCounts(row.getId());
-        repository.deleteRowOutcomes(row.getId());
+        repository.reconcileRowOutcomeCandidates(row.getId());
         insertChildren(row);
     }
 
@@ -90,8 +89,10 @@ class ExamMatrixPersistenceAdapter implements SaveExamMatrixPort, LoadExamMatrix
         List<CustomLearningLevel> levels = repository.findCustomLearningLevelsByIds(ids);
         Map<UUID, CustomLearningLevel> byId = levels.stream()
                 .collect(Collectors.toMap(CustomLearningLevel::getId, Function.identity()));
-        repository.findCustomLearningLevelOutcomeLinksByIds(ids).forEach(link ->
-                byId.get(link.customLearningLevelId()).getLearningOutcomeIds().add(link.learningOutcomeId()));
+        repository.findCustomLearningLevelOutcomeLinksByIds(ids).stream()
+                .filter(CustomLearningLevelOutcomeLink::selected).forEach(link ->
+                        byId.get(link.customLearningLevelId()).getLearningOutcomeIds()
+                                .add(link.learningOutcomeId()));
         return levels;
     }
 
@@ -101,7 +102,11 @@ class ExamMatrixPersistenceAdapter implements SaveExamMatrixPort, LoadExamMatrix
     }
 
     private void insertChildren(ExamMatrixRow row) {
-        row.getLearningOutcomeIds().forEach(id -> repository.insertRowOutcome(row.getId(), id));
+        repository.insertRowOutcomeCandidates(row.getId());
+        repository.clearRowOutcomeSelections(row.getId());
+        if (row.getLearningOutcomeIds() != null && !row.getLearningOutcomeIds().isEmpty()) {
+            repository.selectRowOutcomes(row.getId(), row.getLearningOutcomeIds());
+        }
         row.getLevelCounts().forEach(count -> repository.insertLevelCount(row.getId(), count));
     }
 
@@ -111,8 +116,9 @@ class ExamMatrixPersistenceAdapter implements SaveExamMatrixPort, LoadExamMatrix
         List<ExamMatrixRow> rows = repository.findRowsByMatrixId(matrixId);
         Map<UUID, ExamMatrixRow> byId = rows.stream()
                 .collect(Collectors.toMap(ExamMatrixRow::getId, Function.identity()));
-        repository.findOutcomeLinksByMatrixId(matrixId).forEach(link ->
-                byId.get(link.examMatrixRowId()).getLearningOutcomeIds().add(link.learningOutcomeId()));
+        repository.findOutcomeLinksByMatrixId(matrixId).stream()
+                .filter(ExamMatrixRowOutcomeLink::selected).forEach(link ->
+                        byId.get(link.examMatrixRowId()).getLearningOutcomeIds().add(link.learningOutcomeId()));
         Map<String, ExamMatrixLevelCount> countsByKey = new java.util.HashMap<>();
         repository.findLevelCountsByMatrixId(matrixId).forEach(record -> {
             ExamMatrixLevelCount count = record.toDomain(new java.util.ArrayList<>());
@@ -122,6 +128,18 @@ class ExamMatrixPersistenceAdapter implements SaveExamMatrixPort, LoadExamMatrix
         repository.findLevelCountOutcomeLinksByMatrixId(matrixId).forEach(link ->
                 countsByKey.get(countKey(link.examMatrixRowId(), link.customLearningLevelId()))
                         .getLearningOutcomeIds().add(link.learningOutcomeId()));
+        countsByKey.values().forEach(count -> count.setActive(!count.getLearningOutcomeIds().isEmpty()));
+        List<CustomLearningLevel> levels = repository.findCustomLearningLevelsByMatrixId(matrixId);
+        Map<UUID, CustomLearningLevel> levelsById = levels.stream()
+                .collect(Collectors.toMap(CustomLearningLevel::getId, Function.identity()));
+        if (!levelsById.isEmpty()) {
+            repository.findCustomLearningLevelOutcomeLinksByIds(levelsById.keySet()).stream()
+                    .filter(CustomLearningLevelOutcomeLink::selected)
+                    .forEach(link -> levelsById.get(link.customLearningLevelId())
+                            .getLearningOutcomeIds().add(link.learningOutcomeId()));
+        }
+        matrix.setCustomLearningLevels(levels);
+        matrix.setUncoveredLearningOutcomeIds(repository.findUncoveredLearningOutcomeIds(matrixId));
         matrix.setRows(rows);
         return matrix;
     }

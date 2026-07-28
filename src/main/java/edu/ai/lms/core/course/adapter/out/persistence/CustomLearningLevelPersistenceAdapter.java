@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.course.app.domain.CustomLearningLevel;
+import edu.ai.lms.core.course.app.domain.CustomLearningLevelOutcomeLink;
 import edu.ai.lms.core.course.app.port.out.CustomLearningLevelPort;
 import lombok.RequiredArgsConstructor;
 
@@ -20,34 +21,25 @@ class CustomLearningLevelPersistenceAdapter implements CustomLearningLevelPort {
     private final CustomLearningLevelRepository repository;
 
     @Override
-    public List<CustomLearningLevel> findAllByCourseId(UUID courseId) {
-        return assemble(courseId, repository.findAllByCourseId(courseId));
+    public List<CustomLearningLevel> findAllByMatrixId(UUID matrixId) {
+        return assemble(matrixId, repository.findAllByMatrixId(matrixId));
     }
 
     @Override
-    public List<CustomLearningLevel> lockAllByCourseId(UUID courseId) {
-        return assemble(courseId, repository.lockAllByCourseId(courseId));
+    public List<CustomLearningLevel> lockAllByMatrixId(UUID matrixId) {
+        return assemble(matrixId, repository.lockAllByMatrixId(matrixId));
     }
 
     @Override
-    public Optional<CustomLearningLevel> findByCourseIdAndId(UUID courseId, UUID id) {
-        return assemble(courseId, repository.findByCourseIdAndId(courseId, id).stream().toList())
+    public Optional<CustomLearningLevel> findByMatrixIdAndId(UUID matrixId, UUID id) {
+        return assemble(matrixId, repository.findByMatrixIdAndId(matrixId, id).stream().toList())
                 .stream().findFirst();
-    }
-
-    @Override
-    public long countMatrixUsages(UUID id) {
-        return repository.countMatrixUsages(id);
-    }
-
-    @Override
-    public long countIncompatibleMatrixUsages(UUID id, List<UUID> learningOutcomeIds) {
-        return repository.countIncompatibleMatrixUsages(id, learningOutcomeIds);
     }
 
     @Override
     public void insert(CustomLearningLevel level) {
         repository.insert(level);
+        repository.insertAllOutcomeMappings(level.getId(), level.getMatrixId());
         replaceOutcomeMappings(level.getId(), level.getLearningOutcomeIds());
     }
 
@@ -64,8 +56,17 @@ class CustomLearningLevelPersistenceAdapter implements CustomLearningLevelPort {
 
     @Override
     public void replaceOutcomeMappings(UUID levelId, List<UUID> learningOutcomeIds) {
-        repository.deleteOutcomeMappings(levelId);
-        learningOutcomeIds.forEach(outcomeId -> repository.insertOutcomeMapping(levelId, outcomeId));
+        repository.clearOutcomeSelections(levelId);
+        if (learningOutcomeIds != null && !learningOutcomeIds.isEmpty()) {
+            repository.selectOutcomeMappings(levelId, learningOutcomeIds);
+        }
+    }
+
+    @Override
+    public void addUnselectedOutcomesToCourseMatrices(UUID courseId, List<UUID> learningOutcomeIds) {
+        if (learningOutcomeIds != null && !learningOutcomeIds.isEmpty()) {
+            repository.insertOutcomeMappingsForCourseMatrices(courseId, learningOutcomeIds);
+        }
     }
 
     @Override
@@ -73,11 +74,12 @@ class CustomLearningLevelPersistenceAdapter implements CustomLearningLevelPort {
         repository.delete(id);
     }
 
-    private List<CustomLearningLevel> assemble(UUID courseId, List<CustomLearningLevel> levels) {
+    private List<CustomLearningLevel> assemble(UUID matrixId, List<CustomLearningLevel> levels) {
         Map<UUID, CustomLearningLevel> byId = levels.stream()
                 .collect(Collectors.toMap(CustomLearningLevel::getId, Function.identity()));
         byId.values().forEach(level -> level.setLearningOutcomeIds(new ArrayList<>()));
-        repository.findOutcomeLinksByCourseId(courseId).forEach(link -> {
+        repository.findOutcomeLinksByMatrixId(matrixId).stream()
+                .filter(CustomLearningLevelOutcomeLink::selected).forEach(link -> {
             CustomLearningLevel level = byId.get(link.customLearningLevelId());
             if (level != null) level.getLearningOutcomeIds().add(link.learningOutcomeId());
         });

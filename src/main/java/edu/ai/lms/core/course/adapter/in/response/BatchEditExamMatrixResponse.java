@@ -15,5 +15,6 @@ import lombok.Setter;
 @Builder
 public class BatchEditExamMatrixResponse {
     private List<CreatedRowMappingResponse> createdRowMappings;
+    private List<CreatedCustomLearningLevelMappingResponse> createdLevelMappings;
     private ExamMatrixResponse matrix;
 }

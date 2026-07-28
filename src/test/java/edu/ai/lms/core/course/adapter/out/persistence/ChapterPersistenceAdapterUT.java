@@ -28,4 +28,36 @@ class ChapterPersistenceAdapterUT {
         deletionOrder.verify(chapterRepository).deleteQuizChapterLinks(chapterId);
         deletionOrder.verify(chapterRepository).deleteByChapterIdAndCourseId(chapterId, courseId);
     }
+
+    @Test
+    void shouldMaterializeUnselectedMatrixMappingsAfterAddingOutcomeToChapter() {
+        UUID courseId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+        UUID outcomeId = UUID.randomUUID();
+        ChapterPersistenceAdapter adapter = new ChapterPersistenceAdapter(chapterRepository);
+
+        adapter.addLearningOutcomeToChapter(chapterId, courseId, outcomeId);
+
+        InOrder insertionOrder = inOrder(chapterRepository);
+        insertionOrder.verify(chapterRepository)
+                .insertChapterLearningOutcome(chapterId, courseId, outcomeId);
+        insertionOrder.verify(chapterRepository)
+                .insertUnselectedExamMatrixRowOutcomeMappings(chapterId, outcomeId);
+    }
+
+    @Test
+    void shouldDeleteMatrixMappingsAfterRemovingOutcomeFromChapter() {
+        UUID courseId = UUID.randomUUID();
+        UUID chapterId = UUID.randomUUID();
+        UUID outcomeId = UUID.randomUUID();
+        ChapterPersistenceAdapter adapter = new ChapterPersistenceAdapter(chapterRepository);
+
+        adapter.removeLearningOutcomeFromChapter(chapterId, courseId, outcomeId);
+
+        InOrder deletionOrder = inOrder(chapterRepository);
+        deletionOrder.verify(chapterRepository)
+                .deleteChapterLearningOutcome(chapterId, courseId, outcomeId);
+        deletionOrder.verify(chapterRepository)
+                .deleteExamMatrixRowOutcomeMappings(chapterId, outcomeId);
+    }
 }

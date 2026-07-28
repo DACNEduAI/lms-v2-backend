@@ -8,6 +8,7 @@ import lombok.Builder;
 @Builder
 public record CustomLearningLevelListResponse(
         UUID courseId,
+        UUID matrixId,
         int total,
         List<CustomLearningLevelResponse> levels) {
 }

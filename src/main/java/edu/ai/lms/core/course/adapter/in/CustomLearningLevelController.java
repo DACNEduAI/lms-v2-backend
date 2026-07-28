@@ -18,11 +18,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/courses/{courseId}/custom-learning-levels")
+@RequestMapping("/api/courses/{courseId}/exam-matrices/{matrixId}/custom-learning-levels")
 @PreAuthorize("hasRole('TEACHER')")
 @RequiredArgsConstructor
 @Tag(name = "Custom Learning Level Controller",
-        description = "Teacher-managed course learning levels with editable mappings to one or more learning outcomes.")
+        description = "Teacher-managed, exam-matrix-scoped learning levels with boolean outcome selections.")
 public class CustomLearningLevelController {
     private final CustomLearningLevelUseCase useCase;
     private final CustomLearningLevelCommandMapper mapper;
@@ -31,38 +31,44 @@ public class CustomLearningLevelController {
     @Operation(summary = "Create a custom learning level")
     public ResponseEntity<CustomLearningLevelResponse> create(
             @PathVariable UUID courseId,
+            @PathVariable UUID matrixId,
             @Valid @RequestBody CreateCustomLearningLevelRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                useCase.create(courseId, mapper.toValue(request)));
+                useCase.create(courseId, matrixId, mapper.toValue(request)));
     }
 
     @GetMapping
-    @Operation(summary = "List custom learning levels for a course")
-    public ResponseEntity<CustomLearningLevelListResponse> getAll(@PathVariable UUID courseId) {
-        return ResponseEntity.ok(useCase.getAll(courseId));
+    @Operation(summary = "List custom learning levels for an exam matrix")
+    public ResponseEntity<CustomLearningLevelListResponse> getAll(
+            @PathVariable UUID courseId,
+            @PathVariable UUID matrixId) {
+        return ResponseEntity.ok(useCase.getAll(courseId, matrixId));
     }
 
     @GetMapping("/{levelId}")
     @Operation(summary = "Get one custom learning level")
     public ResponseEntity<CustomLearningLevelResponse> getOne(
             @PathVariable UUID courseId,
+            @PathVariable UUID matrixId,
             @PathVariable UUID levelId) {
-        return ResponseEntity.ok(useCase.getOne(courseId, levelId));
+        return ResponseEntity.ok(useCase.getOne(courseId, matrixId, levelId));
     }
 
     @PutMapping("/batch")
     @Operation(summary = "Transactionally create, update, and delete custom learning levels")
     public ResponseEntity<BatchEditCustomLearningLevelsResponse> batchEdit(
             @PathVariable UUID courseId,
+            @PathVariable UUID matrixId,
             @Valid @RequestBody BatchEditCustomLearningLevelsRequest request) {
-        return ResponseEntity.ok(useCase.batchEdit(mapper.toCommand(courseId, request)));
+        return ResponseEntity.ok(useCase.batchEdit(mapper.toCommand(courseId, matrixId, request)));
     }
 
     @DeleteMapping("/{levelId}")
-    @Operation(summary = "Delete one unused custom learning level")
+    @Operation(summary = "Delete one custom learning level if the matrix remains valid")
     public ResponseEntity<DeleteCustomLearningLevelResponse> delete(
             @PathVariable UUID courseId,
+            @PathVariable UUID matrixId,
             @PathVariable UUID levelId) {
-        return ResponseEntity.ok(useCase.delete(courseId, levelId));
+        return ResponseEntity.ok(useCase.delete(courseId, matrixId, levelId));
     }
 }

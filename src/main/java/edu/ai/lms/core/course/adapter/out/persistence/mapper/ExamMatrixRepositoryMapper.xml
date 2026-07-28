@@ -39,7 +39,48 @@
   <select id="findAllSummariesByCourseId" resultType="edu.ai.lms.core.course.app.domain.ExamMatrixSummary">
     SELECT m.id, m.course_id AS courseId, m.title, m.description,
            COUNT(DISTINCT r.id) AS rowCount,
-           COALESCE(SUM(c.question_count), 0) AS totalQuestionCount,
+           COALESCE(SUM(CASE WHEN EXISTS (
+             SELECT 1
+             FROM edu.exam_matrix_row_learning_outcomes row_mapping
+             JOIN edu.custom_learning_level_learning_outcomes level_mapping
+               ON level_mapping.learning_outcome_id = row_mapping.learning_outcome_id
+              AND level_mapping.custom_learning_level_id = c.custom_learning_level_id
+              AND level_mapping.is_selected = TRUE
+             WHERE row_mapping.exam_matrix_row_id = r.id
+               AND row_mapping.is_selected = TRUE
+           ) THEN c.question_count ELSE 0 END), 0) AS totalQuestionCount,
+           CASE WHEN
+             (SELECT COUNT(*) FROM edu.custom_learning_levels level WHERE level.matrix_id = m.id) &gt;= 3
+             AND NOT EXISTS (
+               SELECT 1 FROM edu.custom_learning_levels level
+               WHERE level.matrix_id = m.id
+                 AND NOT EXISTS (
+                   SELECT 1 FROM edu.custom_learning_level_learning_outcomes mapping
+                   WHERE mapping.custom_learning_level_id = level.id AND mapping.is_selected = TRUE
+                 )
+             )
+             AND NOT EXISTS (
+               SELECT 1 FROM edu.learning_outcomes outcome
+               WHERE outcome.course_id = m.course_id
+                 AND NOT EXISTS (
+                   SELECT 1
+                   FROM edu.custom_learning_levels level
+                   JOIN edu.custom_learning_level_learning_outcomes mapping
+                     ON mapping.custom_learning_level_id = level.id
+                    AND mapping.learning_outcome_id = outcome.id
+                    AND mapping.is_selected = TRUE
+                   WHERE level.matrix_id = m.id
+                 )
+             )
+             AND NOT EXISTS (
+               SELECT 1 FROM edu.exam_matrix_rows matrix_row
+               WHERE matrix_row.matrix_id = m.id
+                 AND NOT EXISTS (
+                   SELECT 1 FROM edu.exam_matrix_row_learning_outcomes mapping
+                   WHERE mapping.exam_matrix_row_id = matrix_row.id AND mapping.is_selected = TRUE
+                 )
+             )
+           THEN 'COMPLETE' ELSE 'INCOMPLETE' END AS configurationStatus,
            m.created_at AS createdAt, m.updated_at AS updatedAt
     FROM edu.exam_matrices m
     LEFT JOIN edu.exam_matrix_rows r ON r.matrix_id = m.id
@@ -49,6 +90,23 @@
     ORDER BY m.created_at ASC, m.id ASC
   </select>
 
+  <select id="findUncoveredLearningOutcomeIds" resultType="java.util.UUID">
+    SELECT outcome.id
+    FROM edu.exam_matrices matrix
+    JOIN edu.learning_outcomes outcome ON outcome.course_id = matrix.course_id
+    WHERE matrix.id = #{matrixId}
+      AND NOT EXISTS (
+        SELECT 1
+        FROM edu.custom_learning_levels level
+        JOIN edu.custom_learning_level_learning_outcomes mapping
+          ON mapping.custom_learning_level_id = level.id
+         AND mapping.learning_outcome_id = outcome.id
+         AND mapping.is_selected = TRUE
+        WHERE level.matrix_id = matrix.id
+      )
+    ORDER BY outcome.id
+  </select>
+
   <select id="findRowsByMatrixId" resultMap="ExamMatrixRowResultMap">
     SELECT id, matrix_id, chapter_id, topic, order_index
     FROM edu.exam_matrix_rows WHERE matrix_id = #{matrixId}
@@ -56,7 +114,9 @@
   </select>
 
   <select id="findOutcomeLinksByMatrixId" resultType="edu.ai.lms.core.course.app.domain.ExamMatrixRowOutcomeLink">
-    SELECT o.exam_matrix_row_id AS examMatrixRowId, o.learning_outcome_id AS learningOutcomeId
+    SELECT o.exam_matrix_row_id AS examMatrixRowId,
+           o.learning_outcome_id AS learningOutcomeId,
+           o.is_selected AS selected
     FROM edu.exam_matrix_row_learning_outcomes o
     JOIN edu.exam_matrix_rows r ON r.id = o.exam_matrix_row_id
     WHERE r.matrix_id = #{matrixId}
@@ -84,9 +144,11 @@
     JOIN edu.exam_matrix_rows matrix_row ON matrix_row.id = count_record.exam_matrix_row_id
     JOIN edu.custom_learning_level_learning_outcomes mapping
       ON mapping.custom_learning_level_id = count_record.custom_learning_level_id
+     AND mapping.is_selected = TRUE
     JOIN edu.exam_matrix_row_learning_outcomes row_outcome
       ON row_outcome.exam_matrix_row_id = count_record.exam_matrix_row_id
      AND row_outcome.learning_outcome_id = mapping.learning_outcome_id
+     AND row_outcome.is_selected = TRUE
     WHERE matrix_row.matrix_id = #{matrixId}
     ORDER BY count_record.exam_matrix_row_id,
              count_record.custom_learning_level_id,
@@ -94,17 +156,27 @@
   </select>
 
   <select id="findCustomLearningLevelsByIds" resultType="edu.ai.lms.core.course.app.domain.CustomLearningLevel">
-    SELECT id, course_id AS courseId, code, name, description,
+    SELECT id, matrix_id AS matrixId, code, name, description,
            sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt
     FROM edu.custom_learning_levels
     WHERE id IN
     <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
   </select>
 
+  <select id="findCustomLearningLevelsByMatrixId"
+          resultType="edu.ai.lms.core.course.app.domain.CustomLearningLevel">
+    SELECT id, matrix_id AS matrixId, code, name, description,
+           sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt
+    FROM edu.custom_learning_levels
+    WHERE matrix_id = #{matrixId}
+    ORDER BY sort_order, id
+  </select>
+
   <select id="findCustomLearningLevelOutcomeLinksByIds"
           resultType="edu.ai.lms.core.course.app.domain.CustomLearningLevelOutcomeLink">
     SELECT custom_learning_level_id AS customLearningLevelId,
-           learning_outcome_id AS learningOutcomeId
+           learning_outcome_id AS learningOutcomeId,
+           is_selected AS selected
     FROM edu.custom_learning_level_learning_outcomes
     WHERE custom_learning_level_id IN
     <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
@@ -121,15 +193,53 @@
     VALUES (#{id}, #{matrixId}, #{chapterId}, #{topic}, #{orderIndex})
   </insert>
 
-  <insert id="insertRowOutcome">
-    INSERT INTO edu.exam_matrix_row_learning_outcomes (exam_matrix_row_id, learning_outcome_id)
-    VALUES (#{rowId}, #{learningOutcomeId})
+  <delete id="reconcileRowOutcomeCandidates">
+    DELETE FROM edu.exam_matrix_row_learning_outcomes mapping
+    WHERE mapping.exam_matrix_row_id = #{rowId}
+      AND NOT EXISTS (
+        SELECT 1
+        FROM edu.exam_matrix_rows matrix_row
+        JOIN edu.chapter_learning_outcomes chapter_outcome
+          ON chapter_outcome.chapter_id = matrix_row.chapter_id
+         AND chapter_outcome.learning_outcome_id = mapping.learning_outcome_id
+        WHERE matrix_row.id = #{rowId}
+      )
+  </delete>
+
+  <insert id="insertRowOutcomeCandidates">
+    INSERT INTO edu.exam_matrix_row_learning_outcomes
+      (exam_matrix_row_id, learning_outcome_id, is_selected)
+    SELECT matrix_row.id, chapter_outcome.learning_outcome_id, FALSE
+    FROM edu.exam_matrix_rows matrix_row
+    JOIN edu.chapter_learning_outcomes chapter_outcome
+      ON chapter_outcome.chapter_id = matrix_row.chapter_id
+    WHERE matrix_row.id = #{rowId}
+    ON CONFLICT (exam_matrix_row_id, learning_outcome_id) DO NOTHING
   </insert>
+
+  <update id="clearRowOutcomeSelections">
+    UPDATE edu.exam_matrix_row_learning_outcomes
+    SET is_selected = FALSE
+    WHERE exam_matrix_row_id = #{rowId}
+  </update>
+
+  <update id="selectRowOutcomes">
+    UPDATE edu.exam_matrix_row_learning_outcomes
+    SET is_selected = TRUE
+    WHERE exam_matrix_row_id = #{rowId}
+      AND learning_outcome_id IN
+      <foreach collection="learningOutcomeIds" item="outcomeId"
+               open="(" separator="," close=")">#{outcomeId}</foreach>
+  </update>
 
   <insert id="insertLevelCount">
     INSERT INTO edu.exam_matrix_row_learning_level_counts
-      (exam_matrix_row_id, custom_learning_level_id, question_count)
-    VALUES (#{rowId}, #{count.customLearningLevelId}, #{count.questionCount})
+      (exam_matrix_row_id, custom_learning_level_id, matrix_id, question_count)
+    SELECT #{rowId}, #{count.customLearningLevelId}, matrix_id, #{count.questionCount}
+    FROM edu.exam_matrix_rows
+    WHERE id = #{rowId}
+    ON CONFLICT (exam_matrix_row_id, custom_learning_level_id)
+    DO UPDATE SET question_count = EXCLUDED.question_count
   </insert>
 
   <update id="updateRow">
@@ -146,14 +256,6 @@
   <update id="touch">
     UPDATE edu.exam_matrices SET updated_at = NOW() WHERE id = #{id}
   </update>
-
-  <delete id="deleteLevelCounts">
-    DELETE FROM edu.exam_matrix_row_learning_level_counts WHERE exam_matrix_row_id = #{rowId}
-  </delete>
-
-  <delete id="deleteRowOutcomes">
-    DELETE FROM edu.exam_matrix_row_learning_outcomes WHERE exam_matrix_row_id = #{rowId}
-  </delete>
 
   <delete id="deleteRow">
     DELETE FROM edu.exam_matrix_rows WHERE matrix_id = #{matrixId} AND id = #{rowId}

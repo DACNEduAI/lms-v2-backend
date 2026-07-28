@@ -9,8 +9,9 @@ const entities = {
                  keyPos: [770, 167], attrPos: [1100, 82] },
   matrix:      { name: "EXAM_MATRICES", x: 920, y: 385, w: 360, key: "id · PK", attrs: "course_id · FK, title, description",
                  keyPos: [760, 427], attrPos: [1430, 520] },
-  row:         { name: "EXAM_MATRIX_ROWS", x: 890, y: 700, w: 420, key: "id · PK", attrs: "matrix_id, learning_outcome_id, chapter_id",
+  row:         { name: "EXAM_MATRIX_ROWS", x: 890, y: 700, w: 420, key: "id · PK", attrs: "matrix_id, chapter_id, topic, order_index",
                  keyPos: [700, 855], attrPos: [1150, 855] },
+  level:       { name: "CUSTOM_LEARNING_LEVELS", x: 1330, y: 1010, w: 440, key: "id · PK", attrs: "matrix_id · FK, code, name, sort_order" },
   chapter:     { name: "CHAPTERS", x: 140, y: 700, w: 360, key: "chapter_id · PK", attrs: "course_id · FK, title" },
   outcome:     { name: "LEARNING_OUTCOMES", x: 1700, y: 700, w: 390, key: "id + course_id · PK", attrs: "course_id · FK, group_learning_outcome_id" },
   group:       { name: "GROUP_LEARNING_OUTCOMES", x: 1660, y: 385, w: 430, key: "id + course_id · PK", attrs: "course_id · FK, code",
@@ -29,8 +30,12 @@ for (const entity of Object.values(entities)) {
 const relations = [
   { a: "course", b: "matrix", name: "OWNS", cardA: "1", cardB: "N", x: 1100, y: 300, fk: "exam_matrices.course_id", del: "CASCADE" },
   { a: "matrix", b: "row", name: "CONTAINS", cardA: "1", cardB: "N", x: 1100, y: 570, fk: "exam_matrix_rows.matrix_id", del: "CASCADE" },
+  { a: "matrix", b: "level", name: "DEFINES", cardA: "1", cardB: "N", x: 1370, y: 700, fk: "custom_learning_levels.matrix_id", del: "CASCADE" },
   { a: "chapter", b: "row", name: "SCOPES", cardA: "1", cardB: "N", x: 680, y: 742, fk: "exam_matrix_rows.chapter_id", del: "SET NULL", optional: true },
-  { a: "outcome", b: "row", name: "TARGETS", cardA: "1", cardB: "N", x: 1510, y: 742, fk: "exam_matrix_rows.learning_outcome_id", del: "CASCADE", reverse: true },
+  { a: "outcome", b: "row", name: "SELECTS", cardA: "N", cardB: "N", x: 1510, y: 742,
+    fk: "exam_matrix_row_learning_outcomes · is_selected", del: "CASCADE", reverse: true },
+  { a: "outcome", b: "level", name: "CLASSIFIES", cardA: "N", cardB: "N", x: 1810, y: 930,
+    fk: "custom_learning_level_learning_outcomes · is_selected", del: "CASCADE", reverse: true },
   { a: "group", b: "outcome", name: "GROUPS", cardA: "1", cardB: "N", x: 1895, y: 575, fk: "learning_outcomes.(group_id, course_id)", del: "SET NULL", optional: true },
 
   // Course-owned dimensions.
@@ -133,7 +138,7 @@ svg.push(`<rect class="note-box" x="55" y="1515" width="2090" height="145" rx="1
 svg.push(`<text class="note-title" x="80" y="1545">How to read cardinality</text>`);
 svg.push(`<text class="note" x="80" y="1572">1-N: one parent can relate to many children; each child references at most one parent. N-N: many entities on both sides, implemented here by a junction table.</text>`);
 svg.push(`<text class="note" x="80" y="1598">Nullable FKs are still classified by relationship type, with “optional FK” shown separately. There is no declared 1-1 relationship in this exam-matrix subgraph.</text>`);
-svg.push(`<text class="note" x="80" y="1624">The CHAPTERS N-N LEARNING_OUTCOMES relationship is implemented by CHAPTER_LEARNING_OUTCOMES; EXAM_MATRIX_ROWS independently references both dimensions.</text>`);
+svg.push(`<text class="note" x="80" y="1624">Row/outcome and custom-level/outcome junctions materialize every eligible pair and store the checkbox state in is_selected.</text>`);
 svg.push(`<text class="note" x="80" y="1650">Line colors: red = CASCADE, purple = SET NULL, orange = RESTRICT.</text>`);
 svg.push(`</svg>`);
 

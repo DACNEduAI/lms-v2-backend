@@ -22,4 +22,5 @@ public class LearningLevelCountResponse {
     private String description;
     private int sortOrder;
     private int questionCount;
+    private boolean active;
 }

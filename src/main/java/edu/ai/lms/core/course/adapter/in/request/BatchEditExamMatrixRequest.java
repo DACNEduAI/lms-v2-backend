@@ -21,6 +21,9 @@ public class BatchEditExamMatrixRequest {
     private ExamMatrixMetadataRequest metadata;
 
     @Valid
+    private BatchEditCustomLearningLevelsRequest customLearningLevels;
+
+    @Valid
     @Builder.Default
     private List<CreateExamMatrixRowRequest> create = new ArrayList<>();
 

@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record BatchEditCustomLearningLevelsCommand(
         UUID courseId,
+        UUID matrixId,
         List<CustomLearningLevelValue> create,
         List<CustomLearningLevelValue> update,
         List<UUID> delete) {

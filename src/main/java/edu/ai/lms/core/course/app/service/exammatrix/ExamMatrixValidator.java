@@ -52,21 +52,19 @@ class ExamMatrixValidator {
             requireUnique(countIds, "customLearningLevelIds");
             List<ExamMatrixLevelCount> counts = command.levelCounts().stream().map(value -> {
                 CustomLearningLevel level = levels.get(value.customLearningLevelId());
-                if (!course.getId().equals(level.getCourseId())) {
+                if (level == null || matrixId == null || !matrixId.equals(level.getMatrixId())) {
                     throw new ExamMatrixValidationException(
-                            "Custom learning level does not belong to the course: " + level.getId());
+                            "Custom learning level does not belong to the exam matrix: "
+                                    + value.customLearningLevelId());
                 }
                 List<UUID> mappedSelectedOutcomes = level.getLearningOutcomeIds().stream()
                         .filter(command.learningOutcomeIds()::contains).toList();
-                if (mappedSelectedOutcomes.isEmpty()) {
-                    throw new ExamMatrixValidationException(
-                            "Custom learning level is not mapped to a selected learning outcome: " + level.getId());
-                }
                 return ExamMatrixLevelCount.builder()
                         .customLearningLevelId(level.getId())
                         .learningOutcomeIds(mappedSelectedOutcomes)
                         .code(level.getCode()).name(level.getName()).description(level.getDescription())
-                        .sortOrder(level.getSortOrder()).questionCount(value.questionCount()).build();
+                        .sortOrder(level.getSortOrder()).questionCount(value.questionCount())
+                        .active(!mappedSelectedOutcomes.isEmpty()).build();
             }).toList();
             result.add(ExamMatrixRow.builder()
                     .id(command.id()).matrixId(matrixId).chapterId(command.chapterId())

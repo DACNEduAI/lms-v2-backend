@@ -25,6 +25,11 @@ public class ExamMatrixResponse {
     private String title;
     private String description;
     private List<ExamMatrixRowResponse> rows;
+    private List<CustomLearningLevelResponse> customLearningLevels;
+    private String configurationStatus;
+    private List<UUID> uncoveredLearningOutcomeIds;
+    private List<UUID> emptyCustomLearningLevelIds;
+    private List<UUID> invalidRowIds;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

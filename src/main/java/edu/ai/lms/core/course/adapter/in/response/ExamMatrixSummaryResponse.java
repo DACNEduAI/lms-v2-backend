@@ -20,6 +20,7 @@ public class ExamMatrixSummaryResponse {
     private String description;
     private long rowCount;
     private long totalQuestionCount;
+    private String configurationStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

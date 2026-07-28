@@ -35,7 +35,12 @@ class CourseApiAdapterExamMatrixUT {
         when(coursePort.findById(courseId)).thenReturn(Optional.of(
                 Course.builder().id(courseId).courseName("Course").build()));
         when(matrixPort.findById(matrixId)).thenReturn(Optional.of(
-                ExamMatrix.builder().id(matrixId).courseId(courseId).rows(List.of(row)).build()));
+                ExamMatrix.builder().id(matrixId).courseId(courseId).rows(List.of(row))
+                        .customLearningLevels(List.of(
+                                level(matrixId, first, "Understand"),
+                                level(matrixId, first, "Apply"),
+                                level(matrixId, second, "Apply Plus")))
+                        .build()));
         when(chapterPort.findByKey(courseId, chapterId)).thenReturn(Optional.of(
                 Chapter.builder().chapterId(chapterId).title("Chapter").build()));
         when(outcomePort.findById(first)).thenReturn(Optional.of(outcome(first, courseId)));
@@ -70,5 +75,10 @@ class CourseApiAdapterExamMatrixUT {
     private ExamMatrixLevelCount count(UUID outcomeId, String name, int value) {
         return ExamMatrixLevelCount.builder().learningOutcomeIds(List.of(outcomeId))
                 .name(name).questionCount(value).build();
+    }
+
+    private CustomLearningLevel level(UUID matrixId, UUID outcomeId, String name) {
+        return CustomLearningLevel.builder().id(UUID.randomUUID()).matrixId(matrixId)
+                .learningOutcomeIds(List.of(outcomeId)).code(name).name(name).build();
     }
 }

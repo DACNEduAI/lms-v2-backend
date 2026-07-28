@@ -161,7 +161,7 @@ public class ExamMatrixController {
             @ApiResponse(responseCode = "404", description = "Course or exam matrix not found"),
             @ApiResponse(responseCode = "403", description = "Not authorized")
     })
-    @PutMapping("/{matrixId}/rows/batch")
+    @PutMapping({"/{matrixId}/rows/batch", "/{matrixId}/configuration/batch"})
     public ResponseEntity<BatchEditExamMatrixResponse> batchEditExamMatrix(
             @Parameter(description = "Course ID") @PathVariable UUID courseId,
             @Parameter(description = "Exam matrix ID") @PathVariable UUID matrixId,

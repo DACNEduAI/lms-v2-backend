@@ -8,9 +8,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.core.course.adapter.in.response.BatchEditExamMatrixResponse;
 import edu.ai.lms.core.course.adapter.in.response.CreatedRowMappingResponse;
+import edu.ai.lms.core.course.adapter.in.response.CreatedCustomLearningLevelMappingResponse;
 import edu.ai.lms.core.course.app.exception.ExamMatrixNotFoundException;
 import edu.ai.lms.core.course.app.exception.ExamMatrixValidationException;
 import edu.ai.lms.core.course.app.port.in.command.BatchEditExamMatrixCommand;
+import edu.ai.lms.core.course.app.port.in.command.ExamMatrixRowCommand;
+import edu.ai.lms.core.course.app.port.in.command.LearningLevelCountCommand;
+import edu.ai.lms.core.course.app.port.in.usecase.CustomLearningLevelUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.TeacherBatchEditExamMatrixUseCase;
 import edu.ai.lms.core.course.app.port.out.BatchEditExamMatrixPort;
 import edu.ai.lms.core.course.app.port.out.LoadExamMatrixPort;
@@ -24,20 +28,37 @@ public class BatchEditExamMatrixService implements TeacherBatchEditExamMatrixUse
     private final ExamMatrixAccess access;
     private final ExamMatrixValidator validator;
     private final ExamMatrixResponseAssembler assembler;
+    private final CustomLearningLevelUseCase customLearningLevelUseCase;
 
     @Override
     @Transactional
     public BatchEditExamMatrixResponse batchEdit(BatchEditExamMatrixCommand command) {
         var course = access.requireCourseTeacher(command.courseId());
-        if (command.metadata() == null && command.create().isEmpty()
+        if (command.metadata() == null && command.customLearningLevels() == null && command.create().isEmpty()
                 && command.update().isEmpty() && command.delete().isEmpty()) {
             throw new ExamMatrixValidationException("Batch must contain at least one change");
         }
         var existing = batchPort.lockByCourseIdAndId(command.courseId(), command.matrixId())
                 .orElseThrow(() -> new ExamMatrixNotFoundException("Exam matrix not found: " + command.matrixId()));
 
-        requireUnique(command.create().stream().map(value -> value.clientTempId()).toList(), "clientTempId");
-        Set<UUID> updateIds = requireUnique(command.update().stream().map(value -> value.id()).toList(), "update row ID");
+        List<CreatedCustomLearningLevelMappingResponse> createdLevelMappings = List.of();
+        Map<String, UUID> resolvedCreatedLevelIds = Map.of();
+        if (command.customLearningLevels() != null) {
+            var levelResponse = customLearningLevelUseCase.batchEdit(command.customLearningLevels());
+            createdLevelMappings = levelResponse.createdLevelMappings();
+            resolvedCreatedLevelIds = createdLevelMappings.stream().collect(Collectors.toMap(
+                    CreatedCustomLearningLevelMappingResponse::clientTempId,
+                    CreatedCustomLearningLevelMappingResponse::customLearningLevelId));
+        }
+        final Map<String, UUID> createdLevelIds = resolvedCreatedLevelIds;
+
+        List<ExamMatrixRowCommand> createCommands = command.create().stream()
+                .map(row -> resolveLevelReferences(row, createdLevelIds)).toList();
+        List<ExamMatrixRowCommand> updateCommands = command.update().stream()
+                .map(row -> resolveLevelReferences(row, createdLevelIds)).toList();
+
+        requireUnique(createCommands.stream().map(value -> value.clientTempId()).toList(), "clientTempId");
+        Set<UUID> updateIds = requireUnique(updateCommands.stream().map(value -> value.id()).toList(), "update row ID");
         Set<UUID> deleteIds = requireUnique(command.delete(), "delete row ID");
         if (!Collections.disjoint(updateIds, deleteIds)) {
             throw new ExamMatrixValidationException("A row cannot be both updated and deleted");
@@ -49,8 +70,8 @@ public class BatchEditExamMatrixService implements TeacherBatchEditExamMatrixUse
             throw new ExamMatrixNotFoundException("One or more rows do not belong to the exam matrix");
         }
 
-        var updatedRows = validator.validateAndMap(course, command.matrixId(), command.update());
-        var createdRows = validator.validateAndMap(course, command.matrixId(), command.create());
+        var updatedRows = validator.validateAndMap(course, command.matrixId(), updateCommands);
+        var createdRows = validator.validateAndMap(course, command.matrixId(), createCommands);
         createdRows.forEach(row -> row.setId(UUID.randomUUID()));
 
         List<Integer> finalOrder = existing.getRows().stream()
@@ -77,8 +98,39 @@ public class BatchEditExamMatrixService implements TeacherBatchEditExamMatrixUse
         }
         var reloaded = loadPort.findByCourseIdAndId(command.courseId(), command.matrixId())
                 .orElseThrow(() -> new IllegalStateException("Exam matrix disappeared after batch edit"));
+        boolean incomplete = reloaded.getCustomLearningLevels().size() < 3
+                || !reloaded.getUncoveredLearningOutcomeIds().isEmpty()
+                || reloaded.getCustomLearningLevels().stream()
+                        .anyMatch(level -> level.getLearningOutcomeIds().isEmpty())
+                || reloaded.getRows().stream().anyMatch(row -> row.getLearningOutcomeIds().isEmpty());
+        if (incomplete) {
+            throw new ExamMatrixValidationException(
+                    "The submitted configuration is incomplete; every outcome must be covered and every row/level valid");
+        }
         return BatchEditExamMatrixResponse.builder()
-                .createdRowMappings(mappings).matrix(assembler.toResponse(reloaded)).build();
+                .createdRowMappings(mappings).createdLevelMappings(createdLevelMappings)
+                .matrix(assembler.toResponse(reloaded)).build();
+    }
+
+    private ExamMatrixRowCommand resolveLevelReferences(
+            ExamMatrixRowCommand row,
+            Map<String, UUID> createdLevelIds) {
+        var counts = row.levelCounts().stream().map(count -> {
+            UUID id = count.customLearningLevelId();
+            if (id == null && count.customLearningLevelClientTempId() != null) {
+                id = createdLevelIds.get(count.customLearningLevelClientTempId());
+            }
+            if (id == null) {
+                throw new ExamMatrixValidationException(
+                        "Question count references an unknown custom learning level");
+            }
+            return LearningLevelCountCommand.builder()
+                    .customLearningLevelId(id).questionCount(count.questionCount()).build();
+        }).toList();
+        return ExamMatrixRowCommand.builder()
+                .id(row.id()).clientTempId(row.clientTempId()).chapterId(row.chapterId())
+                .topic(row.topic()).orderIndex(row.orderIndex())
+                .learningOutcomeIds(row.learningOutcomeIds()).levelCounts(counts).build();
     }
 
     private <T> Set<T> requireUnique(Collection<T> values, String label) {

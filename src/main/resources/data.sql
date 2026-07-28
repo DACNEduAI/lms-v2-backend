@@ -130,27 +130,34 @@ VALUES
     ('6c213801-20e3-4a98-9c1f-7f58729d7acb', 'b1111111-1111-1111-1111-111111111111', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Giải thuật tìm kiếm', 13);
 
 -- 11a. Insert Exam Matrix Row-Learning Outcome Relationships
-INSERT INTO exam_matrix_row_learning_outcomes (exam_matrix_row_id, learning_outcome_id)
+INSERT INTO exam_matrix_row_learning_outcomes (exam_matrix_row_id, learning_outcome_id, is_selected)
 VALUES
-    ('8e513031-979a-49f1-9479-6cbfc325c97b', '81111111-1111-1111-1111-111111111111'),
-    ('680a4f68-6203-41ea-bb53-d95152956b6d', '82222222-2222-2222-2222-222222222222'),
-    ('a2cde69d-3faf-470b-a50a-dcf29b3e09e4', '84444444-4444-4444-4444-444444444444'),
-    ('ec938999-eead-47c2-b2f6-02d68c7865b9', '85555555-5555-5555-5555-555555555555'),
-    ('6ad52dd8-32ea-4f6f-a0c7-8545601f8031', '8854781e-efc8-4130-9451-3b0391a32419'),
-    ('8ca0fdef-55cd-4dd8-bf61-5fbed2f1b8b4', '84444444-4444-4444-4444-444444444444'),
-    ('7ea27159-f06a-4cb8-93b4-17a0d98279ab', '85555555-5555-5555-5555-555555555555'),
-    ('4078d7a9-6062-4f92-b84d-158ad29d90ed', '8854781e-efc8-4130-9451-3b0391a32419'),
-    ('ec404589-3aeb-496c-ae2c-0d22ef6867de', '86666666-6666-6666-6666-666666666666'),
-    ('43f57a91-ce34-4d83-ba11-e7584bf57a88', '87777777-7777-7777-7777-777777777777'),
-    ('cb382f32-f447-4696-96fb-3c36be5b3c07', '8854781e-efc8-4130-9451-3b0391a32419'),
-    ('cfde2627-dd69-4418-b687-9c279208a73d', '86666666-6666-6666-6666-666666666666'),
-    ('af0ce644-f164-414c-96c9-c8d604e14824', '87777777-7777-7777-7777-777777777777'),
-    ('6c213801-20e3-4a98-9c1f-7f58729d7acb', '8854781e-efc8-4130-9451-3b0391a32419');
+    ('8e513031-979a-49f1-9479-6cbfc325c97b', '81111111-1111-1111-1111-111111111111', TRUE),
+    ('680a4f68-6203-41ea-bb53-d95152956b6d', '82222222-2222-2222-2222-222222222222', TRUE),
+    ('a2cde69d-3faf-470b-a50a-dcf29b3e09e4', '84444444-4444-4444-4444-444444444444', TRUE),
+    ('ec938999-eead-47c2-b2f6-02d68c7865b9', '85555555-5555-5555-5555-555555555555', TRUE),
+    ('6ad52dd8-32ea-4f6f-a0c7-8545601f8031', '8854781e-efc8-4130-9451-3b0391a32419', TRUE),
+    ('8ca0fdef-55cd-4dd8-bf61-5fbed2f1b8b4', '84444444-4444-4444-4444-444444444444', TRUE),
+    ('7ea27159-f06a-4cb8-93b4-17a0d98279ab', '85555555-5555-5555-5555-555555555555', TRUE),
+    ('4078d7a9-6062-4f92-b84d-158ad29d90ed', '8854781e-efc8-4130-9451-3b0391a32419', TRUE),
+    ('ec404589-3aeb-496c-ae2c-0d22ef6867de', '86666666-6666-6666-6666-666666666666', TRUE),
+    ('43f57a91-ce34-4d83-ba11-e7584bf57a88', '87777777-7777-7777-7777-777777777777', TRUE),
+    ('cb382f32-f447-4696-96fb-3c36be5b3c07', '8854781e-efc8-4130-9451-3b0391a32419', TRUE),
+    ('cfde2627-dd69-4418-b687-9c279208a73d', '86666666-6666-6666-6666-666666666666', TRUE),
+    ('af0ce644-f164-414c-96c9-c8d604e14824', '87777777-7777-7777-7777-777777777777', TRUE),
+    ('6c213801-20e3-4a98-9c1f-7f58729d7acb', '8854781e-efc8-4130-9451-3b0391a32419', TRUE);
+
+INSERT INTO exam_matrix_row_learning_outcomes (exam_matrix_row_id, learning_outcome_id, is_selected)
+SELECT matrix_row.id, chapter_outcome.learning_outcome_id, FALSE
+FROM exam_matrix_rows matrix_row
+JOIN chapter_learning_outcomes chapter_outcome
+  ON chapter_outcome.chapter_id = matrix_row.chapter_id
+ON CONFLICT (exam_matrix_row_id, learning_outcome_id) DO NOTHING;
 
 -- 11b. Seed Custom Learning Levels for Existing Learning Outcomes
-INSERT INTO custom_learning_levels (course_id, code, name, description, sort_order)
-SELECT course.id, level.code, level.name, level.description, level.sort_order
-FROM courses course
+INSERT INTO custom_learning_levels (matrix_id, code, name, description, sort_order)
+SELECT matrix.id, level.code, level.name, level.description, level.sort_order
+FROM exam_matrices matrix
 CROSS JOIN (
     VALUES
         ('CLL1', 'Understand', 'Legacy understand cognitive level', 1),
@@ -158,8 +165,9 @@ CROSS JOIN (
         ('CLL3', 'Apply Plus', 'Legacy advanced apply cognitive level', 3)
 ) AS level(code, name, description, sort_order);
 
-INSERT INTO custom_learning_level_learning_outcomes (custom_learning_level_id, learning_outcome_id)
-SELECT custom_level.id, mapping.learning_outcome_id
+INSERT INTO custom_learning_level_learning_outcomes
+    (custom_learning_level_id, learning_outcome_id, is_selected)
+SELECT custom_level.id, mapping.learning_outcome_id, TRUE
 FROM (
     VALUES
         -- Understand: definition, foundational data-structure operation, and algorithm illustration.
@@ -176,14 +184,26 @@ FROM (
 JOIN learning_outcomes learning_outcome
   ON learning_outcome.id = mapping.learning_outcome_id
 JOIN custom_learning_levels custom_level
-  ON custom_level.course_id = learning_outcome.course_id
+  ON custom_level.matrix_id IN (
+      SELECT matrix.id FROM exam_matrices matrix
+      WHERE matrix.course_id = learning_outcome.course_id
+  )
  AND custom_level.code = mapping.level_code;
+
+INSERT INTO custom_learning_level_learning_outcomes
+    (custom_learning_level_id, learning_outcome_id, is_selected)
+SELECT custom_level.id, learning_outcome.id, FALSE
+FROM custom_learning_levels custom_level
+JOIN exam_matrices matrix ON matrix.id = custom_level.matrix_id
+JOIN learning_outcomes learning_outcome ON learning_outcome.course_id = matrix.course_id
+ON CONFLICT (custom_learning_level_id, learning_outcome_id) DO NOTHING;
 
 -- 11c. Preserve Legacy Question Counts by Row and Custom Learning Level
 INSERT INTO exam_matrix_row_learning_level_counts
-    (exam_matrix_row_id, custom_learning_level_id, question_count)
+    (exam_matrix_row_id, custom_learning_level_id, matrix_id, question_count)
 SELECT legacy.exam_matrix_row_id,
        custom_level.id,
+       matrix_row.matrix_id,
        level_count.question_count
 FROM (
     VALUES
@@ -208,12 +228,9 @@ CROSS JOIN LATERAL (
         ('Apply', legacy.apply_count),
         ('Apply Plus', legacy.apply_plus_count)
 ) AS level_count(level_name, question_count)
+JOIN exam_matrix_rows matrix_row ON matrix_row.id = legacy.exam_matrix_row_id
 JOIN custom_learning_levels custom_level
-  ON custom_level.course_id = (
-      SELECT learning_outcome.course_id
-      FROM learning_outcomes learning_outcome
-      WHERE learning_outcome.id = legacy.learning_outcome_id
-  )
+  ON custom_level.matrix_id = matrix_row.matrix_id
  AND custom_level.name = level_count.level_name
 WHERE level_count.question_count > 0;
 

@@ -18,6 +18,7 @@ public class CustomLearningLevelCommandMapper {
 
     public BatchEditCustomLearningLevelsCommand toCommand(
             UUID courseId,
+            UUID matrixId,
             BatchEditCustomLearningLevelsRequest request) {
         List<CustomLearningLevelValue> creates = safe(request.getCreate()).stream()
                 .map(value -> new CustomLearningLevelValue(
@@ -30,7 +31,7 @@ public class CustomLearningLevelCommandMapper {
                         value.getDescription(), value.getSortOrder()))
                 .toList();
         return new BatchEditCustomLearningLevelsCommand(
-                courseId, creates, updates, safe(request.getDelete()));
+                courseId, matrixId, creates, updates, safe(request.getDelete()));
     }
 
     private <T> List<T> safe(List<T> values) {

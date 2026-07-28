@@ -46,8 +46,17 @@ class BatchEditExamMatrixServiceUT {
         when(batchPort.lockByCourseIdAndId(courseId, matrixId)).thenReturn(Optional.of(existing));
         when(validator.validateAndMap(course, matrixId, List.of(update))).thenReturn(List.of(updated));
         when(validator.validateAndMap(course, matrixId, List.of(create))).thenReturn(List.of(created));
-        when(loadPort.findByCourseIdAndId(courseId, matrixId)).thenReturn(Optional.of(existing));
-        when(assembler.toResponse(existing)).thenReturn(ExamMatrixResponse.builder().id(matrixId).build());
+        UUID outcomeId = UUID.randomUUID();
+        ExamMatrix reloaded = ExamMatrix.builder().id(matrixId).courseId(courseId)
+                .rows(List.of(ExamMatrixRow.builder().id(updateId)
+                        .learningOutcomeIds(List.of(outcomeId)).build()))
+                .customLearningLevels(List.of(
+                        level(matrixId, outcomeId, "CLL1"),
+                        level(matrixId, outcomeId, "CLL2"),
+                        level(matrixId, outcomeId, "CLL3")))
+                .build();
+        when(loadPort.findByCourseIdAndId(courseId, matrixId)).thenReturn(Optional.of(reloaded));
+        when(assembler.toResponse(reloaded)).thenReturn(ExamMatrixResponse.builder().id(matrixId).build());
 
         var response = service.batchEdit(command);
 
@@ -66,5 +75,10 @@ class BatchEditExamMatrixServiceUT {
                 .courseId(courseId).matrixId(UUID.randomUUID()).build();
         assertThrows(ExamMatrixValidationException.class, () -> service.batchEdit(command));
         verifyNoInteractions(batchPort);
+    }
+
+    private CustomLearningLevel level(UUID matrixId, UUID outcomeId, String code) {
+        return CustomLearningLevel.builder().id(UUID.randomUUID()).matrixId(matrixId)
+                .learningOutcomeIds(List.of(outcomeId)).code(code).name(code).build();
     }
 }

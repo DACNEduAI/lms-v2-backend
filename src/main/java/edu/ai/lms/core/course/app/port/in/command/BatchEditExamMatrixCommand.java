@@ -10,6 +10,7 @@ public record BatchEditExamMatrixCommand(
         UUID courseId,
         UUID matrixId,
         MatrixMetadataCommand metadata,
+        BatchEditCustomLearningLevelsCommand customLearningLevels,
         List<ExamMatrixRowCommand> create,
         List<ExamMatrixRowCommand> update,
         List<UUID> delete

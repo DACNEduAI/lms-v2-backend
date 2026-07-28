@@ -17,20 +17,24 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.domain.CustomLearningLevel;
+import edu.ai.lms.core.course.app.domain.ExamMatrix;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.exception.CustomLearningLevelValidationException;
 import edu.ai.lms.core.course.app.port.in.command.BatchEditCustomLearningLevelsCommand;
 import edu.ai.lms.core.course.app.port.in.command.CustomLearningLevelValue;
 import edu.ai.lms.core.course.app.port.out.CustomLearningLevelPort;
+import edu.ai.lms.core.course.app.port.out.LoadExamMatrixPort;
 import edu.ai.lms.core.course.app.service.exammatrix.ExamMatrixAccess;
 
 @ExtendWith(MockitoExtension.class)
 class CustomLearningLevelServiceUT {
     @Mock ExamMatrixAccess access;
     @Mock CustomLearningLevelPort port;
+    @Mock LoadExamMatrixPort matrixPort;
     @InjectMocks CustomLearningLevelService service;
 
     UUID courseId;
+    UUID matrixId;
     UUID outcomeId;
     UUID secondOutcomeId;
     Course course;
@@ -38,6 +42,7 @@ class CustomLearningLevelServiceUT {
     @BeforeEach
     void setUp() {
         courseId = UUID.randomUUID();
+        matrixId = UUID.randomUUID();
         outcomeId = UUID.randomUUID();
         secondOutcomeId = UUID.randomUUID();
         course = Course.builder().id(courseId)
@@ -46,129 +51,79 @@ class CustomLearningLevelServiceUT {
                         LearningOutcome.builder().id(secondOutcomeId).courseId(courseId).build()))
                 .build();
         lenient().when(access.requireCourseTeacher(courseId)).thenReturn(course);
+        lenient().when(matrixPort.findByCourseIdAndId(courseId, matrixId))
+                .thenReturn(Optional.of(ExamMatrix.builder().id(matrixId).courseId(courseId).build()));
     }
 
     @Test
-    void createsTrimmedLevelForCourseOutcome() {
-        var value = new CustomLearningLevelValue(
-                null, null, List.of(outcomeId), " CLL1 ", " Understand ", " Explain ", 0);
-        when(port.lockAllByCourseId(courseId)).thenReturn(List.of());
-        when(port.findByCourseIdAndId(eq(courseId), any())).thenAnswer(invocation -> {
-            UUID id = invocation.getArgument(1);
-            return Optional.of(CustomLearningLevel.builder().id(id).courseId(courseId)
-                    .learningOutcomeIds(List.of(outcomeId))
-                    .code("CLL1").name("Understand").description("Explain").sortOrder(0).build());
-        });
+    void createsTrimmedMatrixOwnedLevel() {
+        var value = value(null, null, List.of(outcomeId), " CLL1 ", " Understand ", 0);
+        when(port.lockAllByMatrixId(matrixId)).thenReturn(List.of());
+        when(port.findByMatrixIdAndId(eq(matrixId), any())).thenAnswer(invocation ->
+                Optional.of(level(invocation.getArgument(1), "CLL1", "Understand", List.of(outcomeId))));
 
-        var response = service.create(courseId, value);
+        var response = service.create(courseId, matrixId, value);
 
         assertEquals("CLL1", response.code());
-        verify(port).insert(argThat(level -> level.getCode().equals("CLL1")
-                && level.getName().equals("Understand")));
+        verify(port).insert(argThat(level -> matrixId.equals(level.getMatrixId())
+                && level.getCode().equals("CLL1")));
     }
 
     @Test
-    void rejectsCaseInsensitiveDuplicateCodeWithinOutcome() {
-        when(port.lockAllByCourseId(courseId)).thenReturn(List.of(level("CLL1", "Understand")));
-        var value = new CustomLearningLevelValue(
-                null, null, List.of(outcomeId), "cll1", "Different", null, 1);
+    void allowsRemovingAPreviouslyUsedOutcomeMapping() {
+        CustomLearningLevel first = level(UUID.randomUUID(), "CLL1", "Understand",
+                List.of(outcomeId, secondOutcomeId));
+        CustomLearningLevel second = level(UUID.randomUUID(), "CLL2", "Apply", List.of(outcomeId));
+        CustomLearningLevel third = level(UUID.randomUUID(), "CLL3", "Create", List.of(secondOutcomeId));
+        when(port.lockAllByMatrixId(matrixId)).thenReturn(List.of(first, second, third));
+        when(port.findAllByMatrixId(matrixId)).thenReturn(List.of(first, second, third));
 
-        assertThrows(CustomLearningLevelValidationException.class,
-                () -> service.create(courseId, value));
-        verify(port, never()).insert(any());
-    }
-
-    @Test
-    void appliesMixedBatchAndReturnsClientMapping() {
-        CustomLearningLevel existing = level("CLL1", "Understand");
-        when(port.lockAllByCourseId(courseId)).thenReturn(List.of(existing));
-        when(port.findAllByCourseId(courseId)).thenReturn(List.of());
-        var command = new BatchEditCustomLearningLevelsCommand(courseId,
-                List.of(new CustomLearningLevelValue(
-                        null, "temp-1", List.of(outcomeId), "CLL2", "Apply", null, 1)),
-                List.of(new CustomLearningLevelValue(
-                        existing.getId(), null, List.of(outcomeId), "CLL1A", "Understand", null, 0)),
+        var command = new BatchEditCustomLearningLevelsCommand(
+                courseId, matrixId, List.of(),
+                List.of(value(first.getId(), null, List.of(outcomeId), "CLL1", "Understand", 0)),
                 List.of());
 
-        var response = service.batchEdit(command);
-
-        assertEquals("temp-1", response.createdLevelMappings().getFirst().clientTempId());
-        verify(port).stageUpdate(eq(existing.getId()), startsWith("__tmp__"));
-        verify(port).insert(any());
-        verify(port).update(argThat(level -> level.getCode().equals("CLL1A")));
+        assertDoesNotThrow(() -> service.batchEdit(command));
+        verify(port).update(argThat(level -> level.getLearningOutcomeIds().equals(List.of(outcomeId))));
     }
 
     @Test
-    void rejectsDeleteWhenLevelIsUsedWithoutMutating() {
-        CustomLearningLevel existing = level("CLL1", "Understand");
-        when(port.lockAllByCourseId(courseId)).thenReturn(List.of(existing));
-        when(port.countMatrixUsages(existing.getId())).thenReturn(2L);
-        var command = new BatchEditCustomLearningLevelsCommand(
-                courseId, List.of(), List.of(), List.of(existing.getId()));
+    void rejectsFinalStateWithFewerThanThreeLevels() {
+        CustomLearningLevel first = level(UUID.randomUUID(), "CLL1", "Understand", List.of(outcomeId));
+        CustomLearningLevel second = level(UUID.randomUUID(), "CLL2", "Apply", List.of(secondOutcomeId));
+        when(port.lockAllByMatrixId(matrixId)).thenReturn(List.of(first, second));
 
-        assertThrows(CustomLearningLevelValidationException.class,
-                () -> service.batchEdit(command));
+        var command = new BatchEditCustomLearningLevelsCommand(
+                courseId, matrixId, List.of(), List.of(), List.of(first.getId()));
+
+        assertThrows(CustomLearningLevelValidationException.class, () -> service.batchEdit(command));
         verify(port, never()).delete(any());
     }
 
     @Test
-    void replacesLearningOutcomeMappingsWhenTeacherTogglesThem() {
-        CustomLearningLevel existing = level("CLL1", "Understand");
-        when(port.lockAllByCourseId(courseId)).thenReturn(List.of(existing));
-        when(port.findAllByCourseId(courseId)).thenReturn(List.of());
+    void rejectsFinalStateWithAnUncoveredOutcome() {
+        CustomLearningLevel first = level(UUID.randomUUID(), "CLL1", "Understand", List.of(outcomeId));
+        CustomLearningLevel second = level(UUID.randomUUID(), "CLL2", "Apply", List.of(outcomeId));
+        CustomLearningLevel third = level(UUID.randomUUID(), "CLL3", "Create", List.of(outcomeId));
+        when(port.lockAllByMatrixId(matrixId)).thenReturn(List.of(first, second, third));
+
         var command = new BatchEditCustomLearningLevelsCommand(
-                courseId,
-                List.of(),
-                List.of(new CustomLearningLevelValue(
-                        existing.getId(), null, List.of(secondOutcomeId),
-                        "CLL1", "Understand", null, 0)),
+                courseId, matrixId, List.of(),
+                List.of(value(first.getId(), null, List.of(outcomeId), "CLL1A", "Understand", 0)),
                 List.of());
 
-        service.batchEdit(command);
-
-        verify(port).update(argThat(level ->
-                level.getLearningOutcomeIds().equals(List.of(secondOutcomeId))));
+        assertThrows(CustomLearningLevelValidationException.class, () -> service.batchEdit(command));
     }
 
-    @Test
-    void rejectsRemovingMappingsNeededByExistingMatrixCounts() {
-        CustomLearningLevel existing = level("CLL1", "Understand");
-        when(port.lockAllByCourseId(courseId)).thenReturn(List.of(existing));
-        when(port.countIncompatibleMatrixUsages(
-                existing.getId(), List.of(secondOutcomeId))).thenReturn(1L);
-        var command = new BatchEditCustomLearningLevelsCommand(
-                courseId,
-                List.of(),
-                List.of(new CustomLearningLevelValue(
-                        existing.getId(), null, List.of(secondOutcomeId),
-                        "CLL1", "Understand", null, 0)),
-                List.of());
-
-        assertThrows(CustomLearningLevelValidationException.class,
-                () -> service.batchEdit(command));
-        verify(port, never()).update(any());
+    private CustomLearningLevelValue value(
+            UUID id, String tempId, List<UUID> outcomes, String code, String name, int order) {
+        return new CustomLearningLevelValue(id, tempId, outcomes, code, name, null, order);
     }
 
-    @Test
-    void rejectsEmptyAndOverlappingBatches() {
-        assertThrows(CustomLearningLevelValidationException.class,
-                () -> service.batchEdit(new BatchEditCustomLearningLevelsCommand(
-                        courseId, List.of(), List.of(), List.of())));
-
-        UUID id = UUID.randomUUID();
-        assertThrows(CustomLearningLevelValidationException.class,
-                () -> service.batchEdit(new BatchEditCustomLearningLevelsCommand(
-                        courseId,
-                        List.of(),
-                        List.of(new CustomLearningLevelValue(
-                                id, null, List.of(outcomeId), "C", "N", null, 0)),
-                        List.of(id))));
-    }
-
-    private CustomLearningLevel level(String code, String name) {
+    private CustomLearningLevel level(
+            UUID id, String code, String name, List<UUID> outcomes) {
         return CustomLearningLevel.builder()
-                .id(UUID.randomUUID()).courseId(courseId)
-                .learningOutcomeIds(List.of(outcomeId))
+                .id(id).matrixId(matrixId).learningOutcomeIds(outcomes)
                 .code(code).name(name).sortOrder(0).build();
     }
 }

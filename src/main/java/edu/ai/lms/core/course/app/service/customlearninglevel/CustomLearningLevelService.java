@@ -16,6 +16,7 @@ import edu.ai.lms.core.course.app.port.in.command.BatchEditCustomLearningLevelsC
 import edu.ai.lms.core.course.app.port.in.command.CustomLearningLevelValue;
 import edu.ai.lms.core.course.app.port.in.usecase.CustomLearningLevelUseCase;
 import edu.ai.lms.core.course.app.port.out.CustomLearningLevelPort;
+import edu.ai.lms.core.course.app.port.out.LoadExamMatrixPort;
 import edu.ai.lms.core.course.app.service.exammatrix.ExamMatrixAccess;
 import lombok.RequiredArgsConstructor;
 
@@ -24,31 +25,35 @@ import lombok.RequiredArgsConstructor;
 public class CustomLearningLevelService implements CustomLearningLevelUseCase {
     private final ExamMatrixAccess access;
     private final CustomLearningLevelPort levelPort;
+    private final LoadExamMatrixPort matrixPort;
 
     @Override
     @Transactional
-    public CustomLearningLevelResponse create(UUID courseId, CustomLearningLevelValue value) {
+    public CustomLearningLevelResponse create(UUID courseId, UUID matrixId, CustomLearningLevelValue value) {
         Course course = access.requireCourseTeacher(courseId);
+        requireMatrix(courseId, matrixId);
         requireOutcomesInCourse(course, value.learningOutcomeIds());
-        CustomLearningLevel level = toDomain(value, UUID.randomUUID(), courseId);
-        List<CustomLearningLevel> finalLevels = new ArrayList<>(levelPort.lockAllByCourseId(courseId));
+        CustomLearningLevel level = toDomain(value, UUID.randomUUID(), matrixId);
+        List<CustomLearningLevel> finalLevels = new ArrayList<>(levelPort.lockAllByMatrixId(matrixId));
         finalLevels.add(level);
         validateUniqueFinalValues(finalLevels);
         levelPort.insert(level);
-        return toResponse(levelPort.findByCourseIdAndId(courseId, level.getId())
+        return toResponse(levelPort.findByMatrixIdAndId(matrixId, level.getId())
                 .orElseThrow(() -> notFound(level.getId())));
     }
 
     @Override
-    public CustomLearningLevelListResponse getAll(UUID courseId) {
+    public CustomLearningLevelListResponse getAll(UUID courseId, UUID matrixId) {
         access.requireCourseTeacher(courseId);
-        return toListResponse(courseId, levelPort.findAllByCourseId(courseId));
+        requireMatrix(courseId, matrixId);
+        return toListResponse(courseId, matrixId, levelPort.findAllByMatrixId(matrixId));
     }
 
     @Override
-    public CustomLearningLevelResponse getOne(UUID courseId, UUID levelId) {
+    public CustomLearningLevelResponse getOne(UUID courseId, UUID matrixId, UUID levelId) {
         access.requireCourseTeacher(courseId);
-        return toResponse(levelPort.findByCourseIdAndId(courseId, levelId)
+        requireMatrix(courseId, matrixId);
+        return toResponse(levelPort.findByMatrixIdAndId(matrixId, levelId)
                 .orElseThrow(() -> notFound(levelId)));
     }
 
@@ -56,6 +61,7 @@ public class CustomLearningLevelService implements CustomLearningLevelUseCase {
     @Transactional
     public BatchEditCustomLearningLevelsResponse batchEdit(BatchEditCustomLearningLevelsCommand command) {
         Course course = access.requireCourseTeacher(command.courseId());
+        requireMatrix(command.courseId(), command.matrixId());
         List<CustomLearningLevelValue> creates = safe(command.create());
         List<CustomLearningLevelValue> updates = safe(command.update());
         List<UUID> deletes = safe(command.delete());
@@ -73,30 +79,19 @@ public class CustomLearningLevelService implements CustomLearningLevelUseCase {
             throw invalid("A custom learning level cannot be updated and deleted in the same batch");
         }
 
-        List<CustomLearningLevel> existing = levelPort.lockAllByCourseId(command.courseId());
+        List<CustomLearningLevel> existing = levelPort.lockAllByMatrixId(command.matrixId());
         Map<UUID, CustomLearningLevel> existingById = existing.stream()
                 .collect(Collectors.toMap(CustomLearningLevel::getId, Function.identity()));
         for (UUID id : updateIds) requireExisting(existingById, id);
         for (UUID id : deleteIds) requireExisting(existingById, id);
         creates.forEach(value -> requireOutcomesInCourse(course, value.learningOutcomeIds()));
         updates.forEach(value -> requireOutcomesInCourse(course, value.learningOutcomeIds()));
-        rejectUsedDeletes(deleteIds);
-
         List<CustomLearningLevel> updatedLevels = updates.stream()
-                .map(value -> toDomain(value, value.id(), command.courseId()))
+                .map(value -> toDomain(value, value.id(), command.matrixId()))
                 .toList();
         List<CustomLearningLevel> createdLevels = creates.stream()
-                .map(value -> toDomain(value, UUID.randomUUID(), command.courseId()))
+                .map(value -> toDomain(value, UUID.randomUUID(), command.matrixId()))
                 .toList();
-        updatedLevels.forEach(level -> {
-            long incompatible = levelPort.countIncompatibleMatrixUsages(
-                    level.getId(), level.getLearningOutcomeIds());
-            if (incompatible > 0) {
-                throw invalid("Removing these learning outcome mappings would invalidate "
-                        + incompatible + " exam matrix count record(s) for custom learning level "
-                        + level.getId());
-            }
-        });
 
         Map<UUID, CustomLearningLevel> updatesById = updatedLevels.stream()
                 .collect(Collectors.toMap(CustomLearningLevel::getId, Function.identity()));
@@ -106,6 +101,7 @@ public class CustomLearningLevelService implements CustomLearningLevelUseCase {
                 .collect(Collectors.toCollection(ArrayList::new));
         finalLevels.addAll(createdLevels);
         validateUniqueFinalValues(finalLevels);
+        validateCompleteCoverage(course, finalLevels);
 
         deleteIds.forEach(levelPort::delete);
         updatedLevels.forEach(level ->
@@ -120,29 +116,23 @@ public class CustomLearningLevelService implements CustomLearningLevelUseCase {
         }
         return BatchEditCustomLearningLevelsResponse.builder()
                 .createdLevelMappings(mappings)
-                .result(toListResponse(command.courseId(), levelPort.findAllByCourseId(command.courseId())))
+                .result(toListResponse(command.courseId(), command.matrixId(),
+                        levelPort.findAllByMatrixId(command.matrixId())))
                 .build();
     }
 
     @Override
     @Transactional
-    public DeleteCustomLearningLevelResponse delete(UUID courseId, UUID levelId) {
-        access.requireCourseTeacher(courseId);
-        levelPort.findByCourseIdAndId(courseId, levelId).orElseThrow(() -> notFound(levelId));
-        rejectUsedDeletes(Set.of(levelId));
+    public DeleteCustomLearningLevelResponse delete(UUID courseId, UUID matrixId, UUID levelId) {
+        Course course = access.requireCourseTeacher(courseId);
+        requireMatrix(courseId, matrixId);
+        levelPort.findByMatrixIdAndId(matrixId, levelId).orElseThrow(() -> notFound(levelId));
+        List<CustomLearningLevel> finalLevels = levelPort.lockAllByMatrixId(matrixId).stream()
+                .filter(level -> !levelId.equals(level.getId())).toList();
+        validateCompleteCoverage(course, finalLevels);
         levelPort.delete(levelId);
         return new DeleteCustomLearningLevelResponse(
-                courseId, levelId, "Custom learning level deleted successfully", true);
-    }
-
-    private void rejectUsedDeletes(Set<UUID> ids) {
-        for (UUID id : ids) {
-            long usages = levelPort.countMatrixUsages(id);
-            if (usages > 0) {
-                throw invalid("Custom learning level " + id + " is used by " + usages
-                        + " exam matrix count record(s)");
-            }
-        }
+                courseId, matrixId, levelId, "Custom learning level deleted successfully", true);
     }
 
     private void requireOutcomesInCourse(Course course, List<UUID> learningOutcomeIds) {
@@ -157,13 +147,13 @@ public class CustomLearningLevelService implements CustomLearningLevelUseCase {
         }
     }
 
-    private CustomLearningLevel toDomain(CustomLearningLevelValue value, UUID id, UUID courseId) {
+    private CustomLearningLevel toDomain(CustomLearningLevelValue value, UUID id, UUID matrixId) {
         String code = normalizeRequired(value.code(), "Code");
         String name = normalizeRequired(value.name(), "Name");
         if (value.sortOrder() < 0) throw invalid("sortOrder must be >= 0");
         return CustomLearningLevel.builder()
                 .id(id)
-                .courseId(courseId)
+                .matrixId(matrixId)
                 .learningOutcomeIds(value.learningOutcomeIds().stream().distinct().sorted().toList())
                 .code(code)
                 .name(name)
@@ -179,10 +169,10 @@ public class CustomLearningLevelService implements CustomLearningLevelUseCase {
             String codeKey = level.getCode().toLowerCase(Locale.ROOT);
             String nameKey = level.getName();
             if (!codes.add(codeKey)) {
-                throw invalid("Custom learning level code must be unique within the course");
+                throw invalid("Custom learning level code must be unique within the exam matrix");
             }
             if (!names.add(nameKey)) {
-                throw invalid("Custom learning level name must be unique within the course");
+                throw invalid("Custom learning level name must be unique within the exam matrix");
             }
         }
     }
@@ -212,10 +202,34 @@ public class CustomLearningLevelService implements CustomLearningLevelUseCase {
         return normalized.isEmpty() ? null : normalized;
     }
 
-    private CustomLearningLevelListResponse toListResponse(UUID courseId, List<CustomLearningLevel> levels) {
+    private void validateCompleteCoverage(Course course, List<CustomLearningLevel> levels) {
+        if (levels.size() < 3) {
+            throw invalid("An exam matrix must contain at least three custom learning levels");
+        }
+        if (levels.stream().anyMatch(level -> level.getLearningOutcomeIds().isEmpty())) {
+            throw invalid("Every custom learning level must contain at least one learning outcome");
+        }
+        Set<UUID> covered = levels.stream().flatMap(level -> level.getLearningOutcomeIds().stream())
+                .collect(Collectors.toSet());
+        List<UUID> uncovered = course.getLearningOutcomes().stream().map(value -> value.getId())
+                .filter(id -> !covered.contains(id)).toList();
+        if (!uncovered.isEmpty()) {
+            throw invalid("Every learning outcome must belong to at least one custom learning level; uncovered: "
+                    + uncovered);
+        }
+    }
+
+    private void requireMatrix(UUID courseId, UUID matrixId) {
+        matrixPort.findByCourseIdAndId(courseId, matrixId)
+                .orElseThrow(() -> new CustomLearningLevelNotFoundException(
+                        "Exam matrix not found: " + matrixId));
+    }
+
+    private CustomLearningLevelListResponse toListResponse(
+            UUID courseId, UUID matrixId, List<CustomLearningLevel> levels) {
         List<CustomLearningLevelResponse> responses = levels.stream().map(this::toResponse).toList();
         return CustomLearningLevelListResponse.builder()
-                .courseId(courseId).total(responses.size()).levels(responses).build();
+                .courseId(courseId).matrixId(matrixId).total(responses.size()).levels(responses).build();
     }
 
     private CustomLearningLevelResponse toResponse(CustomLearningLevel level) {

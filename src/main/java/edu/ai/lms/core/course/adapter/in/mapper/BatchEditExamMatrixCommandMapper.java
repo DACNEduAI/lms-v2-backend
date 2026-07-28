@@ -12,12 +12,16 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class BatchEditExamMatrixCommandMapper {
     private final CreateExamMatrixCommandMapper rowMapper;
+    private final CustomLearningLevelCommandMapper customLearningLevelMapper;
 
     public BatchEditExamMatrixCommand toCommand(UUID courseId, UUID matrixId, BatchEditExamMatrixRequest request) {
         MatrixMetadataCommand metadata = request.getMetadata() == null ? null
                 : new MatrixMetadataCommand(request.getMetadata().getTitle(), request.getMetadata().getDescription());
         return BatchEditExamMatrixCommand.builder()
                 .courseId(courseId).matrixId(matrixId).metadata(metadata)
+                .customLearningLevels(request.getCustomLearningLevels() == null ? null
+                        : customLearningLevelMapper.toCommand(
+                                courseId, matrixId, request.getCustomLearningLevels()))
                 .create(request.getCreate().stream().map(value -> {
                     var row = rowMapper.toRow(value);
                     return ExamMatrixRowCommand.builder()

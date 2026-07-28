@@ -13,6 +13,11 @@ public class CreateExamMatrixCommandMapper {
     public CreateExamMatrixCommand toCommand(UUID courseId, CreateExamMatrixRequest request) {
         return CreateExamMatrixCommand.builder()
                 .courseId(courseId).title(request.getTitle()).description(request.getDescription())
+                .customLearningLevels(request.getCustomLearningLevels().stream()
+                        .map(value -> new CustomLearningLevelValue(
+                                null, value.getClientTempId(), value.getLearningOutcomeIds(),
+                                value.getCode(), value.getName(), value.getDescription(), value.getSortOrder()))
+                        .toList())
                 .rows(request.getRows().stream().map(this::toRow).toList()).build();
     }
 
@@ -22,6 +27,7 @@ public class CreateExamMatrixCommandMapper {
                 .learningOutcomeIds(row.getLearningOutcomeIds())
                 .levelCounts(row.getLevelCounts().stream().map(value -> LearningLevelCountCommand.builder()
                         .customLearningLevelId(value.getCustomLearningLevelId())
+                        .customLearningLevelClientTempId(value.getCustomLearningLevelClientTempId())
                         .questionCount(value.getQuestionCount()).build()).toList())
                 .build();
     }

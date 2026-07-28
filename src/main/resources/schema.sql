@@ -244,6 +244,7 @@ CREATE TABLE IF NOT EXISTS exam_matrix_rows
     topic               character varying null,
     order_index         integer           not null,
     constraint exam_matrix_rows_pkey primary key (id),
+    constraint exam_matrix_rows_id_matrix_key unique (id, matrix_id),
     constraint exam_matrix_rows_chapter_id_fkey foreign KEY (chapter_id) references chapters (chapter_id) on delete CASCADE,
     constraint exam_matrix_rows_matrix_id_fkey foreign KEY (matrix_id) references exam_matrices (id) on delete CASCADE
 ) TABLESPACE pg_default;
@@ -254,6 +255,7 @@ CREATE TABLE IF NOT EXISTS exam_matrix_row_learning_outcomes
 (
     exam_matrix_row_id UUID NOT NULL,
     learning_outcome_id UUID NOT NULL,
+    is_selected        BOOLEAN NOT NULL DEFAULT FALSE,
     constraint exam_matrix_row_learning_outcomes_pkey primary key (exam_matrix_row_id, learning_outcome_id),
     constraint exam_matrix_row_learning_outcomes_row_id_fkey
         foreign key (exam_matrix_row_id) references exam_matrix_rows (id) on delete CASCADE,
@@ -261,30 +263,32 @@ CREATE TABLE IF NOT EXISTS exam_matrix_row_learning_outcomes
         foreign key (learning_outcome_id) references learning_outcomes (id) on delete CASCADE
 );
 
--- Custom learning levels belong to a course and can be mapped to multiple
--- learning outcomes through custom_learning_level_learning_outcomes.
+-- Custom learning levels belong to one exam matrix. Each level/outcome pair is
+-- materialized; is_selected stores the teacher's checkbox state.
 CREATE TABLE IF NOT EXISTS custom_learning_levels
 (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    course_id           UUID         NOT NULL,
+    matrix_id           UUID         NOT NULL,
     code                VARCHAR(255) NOT NULL CHECK (btrim(code) <> ''),
     name                VARCHAR(255) NOT NULL,
     description         TEXT,
     sort_order          INTEGER      NOT NULL DEFAULT 1,
     created_at          TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
-    constraint custom_learning_levels_course_id_fkey
-        foreign key (course_id) references courses (id) on delete CASCADE,
-    constraint custom_learning_levels_course_name_key unique (course_id, name)
+    constraint custom_learning_levels_matrix_id_fkey
+        foreign key (matrix_id) references exam_matrices (id) on delete CASCADE,
+    constraint custom_learning_levels_matrix_name_key unique (matrix_id, name),
+    constraint custom_learning_levels_id_matrix_key unique (id, matrix_id)
 );
 
-CREATE UNIQUE INDEX custom_learning_levels_course_code_key
-    ON custom_learning_levels (course_id, lower(btrim(code)));
+CREATE UNIQUE INDEX custom_learning_levels_matrix_code_key
+    ON custom_learning_levels (matrix_id, lower(btrim(code)));
 
 CREATE TABLE IF NOT EXISTS custom_learning_level_learning_outcomes
 (
     custom_learning_level_id UUID NOT NULL,
     learning_outcome_id      UUID NOT NULL,
+    is_selected              BOOLEAN NOT NULL DEFAULT FALSE,
     constraint custom_learning_level_learning_outcomes_pkey
         primary key (custom_learning_level_id, learning_outcome_id),
     constraint custom_learning_level_learning_outcomes_level_id_fkey
@@ -294,20 +298,32 @@ CREATE TABLE IF NOT EXISTS custom_learning_level_learning_outcomes
 );
 
 -- Store one question count for each custom learning level used by a matrix row.
--- The API requires the level to share at least one mapped learning outcome
--- with the row.
+-- Counts whose row and level no longer share a selected outcome remain stored
+-- as dormant configuration and are excluded from active totals/generation.
 CREATE TABLE IF NOT EXISTS exam_matrix_row_learning_level_counts
 (
     exam_matrix_row_id       UUID    NOT NULL,
     custom_learning_level_id UUID    NOT NULL,
+    matrix_id                UUID    NOT NULL,
     question_count           INTEGER NOT NULL DEFAULT 0 CHECK (question_count >= 0),
     constraint exam_matrix_row_learning_level_counts_pkey
         primary key (exam_matrix_row_id, custom_learning_level_id),
     constraint exam_matrix_row_learning_level_counts_row_id_fkey
-        foreign key (exam_matrix_row_id) references exam_matrix_rows (id) on delete CASCADE,
+        foreign key (exam_matrix_row_id, matrix_id)
+            references exam_matrix_rows (id, matrix_id) on delete CASCADE,
     constraint exam_matrix_row_learning_level_counts_level_id_fkey
-        foreign key (custom_learning_level_id) references custom_learning_levels (id) on delete CASCADE
+        foreign key (custom_learning_level_id, matrix_id)
+            references custom_learning_levels (id, matrix_id) on delete CASCADE
 );
+
+CREATE INDEX exam_matrix_row_learning_outcomes_outcome_idx
+    ON exam_matrix_row_learning_outcomes (learning_outcome_id);
+CREATE INDEX exam_matrix_row_learning_outcomes_selected_idx
+    ON exam_matrix_row_learning_outcomes (exam_matrix_row_id, is_selected);
+CREATE INDEX custom_learning_level_outcomes_outcome_idx
+    ON custom_learning_level_learning_outcomes (learning_outcome_id);
+CREATE INDEX custom_learning_level_outcomes_selected_idx
+    ON custom_learning_level_learning_outcomes (custom_learning_level_id, is_selected);
 
 -- Enrollments table
 CREATE TABLE IF NOT EXISTS enrollments
