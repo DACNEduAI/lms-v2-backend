@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import edu.ai.lms.core.quiz.app.service.crudquiz.GetQuizService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,8 +25,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
@@ -60,8 +62,8 @@ class GetQuizServiceUT {
     @InjectMocks
     private GetQuizService getQuizService;
 
-    private UserAuth mockTeacher;
-    private UserAuth mockStudent;
+    private CurrentActor mockTeacher;
+    private CurrentActor mockStudent;
     private UUID teacherId;
     private UUID studentId;
     private UUID courseId;
@@ -75,12 +77,12 @@ class GetQuizServiceUT {
         courseId = UUID.randomUUID();
         quizId = UUID.randomUUID();
 
-        mockTeacher = UserAuth.builder()
+        mockTeacher = CurrentActor.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
 
-        mockStudent = UserAuth.builder()
+        mockStudent = CurrentActor.builder()
                 .id(studentId)
                 .role(Roles.STUDENT)
                 .build();

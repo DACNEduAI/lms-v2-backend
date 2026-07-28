@@ -1,6 +1,6 @@
 package edu.ai.lms.core.attempt.adapter.out.exception;
 
-import edu.ai.lms.common.ErrorResponse;
+import edu.ai.lms.common.api.ErrorResponse;
 import edu.ai.lms.core.attempt.app.exception.AttemptLimitExceededException;
 import edu.ai.lms.core.attempt.app.exception.AttemptNotFoundException;
 import edu.ai.lms.core.attempt.app.exception.InvalidAttemptSubmissionException;

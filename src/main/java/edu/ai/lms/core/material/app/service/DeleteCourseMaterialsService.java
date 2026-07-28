@@ -6,7 +6,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import edu.ai.lms.core.material.adapter.in.internal.DeleteCourseMaterialsApi;
+import edu.ai.lms.core.material.api.DeleteCourseMaterialsApi;
 import edu.ai.lms.core.material.app.domain.Material;
 import edu.ai.lms.core.material.app.port.out.persistence.DeleteMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
@@ -20,6 +20,7 @@ public class DeleteCourseMaterialsService implements DeleteCourseMaterialsApi {
     private final GetMaterialPort getMaterialPort;
     private final DeleteMaterialPort deleteMaterialPort;
     private final DeleteFilePort deleteFilePort;
+    private final MaterialIndexingService materialIndexingService;
 
     @Override
     @Transactional
@@ -29,6 +30,7 @@ public class DeleteCourseMaterialsService implements DeleteCourseMaterialsApi {
 
         // 2. Delete S3 files first
         for (Material material : materials) {
+            materialIndexingService.queueDelete(courseId, material.getId());
             if (material.getFileKey() != null) {
                 deleteFilePort.deleteFile(material.getFileKey());
             }

@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import edu.ai.lms.core.quiz.app.service.crudquiz.AddQuizLearningOutcomesService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,8 +19,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuizLearningOutcomeOperationResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.port.in.command.AddQuizLearningOutcomesCommand;
@@ -79,7 +81,7 @@ class AddQuizLearningOutcomesServiceUT {
     @Test
     @DisplayName("Should add merged and deduplicated learning outcomes")
     void testAddLearningOutcomes_Success() {
-        UserAuth teacher = UserAuth.builder().id(teacherId).role(Roles.TEACHER).build();
+        CurrentActor teacher = CurrentActor.builder().id(teacherId).role(Roles.TEACHER).build();
         Quiz quiz = Quiz.builder().id(quizId).courseId(courseId).teacherId(teacherId).build();
 
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(teacher));
@@ -105,7 +107,7 @@ class AddQuizLearningOutcomesServiceUT {
     @DisplayName("Should fail when user is not owner")
     void testAddLearningOutcomes_NotOwner() {
         UUID anotherTeacherId = UUID.randomUUID();
-        UserAuth anotherTeacher = UserAuth.builder().id(anotherTeacherId).role(Roles.TEACHER).build();
+        CurrentActor anotherTeacher = CurrentActor.builder().id(anotherTeacherId).role(Roles.TEACHER).build();
         Quiz quiz = Quiz.builder().id(quizId).courseId(courseId).teacherId(teacherId).build();
 
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(anotherTeacher));
@@ -121,7 +123,7 @@ class AddQuizLearningOutcomesServiceUT {
     @Test
     @DisplayName("Should fail when any learning outcome belongs to another course")
     void testAddLearningOutcomes_LearningOutcomeFromAnotherCourse() {
-        UserAuth teacher = UserAuth.builder().id(teacherId).role(Roles.TEACHER).build();
+        CurrentActor teacher = CurrentActor.builder().id(teacherId).role(Roles.TEACHER).build();
         Quiz quiz = Quiz.builder().id(quizId).courseId(courseId).teacherId(teacherId).build();
 
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(teacher));

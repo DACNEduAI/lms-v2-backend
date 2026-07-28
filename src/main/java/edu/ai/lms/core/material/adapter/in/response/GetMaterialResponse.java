@@ -20,6 +20,10 @@ public class GetMaterialResponse {
     private String fileKey;
     private Boolean isDownloadable;
     private String status;
+    private String ingestionStatus;
+    private String ingestionError;
+    private UUID ingestionRevision;
+    private LocalDateTime ingestedAt;
     private String presignedUrl;
     private UUID courseId;
     @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)

@@ -6,8 +6,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import edu.ai.lms.core.quiz.app.service.crudquiz.CreateQuestionService;
 import org.springframework.context.ApplicationEventPublisher;
-import org.junit.jupiter.api.Assertions;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,8 +29,8 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuestionResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
@@ -81,7 +82,7 @@ class CreateQuestionServiceUT {
     @InjectMocks
     private CreateQuestionService createQuestionService;
 
-    private UserAuth mockTeacher;
+    private CurrentActor mockTeacher;
     private UUID teacherId;
     private UUID quizId;
     private UUID questionId;
@@ -96,7 +97,7 @@ class CreateQuestionServiceUT {
         questionId = UUID.randomUUID();
         learningOutcomeId = UUID.randomUUID();
 
-        mockTeacher = UserAuth.builder()
+        mockTeacher = CurrentActor.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -224,7 +225,7 @@ class CreateQuestionServiceUT {
     @DisplayName("Should throw IllegalArgumentException when user is not the quiz owner")
     void testCreateQuestion_WithNonOwner_ShouldThrowException() {
         UUID anotherTeacherId = UUID.randomUUID();
-        UserAuth anotherTeacher = UserAuth.builder()
+        CurrentActor anotherTeacher = CurrentActor.builder()
                 .id(anotherTeacherId)
                 .role(Roles.TEACHER)
                 .build();

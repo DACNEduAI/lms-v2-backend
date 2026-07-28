@@ -24,12 +24,25 @@ public class Material {
         FAILED
     }
 
+    public enum IngestionStatus {
+        NOT_STARTED,
+        PENDING,
+        PROCESSING,
+        READY,
+        FAILED,
+        NOT_APPLICABLE
+    }
+
     private UUID id;
     private String title;
     private MaterialType type;
     private String fileKey;
     private boolean downloadable;
     private MaterialStatus status;
+    private IngestionStatus ingestionStatus;
+    private String ingestionError;
+    private UUID ingestionRevision;
+    private LocalDateTime ingestedAt;
     private UUID courseId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -41,6 +54,7 @@ public class Material {
         this.type = type;
         this.downloadable = downloadable;
         this.status = MaterialStatus.PENDING; // Good default for new uploads
+        this.ingestionStatus = IngestionStatus.NOT_STARTED;
 
         // Logic performed explicitly in the constructor
         this.fileKey = generateFileKey(courseId, title, type);

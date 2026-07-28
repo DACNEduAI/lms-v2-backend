@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.material.adapter.out.persistence.MaterialIndexJobRepository">
+  <resultMap id="JobMap" type="edu.ai.lms.core.material.app.domain.MaterialIndexJob">
+    <id property="id" column="id" />
+    <result property="courseId" column="course_id" />
+    <result property="materialId" column="material_id" />
+    <result property="operation" column="operation" javaType="edu.ai.lms.core.material.app.domain.MaterialIndexJob$Operation" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="revision" column="revision" />
+    <result property="fileKey" column="file_key" />
+    <result property="status" column="status" javaType="edu.ai.lms.core.material.app.domain.MaterialIndexJob$Status" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="attemptCount" column="attempt_count" />
+    <result property="nextAttemptAt" column="next_attempt_at" />
+    <result property="leaseUntil" column="lease_until" />
+    <result property="errorMessage" column="error_message" />
+    <result property="completedAt" column="completed_at" />
+    <result property="createdAt" column="created_at" />
+    <result property="updatedAt" column="updated_at" />
+  </resultMap>
+
+  <insert id="save">
+    INSERT INTO edu.material_index_jobs
+      (id, course_id, material_id, operation, revision, file_key, status, attempt_count,
+       next_attempt_at, lease_until, error_message, completed_at, created_at, updated_at)
+    VALUES
+      (#{id}, #{courseId}, #{materialId}, #{operation}, #{revision}, #{fileKey}, #{status},
+       #{attemptCount}, #{nextAttemptAt}, #{leaseUntil}, #{errorMessage}, #{completedAt},
+       COALESCE(#{createdAt}, NOW()), NOW())
+    ON CONFLICT (id) DO UPDATE SET
+      status = EXCLUDED.status,
+      attempt_count = EXCLUDED.attempt_count,
+      next_attempt_at = EXCLUDED.next_attempt_at,
+      lease_until = EXCLUDED.lease_until,
+      error_message = EXCLUDED.error_message,
+      completed_at = EXCLUDED.completed_at,
+      updated_at = NOW()
+  </insert>
+
+  <select id="findById" resultMap="JobMap">
+    SELECT * FROM edu.material_index_jobs WHERE id = #{id}
+  </select>
+
+  <update id="claim">
+    UPDATE edu.material_index_jobs
+    SET status = 'PROCESSING', attempt_count = attempt_count + 1,
+        lease_until = #{leaseUntil}, updated_at = NOW()
+    WHERE id = #{id}
+      AND ((status = 'PENDING' AND (next_attempt_at IS NULL OR next_attempt_at &lt;= NOW()))
+        OR (status = 'PROCESSING' AND lease_until &lt; NOW()))
+  </update>
+
+  <select id="findRecoverableIds" resultType="java.util.UUID">
+    SELECT id FROM edu.material_index_jobs
+    WHERE (status = 'PENDING' AND (next_attempt_at IS NULL OR next_attempt_at &lt;= NOW()))
+       OR (status = 'PROCESSING' AND lease_until &lt; NOW())
+    ORDER BY COALESCE(next_attempt_at, created_at)
+    LIMIT #{limit}
+  </select>
+</mapper>

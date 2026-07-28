@@ -1,6 +1,9 @@
 package edu.ai.lms.core.notification.adapter.in.event;
 
 import edu.ai.lms.common.event.SystemNotificationEvent;
+import edu.ai.lms.core.course.api.CourseAccessApi;
+import edu.ai.lms.core.material.events.MaterialUploadConfirmedEvent;
+import edu.ai.lms.core.quiz.events.QuizDeadlineApproachingEvent;
 import edu.ai.lms.core.notification.app.domain.Notification;
 import edu.ai.lms.core.notification.app.service.NotificationService;
 import edu.ai.lms.core.notification.app.service.SseNotificationService;
@@ -19,6 +22,7 @@ public class NotificationEventListener {
 
     private final NotificationService notificationService;
     private final SseNotificationService sseNotificationService;
+    private final CourseAccessApi courseAccessApi;
 
     @Async
     @EventListener
@@ -43,5 +47,26 @@ public class NotificationEventListener {
                 log.error("Error processing notification for user {}: {}", userId, e.getMessage());
             }
         }
+    }
+
+    @org.springframework.modulith.events.ApplicationModuleListener
+    public void handleMaterialUploadConfirmed(MaterialUploadConfirmedEvent event) {
+        handleSystemNotification(new SystemNotificationEvent(
+                new java.util.HashSet<>(courseAccessApi.getStudentIds(event.courseId())),
+                "Tài liệu mới!",
+                "Giảng viên vừa tải lên tài liệu: " + event.materialTitle(),
+                "COURSE_UPDATE",
+                "/student/courses/" + event.courseId()));
+    }
+
+    @org.springframework.modulith.events.ApplicationModuleListener
+    public void handleQuizDeadlineApproaching(QuizDeadlineApproachingEvent event) {
+        handleSystemNotification(new SystemNotificationEvent(
+                new java.util.HashSet<>(courseAccessApi.getStudentIds(event.courseId())),
+                "Nhắc nhở hạn chót",
+                "Bài kiểm tra '" + event.quizTitle()
+                        + "' sẽ đóng cửa trong vòng 24h tới. Hãy hoàn thành ngay!",
+                "DEADLINE_REMINDER",
+                "/student/quizzes/" + event.courseId() + "/" + event.quizId() + "/take"));
     }
 }

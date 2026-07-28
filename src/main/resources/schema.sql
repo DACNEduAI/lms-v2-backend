@@ -11,19 +11,18 @@ DROP TABLE IF EXISTS
     courses,
     chapters,
     materials,
+    material_index_jobs,
     chapter_materials,
     chapter_learning_outcomes,
     learning_outcomes,
     group_learning_outcomes,
     enrollments,
-    ai_settings,
     quizzes,
     questions,
     question_images,
     answers,
     attempts,
     quiz_generation_jobs,
-    quiz_generation_job_learning_outcomes,
     quiz_chapters,
     quiz_learning_outcomes,
     question_learning_outcomes,
@@ -34,8 +33,12 @@ DROP TABLE IF EXISTS
     ai_chat_sessions,
     notifications,
     user_chat_messages,
-    exam_matrices,
+    exam_matrix_row_learning_level_counts,
+    exam_matrix_row_learning_outcomes,
+    custom_learning_level_learning_outcomes,
+    custom_learning_levels,
     exam_matrix_rows,
+    exam_matrices
     CASCADE;
 
 -- Below is the actual schema of the code
@@ -104,15 +107,74 @@ CREATE TABLE IF NOT EXISTS materials
 (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title           VARCHAR(255),
-    type            VARCHAR(50) CHECK (type IN ('PDF', 'VIDEO', 'LINK')), -- Added CHECK constraint here
+    type            VARCHAR(50) CHECK (type IN ('PDF', 'VIDEO', 'IMAGE')),
     file_key        VARCHAR(255) UNIQUE,
     is_downloadable BOOLEAN          DEFAULT false,
     status          VARCHAR(50)      DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'UPLOADED', 'FAILED')),
+    ingestion_status VARCHAR(50)     NOT NULL DEFAULT 'NOT_STARTED' CHECK (ingestion_status IN ('NOT_STARTED', 'PENDING', 'PROCESSING', 'READY', 'FAILED', 'NOT_APPLICABLE')),
+    ingestion_error TEXT,
+    ingestion_revision UUID,
+    ingested_at     TIMESTAMP,
     course_id       UUID,
     created_at      TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE
 );
+
+-- Keep existing databases compatible when schema.sql runs against tables that
+-- predate material indexing.
+ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingestion_status VARCHAR(50) NOT NULL DEFAULT 'NOT_STARTED';
+ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingestion_error TEXT;
+ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingestion_revision UUID;
+ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingested_at TIMESTAMP;
+UPDATE materials
+SET ingestion_status = CASE
+    WHEN type = 'PDF' AND status = 'UPLOADED' THEN 'PENDING'
+    WHEN type <> 'PDF' AND status = 'UPLOADED' THEN 'NOT_APPLICABLE'
+    ELSE ingestion_status
+END
+WHERE ingestion_status = 'NOT_STARTED';
+
+CREATE TABLE IF NOT EXISTS material_index_jobs
+(
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id       UUID        NOT NULL,
+    material_id     UUID        NOT NULL,
+    operation       VARCHAR(20) NOT NULL CHECK (operation IN ('INGEST', 'DELETE')),
+    revision        UUID,
+    file_key        VARCHAR(255),
+    status          VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED')),
+    attempt_count   INTEGER     NOT NULL DEFAULT 0,
+    next_attempt_at TIMESTAMP,
+    lease_until     TIMESTAMP,
+    error_message   TEXT,
+    completed_at    TIMESTAMP,
+    created_at      TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_material_index_queue
+    ON material_index_jobs (status, next_attempt_at);
+CREATE INDEX IF NOT EXISTS idx_material_index_lease
+    ON material_index_jobs (status, lease_until);
+CREATE INDEX IF NOT EXISTS idx_material_index_identity
+    ON material_index_jobs (course_id, material_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_material_index_processing
+    ON material_index_jobs (course_id, material_id)
+    WHERE status = 'PROCESSING';
+
+UPDATE materials
+SET ingestion_revision = gen_random_uuid()
+WHERE ingestion_status = 'PENDING' AND ingestion_revision IS NULL;
+INSERT INTO material_index_jobs
+    (course_id, material_id, operation, revision, file_key, status, next_attempt_at)
+SELECT m.course_id, m.id, 'INGEST', m.ingestion_revision, m.file_key, 'PENDING', NOW()
+FROM materials m
+WHERE m.status = 'UPLOADED' AND m.type = 'PDF' AND m.ingestion_status = 'PENDING'
+  AND NOT EXISTS (
+      SELECT 1 FROM material_index_jobs j
+      WHERE j.material_id = m.id AND j.revision = m.ingestion_revision
+        AND j.status IN ('PENDING', 'PROCESSING', 'COMPLETED')
+  );
 
 CREATE TABLE IF NOT EXISTS chapter_materials
 (
@@ -178,18 +240,90 @@ CREATE TABLE IF NOT EXISTS exam_matrix_rows
 (
     id                  uuid              not null default gen_random_uuid(),
     matrix_id           uuid              not null,
-    learning_outcome_id uuid              not null,
-    chapter_id          uuid              null,
+    chapter_id          uuid              not null,
     topic               character varying null,
-    understand_count    integer           not null default 0,
-    apply_count         integer           not null default 0,
-    apply_plus_count    integer           not null default 0,
     order_index         integer           not null,
     constraint exam_matrix_rows_pkey primary key (id),
-    constraint exam_matrix_rows_chapter_id_fkey foreign KEY (chapter_id) references chapters (chapter_id) on delete set null,
-    constraint exam_matrix_rows_learning_outcome_id_fkey foreign KEY (learning_outcome_id) references learning_outcomes (id) on delete CASCADE,
+    constraint exam_matrix_rows_id_matrix_key unique (id, matrix_id),
+    constraint exam_matrix_rows_chapter_id_fkey foreign KEY (chapter_id) references chapters (chapter_id) on delete CASCADE,
     constraint exam_matrix_rows_matrix_id_fkey foreign KEY (matrix_id) references exam_matrices (id) on delete CASCADE
 ) TABLESPACE pg_default;
+
+-- A matrix row can assess multiple learning outcomes. Learning outcomes can be
+-- reused by rows in the same or different exam matrices.
+CREATE TABLE IF NOT EXISTS exam_matrix_row_learning_outcomes
+(
+    exam_matrix_row_id UUID NOT NULL,
+    learning_outcome_id UUID NOT NULL,
+    is_selected        BOOLEAN NOT NULL DEFAULT FALSE,
+    constraint exam_matrix_row_learning_outcomes_pkey primary key (exam_matrix_row_id, learning_outcome_id),
+    constraint exam_matrix_row_learning_outcomes_row_id_fkey
+        foreign key (exam_matrix_row_id) references exam_matrix_rows (id) on delete CASCADE,
+    constraint exam_matrix_row_learning_outcomes_learning_outcome_id_fkey
+        foreign key (learning_outcome_id) references learning_outcomes (id) on delete CASCADE
+);
+
+-- Custom learning levels belong to one exam matrix. Each level/outcome pair is
+-- materialized; is_selected stores the teacher's checkbox state.
+CREATE TABLE IF NOT EXISTS custom_learning_levels
+(
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    matrix_id           UUID         NOT NULL,
+    code                VARCHAR(255) NOT NULL CHECK (btrim(code) <> ''),
+    name                VARCHAR(255) NOT NULL,
+    description         TEXT,
+    sort_order          INTEGER      NOT NULL DEFAULT 1,
+    created_at          TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
+    constraint custom_learning_levels_matrix_id_fkey
+        foreign key (matrix_id) references exam_matrices (id) on delete CASCADE,
+    constraint custom_learning_levels_matrix_name_key unique (matrix_id, name),
+    constraint custom_learning_levels_id_matrix_key unique (id, matrix_id)
+);
+
+CREATE UNIQUE INDEX custom_learning_levels_matrix_code_key
+    ON custom_learning_levels (matrix_id, lower(btrim(code)));
+
+CREATE TABLE IF NOT EXISTS custom_learning_level_learning_outcomes
+(
+    custom_learning_level_id UUID NOT NULL,
+    learning_outcome_id      UUID NOT NULL,
+    is_selected              BOOLEAN NOT NULL DEFAULT FALSE,
+    constraint custom_learning_level_learning_outcomes_pkey
+        primary key (custom_learning_level_id, learning_outcome_id),
+    constraint custom_learning_level_learning_outcomes_level_id_fkey
+        foreign key (custom_learning_level_id) references custom_learning_levels (id) on delete CASCADE,
+    constraint custom_learning_level_learning_outcomes_outcome_id_fkey
+        foreign key (learning_outcome_id) references learning_outcomes (id) on delete CASCADE
+);
+
+-- Store one question count for each custom learning level used by a matrix row.
+-- Counts whose row and level no longer share a selected outcome remain stored
+-- as dormant configuration and are excluded from active totals/generation.
+CREATE TABLE IF NOT EXISTS exam_matrix_row_learning_level_counts
+(
+    exam_matrix_row_id       UUID    NOT NULL,
+    custom_learning_level_id UUID    NOT NULL,
+    matrix_id                UUID    NOT NULL,
+    question_count           INTEGER NOT NULL DEFAULT 0 CHECK (question_count >= 0),
+    constraint exam_matrix_row_learning_level_counts_pkey
+        primary key (exam_matrix_row_id, custom_learning_level_id),
+    constraint exam_matrix_row_learning_level_counts_row_id_fkey
+        foreign key (exam_matrix_row_id, matrix_id)
+            references exam_matrix_rows (id, matrix_id) on delete CASCADE,
+    constraint exam_matrix_row_learning_level_counts_level_id_fkey
+        foreign key (custom_learning_level_id, matrix_id)
+            references custom_learning_levels (id, matrix_id) on delete CASCADE
+);
+
+CREATE INDEX exam_matrix_row_learning_outcomes_outcome_idx
+    ON exam_matrix_row_learning_outcomes (learning_outcome_id);
+CREATE INDEX exam_matrix_row_learning_outcomes_selected_idx
+    ON exam_matrix_row_learning_outcomes (exam_matrix_row_id, is_selected);
+CREATE INDEX custom_learning_level_outcomes_outcome_idx
+    ON custom_learning_level_learning_outcomes (learning_outcome_id);
+CREATE INDEX custom_learning_level_outcomes_selected_idx
+    ON custom_learning_level_learning_outcomes (custom_learning_level_id, is_selected);
 
 -- Enrollments table
 CREATE TABLE IF NOT EXISTS enrollments
@@ -200,22 +334,6 @@ CREATE TABLE IF NOT EXISTS enrollments
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (course_id, user_id)
-);
-
--- AI Settings table (single table for both student and teacher settings)
-CREATE TABLE IF NOT EXISTS ai_settings
-(
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    generation_prompt   TEXT,
-    difficulty_level    VARCHAR(50),
-    focus_on_weak_areas BOOLEAN          DEFAULT false,
-    number_of_questions INTEGER,
-    setting_type        VARCHAR(50),
-    align_to_clo        BOOLEAN,
-    include_answer_key  BOOLEAN,
-    mode                VARCHAR(50),
-    created_at          TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Quizzes table
@@ -229,7 +347,6 @@ CREATE TABLE IF NOT EXISTS quizzes
     start_time         TIMESTAMP,
     due_time           TIMESTAMP,
     attempt_limited    INTEGER,
-    ai_settings_id     UUID REFERENCES ai_settings (id),
     course_id          UUID         NOT NULL REFERENCES courses (id),
     student_id         UUID REFERENCES students (user_id),
     teacher_id         UUID REFERENCES teachers (user_id),
@@ -238,44 +355,50 @@ CREATE TABLE IF NOT EXISTS quizzes
     updated_at         TIMESTAMP             DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Durable business queue for asynchronous AI quiz generation. Quartz only
+-- stores scheduler execution state; this table remains the source of truth.
 CREATE TABLE IF NOT EXISTS quiz_generation_jobs
 (
-    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    course_id          UUID        NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
-    chapter_id         UUID        REFERENCES chapters (chapter_id) ON DELETE SET NULL,
-    quiz_id            UUID        REFERENCES quizzes (id) ON DELETE SET NULL,
-    requested_by       UUID        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    requested_role     VARCHAR(50) NOT NULL,
-    quiz_title         VARCHAR(255),
-    question_count     INTEGER,
-    question_type      VARCHAR(50),
-    prompt             TEXT,
-    use_options        BOOLEAN,
-    unlimited          BOOLEAN,
-    time_limit_minutes INTEGER,
-    pass_score         DOUBLE PRECISION,
-    start_time         TIMESTAMP,
-    due_time           TIMESTAMP,
-    attempt_limited    INTEGER,
-    display            BOOLEAN,
-    status             VARCHAR(30) NOT NULL,
-    error_message      TEXT,
-    created_at         TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
-    updated_at         TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id           UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+    exam_matrix_id      UUID         NOT NULL REFERENCES exam_matrices (id) ON DELETE RESTRICT,
+    quiz_id             UUID REFERENCES quizzes (id) ON DELETE SET NULL,
+    requested_by        UUID         NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    requested_role      VARCHAR(50)  NOT NULL,
+    quiz_title          VARCHAR(255),
+    prompt              TEXT,
+    request_snapshot    JSONB        NOT NULL,
+    payload_hash        VARCHAR(64)  NOT NULL,
+    idempotency_key     VARCHAR(255),
+    strict_mode         BOOLEAN      NOT NULL DEFAULT true,
+    code_runner_policy  VARCHAR(50)  NOT NULL DEFAULT 'PRESERVE',
+    unlimited           BOOLEAN,
+    time_limit_minutes  INTEGER,
+    pass_score          DOUBLE PRECISION,
+    start_time          TIMESTAMP,
+    due_time            TIMESTAMP,
+    attempt_limited     INTEGER,
+    display             BOOLEAN      NOT NULL DEFAULT false,
+    status              VARCHAR(30)  NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'TIMED_OUT')),
+    attempt_count       INTEGER      NOT NULL DEFAULT 0,
+    next_attempt_at     TIMESTAMP,
+    lease_until         TIMESTAMP,
+    error_code          VARCHAR(100),
+    error_message       TEXT,
+    callback_event_id   UUID UNIQUE,
+    processing_at       TIMESTAMP,
+    completed_at        TIMESTAMP,
+    created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_quiz_generation_request UNIQUE (requested_by, idempotency_key)
 );
 
-CREATE TABLE IF NOT EXISTS quiz_generation_job_learning_outcomes
-(
-    job_id              UUID REFERENCES quiz_generation_jobs (id) ON DELETE CASCADE,
-    learning_outcome_id UUID REFERENCES learning_outcomes (id) ON DELETE CASCADE,
-    PRIMARY KEY (job_id, learning_outcome_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_quiz_generation_jobs_status
-    ON quiz_generation_jobs (status);
-
-CREATE INDEX IF NOT EXISTS idx_quiz_generation_jobs_requested_by
-    ON quiz_generation_jobs (requested_by);
+CREATE INDEX IF NOT EXISTS idx_quiz_generation_queue
+    ON quiz_generation_jobs (status, next_attempt_at);
+CREATE INDEX IF NOT EXISTS idx_quiz_generation_lease
+    ON quiz_generation_jobs (status, lease_until);
+CREATE INDEX IF NOT EXISTS idx_quiz_generation_requester
+    ON quiz_generation_jobs (requested_by, created_at DESC);
 
 -- Questions table
 CREATE TABLE IF NOT EXISTS questions
@@ -304,7 +427,7 @@ CREATE INDEX IF NOT EXISTS idx_question_images_question_id ON question_images (q
 CREATE TABLE IF NOT EXISTS answers
 (
     answer_number BIGINT GENERATED ALWAYS AS IDENTITY,
-    content       VARCHAR(255),
+    content       TEXT,
     is_correct    BOOLEAN   DEFAULT false,
     explanation   TEXT,
     question_id   UUID NOT NULL REFERENCES questions (id),
@@ -336,8 +459,8 @@ CREATE INDEX IF NOT EXISTS idx_attempts_due_time ON attempts (due_time);
 -- Join tables for many-to-many relationships
 CREATE TABLE IF NOT EXISTS quiz_chapters
 (
-    quiz_id    UUID REFERENCES quizzes (id),
-    chapter_id UUID REFERENCES chapters (chapter_id),
+    quiz_id    UUID REFERENCES quizzes (id) ON DELETE CASCADE,
+    chapter_id UUID REFERENCES chapters (chapter_id) ON DELETE CASCADE,
     PRIMARY KEY (quiz_id, chapter_id)
 );
 

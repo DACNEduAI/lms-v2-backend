@@ -4,5 +4,6 @@ public enum QuizGenerationStatus {
     PENDING,
     PROCESSING,
     COMPLETED,
-    FAILED
+    FAILED,
+    TIMED_OUT
 }

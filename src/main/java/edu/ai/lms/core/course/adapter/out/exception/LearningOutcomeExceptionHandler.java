@@ -5,7 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import edu.ai.lms.common.ErrorResponse;
+import edu.ai.lms.common.api.ErrorResponse;
 import edu.ai.lms.core.course.app.exception.GroupLearningOutcomeNotFoundException;
 import edu.ai.lms.core.course.app.exception.LearningOutcomeAlreadyInGroupException;
 import edu.ai.lms.core.course.app.exception.LearningOutcomeNotFoundException;

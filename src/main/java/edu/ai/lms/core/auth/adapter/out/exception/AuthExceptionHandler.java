@@ -3,7 +3,7 @@ package edu.ai.lms.core.auth.adapter.out.exception;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import edu.ai.lms.common.ErrorResponse;
+import edu.ai.lms.common.api.ErrorResponse;
 import edu.ai.lms.core.auth.app.exception.EmailAlreadyExistsException;
 import edu.ai.lms.core.auth.app.exception.InvalidCredentialsException;
 import io.swagger.v3.oas.annotations.media.Content;

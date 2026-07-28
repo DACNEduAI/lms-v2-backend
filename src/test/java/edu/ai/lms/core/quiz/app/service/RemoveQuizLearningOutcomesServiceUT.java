@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import edu.ai.lms.core.quiz.app.service.crudquiz.RemoveQuizLearningOutcomesService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,8 +19,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuizLearningOutcomeOperationResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.port.in.command.RemoveQuizLearningOutcomesCommand;
@@ -77,7 +79,7 @@ class RemoveQuizLearningOutcomesServiceUT {
     @Test
     @DisplayName("Should remove merged and deduplicated learning outcomes")
     void testRemoveLearningOutcomes_Success() {
-        UserAuth teacher = UserAuth.builder().id(teacherId).role(Roles.TEACHER).build();
+        CurrentActor teacher = CurrentActor.builder().id(teacherId).role(Roles.TEACHER).build();
         Quiz quiz = Quiz.builder().id(quizId).courseId(courseId).teacherId(teacherId).build();
 
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(teacher));
@@ -102,7 +104,7 @@ class RemoveQuizLearningOutcomesServiceUT {
     @Test
     @DisplayName("Should fail when request has no ids")
     void testRemoveLearningOutcomes_EmptyRequest() {
-        UserAuth teacher = UserAuth.builder().id(teacherId).role(Roles.TEACHER).build();
+        CurrentActor teacher = CurrentActor.builder().id(teacherId).role(Roles.TEACHER).build();
         Quiz quiz = Quiz.builder().id(quizId).courseId(courseId).teacherId(teacherId).build();
 
         RemoveQuizLearningOutcomesCommand emptyCommand = RemoveQuizLearningOutcomesCommand.builder()

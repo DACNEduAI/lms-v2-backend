@@ -1,6 +1,6 @@
 package edu.ai.lms.core.chat.adapter.in.http;
 
-import edu.ai.lms.core.auth.adapter.in.internal.LoadAuthenticatedUserApi;
+import edu.ai.lms.core.auth.api.CurrentPrincipalApi;
 import edu.ai.lms.core.chat.app.domain.ChatMessage;
 import edu.ai.lms.core.chat.app.port.in.usecase.GetChatHistoryUseCase;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,7 +20,7 @@ import java.util.UUID;
 public class TeacherStudentChatHistoryController {
 
     private final GetChatHistoryUseCase getChatHistoryUseCase;
-    private final LoadAuthenticatedUserApi loadAuthenticatedUserApi;
+    private final CurrentPrincipalApi currentPrincipalApi;
 
     @GetMapping("/{partnerId}/history")
     @Operation(summary = "Get chat history with another user")
@@ -29,7 +29,7 @@ public class TeacherStudentChatHistoryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         
-        UUID currentUserId = loadAuthenticatedUserApi.getCurrentUserId();
+        UUID currentUserId = currentPrincipalApi.requireCurrentUserId();
         Page<ChatMessage> history = getChatHistoryUseCase.getChatHistory(currentUserId, partnerId, PageRequest.of(page, size));
         return ResponseEntity.ok(history);
     }

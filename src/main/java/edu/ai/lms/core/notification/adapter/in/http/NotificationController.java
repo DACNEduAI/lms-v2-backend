@@ -5,7 +5,7 @@ import edu.ai.lms.core.notification.adapter.in.http.response.CourseAnnouncementR
 import edu.ai.lms.core.notification.app.domain.CourseAnnouncement;
 import edu.ai.lms.core.notification.app.port.in.usecase.GetCourseAnnouncementsUseCase;
 import edu.ai.lms.core.notification.app.port.in.usecase.SendCourseAnnouncementUseCase;
-import edu.ai.lms.core.auth.adapter.in.internal.LoadAuthenticatedUserApi;
+import edu.ai.lms.core.auth.api.CurrentPrincipalApi;
 import edu.ai.lms.core.notification.app.domain.Notification;
 import edu.ai.lms.core.notification.app.port.in.usecase.NotificationUseCase;
 import edu.ai.lms.core.notification.app.service.SseNotificationService;
@@ -35,14 +35,14 @@ public class NotificationController {
     private final NotificationUseCase notificationUseCase;
     private final SendCourseAnnouncementUseCase sendCourseAnnouncementUseCase;
     private final GetCourseAnnouncementsUseCase getCourseAnnouncementsUseCase;
-    private final LoadAuthenticatedUserApi loadAuthenticatedUserApi;
+    private final CurrentPrincipalApi currentPrincipalApi;
     private final SseNotificationService sseNotificationService;
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Subscribe to real-time notifications via SSE")
     public SseEmitter stream() {
         try {
-            UUID userId = loadAuthenticatedUserApi.getCurrentUserId();
+            UUID userId = currentPrincipalApi.requireCurrentUserId();
             log.info("User {} subscribing to notification stream", userId);
             return sseNotificationService.subscribe(userId);
         } catch (Exception e) {
@@ -57,7 +57,7 @@ public class NotificationController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        UUID userId = loadAuthenticatedUserApi.getCurrentUserId();
+        UUID userId = currentPrincipalApi.requireCurrentUserId();
         Page<Notification> notifications = notificationUseCase.getMyNotifications(userId, PageRequest.of(page, size));
         return ResponseEntity.ok(notifications);
     }
@@ -66,7 +66,7 @@ public class NotificationController {
     @Operation(summary = "Get unread notification count")
     public ResponseEntity<Map<String, Long>> getUnreadCount() {
         try {
-            UUID userId = loadAuthenticatedUserApi.getCurrentUserId();
+            UUID userId = currentPrincipalApi.requireCurrentUserId();
             log.info("Fetching unread count for user {}", userId);
             long count = notificationUseCase.getUnreadCount(userId);
             return ResponseEntity.ok(Map.of("unreadCount", count));
@@ -79,7 +79,7 @@ public class NotificationController {
     @PutMapping("/{id}/read")
     @Operation(summary = "Mark a notification as read")
     public ResponseEntity<Void> markAsRead(@PathVariable UUID id) {
-        UUID userId = loadAuthenticatedUserApi.getCurrentUserId();
+        UUID userId = currentPrincipalApi.requireCurrentUserId();
         notificationUseCase.markAsRead(id, userId);
         return ResponseEntity.noContent().build();
     }
@@ -87,7 +87,7 @@ public class NotificationController {
     @PutMapping("/read-all")
     @Operation(summary = "Mark all my notifications as read")
     public ResponseEntity<Void> markAllAsRead() {
-        UUID userId = loadAuthenticatedUserApi.getCurrentUserId();
+        UUID userId = currentPrincipalApi.requireCurrentUserId();
         notificationUseCase.markAllAsRead(userId);
         return ResponseEntity.noContent().build();
     }

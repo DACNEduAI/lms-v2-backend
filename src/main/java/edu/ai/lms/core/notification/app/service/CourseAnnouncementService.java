@@ -1,13 +1,13 @@
 package edu.ai.lms.core.notification.app.service;
 
 import edu.ai.lms.common.event.SystemNotificationEvent;
-import edu.ai.lms.core.auth.adapter.in.internal.LoadAuthenticatedUserApi;
 import edu.ai.lms.core.notification.adapter.in.http.request.CourseAnnouncementRequest;
 import edu.ai.lms.core.notification.app.domain.CourseAnnouncement;
 import edu.ai.lms.core.notification.app.port.in.usecase.GetCourseAnnouncementsUseCase;
 import edu.ai.lms.core.notification.app.port.in.usecase.SendCourseAnnouncementUseCase;
 import edu.ai.lms.core.notification.app.port.out.CourseAnnouncementPort;
 import edu.ai.lms.core.notification.app.port.out.LoadCourseStudentsPort;
+import edu.ai.lms.core.notification.app.port.out.LoadCurrentUserPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -26,14 +26,20 @@ public class CourseAnnouncementService implements SendCourseAnnouncementUseCase,
 
     private final LoadCourseStudentsPort loadCourseStudentsPort;
     private final CourseAnnouncementPort courseAnnouncementPort;
-    private final LoadAuthenticatedUserApi loadAuthenticatedUserApi;
+    private final LoadCurrentUserPort loadCurrentUserPort;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
     public void sendAnnouncement(UUID courseId, CourseAnnouncementRequest request) {
         // 1. Lưu thông báo gốc vào bảng course_announcements
-        UUID teacherId = loadAuthenticatedUserApi.getCurrentUserId();
+        UUID teacherId = loadCurrentUserPort.getCurrentUserId()
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.UNAUTHORIZED, "User not authenticated"));
+        if (!loadCourseStudentsPort.isTeacherInCourse(teacherId, courseId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Teacher is not a member of this course");
+        }
         CourseAnnouncement announcement = CourseAnnouncement.builder()
                 .courseId(courseId)
                 .title(request.getTitle())

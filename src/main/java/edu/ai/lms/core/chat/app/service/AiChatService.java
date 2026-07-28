@@ -4,8 +4,8 @@ import edu.ai.lms.core.chat.adapter.in.http.request.AiChatRequest;
 import edu.ai.lms.core.chat.app.domain.AiChatSession;
 import edu.ai.lms.core.chat.app.domain.AiCourseChatMessage;
 import edu.ai.lms.core.chat.app.port.out.persistence.AiChatPersistencePort;
+import edu.ai.lms.core.chat.app.port.out.ValidateChatMaterialsPort;
 import edu.ai.lms.core.chat.adapter.in.http.request.ChatSessionDto;
-import edu.ai.lms.core.chat.adapter.in.http.request.IngestRequest;
 import edu.ai.lms.core.chat.adapter.in.http.request.PythonChatRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +26,7 @@ public class AiChatService {
 
     private final WebClient aiWebClient;
     private final AiChatPersistencePort aiChatPersistencePort;
+    private final ValidateChatMaterialsPort validateChatMaterialsPort;
 
     // ==========================================
     // SESSION MANAGEMENT
@@ -88,11 +89,8 @@ public class AiChatService {
         List<String> validatedMaterialIds = null;
         if (request.getSelectedMaterialIds() != null && !request.getSelectedMaterialIds().isEmpty()) {
             List<UUID> requestedIds = request.getSelectedMaterialIds();
-            int validCount = aiChatPersistencePort.countValidMaterials(courseId, requestedIds);
-            
-            if (validCount != requestedIds.size()) {
-                log.warn("IDOR attempt detected! User {} sent {} material IDs but only {} are valid for course {}",
-                        userId, requestedIds.size(), validCount, courseId);
+            if (!validateChatMaterialsPort.allAvailableInCourse(courseId, requestedIds)) {
+                log.warn("IDOR attempt detected for user {} and course {}", userId, courseId);
                 return Flux.just("{\"token\":\"\",\"done\":true,\"error\":\"Một số tài liệu bạn chọn không thuộc khóa học này hoặc chưa sẵn sàng.\"}");
             }
             
@@ -194,33 +192,4 @@ public class AiChatService {
         return "";
     }
 
-    /**
-     * Fire-and-forget: Bắn request nạp tài liệu sang Python rồi giải phóng Thread ngay lập tức,
-     * không chờ Python xử lý xong. Được trigger bởi MaterialUploadedForAiEvent.
-     */
-    @org.springframework.context.event.EventListener
-    public void notifyAiServerToIngest(edu.ai.lms.common.event.MaterialUploadedForAiEvent event) {
-        UUID courseId = event.getCourseId();
-        UUID materialId = event.getMaterialId();
-        String fileUrl = event.getFileUrl();
-        
-        log.info("Triggering background ingestion to AI Server for material: {}", materialId);
-
-        IngestRequest payload = IngestRequest.builder()
-                .course_id(courseId.toString())
-                .material_id(materialId.toString())
-                .file_url(fileUrl)
-                .build();
-
-        aiWebClient.post()
-                .uri("/api/ingest")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(payload)
-                .retrieve()
-                .bodyToMono(Void.class)
-                .subscribe(
-                        success -> log.info("Đã gửi lệnh Ingest thành công tới AI Server cho material {}", materialId),
-                        error -> log.error("Gửi lệnh Ingest thất bại cho material {}: {}", materialId, error.getMessage())
-                );
-    }
 }

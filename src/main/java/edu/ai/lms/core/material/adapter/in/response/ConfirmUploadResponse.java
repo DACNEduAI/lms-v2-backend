@@ -14,6 +14,7 @@ public class ConfirmUploadResponse {
     private UUID courseId;
     private String fileKey;
     private String status;
+    private String ingestionStatus;
     private boolean uploaded;
     private String message;
 }

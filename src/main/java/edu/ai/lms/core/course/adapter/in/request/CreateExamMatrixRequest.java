@@ -29,4 +29,8 @@ public class CreateExamMatrixRequest {
     @Valid
     @Builder.Default
     private List<ExamMatrixRowRequest> rows = new ArrayList<>();
+
+    @Valid
+    @Builder.Default
+    private List<BatchCreateCustomLearningLevelRequest> customLearningLevels = new ArrayList<>();
 }

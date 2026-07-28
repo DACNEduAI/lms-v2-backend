@@ -7,6 +7,8 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import edu.ai.lms.core.quiz.app.service.crudquiz.DeleteQuestionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,8 +22,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.DeleteQuestionResponse;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
@@ -51,7 +53,7 @@ class DeleteQuestionServiceUT {
     @InjectMocks
     private DeleteQuestionService deleteQuestionService;
 
-    private UserAuth mockTeacher;
+    private CurrentActor mockTeacher;
     private UUID teacherId;
     private UUID quizId;
     private UUID questionId;
@@ -64,7 +66,7 @@ class DeleteQuestionServiceUT {
         quizId = UUID.randomUUID();
         questionId = UUID.randomUUID();
 
-        mockTeacher = UserAuth.builder()
+        mockTeacher = CurrentActor.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();
@@ -144,7 +146,7 @@ class DeleteQuestionServiceUT {
     void testDeleteQuestion_WithNonOwner_ShouldThrowException() {
         // Arrange
         UUID anotherTeacherId = UUID.randomUUID();
-        UserAuth anotherTeacher = UserAuth.builder()
+        CurrentActor anotherTeacher = CurrentActor.builder()
                 .id(anotherTeacherId)
                 .role(Roles.TEACHER)
                 .build();

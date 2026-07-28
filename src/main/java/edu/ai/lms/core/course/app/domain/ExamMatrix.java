@@ -36,6 +36,12 @@ public class ExamMatrix {
     @Builder.Default
     private List<ExamMatrixRow> rows = new ArrayList<>();
 
+    @Builder.Default
+    private List<CustomLearningLevel> customLearningLevels = new ArrayList<>();
+
+    @Builder.Default
+    private List<UUID> uncoveredLearningOutcomeIds = new ArrayList<>();
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -1,7 +1,7 @@
 package edu.ai.lms.core.quiz.app.service;
 
-import edu.ai.lms.common.Roles;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuestionLearningOutcomesResponse;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.QuestionLearningOutcomeView;
@@ -10,6 +10,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadQuestionLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.quiz.app.service.crudquiz.GetQuestionLearningOutcomesService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,7 +51,7 @@ class GetQuestionLearningOutcomesServiceUT {
         UUID loId = UUID.randomUUID();
 
         when(loadSignedInUserPort.getAuthenticatedUser())
-                .thenReturn(Optional.of(UserAuth.builder().id(userId).role(Roles.TEACHER).build()));
+                .thenReturn(Optional.of(CurrentActor.builder().id(userId).role(Roles.TEACHER).build()));
         when(loadQuestionPort.getByIdWithoutAnswers(questionId))
                 .thenReturn(Optional.of(Question.builder().id(questionId).quizId(quizId).build()));
         when(loadQuizPort.getById(quizId))

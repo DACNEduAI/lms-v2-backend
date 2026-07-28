@@ -1,7 +1,7 @@
 package edu.ai.lms.core.quiz.adapter.out.persistence;
 
-import edu.ai.lms.core.quiz.app.domain.QuestionLearningOutcomeView;
-import edu.ai.lms.core.quiz.app.port.out.LoadQuestionLearningOutcomePort;
+import edu.ai.lms.core.quiz.app.domain.QuestionLearningOutcomeLink;
+import edu.ai.lms.core.quiz.app.port.out.LoadLearningOutcomeAssociationsPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionLearningOutcomePort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -11,7 +11,8 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-class QuestionLearningOutcomePersistenceAdapter implements SaveQuestionLearningOutcomePort, LoadQuestionLearningOutcomePort {
+class QuestionLearningOutcomePersistenceAdapter implements SaveQuestionLearningOutcomePort,
+        LoadLearningOutcomeAssociationsPort {
 
     private final QuestionLearningOutcomeRepository questionLearningOutcomeRepository;
 
@@ -32,17 +33,12 @@ class QuestionLearningOutcomePersistenceAdapter implements SaveQuestionLearningO
     }
 
     @Override
-    public List<QuestionLearningOutcomeView> findLearningOutcomesByQuestionId(UUID questionId) {
-        return questionLearningOutcomeRepository.findLearningOutcomesByQuestionId(questionId);
-    }
-
-    @Override
-    public List<UUID> findLearningOutcomeIdsByQuestionId(UUID questionId) {
+    public List<UUID> findByQuestionId(UUID questionId) {
         return questionLearningOutcomeRepository.findLearningOutcomeIdsByQuestionId(questionId);
     }
 
     @Override
-    public List<QuestionLearningOutcomeView> findLearningOutcomesByQuizId(UUID quizId) {
-        return questionLearningOutcomeRepository.findLearningOutcomesByQuizId(quizId);
+    public List<QuestionLearningOutcomeLink> findByQuizId(UUID quizId) {
+        return questionLearningOutcomeRepository.findLinksByQuizId(quizId);
     }
 }

@@ -62,6 +62,7 @@ public class CreateMaterialService implements CreateMaterialUseCase {
                 .fileKey(m.getFileKey())
                 .isDownloadable(m.isDownloadable())
                 .status(m.getStatus() != null ? m.getStatus().name() : "PENDING")
+                .ingestionStatus(m.getIngestionStatus() != null ? m.getIngestionStatus().name() : "NOT_STARTED")
                 .presignedUploadUrl(presignedUploadUrl)
                 .courseId(m.getCourseId())
                 .createdAt(m.getCreatedAt())

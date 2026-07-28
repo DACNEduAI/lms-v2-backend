@@ -1,4 +1,4 @@
-@ApplicationModule(type = ApplicationModule.Type.OPEN)
+@ApplicationModule
 package edu.ai.lms.common;
 
 import org.springframework.modulith.ApplicationModule;

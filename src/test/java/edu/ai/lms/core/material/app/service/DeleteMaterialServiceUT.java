@@ -43,6 +43,9 @@ class DeleteMaterialServiceUT {
     @Mock
     private DeleteFilePort deleteFilePort;
 
+    @Mock
+    private MaterialIndexingService materialIndexingService;
+
     @InjectMocks
     private DeleteMaterialService deleteMaterialService;
 
@@ -89,6 +92,7 @@ class DeleteMaterialServiceUT {
         var inOrder = inOrder(deleteFilePort, deleteMaterialPort);
         inOrder.verify(deleteFilePort).deleteFile(fileKey);
         inOrder.verify(deleteMaterialPort).deleteById(materialId);
+        verify(materialIndexingService).queueDelete(courseId, materialId);
     }
 
     @Test
@@ -118,6 +122,7 @@ class DeleteMaterialServiceUT {
         assertTrue(response.getSuccess());
         verify(deleteFilePort, never()).deleteFile(any());
         verify(deleteMaterialPort, times(1)).deleteById(materialId);
+        verify(materialIndexingService).queueDelete(courseId, materialId);
     }
 
     @Test

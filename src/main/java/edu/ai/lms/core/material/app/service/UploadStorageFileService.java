@@ -2,7 +2,7 @@ package edu.ai.lms.core.material.app.service;
 
 import org.springframework.stereotype.Service;
 
-import edu.ai.lms.core.material.adapter.in.internal.UploadStorageFileApi;
+import edu.ai.lms.core.material.api.UploadStorageFileApi;
 import edu.ai.lms.core.material.app.port.out.storage.UploadFilePort;
 import lombok.RequiredArgsConstructor;
 

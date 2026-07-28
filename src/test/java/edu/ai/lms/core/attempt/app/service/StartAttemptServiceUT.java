@@ -1,6 +1,6 @@
 package edu.ai.lms.core.attempt.app.service;
 
-import edu.ai.lms.common.Roles;
+import edu.ai.lms.common.api.Roles;
 import edu.ai.lms.core.attempt.app.domain.Attempt;
 import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
 import edu.ai.lms.core.attempt.app.exception.AttemptLimitExceededException;
@@ -11,7 +11,7 @@ import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.attempt.app.port.out.ScheduleAttemptAutoClosePort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.attempt.app.domain.CurrentActor;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,7 +58,7 @@ class StartAttemptServiceUT {
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
 
-        UserAuth user = UserAuth.builder().id(studentId).role(Roles.STUDENT).build();
+        CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
                 .courseId(courseId)
@@ -102,7 +102,7 @@ class StartAttemptServiceUT {
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
 
-        UserAuth user = UserAuth.builder().id(studentId).role(Roles.STUDENT).build();
+        CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
                 .courseId(courseId)
@@ -132,7 +132,7 @@ class StartAttemptServiceUT {
         UUID quizId = UUID.randomUUID();
         LocalDateTime quizDueTime = LocalDateTime.now().plusHours(2);
 
-        UserAuth user = UserAuth.builder().id(studentId).role(Roles.STUDENT).build();
+        CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
                 .courseId(courseId)
@@ -168,7 +168,7 @@ class StartAttemptServiceUT {
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
 
-        UserAuth user = UserAuth.builder().id(studentId).role(Roles.STUDENT).build();
+        CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
                 .courseId(courseId)
@@ -205,7 +205,7 @@ class StartAttemptServiceUT {
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
 
-        UserAuth user = UserAuth.builder().id(studentId).role(Roles.STUDENT).build();
+        CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
                 .courseId(courseId)

@@ -7,7 +7,6 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import edu.ai.lms.config.DatePatternConstants;
-import edu.ai.lms.core.quiz.app.domain.Question;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -27,11 +26,19 @@ public class GenerateQuizRequest {
     @NotNull(message = "CourseId is required")
     private UUID courseId;
 
-    private UUID chapterId;
+    @NotNull(message = "Exam matrix is required")
+    private UUID examMatrixId;
 
-    private Boolean useOptions;
+    @Builder.Default
+    private List<UUID> selectedMaterialIds = new ArrayList<>();
 
     private String prompt;
+
+    @Builder.Default
+    private Boolean strictMode = true;
+
+    @Builder.Default
+    private String codeRunnerPolicy = "PRESERVE";
 
     private String quizTitle;
 
@@ -53,12 +60,4 @@ public class GenerateQuizRequest {
     private Integer attemptLimited;
 
     private Boolean display;
-
-    @Builder.Default
-    private List<UUID> learningOutcomeIds = new ArrayList<>();
-
-    @Positive(message = "Question count must be greater than 0")
-    private Integer questionCount;
-
-    private Question.QuestionType questionType;
 }

@@ -27,6 +27,9 @@ class MaterialPersistenceAdapter implements CreateMaterialPort, GetMaterialPort,
         if (material.getStatus() == null) {
             material.setStatus(Material.MaterialStatus.PENDING);
         }
+        if (material.getIngestionStatus() == null) {
+            material.setIngestionStatus(Material.IngestionStatus.NOT_STARTED);
+        }
         return materialRepository.save(material);
     }
 
@@ -34,6 +37,9 @@ class MaterialPersistenceAdapter implements CreateMaterialPort, GetMaterialPort,
     public Material createForChapter(UUID courseId, UUID chapterId, Material material) {
         if (material.getStatus() == null) {
             material.setStatus(Material.MaterialStatus.PENDING);
+        }
+        if (material.getIngestionStatus() == null) {
+            material.setIngestionStatus(Material.IngestionStatus.NOT_STARTED);
         }
         Material saved = materialRepository.save(material);
 
@@ -76,11 +82,6 @@ class MaterialPersistenceAdapter implements CreateMaterialPort, GetMaterialPort,
                 .map(Enum::name)
                 .collect(Collectors.toList());
         return materialRepository.findByStatusIn(statusStrings).stream().collect(Collectors.toList());
-    }
-
-    @Override
-    public List<UUID> getStudentIdsByCourseId(UUID courseId) {
-        return materialRepository.findStudentIdsByCourseId(courseId);
     }
 
     // ─── ModifyMaterialPort ────────────────────────────────────────────────────

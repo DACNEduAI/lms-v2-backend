@@ -70,8 +70,4 @@ public class AiChatPersistenceAdapter implements AiChatPersistencePort {
         return aiChatMapper.countMessagesBySession(sessionId);
     }
 
-    @Override
-    public int countValidMaterials(UUID courseId, List<UUID> materialIds) {
-        return aiChatMapper.countValidMaterials(courseId, materialIds);
-    }
 }

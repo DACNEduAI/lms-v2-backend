@@ -1,6 +1,6 @@
 package edu.ai.lms.core.quiz.adapter.out.persistence;
 
-import edu.ai.lms.core.quiz.app.domain.QuestionLearningOutcomeView;
+import edu.ai.lms.core.quiz.app.domain.QuestionLearningOutcomeLink;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -16,7 +16,5 @@ interface QuestionLearningOutcomeRepository {
 
     List<UUID> findLearningOutcomeIdsByQuestionId(@Param("questionId") UUID questionId);
 
-    List<QuestionLearningOutcomeView> findLearningOutcomesByQuestionId(@Param("questionId") UUID questionId);
-
-    List<QuestionLearningOutcomeView> findLearningOutcomesByQuizId(@Param("quizId") UUID quizId);
+    List<QuestionLearningOutcomeLink> findLinksByQuizId(@Param("quizId") UUID quizId);
 }

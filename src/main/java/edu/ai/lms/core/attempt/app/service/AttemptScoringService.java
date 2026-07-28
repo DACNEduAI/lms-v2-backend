@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  * <p>
  * Each gradable question (MULTIPLE_CHOICE / TRUE_FALSE) has the same weight.
  * The total score is scaled to {@code DEFAULT_MAX_SCORE} (10 points by default).
- * ESSAY questions are excluded from automatic scoring.
+ * ESSAY and not-yet-executable CODE_RUNNER questions are excluded from automatic scoring.
  */
 @Service
 public class AttemptScoringService {
@@ -51,13 +51,13 @@ public class AttemptScoringService {
                         (left, right) -> left
                 ));
 
-        // Count total gradable questions (non-ESSAY from the full key set)
+        // Count only question types supported by the current automatic scorer.
         long totalGradable = answerKeys.stream()
                 .map(QuestionAnswerKey::getQuestionId)
                 .distinct()
                 .filter(qId -> {
                     QuestionAnswerKey.QuestionType t = questionTypes.get(qId);
-                    return t != null && t != QuestionAnswerKey.QuestionType.ESSAY;
+                    return isAutomaticallyGradable(t);
                 })
                 .count();
 
@@ -71,7 +71,7 @@ public class AttemptScoringService {
             UUID questionId = entry.getKey();
             QuestionAnswerKey.QuestionType questionType = questionTypes.get(questionId);
 
-            if (questionType == null || questionType == QuestionAnswerKey.QuestionType.ESSAY) {
+            if (!isAutomaticallyGradable(questionType)) {
                 continue;
             }
 
@@ -85,5 +85,10 @@ public class AttemptScoringService {
         double rawRatio = (double) correct / totalGradable;
         double score = Math.round(rawRatio * DEFAULT_MAX_SCORE * 100.0) / 100.0;
         return score;
+    }
+
+    private boolean isAutomaticallyGradable(QuestionAnswerKey.QuestionType type) {
+        return type == QuestionAnswerKey.QuestionType.MULTIPLE_CHOICE
+                || type == QuestionAnswerKey.QuestionType.TRUE_FALSE;
     }
 }

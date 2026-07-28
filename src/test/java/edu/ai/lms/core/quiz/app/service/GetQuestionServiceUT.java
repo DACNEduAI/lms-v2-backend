@@ -9,6 +9,8 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import edu.ai.lms.core.quiz.app.service.crudquiz.GetQuestionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,7 +23,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import edu.ai.lms.core.auth.app.domain.UserAuth;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.GetQuestionResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
@@ -29,7 +31,7 @@ import edu.ai.lms.core.quiz.app.exception.QuestionNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
-import edu.ai.lms.common.Roles;
+import edu.ai.lms.common.api.Roles;
 
 @ExtendWith(MockitoExtension.class)
 class GetQuestionServiceUT {
@@ -43,7 +45,7 @@ class GetQuestionServiceUT {
     @InjectMocks
     private GetQuestionService getQuestionService;
 
-    private UserAuth mockTeacher;
+    private CurrentActor mockTeacher;
     private UUID teacherId;
     private UUID quizId;
     private UUID questionId;
@@ -55,7 +57,7 @@ class GetQuestionServiceUT {
         quizId = UUID.randomUUID();
         questionId = UUID.randomUUID();
 
-        mockTeacher = UserAuth.builder()
+        mockTeacher = CurrentActor.builder()
                 .id(teacherId)
                 .role(Roles.TEACHER)
                 .build();

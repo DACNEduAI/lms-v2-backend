@@ -21,7 +21,7 @@ class QuizDeadlineJdbcAdapterIT extends IntegrationTestConfiguration {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    void shouldFindStudentsWhoHaveNotFinishedQuiz() {
+    void shouldFindQuizWithApproachingDeadlineWithoutReadingEnrollmentOrAttemptTables() {
         // 1. Chuẩn bị Dữ liệu thật trong DB Ảo (Tạo User, Course, Quiz, Enrollment)
         UUID studentId1 = UUID.randomUUID(); // Sẽ chưa làm bài
         UUID studentId2 = UUID.randomUUID(); // Đã làm bài xong
@@ -52,8 +52,8 @@ class QuizDeadlineJdbcAdapterIT extends IntegrationTestConfiguration {
         );
 
         // 3. Kiểm chứng
-        assertThat(targets).hasSize(1); // Chỉ được phép trả về 1 người
-        assertThat(targets.get(0).studentId()).isEqualTo(studentId1); // Người đó phải là SV 1 (chưa làm bài)
+        assertThat(targets).hasSize(1);
         assertThat(targets.get(0).quizId()).isEqualTo(quizId);
+        assertThat(targets.get(0).courseId()).isEqualTo(courseId);
     }
 }

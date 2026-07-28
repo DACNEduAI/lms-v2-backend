@@ -5,14 +5,12 @@ import java.io.IOException;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import edu.ai.lms.core.auth.app.port.out.LoadStudentPort;
-import edu.ai.lms.core.auth.app.port.out.LoadTeacherPort;
+import edu.ai.lms.core.auth.api.AuthenticatedPrincipal;
+import edu.ai.lms.core.auth.api.TokenAuthenticationApi;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,9 +25,7 @@ public class SseJwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String TOKEN_PARAM = "token";
 
-    private final JwtUtil jwtUtil;
-    private final LoadStudentPort loadStudentPort;
-    private final LoadTeacherPort loadTeacherPort;
+    private final TokenAuthenticationApi tokenAuthenticationApi;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -65,22 +61,13 @@ public class SseJwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            String userEmail = jwtUtil.extractEmail(token);
-            String userRole = jwtUtil.extractRole(token);
-
-            if (userEmail != null) {
-                UserDetails userDetails = loadUserByEmailAndRole(userEmail, userRole);
-
-                if (jwtUtil.validateToken(token, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
-                    );
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                }
-            }
+            AuthenticatedPrincipal principal = tokenAuthenticationApi.authenticate(token);
+            SecurityUserPrincipal userDetails = new SecurityUserPrincipal(
+                    principal.userId(), principal.email(), null, principal.role());
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         } catch (Exception e) {
             log.error("Could not set SSE user authentication in security context", e);
         }
@@ -88,12 +75,4 @@ public class SseJwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private UserDetails loadUserByEmailAndRole(String email, String role) {
-        if ("TEACHER".equals(role)) {
-            return loadTeacherPort.findByEmail(email)
-                    .orElseThrow(() -> new UsernameNotFoundException("Teacher not found with email: " + email));
-        }
-        return loadStudentPort.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Student not found with email: " + email));
-    }
 }

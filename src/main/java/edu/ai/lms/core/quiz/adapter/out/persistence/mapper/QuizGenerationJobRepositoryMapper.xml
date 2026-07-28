@@ -1,135 +1,106 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="edu.ai.lms.core.quiz.adapter.out.persistence.QuizGenerationJobRepository">
-
-  <resultMap id="QuizGenerationJobResultMap" type="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob">
-    <id property="id" column="id" />
-    <result property="courseId" column="course_id" />
-    <result property="chapterId" column="chapter_id" />
-    <result property="quizId" column="quiz_id" />
-    <result property="requestedBy" column="requested_by" />
-    <result property="requestedRole" column="requested_role" javaType="edu.ai.lms.common.Roles" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
-    <result property="quizTitle" column="quiz_title" />
-    <result property="questionCount" column="question_count" />
-    <result property="questionType" column="question_type" javaType="edu.ai.lms.core.quiz.app.domain.Question$QuestionType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
-    <result property="prompt" column="prompt" />
-    <result property="useOptions" column="use_options" />
-    <result property="unlimited" column="unlimited" />
-    <result property="timeLimitMinutes" column="time_limit_minutes" />
-    <result property="passScore" column="pass_score" />
-    <result property="startTime" column="start_time" />
-    <result property="dueTime" column="due_time" />
-    <result property="attemptLimited" column="attempt_limited" />
-    <result property="display" column="display" />
-    <result property="status" column="status" javaType="edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
-    <result property="errorMessage" column="error_message" />
-    <result property="createdAt" column="created_at" />
-    <result property="updatedAt" column="updated_at" />
+  <resultMap id="JobMap" type="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob">
+    <id property="id" column="id"/>
+    <result property="courseId" column="course_id"/>
+    <result property="examMatrixId" column="exam_matrix_id"/>
+    <result property="quizId" column="quiz_id"/>
+    <result property="requestedBy" column="requested_by"/>
+    <result property="requestedRole" column="requested_role" javaType="edu.ai.lms.common.api.Roles" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+    <result property="quizTitle" column="quiz_title"/>
+    <result property="prompt" column="prompt"/>
+    <result property="requestSnapshot" column="request_snapshot" typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+    <result property="payloadHash" column="payload_hash"/>
+    <result property="idempotencyKey" column="idempotency_key"/>
+    <result property="strictMode" column="strict_mode"/>
+    <result property="codeRunnerPolicy" column="code_runner_policy"/>
+    <result property="unlimited" column="unlimited"/>
+    <result property="timeLimitMinutes" column="time_limit_minutes"/>
+    <result property="passScore" column="pass_score"/>
+    <result property="startTime" column="start_time"/>
+    <result property="dueTime" column="due_time"/>
+    <result property="attemptLimited" column="attempt_limited"/>
+    <result property="display" column="display"/>
+    <result property="status" column="status" javaType="edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+    <result property="attemptCount" column="attempt_count"/>
+    <result property="nextAttemptAt" column="next_attempt_at"/>
+    <result property="leaseUntil" column="lease_until"/>
+    <result property="errorCode" column="error_code"/>
+    <result property="errorMessage" column="error_message"/>
+    <result property="callbackEventId" column="callback_event_id"/>
+    <result property="processingAt" column="processing_at"/>
+    <result property="completedAt" column="completed_at"/>
+    <result property="createdAt" column="created_at"/>
+    <result property="updatedAt" column="updated_at"/>
   </resultMap>
+
+  <sql id="columns">id, course_id, exam_matrix_id, quiz_id, requested_by, requested_role,
+    quiz_title, prompt, request_snapshot, payload_hash, idempotency_key, strict_mode,
+    code_runner_policy, unlimited, time_limit_minutes, pass_score, start_time, due_time,
+    attempt_limited, display, status, attempt_count, next_attempt_at, lease_until,
+    error_code, error_message, callback_event_id, processing_at, completed_at, created_at, updated_at</sql>
 
   <insert id="insert" parameterType="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob">
     INSERT INTO edu.quiz_generation_jobs (
-        id,
-        course_id,
-        chapter_id,
-        quiz_id,
-        requested_by,
-        requested_role,
-        quiz_title,
-        question_count,
-        question_type,
-        prompt,
-        use_options,
-        unlimited,
-        time_limit_minutes,
-        pass_score,
-        start_time,
-        due_time,
-        attempt_limited,
-        display,
-        status,
-        error_message,
-        created_at,
-        updated_at
-    )
-    VALUES (
-        #{id},
-        #{courseId},
-        #{chapterId},
-        #{quizId},
-        #{requestedBy},
-        #{requestedRole, javaType=edu.ai.lms.common.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-        #{quizTitle},
-        #{questionCount},
-        #{questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-        #{prompt},
-        #{useOptions},
-        #{unlimited},
-        #{timeLimitMinutes},
-        #{passScore},
-        #{startTime},
-        #{dueTime},
-        #{attemptLimited},
-        #{display},
-        #{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-        #{errorMessage},
-        NOW(),
-        NOW()
-    )
+      id, course_id, exam_matrix_id, quiz_id, requested_by, requested_role, quiz_title,
+      prompt, request_snapshot, payload_hash, idempotency_key, strict_mode, code_runner_policy,
+      unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited,
+      display, status, attempt_count, next_attempt_at, lease_until, error_code,
+      error_message, callback_event_id, processing_at, completed_at, created_at, updated_at)
+    VALUES (#{id}, #{courseId}, #{examMatrixId}, #{quizId}, #{requestedBy},
+      #{requestedRole, javaType=edu.ai.lms.common.api.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+      #{quizTitle}, #{prompt}, CAST(#{requestSnapshot} AS jsonb), #{payloadHash}, #{idempotencyKey},
+      #{strictMode}, #{codeRunnerPolicy}, #{unlimited}, #{timeLimitMinutes}, #{passScore},
+      #{startTime}, #{dueTime}, #{attemptLimited}, #{display},
+      #{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+      COALESCE(#{attemptCount}, 0), #{nextAttemptAt}, #{leaseUntil}, #{errorCode},
+      #{errorMessage}, #{callbackEventId}, #{processingAt}, #{completedAt}, NOW(), NOW())
+    ON CONFLICT (requested_by, idempotency_key) DO NOTHING
   </insert>
 
   <update id="update" parameterType="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob">
-    UPDATE edu.quiz_generation_jobs
-    SET course_id = #{courseId},
-        chapter_id = #{chapterId},
-        quiz_id = #{quizId},
-        requested_by = #{requestedBy},
-        requested_role = #{requestedRole, javaType=edu.ai.lms.common.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-        quiz_title = #{quizTitle},
-        question_count = #{questionCount},
-        question_type = #{questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-        prompt = #{prompt},
-        use_options = #{useOptions},
-        unlimited = #{unlimited},
-        time_limit_minutes = #{timeLimitMinutes},
-        pass_score = #{passScore},
-        start_time = #{startTime},
-        due_time = #{dueTime},
-        attempt_limited = #{attemptLimited},
-        display = #{display},
-        status = #{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-        error_message = #{errorMessage},
-        updated_at = NOW()
-    WHERE id = #{id}
+    UPDATE edu.quiz_generation_jobs SET quiz_id=#{quizId}, quiz_title=#{quizTitle},
+      request_snapshot=CAST(#{requestSnapshot} AS jsonb), payload_hash=#{payloadHash},
+      strict_mode=#{strictMode}, code_runner_policy=#{codeRunnerPolicy}, unlimited=#{unlimited},
+      time_limit_minutes=#{timeLimitMinutes}, pass_score=#{passScore}, start_time=#{startTime},
+      due_time=#{dueTime}, attempt_limited=#{attemptLimited}, display=#{display},
+      status=#{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+      attempt_count=#{attemptCount}, next_attempt_at=#{nextAttemptAt}, lease_until=#{leaseUntil},
+      error_code=#{errorCode}, error_message=#{errorMessage}, processing_at=#{processingAt},
+      callback_event_id=#{callbackEventId}, completed_at=#{completedAt}, updated_at=NOW()
+    WHERE id=#{id}
   </update>
 
-  <select id="getById" resultMap="QuizGenerationJobResultMap">
-    SELECT id,
-           course_id,
-           chapter_id,
-           quiz_id,
-           requested_by,
-           requested_role,
-           quiz_title,
-           question_count,
-           question_type,
-           prompt,
-           use_options,
-           unlimited,
-           time_limit_minutes,
-           pass_score,
-           start_time,
-           due_time,
-           attempt_limited,
-           display,
-           status,
-           error_message,
-           created_at,
-           updated_at
-    FROM edu.quiz_generation_jobs
-    WHERE id = #{jobId}
+  <select id="getById" resultMap="JobMap">
+    SELECT <include refid="columns"/> FROM edu.quiz_generation_jobs WHERE id=#{jobId}
   </select>
 
+  <select id="getByIdForUpdate" resultMap="JobMap">
+    SELECT <include refid="columns"/> FROM edu.quiz_generation_jobs WHERE id=#{jobId} FOR UPDATE
+  </select>
+
+  <select id="findByIdempotencyKey" resultMap="JobMap">
+    SELECT <include refid="columns"/> FROM edu.quiz_generation_jobs
+    WHERE requested_by=#{requestedBy} AND idempotency_key=#{idempotencyKey}
+  </select>
+
+  <update id="claim">
+    UPDATE edu.quiz_generation_jobs SET status='PROCESSING', attempt_count=attempt_count+1,
+      processing_at=COALESCE(processing_at, NOW()), lease_until=#{leaseUntil},
+      error_code=NULL, error_message=NULL, updated_at=NOW()
+    WHERE id=#{jobId} AND status='PENDING' AND (next_attempt_at IS NULL OR next_attempt_at &lt;= NOW())
+  </update>
+
+  <select id="findRecoverableIds" resultType="java.util.UUID">
+    SELECT id FROM edu.quiz_generation_jobs
+    WHERE (status='PENDING' AND (next_attempt_at IS NULL OR next_attempt_at &lt;= NOW()))
+       OR (status='PROCESSING' AND lease_until &lt; NOW())
+    ORDER BY created_at LIMIT #{limit}
+  </select>
+
+  <delete id="deleteTerminalBefore">
+    DELETE FROM edu.quiz_generation_jobs
+    WHERE status IN ('COMPLETED', 'FAILED', 'TIMED_OUT') AND completed_at &lt; #{cutoff}
+  </delete>
 </mapper>

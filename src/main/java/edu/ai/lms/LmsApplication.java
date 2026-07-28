@@ -7,17 +7,9 @@ import org.springframework.context.annotation.FullyQualifiedAnnotationBeanNameGe
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-import org.apache.ibatis.annotations.Mapper;
-import org.mybatis.spring.annotation.MapperScan;
-
 @SpringBootApplication(nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class)
 @EnableScheduling
 @EnableAsync
-@MapperScan(
-	basePackages = "edu.ai.lms",
-	annotationClass = Mapper.class,
-	nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class
-)
 public class LmsApplication {
 
 	public static void main(String[] args) {

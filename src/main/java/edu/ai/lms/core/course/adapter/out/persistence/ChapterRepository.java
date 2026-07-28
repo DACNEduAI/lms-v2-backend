@@ -27,6 +27,8 @@ interface ChapterRepository {
             @Param("chapterId") UUID chapterId,
             @Param("courseId") UUID courseId);
 
+    void deleteQuizChapterLinks(@Param("chapterId") UUID chapterId);
+
     UUID insertAndReturnChapterId(
             @Param("courseId") UUID courseId,
             @Param("title") String title,
@@ -47,8 +49,16 @@ interface ChapterRepository {
             @Param("courseId") UUID courseId,
             @Param("learningOutcomeId") UUID learningOutcomeId);
 
+    void insertUnselectedExamMatrixRowOutcomeMappings(
+            @Param("chapterId") UUID chapterId,
+            @Param("learningOutcomeId") UUID learningOutcomeId);
+
     void deleteChapterLearningOutcome(
             @Param("chapterId") UUID chapterId,
             @Param("courseId") UUID courseId,
+            @Param("learningOutcomeId") UUID learningOutcomeId);
+
+    void deleteExamMatrixRowOutcomeMappings(
+            @Param("chapterId") UUID chapterId,
             @Param("learningOutcomeId") UUID learningOutcomeId);
 }

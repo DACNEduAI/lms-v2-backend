@@ -25,6 +25,10 @@ public class QuizGenerationStatusResponse {
 
     private String errorMessage;
 
+    private String errorCode;
+
+    private Integer attemptCount;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

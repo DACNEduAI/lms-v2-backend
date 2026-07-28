@@ -1,21 +1,22 @@
 package edu.ai.lms.core.course.app.port.in.command;
 
+import java.util.List;
 import java.util.UUID;
 
 import lombok.Builder;
 
-/**
- * Command value-object for a single exam matrix row.
- * Shared between CreateExamMatrixCommand and ModifyExamMatrixCommand.
- */
 @Builder
 public record ExamMatrixRowCommand(
         UUID id,
-        UUID learningOutcomeId,
+        String clientTempId,
         UUID chapterId,
         String topic,
-        int understandCount,
-        int applyCount,
-        int applyPlusCount,
-        int orderIndex
-) {}
+        int orderIndex,
+        List<UUID> learningOutcomeIds,
+        List<LearningLevelCountCommand> levelCounts
+) {
+    public ExamMatrixRowCommand {
+        learningOutcomeIds = learningOutcomeIds == null ? List.of() : List.copyOf(learningOutcomeIds);
+        levelCounts = levelCounts == null ? List.of() : List.copyOf(levelCounts);
+    }
+}

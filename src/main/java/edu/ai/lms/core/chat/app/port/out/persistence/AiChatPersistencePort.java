@@ -22,6 +22,4 @@ public interface AiChatPersistencePort {
     List<AiCourseChatMessage> getMessagesBySession(UUID sessionId);
     int countMessagesBySession(UUID sessionId);
 
-    // Material validation (Anti-IDOR)
-    int countValidMaterials(UUID courseId, List<UUID> materialIds);
 }

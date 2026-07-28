@@ -42,9 +42,7 @@ interface CourseRepository {
 
     List<Course> findAllByStudentId(@Param("studentId") UUID studentId);
 
-    List<UUID> findTeacherIdsByCourseId(@Param("courseId") UUID courseId);
-
-    List<UUID> findStudentIdsByCourseId(@Param("courseId") UUID courseId);
+    List<UUID> findEnrollmentIdsByCourseId(@Param("courseId") UUID courseId);
 
     void deleteCourseStudentsByCourseIdAndStudentIds(
             @Param("courseId") UUID courseId,

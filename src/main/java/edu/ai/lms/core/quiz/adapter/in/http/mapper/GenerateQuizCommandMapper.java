@@ -8,12 +8,15 @@ import edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand;
 @Component
 public class GenerateQuizCommandMapper {
 
-    public GenerateQuizCommand toCommand(GenerateQuizRequest request) {
+    public GenerateQuizCommand toCommand(GenerateQuizRequest request, String idempotencyKey) {
         return GenerateQuizCommand.builder()
                 .courseId(request.getCourseId())
-                .chapterId(request.getChapterId())
-                .useOptions(request.getUseOptions())
+                .examMatrixId(request.getExamMatrixId())
+                .selectedMaterialIds(request.getSelectedMaterialIds())
                 .prompt(request.getPrompt())
+                .strictMode(request.getStrictMode())
+                .codeRunnerPolicy(request.getCodeRunnerPolicy())
+                .idempotencyKey(idempotencyKey)
                 .quizTitle(request.getQuizTitle())
                 .unlimited(request.getUnlimited())
                 .timeLimitMinutes(request.getTimeLimitMinutes())
@@ -22,9 +25,6 @@ public class GenerateQuizCommandMapper {
                 .dueTime(request.getDueTime())
                 .attemptLimited(request.getAttemptLimited())
                 .display(request.getDisplay())
-                .learningOutcomeIds(request.getLearningOutcomeIds())
-                .questionCount(request.getQuestionCount())
-                .questionType(request.getQuestionType())
                 .build();
     }
 }

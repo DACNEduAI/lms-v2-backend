@@ -18,7 +18,8 @@ public class QuestionAnswerKey {
     public enum QuestionType {
         MULTIPLE_CHOICE,
         TRUE_FALSE,
-        ESSAY
+        ESSAY,
+        CODE_RUNNER
     }
 
     private UUID questionId;

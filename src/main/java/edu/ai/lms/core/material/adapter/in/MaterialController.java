@@ -35,6 +35,7 @@ import edu.ai.lms.core.material.app.port.in.usecase.GetChapterMaterialsUseCase;
 import edu.ai.lms.core.material.app.port.in.usecase.GetMaterialUseCase;
 import edu.ai.lms.core.material.app.port.in.usecase.GetUploadedMaterialsUseCase;
 import edu.ai.lms.core.material.app.port.in.usecase.ModifyMaterialUseCase;
+import edu.ai.lms.core.material.app.service.MaterialIndexingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -59,6 +60,7 @@ public class MaterialController {
         private final ConfirmUploadUseCase confirmUploadUseCase;
         private final CreateMaterialCommandMapper createMaterialCommandMapper;
         private final ModifyMaterialCommandMapper modifyMaterialCommandMapper;
+        private final MaterialIndexingService materialIndexingService;
 
         @Operation(summary = "Get all uploaded materials for a course", description = "Returns uploaded materials for a course. LMS logic: only materials in UPLOADED state are surfaced to consumers. Path field: courseId. Response fields per item: id, title, type, fileKey, isDownloadable, status, presignedUrl, courseId, createdAt, updatedAt.")
         @ApiResponses(value = {
@@ -182,5 +184,14 @@ public class MaterialController {
                         @PathVariable UUID materialId) {
                 ConfirmUploadResponse response = confirmUploadUseCase.confirmUpload(courseId, materialId);
                 return ResponseEntity.ok(response);
+        }
+
+        @Operation(summary = "Retry AI indexing for an uploaded PDF material")
+        @PreAuthorize("hasRole('TEACHER')")
+        @PostMapping("/{materialId}/retry-ingestion")
+        public ResponseEntity<ConfirmUploadResponse> retryIngestion(
+                        @PathVariable UUID courseId,
+                        @PathVariable UUID materialId) {
+                return ResponseEntity.accepted().body(materialIndexingService.retry(courseId, materialId));
         }
 }
