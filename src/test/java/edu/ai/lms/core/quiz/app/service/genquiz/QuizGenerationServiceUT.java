@@ -45,7 +45,9 @@ class QuizGenerationServiceUT {
         UUID teacherId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID matrixId = UUID.randomUUID();
+        UUID profileId = UUID.randomUUID();
         UUID rowId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
         UUID levelId = UUID.randomUUID();
         UUID firstOutcomeId = UUID.randomUUID();
         UUID secondOutcomeId = UUID.randomUUID();
@@ -56,9 +58,9 @@ class QuizGenerationServiceUT {
                 .thenReturn(Optional.empty());
         when(contextPort.load(courseId, matrixId)).thenReturn(Optional.of(
                 new QuizGenerationContextView(
-                        courseId, "DSA", matrixId, "Midterm",
+                        courseId, "DSA", matrixId, "Midterm", profileId,
                         List.of(new QuizGenerationContextView.Row(
-                                rowId, UUID.randomUUID(), "Graphs", "Traversal",
+                                rowId, itemId, UUID.randomUUID(), "Graphs", "Traversal",
                                 List.of(
                                         new QuizGenerationContextView.LearningOutcome(
                                                 firstOutcomeId, "LO1", "Explain"),
@@ -66,7 +68,8 @@ class QuizGenerationServiceUT {
                                                 secondOutcomeId, "LO2", "Apply")),
                                 List.of(new QuizGenerationContextView.LearningLevel(
                                         levelId, "SYN", "Synthesize", "Combine",
-                                        3, List.of(firstOutcomeId, secondOutcomeId), 4)))))));
+                                        3, List.of(firstOutcomeId, secondOutcomeId),
+                                        "MULTIPLE_CHOICE", 4)))))));
         AtomicReference<String> snapshot = new AtomicReference<>();
         when(savePort.save(any())).thenAnswer(invocation -> {
             var job = invocation.getArgument(0,
@@ -81,13 +84,17 @@ class QuizGenerationServiceUT {
                 .selectedMaterialIds(List.of()).unlimited(true).build());
 
         JsonNode saved = objectMapper.readTree(snapshot.get());
-        assertEquals(2, saved.path("snapshotVersion").asInt());
+        assertEquals(3, saved.path("snapshotVersion").asInt());
+        assertEquals(profileId.toString(), saved.path("ccctProfileId").asText());
         assertEquals(4, saved.path("questionCount").asInt());
         assertEquals(1, saved.path("examMatrix").size());
         assertFalse(saved.path("examMatrix").get(0).has("hieu"));
+        assertEquals(itemId.toString(), saved.path("examMatrix").get(0).path("ccctItemId").asText());
         assertEquals(2, saved.path("examMatrix").get(0)
                 .path("levelCounts").get(0).path("learningOutcomeIds").size());
         assertEquals(4, saved.path("examMatrix").get(0)
                 .path("levelCounts").get(0).path("questionCount").asInt());
+        assertEquals("MULTIPLE_CHOICE", saved.path("examMatrix").get(0)
+                .path("levelCounts").get(0).path("questionType").asText());
     }
 }

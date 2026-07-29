@@ -106,7 +106,10 @@ public class QuizWebhookProcessingService {
             if (request.getQuiz().getQuestions().size() != expected) {
                 throw new IllegalArgumentException("Generated question count does not match the accepted matrix");
             }
-            if (snapshot.path("snapshotVersion").asInt(1) >= 2) {
+            int snapshotVersion = snapshot.path("snapshotVersion").asInt(1);
+            if (snapshotVersion >= 3) {
+                validateCcctDistribution(snapshot, request.getQuiz().getQuestions());
+            } else if (snapshotVersion >= 2) {
                 validateDynamicDistribution(snapshot, request.getQuiz().getQuestions());
             } else {
                 validateLegacyDistribution(snapshot, request.getQuiz().getQuestions());
@@ -115,6 +118,67 @@ public class QuizWebhookProcessingService {
             throw ex;
         } catch (Exception ex) {
             throw new IllegalStateException("Could not validate the request snapshot", ex);
+        }
+    }
+
+    private void validateCcctDistribution(
+            JsonNode snapshot,
+            List<QuizWebhookRequest.QuestionPayload> questions) {
+        Map<String, CcctRequirement> expectedRequirements = new HashMap<>();
+        snapshot.path("examMatrix").forEach(row -> row.path("levelCounts").forEach(level -> {
+            String rowId = row.path("rowId").asText();
+            String levelId = level.path("customLearningLevelId").asText();
+            String questionType = level.path("questionType").asText();
+            LinkedHashSet<UUID> outcomeIds = new LinkedHashSet<>();
+            level.path("learningOutcomeIds").forEach(id -> outcomeIds.add(UUID.fromString(id.asText())));
+            expectedRequirements.put(
+                    ccctKey(rowId, levelId, questionType),
+                    new CcctRequirement(
+                            level.path("questionCount").asInt(),
+                            UUID.fromString(row.path("ccctItemId").asText()),
+                            questionType,
+                            outcomeIds));
+        }));
+
+        Map<String, Integer> actualDistribution = new HashMap<>();
+        for (QuizWebhookRequest.QuestionPayload question : questions) {
+            validateQuestionShape(question);
+            if (question.getMatrixRowId() == null
+                    || question.getCcctItemId() == null
+                    || question.getCustomLearningLevelId() == null) {
+                throw new IllegalArgumentException(
+                        "Every generated question must identify its matrix row, CCCT item, and custom learning level");
+            }
+            String type = question.getOriginalType().toUpperCase();
+            String key = ccctKey(
+                    question.getMatrixRowId().toString(),
+                    question.getCustomLearningLevelId().toString(),
+                    type);
+            CcctRequirement requirement = expectedRequirements.get(key);
+            if (requirement == null) {
+                throw new IllegalArgumentException(
+                        "Generated question references an unknown Matrix allocation");
+            }
+            if (!requirement.ccctItemId().equals(question.getCcctItemId())
+                    || !requirement.questionType().equals(type)) {
+                throw new IllegalArgumentException(
+                        "Generated question CCCT item or type does not match the accepted Matrix");
+            }
+            List<UUID> suppliedIds = question.getLearningOutcomeIds();
+            LinkedHashSet<UUID> suppliedSet = new LinkedHashSet<>(suppliedIds);
+            if (suppliedIds.size() != suppliedSet.size()
+                    || !suppliedSet.equals(requirement.learningOutcomeIds())) {
+                throw new IllegalArgumentException(
+                        "Generated question learning outcomes do not match the accepted Matrix requirement");
+            }
+            actualDistribution.merge(key, 1, Integer::sum);
+        }
+        Map<String, Integer> expectedDistribution = new HashMap<>();
+        expectedRequirements.forEach((key, requirement) ->
+                expectedDistribution.put(key, requirement.questionCount()));
+        if (!expectedDistribution.equals(actualDistribution)) {
+            throw new IllegalArgumentException(
+                    "Generated questions do not match the accepted item, level, type, and count distribution");
         }
     }
 
@@ -234,6 +298,17 @@ public class QuizWebhookProcessingService {
 
     private static String dynamicKey(String rowId, String levelId) {
         return rowId + "|" + levelId;
+    }
+
+    private static String ccctKey(String rowId, String levelId, String questionType) {
+        return rowId + "|" + levelId + "|" + questionType.toUpperCase();
+    }
+
+    private record CcctRequirement(
+            int questionCount,
+            UUID ccctItemId,
+            String questionType,
+            LinkedHashSet<UUID> learningOutcomeIds) {
     }
 
     private record DynamicRequirement(int questionCount, LinkedHashSet<UUID> learningOutcomeIds) {

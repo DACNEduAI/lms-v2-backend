@@ -164,7 +164,8 @@ public class QuizGenerationProcessingService {
     }
 
     AiExamMatrix toAiExamMatrixFromSnapshot(JsonNode snapshot) {
-        if (snapshot.path("snapshotVersion").asInt(1) < 2) {
+        int snapshotVersion = snapshot.path("snapshotVersion").asInt(1);
+        if (snapshotVersion < 2) {
             return toAiExamMatrix(snapshot.path("examMatrix"));
         }
         ArrayNode rows = objectMapper.createArrayNode();
@@ -174,7 +175,7 @@ public class QuizGenerationProcessingService {
             source.path("learningOutcomes").forEach(outcome ->
                     learningOutcomeIds.add(UUID.fromString(outcome.path("id").asText())));
         });
-        return new AiExamMatrix(2, rows, List.copyOf(learningOutcomeIds));
+        return new AiExamMatrix(snapshotVersion, rows, List.copyOf(learningOutcomeIds));
     }
 
     record AiExamMatrix(int contractVersion, JsonNode rows, List<UUID> learningOutcomeIds) {
