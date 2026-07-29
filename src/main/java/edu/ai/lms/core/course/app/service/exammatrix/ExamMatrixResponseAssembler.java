@@ -21,9 +21,17 @@ class ExamMatrixResponseAssembler {
         boolean complete = matrix.getCustomLearningLevels().size() >= 3
                 && emptyLevelIds.isEmpty()
                 && invalidRowIds.isEmpty()
-                && matrix.getUncoveredLearningOutcomeIds().isEmpty();
+                && matrix.getUncoveredLearningOutcomeIds().isEmpty()
+                && matrix.getCcctProfileId() != null
+                && matrix.getRows().stream().allMatch(row ->
+                        row.getChapterId() != null
+                                && row.getCcctItemId() != null
+                                && row.getLevelCounts().stream().allMatch(count ->
+                                        count.getQuestionType()
+                                                == edu.ai.lms.core.course.app.domain.ExamMatrixQuestionType.MULTIPLE_CHOICE));
         return ExamMatrixResponse.builder()
-                .id(matrix.getId()).courseId(matrix.getCourseId()).title(matrix.getTitle())
+                .id(matrix.getId()).courseId(matrix.getCourseId())
+                .ccctProfileId(matrix.getCcctProfileId()).title(matrix.getTitle())
                 .description(matrix.getDescription()).createdAt(matrix.getCreatedAt())
                 .updatedAt(matrix.getUpdatedAt())
                 .customLearningLevels(matrix.getCustomLearningLevels().stream().map(level ->
@@ -39,7 +47,8 @@ class ExamMatrixResponseAssembler {
                 .emptyCustomLearningLevelIds(emptyLevelIds)
                 .invalidRowIds(invalidRowIds)
                 .rows(matrix.getRows().stream().map(row -> ExamMatrixRowResponse.builder()
-                        .id(row.getId()).chapterId(row.getChapterId()).topic(row.getTopic())
+                        .id(row.getId()).chapterId(row.getChapterId())
+                        .ccctItemId(row.getCcctItemId()).topic(row.getTopic())
                         .orderIndex(row.getOrderIndex())
                         .learningOutcomeIds(List.copyOf(row.getLearningOutcomeIds()))
                         .levelCounts(row.getLevelCounts().stream().map(count ->
@@ -48,6 +57,7 @@ class ExamMatrixResponseAssembler {
                                         .learningOutcomeIds(List.copyOf(count.getLearningOutcomeIds()))
                                         .code(count.getCode()).name(count.getName()).description(count.getDescription())
                                         .sortOrder(count.getSortOrder())
+                                        .questionType(count.getQuestionType())
                                         .questionCount(count.getQuestionCount())
                                         .active(count.isActive()).build()).toList())
                         .build()).toList())

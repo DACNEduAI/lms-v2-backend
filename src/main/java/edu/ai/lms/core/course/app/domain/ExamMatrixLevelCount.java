@@ -23,6 +23,7 @@ public class ExamMatrixLevelCount {
     private String name;
     private String description;
     private int sortOrder;
+    private ExamMatrixQuestionType questionType;
     private int questionCount;
     private boolean active;
 }

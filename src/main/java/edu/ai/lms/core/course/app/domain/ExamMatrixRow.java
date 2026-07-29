@@ -19,6 +19,7 @@ public class ExamMatrixRow {
     private UUID id;
     private UUID matrixId;
     private UUID chapterId;
+    private UUID ccctItemId;
     private String topic;
     private int orderIndex;
 

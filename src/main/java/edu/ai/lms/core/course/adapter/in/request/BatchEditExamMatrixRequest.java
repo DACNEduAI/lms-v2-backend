@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,6 +18,9 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class BatchEditExamMatrixRequest {
+    @NotNull(message = "CCCT profile ID cannot be null")
+    private UUID ccctProfileId;
+
     @Valid
     private ExamMatrixMetadataRequest metadata;
 

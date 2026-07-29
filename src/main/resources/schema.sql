@@ -392,7 +392,13 @@ CREATE TABLE IF NOT EXISTS exam_matrix_row_learning_level_counts
     exam_matrix_row_id       UUID    NOT NULL,
     custom_learning_level_id UUID    NOT NULL,
     matrix_id                UUID    NOT NULL,
+    question_type            VARCHAR(30),
     question_count           INTEGER NOT NULL DEFAULT 0 CHECK (question_count >= 0),
+    constraint exam_matrix_row_learning_level_counts_question_type_check
+        check (
+            question_type is null or
+            question_type in ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')
+        ),
     constraint exam_matrix_row_learning_level_counts_pkey
         primary key (exam_matrix_row_id, custom_learning_level_id),
     constraint exam_matrix_row_learning_level_counts_row_id_fkey

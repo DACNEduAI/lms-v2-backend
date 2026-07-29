@@ -12,7 +12,8 @@ import edu.ai.lms.core.course.app.port.in.command.*;
 public class CreateExamMatrixCommandMapper {
     public CreateExamMatrixCommand toCommand(UUID courseId, CreateExamMatrixRequest request) {
         return CreateExamMatrixCommand.builder()
-                .courseId(courseId).title(request.getTitle()).description(request.getDescription())
+                .courseId(courseId).ccctProfileId(request.getCcctProfileId())
+                .title(request.getTitle()).description(request.getDescription())
                 .customLearningLevels(request.getCustomLearningLevels().stream()
                         .map(value -> new CustomLearningLevelValue(
                                 null, value.getClientTempId(), value.getLearningOutcomeIds(),
@@ -23,11 +24,13 @@ public class CreateExamMatrixCommandMapper {
 
     ExamMatrixRowCommand toRow(ExamMatrixRowRequest row) {
         return ExamMatrixRowCommand.builder()
-                .chapterId(row.getChapterId()).topic(row.getTopic()).orderIndex(row.getOrderIndex())
+                .chapterId(row.getChapterId()).ccctItemId(row.getCcctItemId())
+                .topic(row.getTopic()).orderIndex(row.getOrderIndex())
                 .learningOutcomeIds(row.getLearningOutcomeIds())
                 .levelCounts(row.getLevelCounts().stream().map(value -> LearningLevelCountCommand.builder()
                         .customLearningLevelId(value.getCustomLearningLevelId())
                         .customLearningLevelClientTempId(value.getCustomLearningLevelClientTempId())
+                        .questionType(value.getQuestionType())
                         .questionCount(value.getQuestionCount()).build()).toList())
                 .build();
     }

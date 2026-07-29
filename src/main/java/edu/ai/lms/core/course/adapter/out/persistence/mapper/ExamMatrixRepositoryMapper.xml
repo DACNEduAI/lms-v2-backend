@@ -6,6 +6,7 @@
   <resultMap id="ExamMatrixResultMap" type="edu.ai.lms.core.course.app.domain.ExamMatrix">
     <id property="id" column="id"/>
     <result property="courseId" column="course_id"/>
+    <result property="ccctProfileId" column="ccct_profile_id"/>
     <result property="title" column="title"/>
     <result property="description" column="description"/>
     <result property="createdAt" column="created_at"/>
@@ -16,22 +17,23 @@
     <id property="id" column="id"/>
     <result property="matrixId" column="matrix_id"/>
     <result property="chapterId" column="chapter_id"/>
+    <result property="ccctItemId" column="ccct_item_id"/>
     <result property="topic" column="topic"/>
     <result property="orderIndex" column="order_index"/>
   </resultMap>
 
   <select id="findById" resultMap="ExamMatrixResultMap">
-    SELECT id, course_id, title, description, created_at, updated_at
+    SELECT id, course_id, ccct_profile_id, title, description, created_at, updated_at
     FROM edu.exam_matrices WHERE id = #{id}
   </select>
 
   <select id="findByCourseIdAndId" resultMap="ExamMatrixResultMap">
-    SELECT id, course_id, title, description, created_at, updated_at
+    SELECT id, course_id, ccct_profile_id, title, description, created_at, updated_at
     FROM edu.exam_matrices WHERE course_id = #{courseId} AND id = #{id}
   </select>
 
   <select id="lockByCourseIdAndId" resultMap="ExamMatrixResultMap">
-    SELECT id, course_id, title, description, created_at, updated_at
+    SELECT id, course_id, ccct_profile_id, title, description, created_at, updated_at
     FROM edu.exam_matrices WHERE course_id = #{courseId} AND id = #{id}
     FOR UPDATE
   </select>
@@ -50,7 +52,8 @@
                AND row_mapping.is_selected = TRUE
            ) THEN c.question_count ELSE 0 END), 0) AS totalQuestionCount,
            CASE WHEN
-             (SELECT COUNT(*) FROM edu.custom_learning_levels level WHERE level.matrix_id = m.id) &gt;= 3
+             m.ccct_profile_id IS NOT NULL
+             AND (SELECT COUNT(*) FROM edu.custom_learning_levels level WHERE level.matrix_id = m.id) &gt;= 3
              AND NOT EXISTS (
                SELECT 1 FROM edu.custom_learning_levels level
                WHERE level.matrix_id = m.id
@@ -75,10 +78,21 @@
              AND NOT EXISTS (
                SELECT 1 FROM edu.exam_matrix_rows matrix_row
                WHERE matrix_row.matrix_id = m.id
-                 AND NOT EXISTS (
-                   SELECT 1 FROM edu.exam_matrix_row_learning_outcomes mapping
-                   WHERE mapping.exam_matrix_row_id = matrix_row.id AND mapping.is_selected = TRUE
+                 AND (
+                   matrix_row.ccct_item_id IS NULL
+                   OR NOT EXISTS (
+                     SELECT 1 FROM edu.exam_matrix_row_learning_outcomes mapping
+                     WHERE mapping.exam_matrix_row_id = matrix_row.id AND mapping.is_selected = TRUE
+                   )
                  )
+             )
+             AND NOT EXISTS (
+               SELECT 1
+               FROM edu.exam_matrix_row_learning_level_counts matrix_count
+               JOIN edu.exam_matrix_rows matrix_row
+                 ON matrix_row.id = matrix_count.exam_matrix_row_id
+               WHERE matrix_row.matrix_id = m.id
+                 AND matrix_count.question_type IS DISTINCT FROM 'MULTIPLE_CHOICE'
              )
            THEN 'COMPLETE' ELSE 'INCOMPLETE' END AS configurationStatus,
            m.created_at AS createdAt, m.updated_at AS updatedAt
@@ -108,7 +122,7 @@
   </select>
 
   <select id="findRowsByMatrixId" resultMap="ExamMatrixRowResultMap">
-    SELECT id, matrix_id, chapter_id, topic, order_index
+    SELECT id, matrix_id, chapter_id, ccct_item_id, topic, order_index
     FROM edu.exam_matrix_rows WHERE matrix_id = #{matrixId}
     ORDER BY order_index ASC, id ASC
   </select>
@@ -127,6 +141,7 @@
     SELECT c.exam_matrix_row_id AS examMatrixRowId,
            c.custom_learning_level_id AS customLearningLevelId,
            l.code, l.name, l.description, l.sort_order AS sortOrder,
+           c.question_type AS questionType,
            c.question_count AS questionCount
     FROM edu.exam_matrix_row_learning_level_counts c
     JOIN edu.custom_learning_levels l ON l.id = c.custom_learning_level_id
@@ -184,13 +199,15 @@
   </select>
 
   <insert id="insertMatrix">
-    INSERT INTO edu.exam_matrices (id, course_id, title, description, created_at, updated_at)
-    VALUES (#{id}, #{courseId}, #{title}, #{description}, NOW(), NOW())
+    INSERT INTO edu.exam_matrices
+      (id, course_id, ccct_profile_id, title, description, created_at, updated_at)
+    VALUES (#{id}, #{courseId}, #{ccctProfileId}, #{title}, #{description}, NOW(), NOW())
   </insert>
 
   <insert id="insertRow">
-    INSERT INTO edu.exam_matrix_rows (id, matrix_id, chapter_id, topic, order_index)
-    VALUES (#{id}, #{matrixId}, #{chapterId}, #{topic}, #{orderIndex})
+    INSERT INTO edu.exam_matrix_rows
+      (id, matrix_id, chapter_id, ccct_item_id, topic, order_index)
+    VALUES (#{id}, #{matrixId}, #{chapterId}, #{ccctItemId}, #{topic}, #{orderIndex})
   </insert>
 
   <delete id="reconcileRowOutcomeCandidates">
@@ -234,18 +251,30 @@
 
   <insert id="insertLevelCount">
     INSERT INTO edu.exam_matrix_row_learning_level_counts
-      (exam_matrix_row_id, custom_learning_level_id, matrix_id, question_count)
-    SELECT #{rowId}, #{count.customLearningLevelId}, matrix_id, #{count.questionCount}
+      (exam_matrix_row_id, custom_learning_level_id, matrix_id, question_type, question_count)
+    SELECT #{rowId}, #{count.customLearningLevelId}, matrix_id,
+           #{count.questionType, javaType=edu.ai.lms.core.course.app.domain.ExamMatrixQuestionType,
+             typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+           #{count.questionCount}
     FROM edu.exam_matrix_rows
     WHERE id = #{rowId}
     ON CONFLICT (exam_matrix_row_id, custom_learning_level_id)
-    DO UPDATE SET question_count = EXCLUDED.question_count
+    DO UPDATE SET question_type = EXCLUDED.question_type,
+                  question_count = EXCLUDED.question_count
   </insert>
 
   <update id="updateRow">
     UPDATE edu.exam_matrix_rows
-    SET chapter_id = #{chapterId}, topic = #{topic}, order_index = #{orderIndex}
+    SET chapter_id = #{chapterId}, ccct_item_id = #{ccctItemId},
+        topic = #{topic}, order_index = #{orderIndex}
     WHERE id = #{id} AND matrix_id = #{matrixId}
+  </update>
+
+  <update id="pinCcctProfile">
+    UPDATE edu.exam_matrices
+    SET ccct_profile_id = #{ccctProfileId}, updated_at = NOW()
+    WHERE id = #{id}
+      AND (ccct_profile_id IS NULL OR ccct_profile_id = #{ccctProfileId})
   </update>
 
   <update id="updateMetadata">

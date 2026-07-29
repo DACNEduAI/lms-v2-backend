@@ -3,6 +3,7 @@ package edu.ai.lms.core.course.adapter.in.response;
 import java.util.List;
 import java.util.UUID;
 
+import edu.ai.lms.core.course.app.domain.ExamMatrixQuestionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,6 +22,7 @@ public class LearningLevelCountResponse {
     private String name;
     private String description;
     private int sortOrder;
+    private ExamMatrixQuestionType questionType;
     private int questionCount;
     private boolean active;
 }
