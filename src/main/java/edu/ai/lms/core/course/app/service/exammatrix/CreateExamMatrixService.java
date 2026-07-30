@@ -36,12 +36,14 @@ public class CreateExamMatrixService implements TeacherCreateExamMatrixUseCase {
     @Transactional
     public ExamMatrixResponse createExamMatrix(CreateExamMatrixCommand command) {
         var course = access.requireCourseTeacher(command.courseId());
+        var ccctProfile = validator.requirePublishedProfile(command.courseId(), command.ccctProfileId());
         UUID matrixId = UUID.randomUUID();
         List<CustomLearningLevel> levels = validateAndMapLevels(
                 course.getLearningOutcomes(), matrixId, command.customLearningLevels());
         ExamMatrix matrix = ExamMatrix.builder()
                 .id(matrixId)
-                .courseId(command.courseId()).title(command.title())
+                .courseId(command.courseId()).ccctProfileId(ccctProfile.getId())
+                .title(command.title())
                 .description(command.description()).rows(List.of()).build();
         savePort.save(matrix);
         levels.forEach(levelPort::insert);
@@ -54,7 +56,7 @@ public class CreateExamMatrixService implements TeacherCreateExamMatrixUseCase {
         }
         List<ExamMatrixRowCommand> resolvedCommands = command.rows().stream()
                 .map(row -> resolveLevelReferences(row, levelIdsByTempId)).toList();
-        var rows = validator.validateAndMap(course, matrixId, resolvedCommands);
+        var rows = validator.validateAndMap(course, matrixId, ccctProfile, resolvedCommands);
         rows.forEach(batchPort::insertRow);
         return assembler.toResponse(loadPort.findByCourseIdAndId(command.courseId(), matrixId)
                 .orElseThrow(() -> new IllegalStateException("Exam matrix disappeared after creation")));
@@ -115,11 +117,12 @@ public class CreateExamMatrixService implements TeacherCreateExamMatrixUseCase {
                 throw invalid("Each question count must reference a custom learning level in the request");
             }
             return LearningLevelCountCommand.builder()
-                    .customLearningLevelId(id).questionCount(count.questionCount()).build();
+                    .customLearningLevelId(id).questionType(count.questionType())
+                    .questionCount(count.questionCount()).build();
         }).toList();
         return ExamMatrixRowCommand.builder()
                 .id(row.id()).clientTempId(row.clientTempId()).chapterId(row.chapterId())
-                .topic(row.topic()).orderIndex(row.orderIndex())
+                .ccctItemId(row.ccctItemId()).topic(row.topic()).orderIndex(row.orderIndex())
                 .learningOutcomeIds(row.learningOutcomeIds()).levelCounts(counts).build();
     }
 

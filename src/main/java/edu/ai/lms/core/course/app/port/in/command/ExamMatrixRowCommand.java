@@ -10,6 +10,7 @@ public record ExamMatrixRowCommand(
         UUID id,
         String clientTempId,
         UUID chapterId,
+        UUID ccctItemId,
         String topic,
         int orderIndex,
         List<UUID> learningOutcomeIds,

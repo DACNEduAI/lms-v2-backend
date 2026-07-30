@@ -8,6 +8,7 @@ public record QuizGenerationContextView(
         String courseTitle,
         UUID examMatrixId,
         String matrixTitle,
+        UUID ccctProfileId,
         List<Row> rows
 ) {
     public QuizGenerationContextView {
@@ -16,6 +17,7 @@ public record QuizGenerationContextView(
 
     public record Row(
             UUID rowId,
+            UUID ccctItemId,
             UUID chapterId,
             String chapterTitle,
             String topic,
@@ -42,6 +44,7 @@ public record QuizGenerationContextView(
             String description,
             int sortOrder,
             List<UUID> learningOutcomeIds,
+            String questionType,
             int questionCount
     ) {
         public LearningLevel {

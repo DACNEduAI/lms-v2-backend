@@ -22,6 +22,10 @@ import lombok.Setter;
 public class ExamMatrixRowRequest {
     @NotNull(message = "Chapter ID cannot be null")
     private UUID chapterId;
+
+    @NotNull(message = "CCCT item ID cannot be null")
+    private UUID ccctItemId;
+
     private String topic;
 
     @Min(value = 0, message = "orderIndex must be >= 0")

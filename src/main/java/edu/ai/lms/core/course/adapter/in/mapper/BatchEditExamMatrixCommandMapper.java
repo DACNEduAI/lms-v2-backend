@@ -18,7 +18,8 @@ public class BatchEditExamMatrixCommandMapper {
         MatrixMetadataCommand metadata = request.getMetadata() == null ? null
                 : new MatrixMetadataCommand(request.getMetadata().getTitle(), request.getMetadata().getDescription());
         return BatchEditExamMatrixCommand.builder()
-                .courseId(courseId).matrixId(matrixId).metadata(metadata)
+                .courseId(courseId).matrixId(matrixId).ccctProfileId(request.getCcctProfileId())
+                .metadata(metadata)
                 .customLearningLevels(request.getCustomLearningLevels() == null ? null
                         : customLearningLevelMapper.toCommand(
                                 courseId, matrixId, request.getCustomLearningLevels()))
@@ -26,6 +27,7 @@ public class BatchEditExamMatrixCommandMapper {
                     var row = rowMapper.toRow(value);
                     return ExamMatrixRowCommand.builder()
                             .clientTempId(value.getClientTempId()).chapterId(row.chapterId())
+                            .ccctItemId(row.ccctItemId())
                             .topic(row.topic()).orderIndex(row.orderIndex())
                             .learningOutcomeIds(row.learningOutcomeIds()).levelCounts(row.levelCounts()).build();
                 }).toList())
@@ -33,6 +35,7 @@ public class BatchEditExamMatrixCommandMapper {
                     var row = rowMapper.toRow(value);
                     return ExamMatrixRowCommand.builder()
                             .id(value.getId()).chapterId(row.chapterId()).topic(row.topic())
+                            .ccctItemId(row.ccctItemId())
                             .orderIndex(row.orderIndex()).learningOutcomeIds(row.learningOutcomeIds())
                             .levelCounts(row.levelCounts()).build();
                 }).toList())
