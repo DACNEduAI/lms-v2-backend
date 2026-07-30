@@ -60,6 +60,11 @@ class ExamMatrixPersistenceAdapter implements SaveExamMatrixPort, LoadExamMatrix
     }
 
     @Override
+    public void pinCcctProfile(UUID matrixId, UUID ccctProfileId) {
+        repository.pinCcctProfile(matrixId, ccctProfileId);
+    }
+
+    @Override
     public void deleteRow(UUID matrixId, UUID rowId) {
         repository.deleteRow(matrixId, rowId);
     }

@@ -117,14 +117,19 @@ public class ExamMatrixController {
                     Only the teacher who owns the course may create a matrix.
 
                     Request fields:
+                    - ccctProfileId: Published CCCT profile pinned to this matrix (required).
                     - title: Matrix title (required).
                     - description: Optional description.
                     - rows[]: List of exam matrix rows.
                       - chapterId: Chapter ID (required).
-                      - topic: Optional topic label.
+                      - ccctItemId: Eligible LEARN_AND_EXAM item from the pinned profile (required).
+                      - topic: Ignored as a source of truth; the backend copies canonical CCCT content.
                       - orderIndex: Display order.
                       - learningOutcomeIds: One or more outcomes assigned to the chapter.
-                      - levelCounts: Custom learning-level IDs and non-negative question counts.
+                      - levelCounts: Learning-level reference, explicit MULTIPLE_CHOICE type,
+                        and non-negative question count.
+                    - customLearningLevels[]: At least three matrix-scoped levels created atomically
+                      with the matrix.
                     """)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Exam matrix created successfully",
@@ -149,6 +154,9 @@ public class ExamMatrixController {
             description = """
                     Applies row creates, updates, and deletes in one transaction.
                     Updated row child relationships are replaced by the submitted lists.
+                    The request must include the matrix's pinned ccctProfileId. A legacy matrix
+                    without a pin may be pinned to the course's current published profile once;
+                    an existing pin cannot be retargeted.
 
                     Path fields:
                     - courseId: Target course ID.

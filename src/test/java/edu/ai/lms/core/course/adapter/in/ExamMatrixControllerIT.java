@@ -27,6 +27,10 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
     static UUID secondOutcomeId;
     static UUID understandLevelId;
     static UUID applyLevelId;
+    static UUID ccctProfileId = UUID.randomUUID();
+    static UUID firstCcctItemId = UUID.randomUUID();
+    static UUID secondCcctItemId = UUID.randomUUID();
+    static UUID thirdCcctItemId = UUID.randomUUID();
     static UUID matrixId;
     static UUID firstRowId;
     static UUID secondRowId;
@@ -64,6 +68,30 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
                 chapterId, outcomeId);
         jdbc.update("INSERT INTO edu.chapter_learning_outcomes (chapter_id,learning_outcome_id) VALUES (?,?)",
                 chapterId, secondOutcomeId);
+        UUID ccctChapterId = UUID.randomUUID();
+        UUID ccctTopicId = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO edu.ccct_profiles
+                  (id,course_id,name,template_title,status,version,last_mode,markdown_content,published_at)
+                VALUES (?,?,?,?, 'PUBLISHED', 1, 'STRUCTURED', '', NOW())
+                """, ccctProfileId, courseId, "Published matrix scope", "Published matrix scope");
+        jdbc.update("""
+                INSERT INTO edu.ccct_chapters
+                  (id,profile_id,course_chapter_id,title,order_index)
+                VALUES (?,?,?,?,0)
+                """, ccctChapterId, ccctProfileId, chapterId, "Chapter A");
+        jdbc.update("""
+                INSERT INTO edu.ccct_topics (id,chapter_id,title,order_index)
+                VALUES (?,?,?,0)
+                """, ccctTopicId, ccctChapterId, "Matrix content");
+        jdbc.batchUpdate("""
+                INSERT INTO edu.ccct_items
+                  (id,topic_id,content,coverage_status,note,order_index)
+                VALUES (?,?,?,'LEARN_AND_EXAM','',?)
+                """, List.of(
+                new Object[]{firstCcctItemId, ccctTopicId, "Canonical content one", 0},
+                new Object[]{secondCcctItemId, ccctTopicId, "Canonical content two", 1},
+                new Object[]{thirdCcctItemId, ccctTopicId, "Canonical content three", 2}));
     }
 
     @Test
@@ -71,7 +99,7 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
     void createsMatrixWithItsLevelsAndRowsAtomically() {
         var response = given().contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + token).body("""
-                {"title":"Midterm",
+                {"ccctProfileId":"%s","title":"Midterm",
                  "customLearningLevels":[
                   {"clientTempId":"level-understand","learningOutcomeIds":["%s","%s"],
                    "code":"CLL1","name":"Understand","description":"Recall and explain","sortOrder":0},
@@ -80,23 +108,29 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
                   {"clientTempId":"level-analyze","learningOutcomeIds":["%s","%s"],
                    "code":"CLL3","name":"Analyze","sortOrder":2}],
                  "rows":[
-                  {"chapterId":"%s","topic":"One","orderIndex":0,
-                   "learningOutcomeIds":["%s"],
-                   "levelCounts":[{"customLearningLevelClientTempId":"level-understand","questionCount":2}]},
-                  {"chapterId":"%s","topic":"Two","orderIndex":1,
-                   "learningOutcomeIds":["%s"],
-                   "levelCounts":[{"customLearningLevelClientTempId":"level-apply","questionCount":3}]}
-                ]}
+                   {"chapterId":"%s","ccctItemId":"%s","topic":"Ignored one","orderIndex":0,
+                    "learningOutcomeIds":["%s"],
+                    "levelCounts":[{"customLearningLevelClientTempId":"level-understand",
+                      "questionType":"MULTIPLE_CHOICE","questionCount":2}]},
+                   {"chapterId":"%s","ccctItemId":"%s","topic":"Ignored two","orderIndex":1,
+                    "learningOutcomeIds":["%s"],
+                    "levelCounts":[{"customLearningLevelClientTempId":"level-apply",
+                      "questionType":"MULTIPLE_CHOICE","questionCount":3}]}
+                 ]}
                 """.formatted(
+                        ccctProfileId,
                         outcomeId, secondOutcomeId,
                         outcomeId, secondOutcomeId,
                         outcomeId, secondOutcomeId,
-                        chapterId, outcomeId,
-                        chapterId, secondOutcomeId))
+                        chapterId, firstCcctItemId, outcomeId,
+                        chapterId, secondCcctItemId, secondOutcomeId))
                 .post("/api/courses/{courseId}/exam-matrices", courseId)
                 .then().statusCode(201).body("rows", hasSize(2))
                 .body("customLearningLevels", hasSize(3))
-                .body("configurationStatus", equalTo("COMPLETE"))
+                 .body("configurationStatus", equalTo("COMPLETE"))
+                 .body("ccctProfileId", equalTo(ccctProfileId.toString()))
+                 .body("rows[0].ccctItemId", equalTo(firstCcctItemId.toString()))
+                 .body("rows[0].topic", equalTo("Canonical content one"))
                 .body("rows[0].learningOutcomeIds[0]", equalTo(outcomeId.toString()))
                 .body("rows[0].levelCounts[0].code", equalTo("CLL1"))
                 .body("rows[0].levelCounts[0].learningOutcomeIds[0]", equalTo(outcomeId.toString()))
@@ -124,18 +158,36 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
     @Test
     @Order(3)
     void synchronizesMatrixRowCandidatesWhenChapterOutcomesChange() {
-        UUID unrelatedChapterId = UUID.randomUUID();
-        UUID unrelatedRowId = UUID.randomUUID();
+         UUID unrelatedChapterId = UUID.randomUUID();
+         UUID unrelatedRowId = UUID.randomUUID();
+         UUID unrelatedCcctChapterId = UUID.randomUUID();
+         UUID unrelatedCcctTopicId = UUID.randomUUID();
+         UUID unrelatedCcctItemId = UUID.randomUUID();
         jdbc.update("INSERT INTO edu.chapters (chapter_id,title,course_id) VALUES (?,?,?)",
                 unrelatedChapterId, "Unrelated chapter", courseId);
         jdbc.update("""
                 INSERT INTO edu.chapter_learning_outcomes (chapter_id,learning_outcome_id)
                 VALUES (?,?)
                 """, unrelatedChapterId, secondOutcomeId);
-        jdbc.update("""
-                INSERT INTO edu.exam_matrix_rows (id,matrix_id,chapter_id,topic,order_index)
-                VALUES (?,?,?,?,?)
-                """, unrelatedRowId, matrixId, unrelatedChapterId, "Unrelated row", 2);
+         jdbc.update("""
+                 INSERT INTO edu.ccct_chapters
+                   (id,profile_id,course_chapter_id,title,order_index)
+                 VALUES (?,?,?,?,1)
+                 """, unrelatedCcctChapterId, ccctProfileId, unrelatedChapterId, "Unrelated chapter");
+         jdbc.update("""
+                 INSERT INTO edu.ccct_topics (id,chapter_id,title,order_index)
+                 VALUES (?,?,?,0)
+                 """, unrelatedCcctTopicId, unrelatedCcctChapterId, "Unrelated topic");
+         jdbc.update("""
+                 INSERT INTO edu.ccct_items
+                   (id,topic_id,content,coverage_status,note,order_index)
+                 VALUES (?,?,?,'LEARN_AND_EXAM','',0)
+                 """, unrelatedCcctItemId, unrelatedCcctTopicId, "Unrelated row");
+         jdbc.update("""
+                 INSERT INTO edu.exam_matrix_rows
+                   (id,matrix_id,chapter_id,ccct_item_id,topic,order_index)
+                 VALUES (?,?,?,?,?,?)
+                 """, unrelatedRowId, matrixId, unrelatedChapterId, unrelatedCcctItemId, "Unrelated row", 2);
         jdbc.update("""
                 INSERT INTO edu.exam_matrix_row_learning_outcomes
                   (exam_matrix_row_id,learning_outcome_id,is_selected)
@@ -227,10 +279,13 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
                 """, Integer.class, firstRowId, outcomeId));
 
         given().contentType(ContentType.JSON).header("Authorization", "Bearer " + token).body("""
-                {"update":[{"id":"%s","chapterId":"%s","topic":"Two","orderIndex":1,
+                {"ccctProfileId":"%s",
+                 "update":[{"id":"%s","chapterId":"%s","ccctItemId":"%s","topic":"Ignored","orderIndex":1,
                   "learningOutcomeIds":["%s"],
-                  "levelCounts":[{"customLearningLevelId":"%s","questionCount":3}]}]}
-                """.formatted(secondRowId, chapterId, secondOutcomeId, applyLevelId))
+                  "levelCounts":[{"customLearningLevelId":"%s",
+                    "questionType":"MULTIPLE_CHOICE","questionCount":3}]}]}
+                """.formatted(ccctProfileId, secondRowId, chapterId, secondCcctItemId,
+                        secondOutcomeId, applyLevelId))
                 .put("/api/courses/{courseId}/exam-matrices/{matrixId}/configuration/batch",
                         courseId, matrixId)
                 .then().statusCode(200)
@@ -238,8 +293,9 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
                 .body("matrix.rows.find { it.id == '%s' }.levelCounts[0].active"
                         .formatted(secondRowId), equalTo(true));
 
-        jdbc.update("DELETE FROM edu.exam_matrix_rows WHERE id = ?", unrelatedRowId);
-        jdbc.update("DELETE FROM edu.chapters WHERE chapter_id = ?", unrelatedChapterId);
+         jdbc.update("DELETE FROM edu.exam_matrix_rows WHERE id = ?", unrelatedRowId);
+         jdbc.update("DELETE FROM edu.ccct_chapters WHERE id = ?", unrelatedCcctChapterId);
+         jdbc.update("DELETE FROM edu.chapters WHERE chapter_id = ?", unrelatedChapterId);
     }
 
     @Test
@@ -284,10 +340,10 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
     @Order(5)
     void unchecksUsedLevelOutcomeMappingWithoutDeletingItsCount() {
         given().contentType(ContentType.JSON).header("Authorization", "Bearer " + token).body("""
-                {"customLearningLevels":{"update":[
+                {"ccctProfileId":"%s","customLearningLevels":{"update":[
                   {"id":"%s","learningOutcomeIds":["%s"],"code":"CLL2","name":"Apply",
                    "description":"Apply a known method","sortOrder":1}]}}
-                """.formatted(applyLevelId, outcomeId))
+                """.formatted(ccctProfileId, applyLevelId, outcomeId))
                 .put("/api/courses/{courseId}/exam-matrices/{matrixId}/configuration/batch",
                         courseId, matrixId)
                 .then().statusCode(200)
@@ -310,22 +366,28 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
     @Order(6)
     void appliesCreateUpdateDeleteAsOneBatch() {
         given().contentType(ContentType.JSON).header("Authorization", "Bearer " + token).body("""
-                {"metadata":{"title":"Final","description":"Saved together"},
+                {"ccctProfileId":"%s",
+                 "metadata":{"title":"Final","description":"Saved together"},
                  "delete":["%s"],
-                 "update":[{"id":"%s","chapterId":"%s","topic":"Updated","orderIndex":0,
+                 "update":[{"id":"%s","chapterId":"%s","ccctItemId":"%s","topic":"Ignored","orderIndex":0,
                    "learningOutcomeIds":["%s"],
-                   "levelCounts":[{"customLearningLevelId":"%s","questionCount":4}]}],
-                 "create":[{"clientTempId":"tmp-new","chapterId":"%s","topic":"Created","orderIndex":1,
+                   "levelCounts":[{"customLearningLevelId":"%s",
+                     "questionType":"MULTIPLE_CHOICE","questionCount":4}]}],
+                 "create":[{"clientTempId":"tmp-new","chapterId":"%s","ccctItemId":"%s",
+                    "topic":"Ignored","orderIndex":1,
                    "learningOutcomeIds":["%s"],
-                   "levelCounts":[{"customLearningLevelId":"%s","questionCount":1}]}]}
-                """.formatted(firstRowId, secondRowId, chapterId, secondOutcomeId, understandLevelId,
-                        chapterId, outcomeId, understandLevelId))
+                   "levelCounts":[{"customLearningLevelId":"%s",
+                     "questionType":"MULTIPLE_CHOICE","questionCount":1}]}]}
+                """.formatted(ccctProfileId, firstRowId, secondRowId, chapterId, secondCcctItemId,
+                        secondOutcomeId, understandLevelId,
+                        chapterId, thirdCcctItemId, outcomeId, understandLevelId))
                 .put("/api/courses/{courseId}/exam-matrices/{matrixId}/configuration/batch",
                         courseId, matrixId)
                 .then().statusCode(200).body("createdRowMappings[0].clientTempId", equalTo("tmp-new"))
                 .body("createdRowMappings[0].rowId", notNullValue())
                 .body("matrix.title", equalTo("Final")).body("matrix.rows", hasSize(2))
-                .body("matrix.rows[0].topic", equalTo("Updated"));
+                 .body("matrix.rows[0].topic", equalTo("Canonical content two"))
+                 .body("matrix.rows[1].topic", equalTo("Canonical content three"));
     }
 
     @Test
@@ -333,10 +395,10 @@ class ExamMatrixControllerIT extends IntegrationTestConfiguration {
     void rejectsInvalidBatchWithoutDeletingExistingRow() {
         given().contentType(ContentType.JSON).header("Authorization", "Bearer " + token)
                 .body("""
-                {"delete":["%s"],"create":[
-                  {"clientTempId":"bad","chapterId":"%s","orderIndex":1,
+                {"ccctProfileId":"%s","delete":["%s"],"create":[
+                  {"clientTempId":"bad","chapterId":"%s","ccctItemId":"%s","orderIndex":1,
                    "learningOutcomeIds":["%s"],"levelCounts":[]}]}
-                """.formatted(secondRowId, chapterId, outcomeId))
+                """.formatted(ccctProfileId, secondRowId, chapterId, UUID.randomUUID(), outcomeId))
                 .put("/api/courses/{courseId}/exam-matrices/{matrixId}/configuration/batch",
                         courseId, matrixId)
                 .then().statusCode(400);

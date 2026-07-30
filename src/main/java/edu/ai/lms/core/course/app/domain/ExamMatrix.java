@@ -29,6 +29,9 @@ public class ExamMatrix {
     /** The course this exam matrix belongs to. */
     private UUID courseId;
 
+    /** Immutable CCCT profile pinned by this matrix. Nullable only for legacy data. */
+    private UUID ccctProfileId;
+
     private String title;
 
     private String description;

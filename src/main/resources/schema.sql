@@ -38,7 +38,11 @@ DROP TABLE IF EXISTS
     custom_learning_level_learning_outcomes,
     custom_learning_levels,
     exam_matrix_rows,
-    exam_matrices
+    exam_matrices,
+    ccct_items,
+    ccct_topics,
+    ccct_chapters,
+    ccct_profiles
     CASCADE;
 
 -- Below is the actual schema of the code
@@ -223,31 +227,114 @@ CREATE TABLE IF NOT EXISTS chapter_learning_outcomes
     PRIMARY KEY (chapter_id, learning_outcome_id)
 );
 
+-- Course Content Coverage Template (CCCT)
+CREATE TABLE IF NOT EXISTS ccct_profiles
+(
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id        UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+    name             VARCHAR(255) NOT NULL CHECK (btrim(name) <> ''),
+    template_title   VARCHAR(255) NOT NULL CHECK (btrim(template_title) <> ''),
+    status           VARCHAR(20)  NOT NULL DEFAULT 'DRAFT'
+        CHECK (status IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')),
+    version          BIGINT       NOT NULL DEFAULT 0 CHECK (version >= 0),
+    last_mode        VARCHAR(20)  NOT NULL
+        CHECK (last_mode IN ('MARKDOWN', 'STRUCTURED')),
+    markdown_content TEXT         NOT NULL DEFAULT '',
+    created_by       UUID REFERENCES users (id) ON DELETE SET NULL,
+    published_at     TIMESTAMP,
+    created_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX uq_ccct_profile_name_per_course
+    ON ccct_profiles (course_id, lower(btrim(name)));
+CREATE UNIQUE INDEX uq_ccct_one_published_per_course
+    ON ccct_profiles (course_id)
+    WHERE status = 'PUBLISHED';
+CREATE INDEX idx_ccct_profiles_course_updated
+    ON ccct_profiles (course_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS ccct_chapters
+(
+    id                UUID PRIMARY KEY,
+    profile_id        UUID         NOT NULL REFERENCES ccct_profiles (id) ON DELETE CASCADE,
+    course_chapter_id UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
+    title             VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
+    order_index       INTEGER      NOT NULL CHECK (order_index >= 0),
+    CONSTRAINT uq_ccct_chapter_order UNIQUE (profile_id, order_index)
+);
+
+CREATE INDEX idx_ccct_chapters_profile
+    ON ccct_chapters (profile_id);
+CREATE INDEX idx_ccct_chapters_course_chapter
+    ON ccct_chapters (course_chapter_id);
+
+CREATE TABLE IF NOT EXISTS ccct_topics
+(
+    id          UUID PRIMARY KEY,
+    chapter_id  UUID         NOT NULL REFERENCES ccct_chapters (id) ON DELETE CASCADE,
+    title       VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
+    order_index INTEGER      NOT NULL CHECK (order_index >= 0),
+    CONSTRAINT uq_ccct_topic_order UNIQUE (chapter_id, order_index)
+);
+
+CREATE INDEX idx_ccct_topics_chapter
+    ON ccct_topics (chapter_id);
+
+CREATE TABLE IF NOT EXISTS ccct_items
+(
+    id              UUID PRIMARY KEY,
+    topic_id        UUID        NOT NULL REFERENCES ccct_topics (id) ON DELETE CASCADE,
+    content         TEXT        NOT NULL CHECK (btrim(content) <> ''),
+    coverage_status VARCHAR(30) NOT NULL
+        CHECK (coverage_status IN ('LEARN_AND_EXAM', 'LEARN_ONLY', 'SKIP')),
+    note            TEXT        NOT NULL DEFAULT '',
+    order_index     INTEGER     NOT NULL CHECK (order_index >= 0),
+    CONSTRAINT uq_ccct_item_order UNIQUE (topic_id, order_index)
+);
+
+CREATE INDEX idx_ccct_items_topic_status
+    ON ccct_items (topic_id, coverage_status);
+
 -- Exam Matrices
 CREATE TABLE IF NOT EXISTS exam_matrices
 (
-    id          uuid                        not null default gen_random_uuid(),
-    course_id   uuid                        not null,
-    title       character varying           not null,
-    description text                        null,
-    created_at  timestamp without time zone null     default CURRENT_TIMESTAMP,
-    updated_at  timestamp without time zone null     default CURRENT_TIMESTAMP,
+    id              uuid                        not null default gen_random_uuid(),
+    course_id       uuid                        not null,
+    ccct_profile_id uuid                        null,
+    title           character varying           not null,
+    description     text                        null,
+    created_at      timestamp without time zone null     default CURRENT_TIMESTAMP,
+    updated_at      timestamp without time zone null     default CURRENT_TIMESTAMP,
     constraint exam_matrices_pkey primary key (id),
-    constraint exam_matrices_course_id_fkey foreign KEY (course_id) references courses (id) on delete CASCADE
+    constraint exam_matrices_course_id_fkey foreign KEY (course_id) references courses (id) on delete CASCADE,
+    constraint exam_matrices_ccct_profile_id_fkey foreign KEY (ccct_profile_id)
+        references ccct_profiles (id) on delete RESTRICT
 ) TABLESPACE pg_default;
 
 CREATE TABLE IF NOT EXISTS exam_matrix_rows
 (
     id                  uuid              not null default gen_random_uuid(),
     matrix_id           uuid              not null,
-    chapter_id          uuid              not null,
+    chapter_id          uuid              null,
+    ccct_item_id        uuid              null,
     topic               character varying null,
     order_index         integer           not null,
     constraint exam_matrix_rows_pkey primary key (id),
     constraint exam_matrix_rows_id_matrix_key unique (id, matrix_id),
-    constraint exam_matrix_rows_chapter_id_fkey foreign KEY (chapter_id) references chapters (chapter_id) on delete CASCADE,
-    constraint exam_matrix_rows_matrix_id_fkey foreign KEY (matrix_id) references exam_matrices (id) on delete CASCADE
+    constraint exam_matrix_rows_chapter_id_fkey foreign KEY (chapter_id) references chapters (chapter_id) on delete SET NULL,
+    constraint exam_matrix_rows_matrix_id_fkey foreign KEY (matrix_id) references exam_matrices (id) on delete CASCADE,
+    constraint exam_matrix_rows_ccct_item_id_fkey foreign KEY (ccct_item_id)
+        references ccct_items (id) on delete RESTRICT
 ) TABLESPACE pg_default;
+
+CREATE INDEX idx_exam_matrices_ccct_profile
+    ON exam_matrices (ccct_profile_id);
+CREATE INDEX idx_exam_matrix_rows_ccct_item
+    ON exam_matrix_rows (ccct_item_id);
+CREATE UNIQUE INDEX uq_exam_matrix_ccct_item
+    ON exam_matrix_rows (matrix_id, ccct_item_id)
+    WHERE ccct_item_id IS NOT NULL;
 
 -- A matrix row can assess multiple learning outcomes. Learning outcomes can be
 -- reused by rows in the same or different exam matrices.
@@ -305,7 +392,13 @@ CREATE TABLE IF NOT EXISTS exam_matrix_row_learning_level_counts
     exam_matrix_row_id       UUID    NOT NULL,
     custom_learning_level_id UUID    NOT NULL,
     matrix_id                UUID    NOT NULL,
+    question_type            VARCHAR(30),
     question_count           INTEGER NOT NULL DEFAULT 0 CHECK (question_count >= 0),
+    constraint exam_matrix_row_learning_level_counts_question_type_check
+        check (
+            question_type is null or
+            question_type in ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')
+        ),
     constraint exam_matrix_row_learning_level_counts_pkey
         primary key (exam_matrix_row_id, custom_learning_level_id),
     constraint exam_matrix_row_learning_level_counts_row_id_fkey

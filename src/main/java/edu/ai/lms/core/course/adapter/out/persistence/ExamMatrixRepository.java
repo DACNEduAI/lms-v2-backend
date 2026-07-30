@@ -33,6 +33,7 @@ interface ExamMatrixRepository {
     int selectRowOutcomes(@Param("rowId") UUID rowId, @Param("learningOutcomeIds") List<UUID> learningOutcomeIds);
     int insertLevelCount(@Param("rowId") UUID rowId, @Param("count") ExamMatrixLevelCount count);
     int updateRow(ExamMatrixRow row);
+    int pinCcctProfile(@Param("id") UUID id, @Param("ccctProfileId") UUID ccctProfileId);
     int updateMetadata(@Param("id") UUID id, @Param("title") String title, @Param("description") String description);
     int touch(@Param("id") UUID id);
     int deleteRow(@Param("matrixId") UUID matrixId, @Param("rowId") UUID rowId);

@@ -8,6 +8,7 @@ public record QuizGenerationContext(
         String courseTitle,
         UUID examMatrixId,
         String matrixTitle,
+        UUID ccctProfileId,
         List<QuizGenerationRow> rows
 ) {
     public QuizGenerationContext {
@@ -16,6 +17,7 @@ public record QuizGenerationContext(
 
     public record QuizGenerationRow(
             UUID rowId,
+            UUID ccctItemId,
             UUID chapterId,
             String chapterTitle,
             String topic,
@@ -42,6 +44,7 @@ public record QuizGenerationContext(
             String description,
             int sortOrder,
             List<UUID> learningOutcomeIds,
+            String questionType,
             int questionCount
     ) {
         public LearningLevelRequirement {

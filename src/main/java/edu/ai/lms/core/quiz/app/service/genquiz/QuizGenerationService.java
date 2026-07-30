@@ -85,11 +85,12 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         validateTiming(command);
         List<Map<String, Object>> rows = context.rows().stream().map(this::toRowSnapshot).toList();
         Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put("snapshotVersion", 2);
+        snapshot.put("snapshotVersion", 3);
         snapshot.put("courseId", command.courseId());
         snapshot.put("courseTitle", context.courseTitle());
         snapshot.put("examMatrixId", context.examMatrixId());
         snapshot.put("matrixTitle", context.matrixTitle());
+        snapshot.put("ccctProfileId", context.ccctProfileId());
         snapshot.put("examMatrix", rows);
         snapshot.put("selectedMaterials", materialSnapshot);
         snapshot.put("questionCount", questionCount);
@@ -188,8 +189,10 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
     private Map<String, Object> toRowSnapshot(QuizGenerationContextView.Row row) {
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("rowId", row.rowId());
+        snapshot.put("ccctItemId", row.ccctItemId());
         snapshot.put("chapterId", row.chapterId());
         snapshot.put("chapter", row.chapterTitle());
+        snapshot.put("content", row.topic());
         snapshot.put("topic", row.topic());
         snapshot.put("learningOutcomes", row.learningOutcomes().stream().map(outcome -> {
             Map<String, Object> value = new LinkedHashMap<>();
@@ -206,6 +209,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
             value.put("description", level.description());
             value.put("sortOrder", level.sortOrder());
             value.put("learningOutcomeIds", level.learningOutcomeIds());
+            value.put("questionType", level.questionType());
             value.put("questionCount", level.questionCount());
             return value;
         }).toList());

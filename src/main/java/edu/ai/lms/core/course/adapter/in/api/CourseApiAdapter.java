@@ -7,6 +7,7 @@ import edu.ai.lms.core.course.api.QuizGenerationContext;
 import edu.ai.lms.core.course.api.QuizGenerationContextApi;
 import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
+import edu.ai.lms.core.course.app.domain.ExamMatrixQuestionType;
 import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadExamMatrixPort;
@@ -63,10 +64,17 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
             return Optional.empty();
         }
         boolean incomplete = matrix.getCustomLearningLevels().size() < 3
+                || matrix.getCcctProfileId() == null
                 || !matrix.getUncoveredLearningOutcomeIds().isEmpty()
                 || matrix.getCustomLearningLevels().stream()
                         .anyMatch(level -> level.getLearningOutcomeIds().isEmpty())
-                || matrix.getRows().stream().anyMatch(row -> row.getLearningOutcomeIds().isEmpty());
+                || matrix.getRows().stream().anyMatch(row ->
+                        row.getChapterId() == null
+                                || row.getCcctItemId() == null
+                                || row.getLearningOutcomeIds().isEmpty()
+                                || row.getLevelCounts().stream().anyMatch(count ->
+                                        count.getQuestionType()
+                                                != ExamMatrixQuestionType.MULTIPLE_CHOICE));
         if (incomplete) {
             throw new IllegalStateException(
                     "MATRIX_CONFIGURATION_INCOMPLETE: configure custom learning levels and row outcomes before generation");
@@ -98,10 +106,11 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
                                             count.getDescription(),
                                             count.getSortOrder(),
                                             List.copyOf(count.getLearningOutcomeIds()),
+                                            count.getQuestionType().name(),
                                             count.getQuestionCount()))
                                     .toList();
                     return new QuizGenerationContext.QuizGenerationRow(
-                            row.getId(), row.getChapterId(),
+                            row.getId(), row.getCcctItemId(), row.getChapterId(),
                             chapterTitle == null ? "" : chapterTitle,
                             row.getTopic() == null ? "" : row.getTopic(),
                             outcomes, levelCounts);
@@ -112,6 +121,7 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
                 course.getCourseName(),
                 matrix.getId(),
                 matrix.getTitle(),
+                matrix.getCcctProfileId(),
                 rows));
     }
 

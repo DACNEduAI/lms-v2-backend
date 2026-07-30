@@ -94,6 +94,43 @@ class QuizGenerationProcessingServiceUT {
     }
 
     @Test
+    void shouldPreserveCcctRowsForVersionThreeContract() throws Exception {
+        UUID outcomeId = UUID.randomUUID();
+        UUID rowId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        UUID levelId = UUID.randomUUID();
+        JsonNode snapshot = objectMapper.readTree("""
+                {
+                  "snapshotVersion": 3,
+                  "examMatrix": [{
+                    "rowId": "%s",
+                    "ccctItemId": "%s",
+                    "content": "Canonical CCCT content",
+                    "learningOutcomes": [
+                      {"id": "%s", "code": "LO1", "description": "Explain"}
+                    ],
+                    "levelCounts": [{
+                      "customLearningLevelId": "%s",
+                      "learningOutcomeIds": ["%s"],
+                      "questionType": "MULTIPLE_CHOICE",
+                      "questionCount": 2
+                    }]
+                  }]
+                }
+                """.formatted(rowId, itemId, outcomeId, levelId, outcomeId));
+        QuizGenerationProcessingService service = new QuizGenerationProcessingService(
+                null, null, null, null, null, objectMapper);
+
+        QuizGenerationProcessingService.AiExamMatrix result =
+                service.toAiExamMatrixFromSnapshot(snapshot);
+
+        assertEquals(3, result.contractVersion());
+        assertEquals(itemId.toString(), result.rows().get(0).path("ccctItemId").asText());
+        assertEquals("MULTIPLE_CHOICE", result.rows().get(0)
+                .path("levelCounts").get(0).path("questionType").asText());
+    }
+
+    @Test
     void shouldSerializeCanonicalMaterialIdentityFields() {
         UUID courseId = UUID.randomUUID();
         UUID materialId = UUID.randomUUID();

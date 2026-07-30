@@ -27,8 +27,9 @@ class CourseApiAdapterExamMatrixUT {
     void preservesRowAndMapsArbitraryActiveLevelAcrossMultipleOutcomes() {
         UUID courseId = UUID.randomUUID(), matrixId = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID(), first = UUID.randomUUID(), second = UUID.randomUUID();
-        UUID levelId = UUID.randomUUID();
-        ExamMatrixRow row = ExamMatrixRow.builder().id(UUID.randomUUID()).chapterId(chapterId)
+        UUID levelId = UUID.randomUUID(), profileId = UUID.randomUUID(), itemId = UUID.randomUUID();
+        ExamMatrixRow row = ExamMatrixRow.builder().id(UUID.randomUUID())
+                .ccctItemId(itemId).chapterId(chapterId)
                 .learningOutcomeIds(List.of(first, second))
                 .levelCounts(List.of(
                         count(levelId, List.of(first, second), "Synthesize", 3, true),
@@ -38,6 +39,7 @@ class CourseApiAdapterExamMatrixUT {
                 Course.builder().id(courseId).courseName("Course").build()));
         when(matrixPort.findById(matrixId)).thenReturn(Optional.of(
                 ExamMatrix.builder().id(matrixId).courseId(courseId).rows(List.of(row))
+                        .ccctProfileId(profileId)
                         .customLearningLevels(List.of(
                                 level(matrixId, levelId, first, "Synthesize"),
                                 level(matrixId, UUID.randomUUID(), first, "Analyze"),
@@ -51,7 +53,9 @@ class CourseApiAdapterExamMatrixUT {
         var context = adapter().load(courseId, matrixId).orElseThrow();
 
         assertEquals(1, context.rows().size());
+        assertEquals(profileId, context.ccctProfileId());
         var mappedRow = context.rows().getFirst();
+        assertEquals(itemId, mappedRow.ccctItemId());
         assertEquals(List.of(first, second),
                 mappedRow.learningOutcomes().stream().map(
                         edu.ai.lms.core.course.api.QuizGenerationContext.LearningOutcomeRequirement::id)
@@ -61,6 +65,7 @@ class CourseApiAdapterExamMatrixUT {
         assertEquals("Synthesize", mappedRow.levelCounts().getFirst().name());
         assertEquals(List.of(first, second),
                 mappedRow.levelCounts().getFirst().learningOutcomeIds());
+        assertEquals("MULTIPLE_CHOICE", mappedRow.levelCounts().getFirst().questionType());
         assertEquals(3, mappedRow.levelCounts().getFirst().questionCount());
     }
 
@@ -80,7 +85,8 @@ class CourseApiAdapterExamMatrixUT {
             boolean active) {
         return ExamMatrixLevelCount.builder().customLearningLevelId(levelId)
                 .learningOutcomeIds(outcomeIds).code(name.toUpperCase())
-                .name(name).questionCount(value).active(active).build();
+                .name(name).questionType(ExamMatrixQuestionType.MULTIPLE_CHOICE)
+                .questionCount(value).active(active).build();
     }
 
     private CustomLearningLevel level(
