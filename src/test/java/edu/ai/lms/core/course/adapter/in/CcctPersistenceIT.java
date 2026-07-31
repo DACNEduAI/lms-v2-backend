@@ -13,6 +13,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import edu.ai.lms.config.IntegrationTestConfiguration;
 import edu.ai.lms.core.course.app.domain.CcctChapter;
+import edu.ai.lms.core.course.app.domain.CcctAiJob;
+import edu.ai.lms.core.course.app.domain.CcctAiJobStatus;
+import edu.ai.lms.core.course.app.domain.CcctAiJobType;
 import edu.ai.lms.core.course.app.domain.CcctCoverageStatus;
 import edu.ai.lms.core.course.app.domain.CcctItem;
 import edu.ai.lms.core.course.app.domain.CcctMode;
@@ -20,6 +23,7 @@ import edu.ai.lms.core.course.app.domain.CcctProfile;
 import edu.ai.lms.core.course.app.domain.CcctProfileStatus;
 import edu.ai.lms.core.course.app.domain.CcctTopic;
 import edu.ai.lms.core.course.app.port.out.DeleteCcctProfilePort;
+import edu.ai.lms.core.course.app.port.out.CcctAiJobPort;
 import edu.ai.lms.core.course.app.port.out.LoadCcctProfilePort;
 import edu.ai.lms.core.course.app.port.out.SaveCcctProfilePort;
 
@@ -36,6 +40,9 @@ class CcctPersistenceIT extends IntegrationTestConfiguration {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private CcctAiJobPort jobPort;
 
     @Test
     void createsLoadsAndWipeReplacesDraftWithOptimisticLocking() {
@@ -209,6 +216,30 @@ class CcctPersistenceIT extends IntegrationTestConfiguration {
         assertThat(loadPort.findByCourseIdAndId(publishedCourseId, published.getId())).isPresent();
     }
 
+    @Test
+    void persistsAndTransitionsAiJobLifecycle() {
+        UUID courseId = createCourse();
+        UUID chapterId = createCourseChapter(courseId, "AI chapter");
+        CcctProfile draft = savePort.create(profile(
+                courseId, "AI draft", CcctProfileStatus.DRAFT, chapterId, "Content"));
+        CcctAiJob created = jobPort.create(CcctAiJob.builder()
+                .courseId(courseId)
+                .profileId(draft.getId())
+                .type(CcctAiJobType.CUSTOM_TO_STRUCTURED)
+                .expectedVersion(draft.getVersion())
+                .build());
+
+        assertThat(created.getStatus()).isEqualTo(CcctAiJobStatus.QUEUED);
+        assertThat(jobPort.claim(created.getId())).isTrue();
+        jobPort.updateStage(created.getId(), "STRUCTURING_CONTENT");
+        jobPort.complete(created.getId(), List.of("Low confidence"));
+
+        CcctAiJob completed = jobPort.findById(created.getId()).orElseThrow();
+        assertThat(completed.getStatus()).isEqualTo(CcctAiJobStatus.COMPLETED);
+        assertThat(completed.getWarnings()).containsExactly("Low confidence");
+        assertThat(completed.getCompletedAt()).isNotNull();
+    }
+
     private CcctProfile profile(
             UUID courseId,
             String name,
@@ -232,8 +263,10 @@ class CcctPersistenceIT extends IntegrationTestConfiguration {
         return CcctProfile.builder()
                 .courseId(courseId)
                 .name(name)
-                .templateTitle("Course Content Coverage Template")
+                .templateTitle(name)
                 .status(status)
+                .formatVersion(2)
+                .structuredCurrent(true)
                 .lastMode(CcctMode.STRUCTURED)
                 .markdownContent("")
                 .chapters(List.of(chapter))

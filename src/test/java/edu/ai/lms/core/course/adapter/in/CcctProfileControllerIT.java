@@ -104,7 +104,7 @@ class CcctProfileControllerIT extends IntegrationTestConfiguration {
     @Order(5)
     void rejectsPublishWithoutExamEligibleItem() {
         UUID learnOnlyDraft = UUID.fromString(givenOwner()
-                .body(createBody("Learning only", null, "LEARN_ONLY", "Reading"))
+                .body(createBody("Learning only", chapterId, "LEARN_ONLY", "Reading"))
                 .post(basePath(), courseId)
                 .then().statusCode(201)
                 .extract().path("id"));
@@ -176,7 +176,7 @@ class CcctProfileControllerIT extends IntegrationTestConfiguration {
     @Order(9)
     void deletesOnlyDraftAndReturnsNoContent() {
         UUID disposable = UUID.fromString(givenOwner()
-                .body(createBody("Disposable", null, "SKIP", "Out of scope"))
+                .body(createBody("Disposable", chapterId, "SKIP", "Out of scope"))
                 .post(basePath(), courseId)
                 .then().statusCode(201)
                 .extract().path("id"));
@@ -267,9 +267,10 @@ class CcctProfileControllerIT extends IntegrationTestConfiguration {
                 : "\"courseChapterId\":\"" + mappedChapterId + "\",";
         return """
                 {%s
-                 "name":"%s","lastMode":"STRUCTURED","markdown":"# CCCT",
-                 "template":{"title":"Course Content Coverage Template","chapters":[
-                   {"id":"%s",%s"title":"Algorithms","topics":[
+                 "name":"%s","formatVersion":2,"structuredCurrent":true,
+                 "lastMode":"STRUCTURED","markdown":"# CCCT",
+                 "template":{"title":"%s","chapters":[
+                   {"id":"%s",%s"title":"Algorithms","customContent":"Source notes","topics":[
                      {"id":"%s","title":"Sorting","items":[
                        {"id":"%s","content":"%s","status":"%s","note":""}
                      ]}
@@ -277,6 +278,7 @@ class CcctProfileControllerIT extends IntegrationTestConfiguration {
                  ]}}
                 """.formatted(
                 versionField,
+                name,
                 name,
                 UUID.randomUUID(),
                 chapterMapping,
