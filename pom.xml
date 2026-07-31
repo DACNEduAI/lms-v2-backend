@@ -306,7 +306,7 @@
 				<executions>
 					<execution>
 						<id>attach-javadocs</id>
-						<phase>compile</phase>
+						<phase>package</phase>
 						<goals>
 							<goal>javadoc</goal>
 						</goals>
