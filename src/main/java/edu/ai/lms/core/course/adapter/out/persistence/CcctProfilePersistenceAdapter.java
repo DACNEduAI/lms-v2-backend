@@ -102,6 +102,7 @@ class CcctProfilePersistenceAdapter
         profile.setId(profile.getId() == null ? UUID.randomUUID() : profile.getId());
         profile.setStatus(profile.getStatus() == null ? CcctProfileStatus.DRAFT : profile.getStatus());
         profile.setLastMode(profile.getLastMode() == null ? CcctMode.STRUCTURED : profile.getLastMode());
+        profile.setFormatVersion(profile.getFormatVersion() == 0 ? 2 : profile.getFormatVersion());
         profile.setMarkdownContent(profile.getMarkdownContent() == null ? "" : profile.getMarkdownContent());
         profile.setVersion(0);
         prepareTree(profile);
@@ -116,6 +117,7 @@ class CcctProfilePersistenceAdapter
             CcctChapter chapter = chapters.get(chapterIndex);
             chapter.setId(chapter.getId() == null ? UUID.randomUUID() : chapter.getId());
             chapter.setProfileId(profile.getId());
+            chapter.setCustomContent(chapter.getCustomContent() == null ? "" : chapter.getCustomContent());
             chapter.setOrderIndex(chapterIndex);
             List<CcctTopic> topics = chapter.getTopics() == null
                     ? new ArrayList<>()

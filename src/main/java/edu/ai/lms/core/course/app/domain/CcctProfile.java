@@ -23,6 +23,8 @@ public class CcctProfile {
     private String templateTitle;
     private CcctProfileStatus status;
     private long version;
+    private int formatVersion;
+    private boolean structuredCurrent;
     private CcctMode lastMode;
     private String markdownContent;
     private UUID createdBy;

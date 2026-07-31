@@ -7,6 +7,8 @@ import edu.ai.lms.core.course.app.domain.CcctMode;
 public record CcctProfileContent(
         String name,
         CcctMode lastMode,
+        int formatVersion,
+        boolean structuredCurrent,
         String markdown,
         String templateTitle,
         List<CcctChapterValue> chapters) {

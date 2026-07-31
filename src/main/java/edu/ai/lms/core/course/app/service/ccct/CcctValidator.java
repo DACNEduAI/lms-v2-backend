@@ -29,6 +29,9 @@ class CcctValidator {
         if (content.lastMode() == null) {
             invalid("lastMode is required");
         }
+        if (content.formatVersion() != 2) {
+            invalid("Only CCCT format version 2 can be created or updated");
+        }
         if (content.markdown() == null) {
             invalid("markdown is required");
         }
@@ -38,25 +41,30 @@ class CcctValidator {
         }
 
         Set<UUID> nodeIds = new HashSet<>();
-        Set<UUID> courseChapterIds = new HashSet<>();
-        course.getChapters().forEach(chapter -> courseChapterIds.add(chapter.getChapterId()));
+        if (content.chapters().size() != course.getChapters().size()) {
+            invalid("CCCT must contain every Course Chapter exactly once");
+        }
         long payloadBytes = utf8(content.name())
                 + utf8(content.markdown())
                 + utf8(content.templateTitle());
 
-        for (var chapter : content.chapters()) {
+        for (int chapterIndex = 0; chapterIndex < content.chapters().size(); chapterIndex++) {
+            var chapter = content.chapters().get(chapterIndex);
+            var courseChapter = course.getChapters().get(chapterIndex);
             uniqueNodeId(nodeIds, chapter.id());
             required(chapter.title(), "Chapter title", 255);
-            if (chapter.courseChapterId() != null
-                    && !courseChapterIds.contains(chapter.courseChapterId())) {
-                invalid("Mapped Course Chapter does not belong to the Course: "
-                        + chapter.courseChapterId());
+            if (chapter.courseChapterId() == null
+                    || !chapter.courseChapterId().equals(courseChapter.getChapterId())) {
+                invalid("CCCT chapters must match the Course Chapter order");
+            }
+            if (!chapter.title().trim().equals(courseChapter.getTitle().trim())) {
+                invalid("CCCT chapter titles must match the Course Chapters");
             }
             if (chapter.topics().size() > MAX_TOPICS_PER_CHAPTER) {
                 invalid("A chapter cannot contain more than "
                         + MAX_TOPICS_PER_CHAPTER + " topics");
             }
-            payloadBytes += utf8(chapter.title());
+            payloadBytes += utf8(chapter.title()) + utf8(chapter.customContent());
             for (var topic : chapter.topics()) {
                 uniqueNodeId(nodeIds, topic.id());
                 required(topic.title(), "Topic title", 255);
@@ -88,6 +96,9 @@ class CcctValidator {
     }
 
     void validatePublish(Course course, CcctProfile profile) {
+        if (profile.getFormatVersion() != 2) {
+            invalid("Legacy CCCT profiles are read-only and cannot be published");
+        }
         Set<UUID> courseChapterIds = new HashSet<>();
         course.getChapters().forEach(chapter -> courseChapterIds.add(chapter.getChapterId()));
         int examItemCount = 0;

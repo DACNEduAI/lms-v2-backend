@@ -31,8 +31,10 @@ public class CcctProfileCommandMapper {
                 content(
                         request.name(),
                         request.lastMode(),
+                        request.formatVersion() == null ? 2 : request.formatVersion(),
+                        Boolean.TRUE.equals(request.structuredCurrent()),
                         request.markdown(),
-                        request.template().title(),
+                        request.name(),
                         request.template().chapters()));
     }
 
@@ -47,8 +49,10 @@ public class CcctProfileCommandMapper {
                 content(
                         request.name(),
                         request.lastMode(),
+                        request.formatVersion() == null ? 2 : request.formatVersion(),
+                        Boolean.TRUE.equals(request.structuredCurrent()),
                         request.markdown(),
-                        request.template().title(),
+                        request.name(),
                         request.template().chapters()));
     }
 
@@ -69,12 +73,16 @@ public class CcctProfileCommandMapper {
     private CcctProfileContent content(
             String name,
             edu.ai.lms.core.course.app.domain.CcctMode lastMode,
+            int formatVersion,
+            boolean structuredCurrent,
             String markdown,
             String title,
             java.util.List<CcctChapterRequest> chapters) {
         return new CcctProfileContent(
                 name,
                 lastMode,
+                formatVersion,
+                structuredCurrent,
                 markdown,
                 title,
                 chapters.stream().map(this::chapter).toList());
@@ -85,6 +93,7 @@ public class CcctProfileCommandMapper {
                 value.id(),
                 value.courseChapterId(),
                 value.title(),
+                value.customContent() == null ? "" : value.customContent(),
                 value.topics().stream().map(this::topic).toList());
     }
 

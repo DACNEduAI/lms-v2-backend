@@ -12,6 +12,8 @@ public record CcctProfileResponse(
         String name,
         CcctProfileStatus status,
         long version,
+        int formatVersion,
+        boolean structuredCurrent,
         CcctMode lastMode,
         String markdown,
         CcctTemplateResponse template,

@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.core.course.app.domain.CcctProfile;
+import edu.ai.lms.core.course.app.exception.CcctConflictException;
 import edu.ai.lms.core.course.app.port.in.command.CloneCcctProfileCommand;
 import edu.ai.lms.core.course.app.port.in.usecase.CloneCcctProfileUseCase;
 import edu.ai.lms.core.course.app.port.out.SaveCcctProfilePort;
@@ -24,6 +25,9 @@ public class CloneCcctProfileService implements CloneCcctProfileUseCase {
     public CcctProfile cloneProfile(CloneCcctProfileCommand command) {
         var context = access.requireCourseTeacher(command.courseId());
         CcctProfile source = profiles.require(command.courseId(), command.profileId());
+        if (source.getFormatVersion() != 2) {
+            throw new CcctConflictException("Legacy CCCT profiles are read-only");
+        }
         String name = validator.normalizeName(command.name());
         profiles.requireUniqueName(command.courseId(), name, null);
         CcctProfile clone = factory.cloneDraft(

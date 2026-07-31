@@ -39,6 +39,7 @@ DROP TABLE IF EXISTS
     custom_learning_levels,
     exam_matrix_rows,
     exam_matrices,
+    ccct_ai_jobs,
     ccct_items,
     ccct_topics,
     ccct_chapters,
@@ -237,8 +238,10 @@ CREATE TABLE IF NOT EXISTS ccct_profiles
     status           VARCHAR(20)  NOT NULL DEFAULT 'DRAFT'
         CHECK (status IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')),
     version          BIGINT       NOT NULL DEFAULT 0 CHECK (version >= 0),
+    format_version   INTEGER      NOT NULL DEFAULT 2 CHECK (format_version IN (1, 2)),
+    structured_current BOOLEAN    NOT NULL DEFAULT FALSE,
     last_mode        VARCHAR(20)  NOT NULL
-        CHECK (last_mode IN ('MARKDOWN', 'STRUCTURED')),
+        CHECK (last_mode IN ('PDF', 'CUSTOM', 'STRUCTURED', 'MARKDOWN')),
     markdown_content TEXT         NOT NULL DEFAULT '',
     created_by       UUID REFERENCES users (id) ON DELETE SET NULL,
     published_at     TIMESTAMP,
@@ -260,6 +263,7 @@ CREATE TABLE IF NOT EXISTS ccct_chapters
     profile_id        UUID         NOT NULL REFERENCES ccct_profiles (id) ON DELETE CASCADE,
     course_chapter_id UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
     title             VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
+    custom_content    TEXT         NOT NULL DEFAULT '',
     order_index       INTEGER      NOT NULL CHECK (order_index >= 0),
     CONSTRAINT uq_ccct_chapter_order UNIQUE (profile_id, order_index)
 );
@@ -268,6 +272,38 @@ CREATE INDEX idx_ccct_chapters_profile
     ON ccct_chapters (profile_id);
 CREATE INDEX idx_ccct_chapters_course_chapter
     ON ccct_chapters (course_chapter_id);
+
+-- Existing CCCT rows remain format v1 and are intentionally read-only. New
+-- profiles use v2, which fixes their chapter set to the Course Chapters.
+ALTER TABLE ccct_profiles ADD COLUMN IF NOT EXISTS format_version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE ccct_profiles ADD COLUMN IF NOT EXISTS structured_current BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE ccct_profiles ALTER COLUMN format_version SET DEFAULT 2;
+ALTER TABLE ccct_profiles DROP CONSTRAINT IF EXISTS ccct_profiles_last_mode_check;
+ALTER TABLE ccct_profiles ADD CONSTRAINT ccct_profiles_last_mode_check
+    CHECK (last_mode IN ('PDF', 'CUSTOM', 'STRUCTURED', 'MARKDOWN'));
+ALTER TABLE ccct_chapters ADD COLUMN IF NOT EXISTS custom_content TEXT NOT NULL DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS ccct_ai_jobs
+(
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id        UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+    profile_id       UUID         NOT NULL REFERENCES ccct_profiles (id) ON DELETE CASCADE,
+    type             VARCHAR(30)  NOT NULL CHECK (type IN ('PDF_TO_CUSTOM', 'CUSTOM_TO_STRUCTURED')),
+    status           VARCHAR(20)  NOT NULL CHECK (status IN ('QUEUED', 'RUNNING', 'COMPLETED', 'FAILED', 'STALE')),
+    stage            VARCHAR(40)  NOT NULL DEFAULT 'QUEUED',
+    expected_version BIGINT       NOT NULL CHECK (expected_version >= 0),
+    file_key         VARCHAR(512),
+    warnings_json    TEXT         NOT NULL DEFAULT '[]',
+    error_message    TEXT,
+    created_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at     TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ccct_ai_jobs_profile_created
+    ON ccct_ai_jobs (profile_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ccct_ai_jobs_status_updated
+    ON ccct_ai_jobs (status, updated_at);
 
 CREATE TABLE IF NOT EXISTS ccct_topics
 (
