@@ -41,7 +41,7 @@ public class Quiz {
     private Boolean display = true;
 
     @Builder.Default
-    private QuizLifecycleStatus lifecycleStatus = QuizLifecycleStatus.PUBLISHED;
+    private QuizLifecycleStatus lifecycleStatus = QuizLifecycleStatus.DRAFT;
 
     @Builder.Default
     private QuizSourceType sourceType = QuizSourceType.MANUAL;

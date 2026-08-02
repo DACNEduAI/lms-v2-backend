@@ -12,6 +12,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
+import edu.ai.lms.core.quiz.app.service.quizworkflow.QuizAccessPolicy;
 import edu.ai.lms.common.event.SystemNotificationEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -50,6 +51,7 @@ public class ModifyQuizService implements ModifyQuizUseCase {
 
         // Verify user is the creator of the quiz
         verifyQuizOwnership(user, existingQuiz);
+        QuizAccessPolicy.requireMutable(existingQuiz);
 
         Quiz requestedQuiz = command.quiz();
         Quiz updatedQuiz = mergeQuiz(existingQuiz, requestedQuiz);
@@ -146,9 +148,9 @@ public class ModifyQuizService implements ModifyQuizUseCase {
     private void verifyQuizOwnership(CurrentActor user, Quiz quiz) {
         boolean isOwner = (user.getRole() == Roles.TEACHER && user.getId().equals(quiz.getTeacherId()))
                 || (user.getRole() == Roles.STUDENT && user.getId().equals(quiz.getStudentId()));
-
         if (!isOwner) {
             throw new IllegalArgumentException("User is not authorized to modify this quiz");
         }
     }
+
 }

@@ -82,28 +82,23 @@ public class CreateQuizService implements CreateQuizUseCase {
         if (quiz.getUnlimited() == null) {
             quiz.setUnlimited(false);
         }
-        if (quiz.getDisplay() == null) {
-            quiz.setDisplay(true);
-        }
-        quiz.setLifecycleStatus(Boolean.TRUE.equals(quiz.getDisplay())
-                ? QuizLifecycleStatus.PUBLISHED
-                : QuizLifecycleStatus.DRAFT);
         quiz.setSourceType(QuizSourceType.MANUAL);
         quiz.setVersion(0);
-        if (quiz.getLifecycleStatus() == QuizLifecycleStatus.PUBLISHED) {
-            quiz.setPublishedBy(user.getId());
-            quiz.setPublishedAt(LocalDateTime.now());
-        } else {
-            quiz.setPublishedBy(null);
-            quiz.setPublishedAt(null);
-        }
 
         if (user.getRole() == Roles.TEACHER) {
             quiz.setTeacherId(user.getId());
+            quiz.setDisplay(false);
+            quiz.setLifecycleStatus(QuizLifecycleStatus.DRAFT);
+            quiz.setPublishedBy(null);
+            quiz.setPublishedAt(null);
             validateQuizTimeConfiguration(quiz);
 
         } else {
             quiz.setStudentId(user.getId());
+            quiz.setDisplay(true);
+            quiz.setLifecycleStatus(QuizLifecycleStatus.PUBLISHED);
+            quiz.setPublishedBy(user.getId());
+            quiz.setPublishedAt(LocalDateTime.now());
             quiz.setUnlimited(true);
             quiz.setStartTime(null);
             quiz.setDueTime(null);
@@ -159,6 +154,9 @@ public class CreateQuizService implements CreateQuizUseCase {
                 .attemptLimited(savedQuiz.getAttemptLimited())
                 .courseId(savedQuiz.getCourseId())
                 .display(savedQuiz.getDisplay())
+                .lifecycleStatus(savedQuiz.getLifecycleStatus())
+                .sourceType(savedQuiz.getSourceType())
+                .version(savedQuiz.getVersion())
                 .createdAt(savedQuiz.getCreatedAt())
                 .build();
     }

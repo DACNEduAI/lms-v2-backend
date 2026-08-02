@@ -22,6 +22,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import lombok.RequiredArgsConstructor;
+import edu.ai.lms.core.quiz.app.service.quizworkflow.QuizAccessPolicy;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +47,7 @@ public class DeleteAnswerService implements DeleteAnswerUseCase {
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found"));
 
         verifyQuizOwnership(user, quiz);
+        QuizAccessPolicy.requireMutable(quiz);
 
         Answer answer = loadAnswerPort.getByKey(questionId, answerNumber)
                 .orElseThrow(() -> new AnswerNotFoundException("Answer not found"));

@@ -63,6 +63,30 @@
     WHERE id = #{id}
   </update>
 
+  <update id="transitionLifecycle">
+    UPDATE edu.quizzes
+    SET lifecycle_status = #{nextStatus, javaType=edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        display = #{display},
+        version = version + 1,
+        published_by = #{publishedBy},
+        published_at = #{publishedAt},
+        updated_at = NOW()
+    WHERE id = #{quizId}
+      AND course_id = #{courseId}
+      AND lifecycle_status = #{expectedStatus, javaType=edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler}
+      AND version = #{expectedVersion}
+  </update>
+
+  <update id="touchContent">
+    UPDATE edu.quizzes
+    SET version = version + 1,
+        updated_at = NOW()
+    WHERE id = #{quizId}
+      AND course_id = #{courseId}
+      AND lifecycle_status = #{expectedStatus, javaType=edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler}
+      AND version = #{expectedVersion}
+  </update>
+
   <delete id="deleteById">
     DELETE FROM edu.quizzes WHERE id = #{quizId}
   </delete>

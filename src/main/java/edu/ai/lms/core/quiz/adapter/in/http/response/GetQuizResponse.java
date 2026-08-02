@@ -10,6 +10,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import edu.ai.lms.core.quiz.app.domain.QuestionSourceType;
+import edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus;
+import edu.ai.lms.core.quiz.app.domain.QuizSourceType;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,6 +34,12 @@ public class GetQuizResponse {
     private Integer attemptLimited;
     private UUID courseId;
     private Boolean display;
+    private QuizLifecycleStatus lifecycleStatus;
+    private QuizSourceType sourceType;
+    private UUID originalQuizId;
+    private long version;
+    private UUID publishedBy;
+    private LocalDateTime publishedAt;
     @Builder.Default
     private List<LearningOutcomeSummary> ungroupedLearningOutcomes = new ArrayList<>();
     @Builder.Default
@@ -51,6 +61,10 @@ public class GetQuizResponse {
         private UUID questionId;
         private String content;
         private String type;
+        private QuestionSourceType sourceType;
+        private UUID sourceBankItemId;
+        private UUID sourceQuestionId;
+        private long version;
         private List<LearningOutcomeSummary> learningOutcomes;
         private List<AnswerSummary> answers;
     }

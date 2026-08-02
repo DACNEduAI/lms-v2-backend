@@ -89,6 +89,12 @@ public class GetAllQuizzesService implements GetAllQuizzesCreatedByTeacherUseCas
                         .dueTime(quiz.getDueTime())
                         .attemptLimited(quiz.getAttemptLimited())
                         .display(quiz.getDisplay())
+                        .lifecycleStatus(quiz.getLifecycleStatus())
+                        .sourceType(quiz.getSourceType())
+                        .originalQuizId(quiz.getOriginalQuizId())
+                        .version(quiz.getVersion())
+                        .publishedBy(quiz.getPublishedBy())
+                        .publishedAt(quiz.getPublishedAt())
                         .createdAt(quiz.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());

@@ -10,14 +10,16 @@ import org.springframework.stereotype.Component;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus;
 import edu.ai.lms.core.quiz.app.port.out.DeleteQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
+import edu.ai.lms.core.quiz.app.port.out.ManageQuizLifecyclePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
 import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
-class QuizPersistenceAdapter implements SaveQuizPort, LoadQuizPort, DeleteQuizPort {
+class QuizPersistenceAdapter implements SaveQuizPort, LoadQuizPort, DeleteQuizPort, ManageQuizLifecyclePort {
 
     private final QuizRepository quizRepository;
     private final QuestionRepository questionRepository;
@@ -60,6 +62,27 @@ class QuizPersistenceAdapter implements SaveQuizPort, LoadQuizPort, DeleteQuizPo
     @Override
     public void deleteById(UUID quizId) {
         quizRepository.deleteById(quizId);
+    }
+
+    @Override
+    public boolean touchContent(UUID courseId, UUID quizId, long expectedVersion,
+            QuizLifecycleStatus expectedStatus) {
+        return quizRepository.touchContent(courseId, quizId, expectedVersion, expectedStatus) == 1;
+    }
+
+    @Override
+    public boolean transition(
+            UUID courseId,
+            UUID quizId,
+            long expectedVersion,
+            QuizLifecycleStatus expectedStatus,
+            QuizLifecycleStatus nextStatus,
+            boolean display,
+            UUID publishedBy,
+            java.time.LocalDateTime publishedAt) {
+        return quizRepository.transitionLifecycle(
+                courseId, quizId, expectedVersion, expectedStatus, nextStatus,
+                display, publishedBy, publishedAt) == 1;
     }
 
     private Quiz loadQuizWithQuestionsAndAnswers(Quiz quiz) {

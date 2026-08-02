@@ -42,4 +42,5 @@ interface QuestionRepository {
     void insertImage(@Param("questionId") UUID questionId,
                      @Param("imageName") String imageName,
                      @Param("url") String url);
+
 }

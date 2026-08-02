@@ -8,6 +8,9 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus;
+import edu.ai.lms.core.quiz.app.domain.QuizSourceType;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -28,6 +31,9 @@ public class CreateQuizResponse {
     private Integer attemptLimited;
     private UUID courseId;
     private Boolean display;
+    private QuizLifecycleStatus lifecycleStatus;
+    private QuizSourceType sourceType;
+    private long version;
     @Schema(type = "string", pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN, example = DatePatternConstants.LOCAL_DATE_TIME_EXAMPLE)
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DatePatternConstants.LOCAL_DATE_TIME_PATTERN)
     private LocalDateTime createdAt;

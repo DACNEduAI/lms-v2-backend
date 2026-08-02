@@ -19,6 +19,7 @@ import edu.ai.lms.core.quiz.app.exception.QuestionBankConflictException;
 import edu.ai.lms.core.quiz.app.exception.QuestionBankItemNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuestionBankValidationException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
+import edu.ai.lms.core.quiz.app.exception.QuizLifecycleConflictException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotVisible;
 import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.TimeValidationException;
@@ -34,6 +35,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
  */
 @RestControllerAdvice(basePackages = "edu.ai.lms.core.quiz.adapter.in")
 public class QuizExceptionHandler {
+
+    @ExceptionHandler(QuizLifecycleConflictException.class)
+    public ResponseEntity<ErrorResponse> handleQuizLifecycleConflict(QuizLifecycleConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.builder()
+                .status(HttpStatus.CONFLICT.value()).error("Quiz Lifecycle Conflict")
+                .message(ex.getMessage()).build());
+    }
 
     @ExceptionHandler(QuestionBankItemNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleQuestionBankItemNotFound(QuestionBankItemNotFoundException ex) {
