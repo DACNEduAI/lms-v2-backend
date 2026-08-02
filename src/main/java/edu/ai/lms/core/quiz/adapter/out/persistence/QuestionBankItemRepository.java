@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Param;
 
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankAnswer;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItem;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSearchCriteria;
 
 @Mapper
 interface QuestionBankItemRepository {
@@ -20,9 +21,31 @@ interface QuestionBankItemRepository {
 
     List<UUID> findLearningOutcomeIdsByItemId(@Param("itemId") UUID itemId);
 
+    List<QuestionBankItem> findPage(QuestionBankSearchCriteria criteria);
+
+    long countPage(QuestionBankSearchCriteria criteria);
+
+    int existsExactDuplicate(
+            @Param("courseId") UUID courseId,
+            @Param("content") String content,
+            @Param("excludedItemId") UUID excludedItemId,
+            @Param("readyOnly") boolean readyOnly);
+
     int insertItem(QuestionBankItem item);
 
     int updateDraft(
+            @Param("item") QuestionBankItem item,
+            @Param("expectedVersion") long expectedVersion);
+
+    int markReady(
+            @Param("item") QuestionBankItem item,
+            @Param("expectedVersion") long expectedVersion);
+
+    int archive(
+            @Param("item") QuestionBankItem item,
+            @Param("expectedVersion") long expectedVersion);
+
+    int deleteDraft(
             @Param("item") QuestionBankItem item,
             @Param("expectedVersion") long expectedVersion);
 

@@ -22,6 +22,7 @@ class CourseApiAdapterExamMatrixUT {
     @Mock LoadLearningOutcomePort outcomePort;
     @Mock LoadGroupLearningOutcomePort groupPort;
     @Mock LoadChapterPort chapterPort;
+    @Mock LoadCcctProfilePort ccctProfilePort;
 
     @Test
     void preservesRowAndMapsArbitraryActiveLevelAcrossMultipleOutcomes() {
@@ -70,7 +71,7 @@ class CourseApiAdapterExamMatrixUT {
     }
 
     private CourseApiAdapter adapter() {
-        return new CourseApiAdapter(coursePort, matrixPort, outcomePort, groupPort, chapterPort);
+        return new CourseApiAdapter(coursePort, matrixPort, outcomePort, groupPort, chapterPort, ccctProfilePort);
     }
 
     private LearningOutcome outcome(UUID id, UUID courseId) {

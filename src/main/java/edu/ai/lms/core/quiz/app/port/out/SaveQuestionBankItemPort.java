@@ -6,4 +6,10 @@ public interface SaveQuestionBankItemPort {
     QuestionBankItem create(QuestionBankItem item);
 
     boolean replaceDraft(QuestionBankItem item, long expectedVersion);
+
+    boolean markReady(QuestionBankItem item, long expectedVersion);
+
+    boolean archive(QuestionBankItem item, long expectedVersion);
+
+    boolean deleteDraft(QuestionBankItem item, long expectedVersion);
 }

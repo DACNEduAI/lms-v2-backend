@@ -3,12 +3,14 @@ package edu.ai.lms.core.quiz.adapter.out.integration;
 import edu.ai.lms.core.course.api.CourseAccessApi;
 import edu.ai.lms.core.course.api.LearningOutcomeCatalogApi;
 import edu.ai.lms.core.course.api.QuizGenerationContextApi;
+import edu.ai.lms.core.course.api.QuestionBankReferenceApi;
 import edu.ai.lms.core.material.api.MaterialSelectionApi;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationContextPort;
 import edu.ai.lms.core.quiz.app.port.out.QuizGenerationContextView;
 import edu.ai.lms.core.quiz.app.port.out.ValidateLearningOutcomesPort;
 import edu.ai.lms.core.quiz.app.port.out.ValidateMaterialSelectionPort;
+import edu.ai.lms.core.quiz.app.port.out.ValidateQuestionBankReferencesPort;
 import edu.ai.lms.core.quiz.app.exception.InvalidQuizGenerationRequestException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -21,12 +23,13 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 class QuizReferenceDataAdapter implements LoadCourseMembershipPort, LoadQuizGenerationContextPort,
-        ValidateMaterialSelectionPort, ValidateLearningOutcomesPort {
+        ValidateMaterialSelectionPort, ValidateLearningOutcomesPort, ValidateQuestionBankReferencesPort {
 
     private final CourseAccessApi courseAccessApi;
     private final QuizGenerationContextApi generationContextApi;
     private final LearningOutcomeCatalogApi learningOutcomeCatalogApi;
     private final MaterialSelectionApi materialSelectionApi;
+    private final QuestionBankReferenceApi questionBankReferenceApi;
 
     @Override
     public boolean isTeacherInCourse(UUID teacherId, UUID courseId) {
@@ -93,5 +96,15 @@ class QuizReferenceDataAdapter implements LoadCourseMembershipPort, LoadQuizGene
     public boolean allBelongToCourse(UUID courseId, Collection<UUID> learningOutcomeIds) {
         return learningOutcomeCatalogApi.findExistingIds(courseId, learningOutcomeIds).size()
                 == learningOutcomeIds.stream().distinct().count();
+    }
+
+    @Override
+    public boolean chapterBelongsToCourse(UUID courseId, UUID chapterId) {
+        return questionBankReferenceApi.chapterBelongsToCourse(courseId, chapterId);
+    }
+
+    @Override
+    public Optional<UUID> findPublishedExamCcctItemChapterId(UUID courseId, UUID ccctItemId) {
+        return questionBankReferenceApi.findPublishedExamCcctItemChapterId(courseId, ccctItemId);
     }
 }

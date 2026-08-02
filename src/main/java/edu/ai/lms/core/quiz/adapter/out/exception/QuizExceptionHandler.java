@@ -16,6 +16,7 @@ import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.InvalidQuizGenerationRequestException;
 import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.QuestionBankConflictException;
+import edu.ai.lms.core.quiz.app.exception.QuestionBankItemNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuestionBankValidationException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotVisible;
@@ -33,6 +34,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
  */
 @RestControllerAdvice(basePackages = "edu.ai.lms.core.quiz.adapter.in")
 public class QuizExceptionHandler {
+
+    @ExceptionHandler(QuestionBankItemNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleQuestionBankItemNotFound(QuestionBankItemNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.builder()
+                .status(HttpStatus.NOT_FOUND.value()).error("Question Bank Item Not Found")
+                .message(ex.getMessage()).build());
+    }
 
     @ExceptionHandler(QuestionBankConflictException.class)
     public ResponseEntity<ErrorResponse> handleQuestionBankConflict(QuestionBankConflictException ex) {

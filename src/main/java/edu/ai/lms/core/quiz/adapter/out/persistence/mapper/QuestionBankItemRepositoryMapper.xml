@@ -57,6 +57,68 @@
     ORDER BY learning_outcome_id
   </select>
 
+  <sql id="QuestionBankPageWhere">
+    WHERE item.course_id = #{courseId}
+    <if test="query != null and query != ''">
+      AND item.content ILIKE CONCAT('%', #{query}, '%')
+    </if>
+    <if test="status != null">
+      AND item.status = #{status, javaType=edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItemStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler}
+    </if>
+    <if test="chapterId != null">
+      AND item.chapter_id = #{chapterId}
+    </if>
+    <if test="ccctItemId != null">
+      AND item.ccct_item_id = #{ccctItemId}
+    </if>
+    <if test="learningOutcomeId != null">
+      AND EXISTS (
+        SELECT 1 FROM edu.question_bank_item_learning_outcomes link
+        WHERE link.question_bank_item_id = item.id
+          AND link.learning_outcome_id = #{learningOutcomeId}
+      )
+    </if>
+    <if test="questionType != null">
+      AND item.question_type = #{questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler}
+    </if>
+    <if test="sourceType != null">
+      AND item.source_type = #{sourceType, javaType=edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType, typeHandler=org.apache.ibatis.type.EnumTypeHandler}
+    </if>
+  </sql>
+
+  <select id="findPage" resultMap="QuestionBankItemResultMap">
+    SELECT item.id, item.course_id, item.chapter_id, item.ccct_item_id, item.content,
+           item.question_type, item.cognitive_level_code, item.difficulty, item.status,
+           item.source_type, item.created_by, item.ready_by, item.ready_at, item.version,
+           item.created_at, item.updated_at
+    FROM edu.question_bank_items item
+    <include refid="QuestionBankPageWhere" />
+    ORDER BY item.updated_at DESC, item.id
+    LIMIT #{size} OFFSET #{offset}
+  </select>
+
+  <select id="countPage" resultType="long">
+    SELECT COUNT(*)
+    FROM edu.question_bank_items item
+    <include refid="QuestionBankPageWhere" />
+  </select>
+
+  <select id="existsExactDuplicate" resultType="int">
+    SELECT CASE WHEN EXISTS (
+      SELECT 1
+      FROM edu.question_bank_items item
+      WHERE item.course_id = #{courseId}
+        AND LOWER(BTRIM(item.content)) = LOWER(BTRIM(#{content}))
+        AND item.status != 'ARCHIVED'
+        <if test="excludedItemId != null">
+          AND item.id != #{excludedItemId}
+        </if>
+        <if test="readyOnly">
+          AND item.status = 'READY_FOR_USE'
+        </if>
+    ) THEN 1 ELSE 0 END
+  </select>
+
   <insert id="insertItem">
     INSERT INTO edu.question_bank_items
       (id, course_id, chapter_id, ccct_item_id, content, question_type,
@@ -86,6 +148,38 @@
       AND status = 'DRAFT'
       AND version = #{expectedVersion}
   </update>
+
+  <update id="markReady">
+    UPDATE edu.question_bank_items
+    SET status = 'READY_FOR_USE',
+        ready_by = #{item.readyBy},
+        ready_at = #{item.readyAt},
+        version = version + 1,
+        updated_at = NOW()
+    WHERE id = #{item.id}
+      AND course_id = #{item.courseId}
+      AND status = 'DRAFT'
+      AND version = #{expectedVersion}
+  </update>
+
+  <update id="archive">
+    UPDATE edu.question_bank_items
+    SET status = 'ARCHIVED',
+        version = version + 1,
+        updated_at = NOW()
+    WHERE id = #{item.id}
+      AND course_id = #{item.courseId}
+      AND status = 'READY_FOR_USE'
+      AND version = #{expectedVersion}
+  </update>
+
+  <delete id="deleteDraft">
+    DELETE FROM edu.question_bank_items
+    WHERE id = #{item.id}
+      AND course_id = #{item.courseId}
+      AND status = 'DRAFT'
+      AND version = #{expectedVersion}
+  </delete>
 
   <delete id="deleteAnswersByItemId">
     DELETE FROM edu.question_bank_answers WHERE question_bank_item_id = #{itemId}

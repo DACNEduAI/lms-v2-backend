@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankAnswer;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItem;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItemStatus;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankPage;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSearchCriteria;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionBankItemPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionBankItemPort;
@@ -48,6 +50,40 @@ class QuestionBankItemPersistenceAdapter implements LoadQuestionBankItemPort, Sa
     @Transactional(readOnly = true)
     public Optional<QuestionBankItem> findByCourseIdAndId(UUID courseId, UUID itemId) {
         return repository.findByCourseIdAndId(courseId, itemId).map(this::loadChildren);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public QuestionBankPage findPage(QuestionBankSearchCriteria criteria) {
+        return new QuestionBankPage(
+                repository.findPage(criteria),
+                repository.countPage(criteria),
+                criteria.page(),
+                criteria.size());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsExactDuplicate(UUID courseId, String content, UUID excludedItemId, boolean readyOnly) {
+        return repository.existsExactDuplicate(courseId, content, excludedItemId, readyOnly) > 0;
+    }
+
+    @Override
+    @Transactional
+    public boolean markReady(QuestionBankItem item, long expectedVersion) {
+        return repository.markReady(item, expectedVersion) == 1;
+    }
+
+    @Override
+    @Transactional
+    public boolean archive(QuestionBankItem item, long expectedVersion) {
+        return repository.archive(item, expectedVersion) == 1;
+    }
+
+    @Override
+    @Transactional
+    public boolean deleteDraft(QuestionBankItem item, long expectedVersion) {
+        return repository.deleteDraft(item, expectedVersion) == 1;
     }
 
     private void prepareNewItem(QuestionBankItem item) {
