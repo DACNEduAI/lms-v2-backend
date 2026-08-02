@@ -12,6 +12,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
+import edu.ai.lms.core.quiz.app.port.out.QuestionVisualJobPort;
 import edu.ai.lms.common.event.SystemNotificationEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -33,6 +34,7 @@ public class ModifyQuizService implements ModifyQuizUseCase {
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadCourseMembershipPort loadCourseMembershipPort;
     private final ApplicationEventPublisher eventPublisher;
+    private final QuestionVisualJobPort visualJobs;
 
     @Override
     @Transactional
@@ -54,6 +56,11 @@ public class ModifyQuizService implements ModifyQuizUseCase {
         Quiz requestedQuiz = command.quiz();
         Quiz updatedQuiz = mergeQuiz(existingQuiz, requestedQuiz);
         validateQuizTimeConfiguration(updatedQuiz);
+        if (Boolean.TRUE.equals(updatedQuiz.getDisplay())
+                && visualJobs.hasUnreadyRequiredVisual(updatedQuiz.getId())) {
+            throw new IllegalArgumentException(
+                    "Quiz cannot be published while a required visual is pending, processing, or failed");
+        }
 
         Quiz savedQuiz = saveQuizPort.save(updatedQuiz);
 

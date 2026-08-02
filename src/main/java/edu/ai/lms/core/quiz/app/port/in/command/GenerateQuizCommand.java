@@ -9,6 +9,8 @@ import lombok.Builder;
 public record GenerateQuizCommand(
         UUID courseId,
         UUID examMatrixId,
+        List<VisualRequirement> visualRequirements,
+        List<QuestionTypeOverride> questionTypeOverrides,
         List<UUID> selectedMaterialIds,
         String prompt,
         Boolean strictMode,
@@ -23,4 +25,9 @@ public record GenerateQuizCommand(
         Integer attemptLimited,
         Boolean display
 ) {
+    public record VisualRequirement(UUID examMatrixRowId, UUID customLearningLevelId, int imageQuestionCount) {}
+    public record QuestionTypeOverride(
+            UUID examMatrixRowId,
+            UUID customLearningLevelId,
+            String questionType) {}
 }

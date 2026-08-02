@@ -39,7 +39,7 @@ public class QuizGenerationProcessingService {
     private String webhookBaseUrl;
     @Value("${quiz.generation.webhook.secret}")
     private String webhookSecret;
-    @Value("${quiz.generation.timeout-minutes:15}")
+    @Value("${quiz.generation.timeout-minutes:20}")
     private long timeoutMinutes;
     @Value("${quiz.generation.max-attempts:3}")
     private int maxAttempts;
@@ -85,7 +85,8 @@ public class QuizGenerationProcessingService {
                     .block(Duration.ofMinutes(timeoutMinutes));
 
             QuizGenerationJob current = loadJobPort.getById(jobId).orElseThrow();
-            if (current.getStatus() == QuizGenerationStatus.PROCESSING) {
+            if (current.getStatus() == QuizGenerationStatus.PROCESSING
+                    && (current.getPhase() == null || current.getPhase() == QuizGenerationJob.Phase.TEXT_GENERATION)) {
                 retryOrFail(current, "CALLBACK_MISSING", "AI service returned without delivering a terminal webhook");
             }
         } catch (Exception ex) {

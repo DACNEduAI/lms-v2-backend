@@ -40,13 +40,6 @@ public class BatchEditExamMatrixService implements TeacherBatchEditExamMatrixUse
         }
         var existing = batchPort.lockByCourseIdAndId(command.courseId(), command.matrixId())
                 .orElseThrow(() -> new ExamMatrixNotFoundException("Exam matrix not found: " + command.matrixId()));
-        var ccctProfile = validator.requirePinnedProfile(
-                command.courseId(), command.ccctProfileId(), existing.getCcctProfileId());
-        if (existing.getCcctProfileId() == null) {
-            batchPort.pinCcctProfile(command.matrixId(), ccctProfile.getId());
-            existing.setCcctProfileId(ccctProfile.getId());
-        }
-
         List<CreatedCustomLearningLevelMappingResponse> createdLevelMappings = List.of();
         Map<String, UUID> resolvedCreatedLevelIds = Map.of();
         if (command.customLearningLevels() != null) {
@@ -76,8 +69,8 @@ public class BatchEditExamMatrixService implements TeacherBatchEditExamMatrixUse
             throw new ExamMatrixNotFoundException("One or more rows do not belong to the exam matrix");
         }
 
-        var updatedRows = validator.validateAndMap(course, command.matrixId(), ccctProfile, updateCommands);
-        var createdRows = validator.validateAndMap(course, command.matrixId(), ccctProfile, createCommands);
+        var updatedRows = validator.validateAndMap(course, command.matrixId(), updateCommands);
+        var createdRows = validator.validateAndMap(course, command.matrixId(), createCommands);
         createdRows.forEach(row -> row.setId(UUID.randomUUID()));
 
         List<Integer> finalOrder = existing.getRows().stream()
@@ -86,14 +79,6 @@ public class BatchEditExamMatrixService implements TeacherBatchEditExamMatrixUse
         updatedRows.forEach(row -> finalOrder.add(row.getOrderIndex()));
         createdRows.forEach(row -> finalOrder.add(row.getOrderIndex()));
         validator.requireUniqueFinalOrder(finalOrder);
-        List<UUID> finalCcctItemIds = existing.getRows().stream()
-                .filter(row -> !targeted.contains(row.getId()))
-                .map(row -> row.getCcctItemId())
-                .collect(Collectors.toCollection(ArrayList::new));
-        updatedRows.forEach(row -> finalCcctItemIds.add(row.getCcctItemId()));
-        createdRows.forEach(row -> finalCcctItemIds.add(row.getCcctItemId()));
-        validator.requireUniqueFinalCcctItems(finalCcctItemIds);
-
         command.delete().forEach(id -> batchPort.deleteRow(command.matrixId(), id));
         updatedRows.forEach(batchPort::replaceRow);
         createdRows.forEach(batchPort::insertRow);
@@ -144,7 +129,7 @@ public class BatchEditExamMatrixService implements TeacherBatchEditExamMatrixUse
         }).toList();
         return ExamMatrixRowCommand.builder()
                 .id(row.id()).clientTempId(row.clientTempId()).chapterId(row.chapterId())
-                .ccctItemId(row.ccctItemId()).topic(row.topic()).orderIndex(row.orderIndex())
+                .topic(row.topic()).orderIndex(row.orderIndex())
                 .learningOutcomeIds(row.learningOutcomeIds()).levelCounts(counts).build();
     }
 

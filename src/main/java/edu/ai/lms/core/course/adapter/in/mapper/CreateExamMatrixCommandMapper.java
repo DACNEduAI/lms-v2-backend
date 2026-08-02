@@ -12,7 +12,7 @@ import edu.ai.lms.core.course.app.port.in.command.*;
 public class CreateExamMatrixCommandMapper {
     public CreateExamMatrixCommand toCommand(UUID courseId, CreateExamMatrixRequest request) {
         return CreateExamMatrixCommand.builder()
-                .courseId(courseId).ccctProfileId(request.getCcctProfileId())
+                .courseId(courseId)
                 .title(request.getTitle()).description(request.getDescription())
                 .customLearningLevels(request.getCustomLearningLevels().stream()
                         .map(value -> new CustomLearningLevelValue(
@@ -24,7 +24,7 @@ public class CreateExamMatrixCommandMapper {
 
     ExamMatrixRowCommand toRow(ExamMatrixRowRequest row) {
         return ExamMatrixRowCommand.builder()
-                .chapterId(row.getChapterId()).ccctItemId(row.getCcctItemId())
+                .chapterId(row.getChapterId())
                 .topic(row.getTopic()).orderIndex(row.getOrderIndex())
                 .learningOutcomeIds(row.getLearningOutcomeIds())
                 .levelCounts(row.getLevelCounts().stream().map(value -> LearningLevelCountCommand.builder()

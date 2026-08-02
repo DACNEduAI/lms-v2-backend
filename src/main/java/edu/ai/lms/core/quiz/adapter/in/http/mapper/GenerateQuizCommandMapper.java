@@ -12,6 +12,18 @@ public class GenerateQuizCommandMapper {
         return GenerateQuizCommand.builder()
                 .courseId(request.getCourseId())
                 .examMatrixId(request.getExamMatrixId())
+                .visualRequirements(request.getVisualRequirements() == null ? java.util.List.of()
+                        : request.getVisualRequirements().stream()
+                                .map(item -> new GenerateQuizCommand.VisualRequirement(
+                                        item.getExamMatrixRowId(), item.getCustomLearningLevelId(),
+                                        item.getImageQuestionCount()))
+                                .toList())
+                .questionTypeOverrides(request.getQuestionTypeOverrides() == null ? java.util.List.of()
+                        : request.getQuestionTypeOverrides().stream()
+                                .map(item -> new GenerateQuizCommand.QuestionTypeOverride(
+                                        item.getExamMatrixRowId(), item.getCustomLearningLevelId(),
+                                        item.getQuestionType()))
+                                .toList())
                 .selectedMaterialIds(request.getSelectedMaterialIds())
                 .prompt(request.getPrompt())
                 .strictMode(request.getStrictMode())

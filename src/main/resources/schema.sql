@@ -22,6 +22,7 @@ DROP TABLE IF EXISTS
     question_images,
     answers,
     attempts,
+    question_image_generation_jobs,
     quiz_generation_jobs,
     quiz_chapters,
     quiz_learning_outcomes,
@@ -337,15 +338,12 @@ CREATE TABLE IF NOT EXISTS exam_matrices
 (
     id              uuid                        not null default gen_random_uuid(),
     course_id       uuid                        not null,
-    ccct_profile_id uuid                        null,
     title           character varying           not null,
     description     text                        null,
     created_at      timestamp without time zone null     default CURRENT_TIMESTAMP,
     updated_at      timestamp without time zone null     default CURRENT_TIMESTAMP,
     constraint exam_matrices_pkey primary key (id),
-    constraint exam_matrices_course_id_fkey foreign KEY (course_id) references courses (id) on delete CASCADE,
-    constraint exam_matrices_ccct_profile_id_fkey foreign KEY (ccct_profile_id)
-        references ccct_profiles (id) on delete RESTRICT
+    constraint exam_matrices_course_id_fkey foreign KEY (course_id) references courses (id) on delete CASCADE
 ) TABLESPACE pg_default;
 
 CREATE TABLE IF NOT EXISTS exam_matrix_rows
@@ -353,24 +351,13 @@ CREATE TABLE IF NOT EXISTS exam_matrix_rows
     id                  uuid              not null default gen_random_uuid(),
     matrix_id           uuid              not null,
     chapter_id          uuid              null,
-    ccct_item_id        uuid              null,
     topic               character varying null,
     order_index         integer           not null,
     constraint exam_matrix_rows_pkey primary key (id),
     constraint exam_matrix_rows_id_matrix_key unique (id, matrix_id),
     constraint exam_matrix_rows_chapter_id_fkey foreign KEY (chapter_id) references chapters (chapter_id) on delete SET NULL,
-    constraint exam_matrix_rows_matrix_id_fkey foreign KEY (matrix_id) references exam_matrices (id) on delete CASCADE,
-    constraint exam_matrix_rows_ccct_item_id_fkey foreign KEY (ccct_item_id)
-        references ccct_items (id) on delete RESTRICT
+    constraint exam_matrix_rows_matrix_id_fkey foreign KEY (matrix_id) references exam_matrices (id) on delete CASCADE
 ) TABLESPACE pg_default;
-
-CREATE INDEX idx_exam_matrices_ccct_profile
-    ON exam_matrices (ccct_profile_id);
-CREATE INDEX idx_exam_matrix_rows_ccct_item
-    ON exam_matrix_rows (ccct_item_id);
-CREATE UNIQUE INDEX uq_exam_matrix_ccct_item
-    ON exam_matrix_rows (matrix_id, ccct_item_id)
-    WHERE ccct_item_id IS NOT NULL;
 
 -- A matrix row can assess multiple learning outcomes. Learning outcomes can be
 -- reused by rows in the same or different exam matrices.
@@ -508,6 +495,8 @@ CREATE TABLE IF NOT EXISTS quiz_generation_jobs
     due_time            TIMESTAMP,
     attempt_limited     INTEGER,
     display             BOOLEAN      NOT NULL DEFAULT false,
+    phase               VARCHAR(30)  NOT NULL DEFAULT 'TEXT_GENERATION'
+        CHECK (phase IN ('TEXT_GENERATION', 'VISUAL_GENERATION', 'FINALIZING', 'DONE')),
     status              VARCHAR(30)  NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'TIMED_OUT')),
     attempt_count       INTEGER      NOT NULL DEFAULT 0,
     next_attempt_at     TIMESTAMP,
@@ -542,15 +531,54 @@ CREATE TABLE IF NOT EXISTS questions
 
 CREATE TABLE IF NOT EXISTS question_images
 (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    question_id UUID         NOT NULL REFERENCES questions (id) ON DELETE CASCADE,
-    image_name  VARCHAR(255) NOT NULL,
-    url         TEXT         NOT NULL,
-    created_at  TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    question_id      UUID         NOT NULL REFERENCES questions (id) ON DELETE CASCADE,
+    source_type      VARCHAR(20)  NOT NULL DEFAULT 'UPLOAD'
+        CHECK (source_type IN ('LATEX', 'SVG', 'UPLOAD')),
+    source_text      TEXT,
+    generation_brief TEXT,
+    alt_text         TEXT,
+    status           VARCHAR(20)  NOT NULL DEFAULT 'READY'
+        CHECK (status IN ('PENDING', 'PROCESSING', 'READY', 'FAILED')),
+    image_name       VARCHAR(255),
+    storage_key      TEXT,
+    url              TEXT,
+    media_type       VARCHAR(255),
+    content_hash     VARCHAR(64),
+    byte_size        BIGINT,
+    error_code       VARCHAR(100),
+    error_message    TEXT,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK ((source_type = 'LATEX' AND (status IN ('PENDING', 'PROCESSING', 'FAILED') OR source_text IS NOT NULL))
+        OR (source_type = 'SVG' AND (status IN ('PENDING', 'PROCESSING', 'FAILED') OR source_text IS NOT NULL))
+        OR (source_type = 'UPLOAD' AND (storage_key IS NOT NULL OR url IS NOT NULL)))
 );
 
 CREATE INDEX IF NOT EXISTS idx_question_images_question_id ON question_images (question_id);
+UPDATE question_images SET source_type='UPLOAD' WHERE source_type IS NULL;
+
+CREATE TABLE IF NOT EXISTS question_image_generation_jobs
+(
+    id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    quiz_generation_job_id UUID        NOT NULL REFERENCES quiz_generation_jobs (id) ON DELETE CASCADE,
+    question_image_id      UUID        NOT NULL UNIQUE REFERENCES question_images (id) ON DELETE CASCADE,
+    visual_type            VARCHAR(20) NOT NULL CHECK (visual_type IN ('LATEX', 'SVG')),
+    status                 VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')),
+    attempt_count          INTEGER     NOT NULL DEFAULT 0,
+    next_attempt_at        TIMESTAMP,
+    lease_until            TIMESTAMP,
+    error_code             VARCHAR(100),
+    error_message          TEXT,
+    processing_at          TIMESTAMP,
+    completed_at           TIMESTAMP,
+    created_at             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_question_image_generation_queue
+    ON question_image_generation_jobs (status, next_attempt_at);
+CREATE INDEX IF NOT EXISTS idx_question_image_generation_parent
+    ON question_image_generation_jobs (quiz_generation_job_id);
 
 -- Answers table (weak entity dependent on Question)
 CREATE TABLE IF NOT EXISTS answers

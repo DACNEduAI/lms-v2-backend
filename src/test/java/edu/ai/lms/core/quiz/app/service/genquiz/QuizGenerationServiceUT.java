@@ -13,6 +13,7 @@ import edu.ai.lms.core.quiz.app.port.out.QuizGenerationContextView;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.ScheduleQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.ValidateMaterialSelectionPort;
+import edu.ai.lms.core.quiz.app.port.out.QuestionVisualJobPort;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -38,16 +39,15 @@ class QuizGenerationServiceUT {
         LoadQuizGenerationContextPort contextPort = mock(LoadQuizGenerationContextPort.class);
         ValidateMaterialSelectionPort materialPort = mock(ValidateMaterialSelectionPort.class);
         ObjectMapper objectMapper = new ObjectMapper();
+        QuestionVisualJobPort visualJobs = mock(QuestionVisualJobPort.class);
         QuizGenerationService service = new QuizGenerationService(
                 savePort, loadPort, scheduler, userPort, membershipPort,
-                contextPort, materialPort, objectMapper);
+                contextPort, materialPort, objectMapper, visualJobs);
 
         UUID teacherId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID matrixId = UUID.randomUUID();
-        UUID profileId = UUID.randomUUID();
         UUID rowId = UUID.randomUUID();
-        UUID itemId = UUID.randomUUID();
         UUID levelId = UUID.randomUUID();
         UUID firstOutcomeId = UUID.randomUUID();
         UUID secondOutcomeId = UUID.randomUUID();
@@ -58,9 +58,9 @@ class QuizGenerationServiceUT {
                 .thenReturn(Optional.empty());
         when(contextPort.load(courseId, matrixId)).thenReturn(Optional.of(
                 new QuizGenerationContextView(
-                        courseId, "DSA", matrixId, "Midterm", profileId,
+                        courseId, "DSA", matrixId, "Midterm",
                         List.of(new QuizGenerationContextView.Row(
-                                rowId, itemId, UUID.randomUUID(), "Graphs", "Traversal",
+                                rowId, UUID.randomUUID(), "Graphs", "Traversal",
                                 List.of(
                                         new QuizGenerationContextView.LearningOutcome(
                                                 firstOutcomeId, "LO1", "Explain"),
@@ -81,20 +81,25 @@ class QuizGenerationServiceUT {
 
         service.generateQuiz(GenerateQuizCommand.builder()
                 .courseId(courseId).examMatrixId(matrixId)
+                .visualRequirements(List.of(new GenerateQuizCommand.VisualRequirement(rowId, levelId, 2)))
+                .questionTypeOverrides(List.of(new GenerateQuizCommand.QuestionTypeOverride(
+                        rowId, levelId, "ESSAY")))
                 .selectedMaterialIds(List.of()).unlimited(true).build());
 
         JsonNode saved = objectMapper.readTree(snapshot.get());
-        assertEquals(3, saved.path("snapshotVersion").asInt());
-        assertEquals(profileId.toString(), saved.path("ccctProfileId").asText());
+        assertEquals(4, saved.path("snapshotVersion").asInt());
+        assertFalse(saved.has("ccctProfileId"));
         assertEquals(4, saved.path("questionCount").asInt());
         assertEquals(1, saved.path("examMatrix").size());
         assertFalse(saved.path("examMatrix").get(0).has("hieu"));
-        assertEquals(itemId.toString(), saved.path("examMatrix").get(0).path("ccctItemId").asText());
+        assertFalse(saved.path("examMatrix").get(0).has("ccctItemId"));
         assertEquals(2, saved.path("examMatrix").get(0)
                 .path("levelCounts").get(0).path("learningOutcomeIds").size());
         assertEquals(4, saved.path("examMatrix").get(0)
                 .path("levelCounts").get(0).path("questionCount").asInt());
-        assertEquals("MULTIPLE_CHOICE", saved.path("examMatrix").get(0)
+        assertEquals(2, saved.path("examMatrix").get(0)
+                .path("levelCounts").get(0).path("imageQuestionCount").asInt());
+        assertEquals("SHORT_ANSWER", saved.path("examMatrix").get(0)
                 .path("levelCounts").get(0).path("questionType").asText());
     }
 }

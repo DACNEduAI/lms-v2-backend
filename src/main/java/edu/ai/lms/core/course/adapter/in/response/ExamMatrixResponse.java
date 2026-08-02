@@ -22,7 +22,6 @@ public class ExamMatrixResponse {
 
     private UUID id;
     private UUID courseId;
-    private UUID ccctProfileId;
     private String title;
     private String description;
     private List<ExamMatrixRowResponse> rows;

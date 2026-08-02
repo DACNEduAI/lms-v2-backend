@@ -53,6 +53,27 @@ public class GetQuizResponse {
         private String type;
         private List<LearningOutcomeSummary> learningOutcomes;
         private List<AnswerSummary> answers;
+        @Builder.Default
+        private List<QuestionImageSummary> images = new ArrayList<>();
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class QuestionImageSummary {
+        private UUID id;
+        private String sourceType;
+        private String sourceText;
+        private String generationBrief;
+        private String altText;
+        private String status;
+        private String imageName;
+        private String url;
+        private String mediaType;
+        private String errorCode;
+        private String errorMessage;
     }
 
     @Getter

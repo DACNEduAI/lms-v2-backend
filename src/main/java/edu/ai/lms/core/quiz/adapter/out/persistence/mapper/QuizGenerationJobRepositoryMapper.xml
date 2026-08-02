@@ -23,6 +23,7 @@
     <result property="attemptLimited" column="attempt_limited"/>
     <result property="display" column="display"/>
     <result property="status" column="status" javaType="edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+    <result property="phase" column="phase" javaType="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob$Phase" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
     <result property="attemptCount" column="attempt_count"/>
     <result property="nextAttemptAt" column="next_attempt_at"/>
     <result property="leaseUntil" column="lease_until"/>
@@ -38,7 +39,7 @@
   <sql id="columns">id, course_id, exam_matrix_id, quiz_id, requested_by, requested_role,
     quiz_title, prompt, request_snapshot, payload_hash, idempotency_key, strict_mode,
     code_runner_policy, unlimited, time_limit_minutes, pass_score, start_time, due_time,
-    attempt_limited, display, status, attempt_count, next_attempt_at, lease_until,
+    attempt_limited, display, status, phase, attempt_count, next_attempt_at, lease_until,
     error_code, error_message, callback_event_id, processing_at, completed_at, created_at, updated_at</sql>
 
   <insert id="insert" parameterType="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob">
@@ -46,7 +47,7 @@
       id, course_id, exam_matrix_id, quiz_id, requested_by, requested_role, quiz_title,
       prompt, request_snapshot, payload_hash, idempotency_key, strict_mode, code_runner_policy,
       unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited,
-      display, status, attempt_count, next_attempt_at, lease_until, error_code,
+      display, status, phase, attempt_count, next_attempt_at, lease_until, error_code,
       error_message, callback_event_id, processing_at, completed_at, created_at, updated_at)
     VALUES (#{id}, #{courseId}, #{examMatrixId}, #{quizId}, #{requestedBy},
       #{requestedRole, javaType=edu.ai.lms.common.api.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
@@ -54,6 +55,7 @@
       #{strictMode}, #{codeRunnerPolicy}, #{unlimited}, #{timeLimitMinutes}, #{passScore},
       #{startTime}, #{dueTime}, #{attemptLimited}, #{display},
       #{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+      COALESCE(#{phase, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationJob$Phase, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, 'TEXT_GENERATION'),
       COALESCE(#{attemptCount}, 0), #{nextAttemptAt}, #{leaseUntil}, #{errorCode},
       #{errorMessage}, #{callbackEventId}, #{processingAt}, #{completedAt}, NOW(), NOW())
     ON CONFLICT (requested_by, idempotency_key) DO NOTHING
@@ -66,6 +68,7 @@
       time_limit_minutes=#{timeLimitMinutes}, pass_score=#{passScore}, start_time=#{startTime},
       due_time=#{dueTime}, attempt_limited=#{attemptLimited}, display=#{display},
       status=#{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+      phase=#{phase, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationJob$Phase, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
       attempt_count=#{attemptCount}, next_attempt_at=#{nextAttemptAt}, lease_until=#{leaseUntil},
       error_code=#{errorCode}, error_message=#{errorMessage}, processing_at=#{processingAt},
       callback_event_id=#{callbackEventId}, completed_at=#{completedAt}, updated_at=NOW()

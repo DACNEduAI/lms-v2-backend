@@ -9,6 +9,9 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import edu.ai.lms.config.DatePatternConstants;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,6 +31,14 @@ public class GenerateQuizRequest {
 
     @NotNull(message = "Exam matrix is required")
     private UUID examMatrixId;
+
+    @Valid
+    @Builder.Default
+    private List<VisualRequirement> visualRequirements = new ArrayList<>();
+
+    @Valid
+    @Builder.Default
+    private List<QuestionTypeOverride> questionTypeOverrides = new ArrayList<>();
 
     @Builder.Default
     private List<UUID> selectedMaterialIds = new ArrayList<>();
@@ -60,4 +71,33 @@ public class GenerateQuizRequest {
     private Integer attemptLimited;
 
     private Boolean display;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class VisualRequirement {
+        @NotNull
+        private UUID examMatrixRowId;
+        @NotNull
+        private UUID customLearningLevelId;
+        @Min(0)
+        private int imageQuestionCount;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class QuestionTypeOverride {
+        @NotNull
+        private UUID examMatrixRowId;
+        @NotNull
+        private UUID customLearningLevelId;
+        @NotNull
+        @Pattern(regexp = "MULTIPLE_CHOICE|ESSAY|CODE_RUNNER")
+        private String questionType;
+    }
 }

@@ -200,10 +200,11 @@ ON CONFLICT (custom_learning_level_id, learning_outcome_id) DO NOTHING;
 
 -- 11c. Preserve Legacy Question Counts by Row and Custom Learning Level
 INSERT INTO exam_matrix_row_learning_level_counts
-    (exam_matrix_row_id, custom_learning_level_id, matrix_id, question_count)
+    (exam_matrix_row_id, custom_learning_level_id, matrix_id, question_type, question_count)
 SELECT legacy.exam_matrix_row_id,
        custom_level.id,
        matrix_row.matrix_id,
+       'MULTIPLE_CHOICE',
        level_count.question_count
 FROM (
     VALUES

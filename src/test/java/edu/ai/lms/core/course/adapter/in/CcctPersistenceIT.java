@@ -125,7 +125,7 @@ class CcctPersistenceIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    void archivedProfileRemainsPinnedAndSameItemCannotAppearTwiceInMatrix() {
+    void ccctLifecycleDoesNotAffectMatrixAndDuplicateTopicsAreAllowed() {
         UUID courseId = createCourse();
         UUID courseChapterId = createCourseChapter(courseId, "Pinned chapter");
         CcctProfile profile = savePort.create(profile(
@@ -134,35 +134,27 @@ class CcctPersistenceIT extends IntegrationTestConfiguration {
                 CcctProfileStatus.PUBLISHED,
                 courseChapterId,
                 "Pinned exam content"));
-        UUID itemId = profile.getChapters().getFirst().getTopics().getFirst().getItems().getFirst().getId();
         UUID matrixId = UUID.randomUUID();
 
         jdbcTemplate.update(
                 """
-                INSERT INTO edu.exam_matrices (id, course_id, ccct_profile_id, title)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO edu.exam_matrices (id, course_id, title)
+                VALUES (?, ?, ?)
                 """,
                 matrixId,
                 courseId,
-                profile.getId(),
                 "Pinned matrix");
-        insertMatrixRow(matrixId, courseChapterId, itemId, 0);
-
-        assertThatThrownBy(() -> insertMatrixRow(matrixId, courseChapterId, itemId, 1))
-                .isInstanceOf(DataIntegrityViolationException.class);
+        insertMatrixRow(matrixId, courseChapterId, 0);
+        insertMatrixRow(matrixId, courseChapterId, 1);
 
         jdbcTemplate.update(
                 "UPDATE edu.ccct_profiles SET status = 'ARCHIVED' WHERE id = ?",
                 profile.getId());
 
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT ccct_profile_id FROM edu.exam_matrices WHERE id = ?",
-                UUID.class,
-                matrixId)).isEqualTo(profile.getId());
-        assertThat(jdbcTemplate.queryForObject(
-                "SELECT ccct_item_id FROM edu.exam_matrix_rows WHERE matrix_id = ?",
-                UUID.class,
-                matrixId)).isEqualTo(itemId);
+                "SELECT COUNT(*) FROM edu.exam_matrix_rows WHERE matrix_id = ?",
+                Integer.class,
+                matrixId)).isEqualTo(2);
     }
 
     @Test
@@ -307,18 +299,16 @@ class CcctPersistenceIT extends IntegrationTestConfiguration {
     private void insertMatrixRow(
             UUID matrixId,
             UUID chapterId,
-            UUID itemId,
             int orderIndex) {
         jdbcTemplate.update(
                 """
                 INSERT INTO edu.exam_matrix_rows
-                    (id, matrix_id, chapter_id, ccct_item_id, topic, order_index)
-                VALUES (?, ?, ?, ?, ?, ?)
+                    (id, matrix_id, chapter_id, topic, order_index)
+                VALUES (?, ?, ?, ?, ?)
                 """,
                 UUID.randomUUID(),
                 matrixId,
                 chapterId,
-                itemId,
                 "Pinned exam content",
                 orderIndex);
     }

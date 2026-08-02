@@ -94,18 +94,16 @@ class QuizGenerationProcessingServiceUT {
     }
 
     @Test
-    void shouldPreserveCcctRowsForVersionThreeContract() throws Exception {
+    void shouldPreserveMatrixRowsForVersionFourContract() throws Exception {
         UUID outcomeId = UUID.randomUUID();
         UUID rowId = UUID.randomUUID();
-        UUID itemId = UUID.randomUUID();
         UUID levelId = UUID.randomUUID();
         JsonNode snapshot = objectMapper.readTree("""
                 {
-                  "snapshotVersion": 3,
+                  "snapshotVersion": 4,
                   "examMatrix": [{
                     "rowId": "%s",
-                    "ccctItemId": "%s",
-                    "content": "Canonical CCCT content",
+                    "content": "Independent matrix topic",
                     "learningOutcomes": [
                       {"id": "%s", "code": "LO1", "description": "Explain"}
                     ],
@@ -117,15 +115,15 @@ class QuizGenerationProcessingServiceUT {
                     }]
                   }]
                 }
-                """.formatted(rowId, itemId, outcomeId, levelId, outcomeId));
+                """.formatted(rowId, outcomeId, levelId, outcomeId));
         QuizGenerationProcessingService service = new QuizGenerationProcessingService(
                 null, null, null, null, null, objectMapper);
 
         QuizGenerationProcessingService.AiExamMatrix result =
                 service.toAiExamMatrixFromSnapshot(snapshot);
 
-        assertEquals(3, result.contractVersion());
-        assertEquals(itemId.toString(), result.rows().get(0).path("ccctItemId").asText());
+        assertEquals(4, result.contractVersion());
+        assertFalse(result.rows().get(0).has("ccctItemId"));
         assertEquals("MULTIPLE_CHOICE", result.rows().get(0)
                 .path("levelCounts").get(0).path("questionType").asText());
     }
