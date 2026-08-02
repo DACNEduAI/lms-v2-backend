@@ -26,6 +26,7 @@ public class GenerateQuizCommandMapper {
                                 .toList())
                 .selectedMaterialIds(request.getSelectedMaterialIds())
                 .prompt(request.getPrompt())
+                .questionDefaults(toQuestionDefaults(request.getQuestionDefaults()))
                 .strictMode(request.getStrictMode())
                 .codeRunnerPolicy(request.getCodeRunnerPolicy())
                 .idempotencyKey(idempotencyKey)
@@ -38,5 +39,23 @@ public class GenerateQuizCommandMapper {
                 .attemptLimited(request.getAttemptLimited())
                 .display(request.getDisplay())
                 .build();
+    }
+
+    private GenerateQuizCommand.QuestionDefaults toQuestionDefaults(
+            GenerateQuizRequest.QuestionDefaults defaults) {
+        GenerateQuizRequest.MultipleChoiceDefaults multipleChoice =
+                defaults == null ? null : defaults.getMultipleChoice();
+        int answerOptionCount = multipleChoice == null || multipleChoice.getAnswerOptionCount() == null
+                ? 4 : multipleChoice.getAnswerOptionCount();
+        boolean allowMultipleCorrectAnswers = multipleChoice != null
+                && Boolean.TRUE.equals(multipleChoice.getAllowMultipleCorrectAnswers());
+        boolean requireAnswerExplanation = multipleChoice == null
+                || multipleChoice.getRequireAnswerExplanation() == null
+                || Boolean.TRUE.equals(multipleChoice.getRequireAnswerExplanation());
+        return new GenerateQuizCommand.QuestionDefaults(
+                new GenerateQuizCommand.MultipleChoiceDefaults(
+                        answerOptionCount,
+                        allowMultipleCorrectAnswers,
+                        requireAnswerExplanation));
     }
 }

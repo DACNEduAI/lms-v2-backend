@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
+import edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.ScheduleQuizGenerationJobPort;
@@ -72,10 +73,12 @@ public class QuizGenerationProcessingService {
             List<UUID> materialIds = new ArrayList<>();
             snapshot.path("selectedMaterials").forEach(node -> materialIds.add(UUID.fromString(node.path("materialId").asText())));
             AiExamMatrix aiExamMatrix = toAiExamMatrixFromSnapshot(snapshot);
+            GenerateQuizCommand.QuestionDefaults questionDefaults = questionDefaultsFromSnapshot(snapshot);
             AiGenerationRequest request = new AiGenerationRequest(
                     job.getId(), aiExamMatrix.contractVersion(), job.getCourseId(),
                     snapshot.path("courseTitle").asText(), job.getQuizTitle(),
                     aiExamMatrix.rows(), aiExamMatrix.learningOutcomeIds(), materialIds, job.getPrompt(),
+                    questionDefaults,
                     Boolean.TRUE.equals(job.getStrictMode()), job.getCodeRunnerPolicy(),
                     job.getIdempotencyKey(), callbackUrl(), webhookSecret);
 
@@ -179,6 +182,15 @@ public class QuizGenerationProcessingService {
         return new AiExamMatrix(snapshotVersion, rows, List.copyOf(learningOutcomeIds));
     }
 
+    GenerateQuizCommand.QuestionDefaults questionDefaultsFromSnapshot(JsonNode snapshot) {
+        JsonNode multipleChoice = snapshot.path("questionDefaults").path("multipleChoice");
+        return new GenerateQuizCommand.QuestionDefaults(
+                new GenerateQuizCommand.MultipleChoiceDefaults(
+                        multipleChoice.path("answerOptionCount").asInt(4),
+                        multipleChoice.path("allowMultipleCorrectAnswers").asBoolean(false),
+                        multipleChoice.path("requireAnswerExplanation").asBoolean(true)));
+    }
+
     record AiExamMatrix(int contractVersion, JsonNode rows, List<UUID> learningOutcomeIds) {
     }
 
@@ -192,6 +204,7 @@ public class QuizGenerationProcessingService {
             List<UUID> learningOutcomeIds,
             @JsonProperty("material_ids") List<UUID> selectedMaterialIds,
             String teacherInstruction,
+            GenerateQuizCommand.QuestionDefaults questionDefaults,
             boolean strictMode,
             String codeRunnerPolicy,
             String idempotencyKey,

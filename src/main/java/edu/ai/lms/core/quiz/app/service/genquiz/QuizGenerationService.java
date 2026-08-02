@@ -85,6 +85,8 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         }).toList();
 
         validateTiming(command);
+        GenerateQuizCommand.QuestionDefaults questionDefaults = normalizeQuestionDefaults(
+                command.questionDefaults());
         Map<String, Integer> visualCounts = validateVisualRequirements(context, command.visualRequirements());
         Map<String, String> questionTypes = validateQuestionTypeOverrides(
                 context, command.questionTypeOverrides());
@@ -101,6 +103,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         snapshot.put("questionCount", questionCount);
         snapshot.put("quizTitle", command.quizTitle());
         snapshot.put("teacherInstruction", command.prompt());
+        snapshot.put("questionDefaults", questionDefaults);
         snapshot.put("strictMode", command.strictMode() == null || command.strictMode());
         snapshot.put("codeRunnerPolicy", command.codeRunnerPolicy() == null
                 ? "PRESERVE" : command.codeRunnerPolicy());
@@ -328,6 +331,20 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         if (command.startTime() != null && command.dueTime() != null && command.dueTime().isBefore(command.startTime())) {
             throw new InvalidQuizGenerationRequestException("Quiz due time must not be before start time");
         }
+    }
+
+    private GenerateQuizCommand.QuestionDefaults normalizeQuestionDefaults(
+            GenerateQuizCommand.QuestionDefaults defaults) {
+        GenerateQuizCommand.MultipleChoiceDefaults multipleChoice =
+                defaults == null ? null : defaults.multipleChoice();
+        if (multipleChoice == null) {
+            multipleChoice = new GenerateQuizCommand.MultipleChoiceDefaults(4, false, true);
+        }
+        if (multipleChoice.answerOptionCount() < 4 || multipleChoice.answerOptionCount() > 10) {
+            throw new InvalidQuizGenerationRequestException(
+                    "Answer option count must be between 4 and 10");
+        }
+        return new GenerateQuizCommand.QuestionDefaults(multipleChoice);
     }
 
     private void verifyTeacherMembership(UUID userId, UUID courseId) {

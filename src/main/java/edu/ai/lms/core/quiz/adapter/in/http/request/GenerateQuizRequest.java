@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
@@ -44,6 +45,10 @@ public class GenerateQuizRequest {
     private List<UUID> selectedMaterialIds = new ArrayList<>();
 
     private String prompt;
+
+    @Valid
+    @Builder.Default
+    private QuestionDefaults questionDefaults = new QuestionDefaults();
 
     @Builder.Default
     private Boolean strictMode = true;
@@ -99,5 +104,34 @@ public class GenerateQuizRequest {
         @NotNull
         @Pattern(regexp = "MULTIPLE_CHOICE|ESSAY|CODE_RUNNER")
         private String questionType;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class QuestionDefaults {
+        @Valid
+        @Builder.Default
+        private MultipleChoiceDefaults multipleChoice = new MultipleChoiceDefaults();
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class MultipleChoiceDefaults {
+        @Min(value = 4, message = "Answer option count must be at least 4")
+        @Max(value = 10, message = "Answer option count must not exceed 10")
+        @Builder.Default
+        private Integer answerOptionCount = 4;
+
+        @Builder.Default
+        private Boolean allowMultipleCorrectAnswers = false;
+
+        @Builder.Default
+        private Boolean requireAnswerExplanation = true;
     }
 }

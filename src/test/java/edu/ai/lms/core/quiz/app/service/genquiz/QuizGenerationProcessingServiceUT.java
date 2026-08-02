@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class QuizGenerationProcessingServiceUT {
 
@@ -135,7 +136,11 @@ class QuizGenerationProcessingServiceUT {
         QuizGenerationProcessingService.AiGenerationRequest request =
                 new QuizGenerationProcessingService.AiGenerationRequest(
                         UUID.randomUUID(), 2, courseId, "DSA", "Quiz", objectMapper.createArrayNode(),
-                        java.util.List.of(), java.util.List.of(materialId), null, true, "PRESERVE",
+                        java.util.List.of(), java.util.List.of(materialId), null,
+                        new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.QuestionDefaults(
+                                new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.MultipleChoiceDefaults(
+                                        6, true, false)),
+                        true, "PRESERVE",
                         "idempotency-key", "http://lms/callback", "secret");
 
         JsonNode json = objectMapper.valueToTree(request);
@@ -146,5 +151,26 @@ class QuizGenerationProcessingServiceUT {
         assertEquals("idempotency-key", json.path("idempotencyKey").asText());
         assertFalse(json.has("courseId"));
         assertFalse(json.has("selectedMaterialIds"));
+        assertEquals(6, json.path("questionDefaults").path("multipleChoice")
+                .path("answerOptionCount").asInt());
+        assertTrue(json.path("questionDefaults").path("multipleChoice")
+                .path("allowMultipleCorrectAnswers").asBoolean());
+        assertFalse(json.path("questionDefaults").path("multipleChoice")
+                .path("requireAnswerExplanation").asBoolean());
+    }
+
+    @Test
+    void shouldDefaultQuestionDefaultsForOlderSnapshots() throws Exception {
+        JsonNode snapshot = objectMapper.readTree("""
+                {"snapshotVersion": 4}
+                """);
+        QuizGenerationProcessingService service = new QuizGenerationProcessingService(
+                null, null, null, null, null, objectMapper);
+
+        var defaults = service.questionDefaultsFromSnapshot(snapshot).multipleChoice();
+
+        assertEquals(4, defaults.answerOptionCount());
+        assertFalse(defaults.allowMultipleCorrectAnswers());
+        assertTrue(defaults.requireAnswerExplanation());
     }
 }
