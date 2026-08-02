@@ -1,11 +1,14 @@
-#!/bin/bash
+#!/bin/sh
+set -eu
 
-echo "🚀 Initializing LocalStack S3 buckets..."
+echo "Initializing LocalStack S3 buckets..."
 
-# 1. Create the bucket
-awslocal s3 mb s3://lms-materials
+# Create the bucket only when it is absent, so container restarts are safe.
+if ! awslocal s3api head-bucket --bucket lms-materials >/dev/null 2>&1; then
+  awslocal s3 mb s3://lms-materials
+fi
 
-# 2. Apply the CORS configuration
+# Apply CORS on every startup so the configuration remains correct.
 awslocal s3api put-bucket-cors --bucket lms-materials --cors-configuration '{
   "CORSRules": [{
     "AllowedOrigins": ["*"],
@@ -16,4 +19,4 @@ awslocal s3api put-bucket-cors --bucket lms-materials --cors-configuration '{
   }]
 }'
 
-echo "✅ S3 bucket 'lms-materials' created successfully!"
+echo "S3 bucket 'lms-materials' is ready."
