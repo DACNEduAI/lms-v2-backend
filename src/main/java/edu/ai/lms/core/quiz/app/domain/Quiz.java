@@ -41,6 +41,21 @@ public class Quiz {
     private Boolean display = true;
 
     @Builder.Default
+    private QuizLifecycleStatus lifecycleStatus = QuizLifecycleStatus.PUBLISHED;
+
+    @Builder.Default
+    private QuizSourceType sourceType = QuizSourceType.MANUAL;
+
+    private UUID originalQuizId;
+
+    @Builder.Default
+    private long version = 0;
+
+    private UUID publishedBy;
+
+    private LocalDateTime publishedAt;
+
+    @Builder.Default
     private List<Question> questions = new ArrayList<>();
 
     private LocalDateTime createdAt;

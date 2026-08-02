@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.quiz.adapter.out.persistence.QuestionBankItemRepository">
+
+  <resultMap id="QuestionBankItemResultMap" type="edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItem">
+    <id property="id" column="id" />
+    <result property="courseId" column="course_id" />
+    <result property="chapterId" column="chapter_id" />
+    <result property="ccctItemId" column="ccct_item_id" />
+    <result property="content" column="content" />
+    <result property="questionType" column="question_type" javaType="edu.ai.lms.core.quiz.app.domain.Question$QuestionType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="cognitiveLevelCode" column="cognitive_level_code" />
+    <result property="difficulty" column="difficulty" />
+    <result property="status" column="status" javaType="edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItemStatus" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="sourceType" column="source_type" javaType="edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="createdBy" column="created_by" />
+    <result property="readyBy" column="ready_by" />
+    <result property="readyAt" column="ready_at" />
+    <result property="version" column="version" />
+    <result property="createdAt" column="created_at" />
+    <result property="updatedAt" column="updated_at" />
+  </resultMap>
+
+  <resultMap id="QuestionBankAnswerResultMap" type="edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankAnswer">
+    <id property="id" column="id" />
+    <result property="questionBankItemId" column="question_bank_item_id" />
+    <result property="content" column="content" />
+    <result property="correct" column="is_correct" />
+    <result property="explanation" column="explanation" />
+    <result property="orderIndex" column="order_index" />
+    <result property="createdAt" column="created_at" />
+    <result property="updatedAt" column="updated_at" />
+  </resultMap>
+
+  <select id="findByCourseIdAndId" resultMap="QuestionBankItemResultMap">
+    SELECT id, course_id, chapter_id, ccct_item_id, content, question_type,
+           cognitive_level_code, difficulty, status, source_type, created_by,
+           ready_by, ready_at, version, created_at, updated_at
+    FROM edu.question_bank_items
+    WHERE course_id = #{courseId} AND id = #{itemId}
+  </select>
+
+  <select id="findAnswersByItemId" resultMap="QuestionBankAnswerResultMap">
+    SELECT id, question_bank_item_id, content, is_correct, explanation,
+           order_index, created_at, updated_at
+    FROM edu.question_bank_answers
+    WHERE question_bank_item_id = #{itemId}
+    ORDER BY order_index
+  </select>
+
+  <select id="findLearningOutcomeIdsByItemId" resultType="java.util.UUID">
+    SELECT learning_outcome_id
+    FROM edu.question_bank_item_learning_outcomes
+    WHERE question_bank_item_id = #{itemId}
+    ORDER BY learning_outcome_id
+  </select>
+
+  <insert id="insertItem">
+    INSERT INTO edu.question_bank_items
+      (id, course_id, chapter_id, ccct_item_id, content, question_type,
+       cognitive_level_code, difficulty, status, source_type, created_by,
+       ready_by, ready_at, version, created_at, updated_at)
+    VALUES
+      (#{id}, #{courseId}, #{chapterId}, #{ccctItemId}, #{content},
+       #{questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+       #{cognitiveLevelCode}, #{difficulty},
+       #{status, javaType=edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItemStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+       #{sourceType, javaType=edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+       #{createdBy}, #{readyBy}, #{readyAt}, #{version}, NOW(), NOW())
+  </insert>
+
+  <update id="updateDraft">
+    UPDATE edu.question_bank_items
+    SET chapter_id = #{item.chapterId},
+        ccct_item_id = #{item.ccctItemId},
+        content = #{item.content},
+        question_type = #{item.questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        cognitive_level_code = #{item.cognitiveLevelCode},
+        difficulty = #{item.difficulty},
+        version = version + 1,
+        updated_at = NOW()
+    WHERE id = #{item.id}
+      AND course_id = #{item.courseId}
+      AND status = 'DRAFT'
+      AND version = #{expectedVersion}
+  </update>
+
+  <delete id="deleteAnswersByItemId">
+    DELETE FROM edu.question_bank_answers WHERE question_bank_item_id = #{itemId}
+  </delete>
+
+  <delete id="deleteLearningOutcomesByItemId">
+    DELETE FROM edu.question_bank_item_learning_outcomes WHERE question_bank_item_id = #{itemId}
+  </delete>
+
+  <insert id="insertAnswers">
+    INSERT INTO edu.question_bank_answers
+      (id, question_bank_item_id, content, is_correct, explanation, order_index, created_at, updated_at)
+    VALUES
+    <foreach collection="answers" item="answer" separator=",">
+      (#{answer.id}, #{answer.questionBankItemId}, #{answer.content}, #{answer.correct},
+       #{answer.explanation}, #{answer.orderIndex}, NOW(), NOW())
+    </foreach>
+  </insert>
+
+  <insert id="insertLearningOutcomes">
+    INSERT INTO edu.question_bank_item_learning_outcomes
+      (question_bank_item_id, learning_outcome_id)
+    VALUES
+    <foreach collection="learningOutcomeIds" item="learningOutcomeId" separator=",">
+      (#{itemId}, #{learningOutcomeId})
+    </foreach>
+  </insert>
+
+</mapper>

@@ -15,6 +15,8 @@ import edu.ai.lms.common.api.ErrorResponse;
 import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.InvalidQuizGenerationRequestException;
 import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;
+import edu.ai.lms.core.quiz.app.exception.QuestionBankConflictException;
+import edu.ai.lms.core.quiz.app.exception.QuestionBankValidationException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotVisible;
 import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
@@ -31,6 +33,20 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
  */
 @RestControllerAdvice(basePackages = "edu.ai.lms.core.quiz.adapter.in")
 public class QuizExceptionHandler {
+
+    @ExceptionHandler(QuestionBankConflictException.class)
+    public ResponseEntity<ErrorResponse> handleQuestionBankConflict(QuestionBankConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.builder()
+                .status(HttpStatus.CONFLICT.value()).error("Question Bank Conflict")
+                .message(ex.getMessage()).build());
+    }
+
+    @ExceptionHandler(QuestionBankValidationException.class)
+    public ResponseEntity<ErrorResponse> handleQuestionBankValidation(QuestionBankValidationException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ErrorResponse.builder()
+                .status(HttpStatus.UNPROCESSABLE_ENTITY.value()).error("Question Bank Validation Failed")
+                .message(ex.getMessage()).build());
+    }
 
     @ExceptionHandler(InvalidQuizGenerationRequestException.class)
     public ResponseEntity<ErrorResponse> handleInvalidGenerationRequest(InvalidQuizGenerationRequestException ex) {

@@ -80,6 +80,13 @@ public class ModifyQuestionService implements ModifyQuestionUseCase {
         Question updatedQuestion = command.question();
         updatedQuestion.setId(existingQuestion.getId());
         updatedQuestion.setQuizId(existingQuestion.getQuizId());
+        updatedQuestion.setReviewStatus(existingQuestion.getReviewStatus());
+        updatedQuestion.setSourceType(existingQuestion.getSourceType());
+        updatedQuestion.setSourceBankItemId(existingQuestion.getSourceBankItemId());
+        updatedQuestion.setSourceQuestionId(existingQuestion.getSourceQuestionId());
+        updatedQuestion.setVersion(existingQuestion.getVersion());
+        updatedQuestion.setReviewedBy(existingQuestion.getReviewedBy());
+        updatedQuestion.setReviewedAt(existingQuestion.getReviewedAt());
 
         // Xử lý ảnh nếu có
         processQuestionImages(updatedQuestion, command.quizId(), command.images());

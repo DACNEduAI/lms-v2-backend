@@ -17,6 +17,8 @@ import edu.ai.lms.common.event.SystemNotificationEvent;
 import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus;
+import edu.ai.lms.core.quiz.app.domain.QuizSourceType;
 import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.TimeValidationException;
@@ -82,6 +84,18 @@ public class CreateQuizService implements CreateQuizUseCase {
         }
         if (quiz.getDisplay() == null) {
             quiz.setDisplay(true);
+        }
+        quiz.setLifecycleStatus(Boolean.TRUE.equals(quiz.getDisplay())
+                ? QuizLifecycleStatus.PUBLISHED
+                : QuizLifecycleStatus.DRAFT);
+        quiz.setSourceType(QuizSourceType.MANUAL);
+        quiz.setVersion(0);
+        if (quiz.getLifecycleStatus() == QuizLifecycleStatus.PUBLISHED) {
+            quiz.setPublishedBy(user.getId());
+            quiz.setPublishedAt(LocalDateTime.now());
+        } else {
+            quiz.setPublishedBy(null);
+            quiz.setPublishedAt(null);
         }
 
         if (user.getRole() == Roles.TEACHER) {

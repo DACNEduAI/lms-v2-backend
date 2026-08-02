@@ -40,6 +40,23 @@ public class Question {
     private UUID quizId;
 
     @Builder.Default
+    private QuestionReviewStatus reviewStatus = QuestionReviewStatus.APPROVED;
+
+    @Builder.Default
+    private QuestionSourceType sourceType = QuestionSourceType.MANUAL;
+
+    private UUID sourceBankItemId;
+
+    private UUID sourceQuestionId;
+
+    @Builder.Default
+    private long version = 0;
+
+    private UUID reviewedBy;
+
+    private LocalDateTime reviewedAt;
+
+    @Builder.Default
     private List<Answer> answers = new ArrayList<>();
 
     private List<Image> images;

@@ -105,6 +105,12 @@ public class ModifyQuizService implements ModifyQuizUseCase {
                 .studentId(existingQuiz.getStudentId())
                 .teacherId(existingQuiz.getTeacherId())
                 .display(requestedQuiz.getDisplay() != null ? requestedQuiz.getDisplay() : existingQuiz.getDisplay())
+                .lifecycleStatus(existingQuiz.getLifecycleStatus())
+                .sourceType(existingQuiz.getSourceType())
+                .originalQuizId(existingQuiz.getOriginalQuizId())
+                .version(existingQuiz.getVersion())
+                .publishedBy(existingQuiz.getPublishedBy())
+                .publishedAt(existingQuiz.getPublishedAt())
                 .createdAt(existingQuiz.getCreatedAt())
                 .updatedAt(existingQuiz.getUpdatedAt())
                 .build();

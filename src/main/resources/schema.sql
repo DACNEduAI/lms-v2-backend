@@ -19,8 +19,12 @@ DROP TABLE IF EXISTS
     enrollments,
     quizzes,
     questions,
+    question_generation_provenance,
     question_images,
     answers,
+    question_bank_item_learning_outcomes,
+    question_bank_answers,
+    question_bank_items,
     attempts,
     quiz_generation_jobs,
     quiz_chapters,
@@ -429,6 +433,66 @@ CREATE TABLE IF NOT EXISTS enrollments
     PRIMARY KEY (course_id, user_id)
 );
 
+-- Course-scoped reusable question masters. Quiz questions always receive a
+-- physical snapshot; they never share live content with this table.
+CREATE TABLE IF NOT EXISTS question_bank_items
+(
+    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id            UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+    chapter_id           UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
+    ccct_item_id         UUID REFERENCES ccct_items (id) ON DELETE SET NULL,
+    content              TEXT         NOT NULL CHECK (btrim(content) <> ''),
+    question_type        VARCHAR(30)  NOT NULL
+        CHECK (question_type IN ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')),
+    cognitive_level_code VARCHAR(100),
+    difficulty           VARCHAR(30),
+    status               VARCHAR(30)  NOT NULL DEFAULT 'DRAFT'
+        CHECK (status IN ('DRAFT', 'READY_FOR_USE', 'ARCHIVED')),
+    source_type          VARCHAR(30)  NOT NULL DEFAULT 'MANUAL'
+        CHECK (source_type IN ('MANUAL', 'QUIZ_COPY', 'AI_GENERATED', 'IMPORTED')),
+    created_by           UUID REFERENCES users (id) ON DELETE SET NULL,
+    ready_by             UUID REFERENCES users (id) ON DELETE SET NULL,
+    ready_at             TIMESTAMP,
+    version              BIGINT       NOT NULL DEFAULT 0 CHECK (version >= 0),
+    created_at           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_question_bank_course_status_updated
+    ON question_bank_items (course_id, status, updated_at DESC, id);
+CREATE INDEX IF NOT EXISTS idx_question_bank_course_chapter
+    ON question_bank_items (course_id, chapter_id);
+CREATE INDEX IF NOT EXISTS idx_question_bank_course_ccct
+    ON question_bank_items (course_id, ccct_item_id);
+CREATE INDEX IF NOT EXISTS idx_question_bank_course_type
+    ON question_bank_items (course_id, question_type);
+
+CREATE TABLE IF NOT EXISTS question_bank_answers
+(
+    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    question_bank_item_id UUID        NOT NULL REFERENCES question_bank_items (id) ON DELETE CASCADE,
+    content               TEXT        NOT NULL CHECK (btrim(content) <> ''),
+    is_correct            BOOLEAN     NOT NULL DEFAULT false,
+    explanation           TEXT,
+    order_index           INTEGER     NOT NULL CHECK (order_index >= 0),
+    created_at            TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at            TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_question_bank_answer_order UNIQUE (question_bank_item_id, order_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_question_bank_answers_item
+    ON question_bank_answers (question_bank_item_id, order_index);
+
+CREATE TABLE IF NOT EXISTS question_bank_item_learning_outcomes
+(
+    question_bank_item_id UUID NOT NULL REFERENCES question_bank_items (id) ON DELETE CASCADE,
+    learning_outcome_id   UUID NOT NULL REFERENCES learning_outcomes (id) ON DELETE RESTRICT,
+    PRIMARY KEY (question_bank_item_id, learning_outcome_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_question_bank_outcomes_outcome
+    ON question_bank_item_learning_outcomes (learning_outcome_id, question_bank_item_id);
+
 -- Quizzes table
 CREATE TABLE IF NOT EXISTS quizzes
 (
@@ -444,9 +508,22 @@ CREATE TABLE IF NOT EXISTS quizzes
     student_id         UUID REFERENCES students (user_id),
     teacher_id         UUID REFERENCES teachers (user_id),
     display            BOOLEAN      NOT NULL DEFAULT true,
+    lifecycle_status   VARCHAR(30)  NOT NULL DEFAULT 'PUBLISHED'
+        CHECK (lifecycle_status IN ('DRAFT', 'REVIEW_PENDING', 'READY_TO_PUBLISH', 'PUBLISHED', 'ARCHIVED')),
+    source_type        VARCHAR(30)  NOT NULL DEFAULT 'MANUAL'
+        CHECK (source_type IN ('MANUAL', 'AI_GENERATED', 'CLONED')),
+    original_quiz_id   UUID REFERENCES quizzes (id) ON DELETE SET NULL,
+    version            BIGINT       NOT NULL DEFAULT 0 CHECK (version >= 0),
+    published_by       UUID REFERENCES users (id) ON DELETE SET NULL,
+    published_at       TIMESTAMP,
     created_at         TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
     updated_at         TIMESTAMP             DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_quizzes_course_lifecycle_updated
+    ON quizzes (course_id, lifecycle_status, updated_at DESC, id);
+CREATE INDEX IF NOT EXISTS idx_quizzes_original
+    ON quizzes (original_quiz_id);
 
 -- Durable business queue for asynchronous AI quiz generation. Quartz only
 -- stores scheduler execution state; this table remains the source of truth.
@@ -496,13 +573,49 @@ CREATE INDEX IF NOT EXISTS idx_quiz_generation_requester
 -- Questions table
 CREATE TABLE IF NOT EXISTS questions
 (
-    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    content    TEXT,
-    type       VARCHAR(50),
-    quiz_id    UUID REFERENCES quizzes (id) ON DELETE CASCADE,
-    created_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    content             TEXT,
+    type                VARCHAR(50),
+    quiz_id             UUID REFERENCES quizzes (id) ON DELETE CASCADE,
+    review_status       VARCHAR(30) NOT NULL DEFAULT 'APPROVED'
+        CHECK (review_status IN ('PENDING_REVIEW', 'APPROVED', 'NEEDS_REVISION', 'REJECTED')),
+    source_type         VARCHAR(30) NOT NULL DEFAULT 'MANUAL'
+        CHECK (source_type IN ('MANUAL', 'BANK_COPY', 'AI_GENERATED', 'QUIZ_CLONE')),
+    source_bank_item_id UUID REFERENCES question_bank_items (id) ON DELETE SET NULL,
+    source_question_id  UUID REFERENCES questions (id) ON DELETE SET NULL,
+    version             BIGINT      NOT NULL DEFAULT 0 CHECK (version >= 0),
+    reviewed_by         UUID REFERENCES users (id) ON DELETE SET NULL,
+    reviewed_at         TIMESTAMP,
+    created_at          TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_questions_quiz_review
+    ON questions (quiz_id, review_status, created_at, id);
+CREATE INDEX IF NOT EXISTS idx_questions_source_bank
+    ON questions (source_bank_item_id);
+CREATE INDEX IF NOT EXISTS idx_questions_source_question
+    ON questions (source_question_id);
+
+-- AI-only allocation history. Mutable planning entities use SET NULL while the
+-- immutable allocation snapshot remains available for audit/review checks.
+CREATE TABLE IF NOT EXISTS question_generation_provenance
+(
+    question_id              UUID PRIMARY KEY REFERENCES questions (id) ON DELETE CASCADE,
+    generation_job_id        UUID NOT NULL REFERENCES quiz_generation_jobs (id) ON DELETE RESTRICT,
+    matrix_row_id            UUID REFERENCES exam_matrix_rows (id) ON DELETE SET NULL,
+    ccct_item_id             UUID REFERENCES ccct_items (id) ON DELETE SET NULL,
+    custom_learning_level_id UUID REFERENCES custom_learning_levels (id) ON DELETE SET NULL,
+    question_type            VARCHAR(30) NOT NULL
+        CHECK (question_type IN ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')),
+    allocation_snapshot      JSONB       NOT NULL,
+    created_at               TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_question_provenance_job
+    ON question_generation_provenance (generation_job_id);
+CREATE INDEX IF NOT EXISTS idx_question_provenance_allocation
+    ON question_generation_provenance (matrix_row_id, custom_learning_level_id, question_type);
 
 CREATE TABLE IF NOT EXISTS question_images
 (

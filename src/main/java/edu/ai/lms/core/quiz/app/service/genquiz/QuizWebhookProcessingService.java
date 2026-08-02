@@ -7,7 +7,11 @@ import edu.ai.lms.core.quiz.adapter.in.http.request.QuizWebhookRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
+import edu.ai.lms.core.quiz.app.domain.QuestionReviewStatus;
+import edu.ai.lms.core.quiz.app.domain.QuestionSourceType;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus;
+import edu.ai.lms.core.quiz.app.domain.QuizSourceType;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
 import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
@@ -328,6 +332,8 @@ public class QuizWebhookProcessingService {
                 .dueTime(Boolean.TRUE.equals(job.getUnlimited()) ? null : job.getDueTime())
                 .attemptLimited(job.getAttemptLimited())
                 .display(false)
+                .lifecycleStatus(QuizLifecycleStatus.REVIEW_PENDING)
+                .sourceType(QuizSourceType.AI_GENERATED)
                 .build();
         Quiz savedQuiz = saveQuizPort.save(quiz);
         LinkedHashSet<UUID> quizOutcomeIds = new LinkedHashSet<>();
@@ -340,6 +346,8 @@ public class QuizWebhookProcessingService {
             Question savedQuestion = saveQuestionPort.save(Question.builder()
                     .content(item.getContent())
                     .type(item.getType() == null ? Question.QuestionType.ESSAY : item.getType())
+                    .reviewStatus(QuestionReviewStatus.PENDING_REVIEW)
+                    .sourceType(QuestionSourceType.AI_GENERATED)
                     .quizId(savedQuiz.getId()).build());
             if (!outcomeIds.isEmpty()) {
                 saveQuestionLearningOutcomePort.addLearningOutcomes(savedQuestion.getId(), outcomeIds);
