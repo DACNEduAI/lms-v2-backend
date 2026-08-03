@@ -31,7 +31,7 @@ public class QuizWorkflowController {
             @PathVariable UUID courseId,
             @PathVariable UUID quizId,
             @Valid @RequestBody AddBankQuestionsRequest request) {
-        return ResponseEntity.ok(useCase.addBankItems(courseId, quizId, request.version(), request.bankItemIds())
+        return ResponseEntity.ok(useCase.addBankQuestions(courseId, quizId, request.version(), request.bankQuestionIds())
                 .stream().map(QuizQuestionSnapshotResponse::from).toList());
     }
 

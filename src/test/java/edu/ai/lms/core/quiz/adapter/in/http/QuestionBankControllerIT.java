@@ -31,7 +31,8 @@ class QuestionBankControllerIT extends IntegrationTestConfiguration {
     private static UUID chapterId;
     private static UUID otherChapterId;
     private static UUID learningOutcomeId;
-    private static UUID itemId;
+    private static UUID draftId;
+    private static UUID bankQuestionId;
 
     @Test
     @Order(1)
@@ -51,20 +52,18 @@ class QuestionBankControllerIT extends IntegrationTestConfiguration {
         var response = owner().body(itemBody(chapterId, learningOutcomeId, "What is stable sorting?"))
                 .post(basePath(), courseId)
                 .then().statusCode(201)
-                .body("status", equalTo("DRAFT"))
                 .body("version", equalTo(0))
                 .body("answers", hasSize(2))
                 .body("duplicateWarning", equalTo(false))
                 .extract();
-        itemId = UUID.fromString(response.path("id"));
+        draftId = UUID.fromString(response.path("id"));
 
         owner().queryParam("query", "stable")
-                .queryParam("status", "DRAFT")
                 .get(basePath(), courseId)
                 .then().statusCode(200)
                 .body("total", equalTo(1))
-                .body("items[0].id", equalTo(itemId.toString()));
-        owner().get(basePath() + "/{itemId}", courseId, itemId)
+                .body("items[0].id", equalTo(draftId.toString()));
+        owner().get(basePath() + "/{draftId}", courseId, draftId)
                 .then().statusCode(200)
                 .body("learningOutcomeIds[0]", equalTo(learningOutcomeId.toString()));
     }
@@ -78,59 +77,59 @@ class QuestionBankControllerIT extends IntegrationTestConfiguration {
 
         owner().queryParam("version", 7)
                 .body(itemBody(chapterId, learningOutcomeId, "Changed"))
-                .put(basePath() + "/{itemId}", courseId, itemId)
+                .put(basePath() + "/{draftId}", courseId, draftId)
                 .then().statusCode(409);
     }
 
     @Test
     @Order(4)
-    void updatesAndMarksCompleteDraftReady() {
+    void updatesAndMovesCompleteDraftToValidatedBank() {
         owner().queryParam("version", 0)
                 .body(itemBody(chapterId, learningOutcomeId, "What makes sorting stable?"))
-                .put(basePath() + "/{itemId}", courseId, itemId)
+                .put(basePath() + "/{draftId}", courseId, draftId)
                 .then().statusCode(200)
                 .body("version", equalTo(1));
 
-        owner().body("{\"version\":1}")
-                .post(basePath() + "/{itemId}/ready", courseId, itemId)
+        var validated = owner().body("{\"version\":1}")
+                .post(basePath() + "/{draftId}/validate", courseId, draftId)
                 .then().statusCode(200)
-                .body("status", equalTo("READY_FOR_USE"))
-                .body("version", equalTo(2))
-                .body("readyBy", notNullValue());
+                .body("originDraftId", equalTo(draftId.toString()))
+                .body("validatedBy", notNullValue())
+                .extract();
+        bankQuestionId = UUID.fromString(validated.path("id"));
+
+        owner().get(basePath() + "/{draftId}", courseId, draftId).then().statusCode(404);
+        owner().get(bankPath() + "/{questionId}", courseId, bankQuestionId)
+                .then().statusCode(200)
+                .body("content", equalTo("What makes sorting stable?"));
     }
 
     @Test
     @Order(5)
-    void duplicateCreatesDraftWarningAndCannotBecomeDuplicateReady() {
-        var duplicate = owner().body("{\"version\":2}")
-                .post(basePath() + "/{itemId}/duplicate", courseId, itemId)
-                .then().statusCode(201)
-                .body("status", equalTo("DRAFT"))
-                .body("duplicateWarning", equalTo(true))
-                .extract();
-        UUID duplicateId = UUID.fromString(duplicate.path("id"));
-
+    void duplicateDraftCannotBeValidatedAsSecondBankQuestion() {
+        UUID duplicateId = UUID.fromString(owner()
+                .body(itemBody(chapterId, learningOutcomeId, "What makes sorting stable?"))
+                .post(basePath(), courseId)
+                .then().statusCode(201).body("duplicateWarning", equalTo(true))
+                .extract().path("id"));
         owner().body("{\"version\":0}")
-                .post(basePath() + "/{itemId}/ready", courseId, duplicateId)
+                .post(basePath() + "/{draftId}/validate", courseId, duplicateId)
                 .then().statusCode(409);
         owner().queryParam("version", 0)
-                .delete(basePath() + "/{itemId}", courseId, duplicateId)
+                .delete(basePath() + "/{draftId}", courseId, duplicateId)
                 .then().statusCode(204);
     }
 
     @Test
     @Order(6)
-    void archivesReadyAndEnforcesCourseOwnership() {
+    void enforcesCourseOwnership() {
         given().contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + otherToken)
                 .get(basePath(), courseId)
                 .then().statusCode(403);
 
-        owner().body("{\"version\":2}")
-                .post(basePath() + "/{itemId}/archive", courseId, itemId)
-                .then().statusCode(200)
-                .body("status", equalTo("ARCHIVED"))
-                .body("version", equalTo(3));
+        owner().get(bankPath(), courseId).then().statusCode(200)
+                .body("items[0].id", equalTo(bankQuestionId.toString()));
     }
 
     private io.restassured.specification.RequestSpecification owner() {
@@ -180,7 +179,7 @@ class QuestionBankControllerIT extends IntegrationTestConfiguration {
     private String itemBody(UUID targetChapterId, UUID targetOutcomeId, String content) {
         return """
                 {"chapterId":"%s","content":"%s","questionType":"MULTIPLE_CHOICE",
-                 "cognitiveLevelCode":"UNDERSTAND","difficulty":"MEDIUM",
+                 "cognitiveLevelCode":"UNDERSTAND",
                  "answers":[
                    {"content":"Yes","correct":true,"explanation":"Correct"},
                    {"content":"No","correct":false}
@@ -189,6 +188,10 @@ class QuestionBankControllerIT extends IntegrationTestConfiguration {
     }
 
     private String basePath() {
-        return "/api/courses/{courseId}/question-bank/items";
+        return "/api/courses/{courseId}/question-drafts";
+    }
+
+    private String bankPath() {
+        return "/api/courses/{courseId}/question-bank/questions";
     }
 }

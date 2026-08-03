@@ -19,8 +19,7 @@ import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus;
 import edu.ai.lms.core.quiz.app.domain.QuizSourceType;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankAnswer;
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItem;
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItemStatus;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionBankItemPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionGenerationProvenancePort;
@@ -54,16 +53,15 @@ class QuestionBankFoundationPersistenceIT extends IntegrationTestConfiguration {
     @Test
     void createsLoadsAndOptimisticallyReplacesQuestionBankDraft() {
         FoundationIds ids = createFoundationData();
-        QuestionBankItem saved = saveBankItemPort.create(bankItem(ids, "Original question"));
+        QuestionDraft saved = saveBankItemPort.createDraft(bankItem(ids, "Original question"));
 
-        assertThat(saved.getStatus()).isEqualTo(QuestionBankItemStatus.DRAFT);
         assertThat(saved.getSourceType()).isEqualTo(QuestionBankSourceType.MANUAL);
         assertThat(saved.getVersion()).isZero();
         assertThat(saved.getAnswers()).extracting(QuestionBankAnswer::getContent)
                 .containsExactly("Option A", "Option B");
         assertThat(saved.getLearningOutcomeIds()).containsExactly(ids.learningOutcomeId());
 
-        QuestionBankItem replacement = bankItem(ids, "Replacement question");
+        QuestionDraft replacement = bankItem(ids, "Replacement question");
         replacement.setId(saved.getId());
         replacement.setAnswers(List.of(
                 answer("Replacement A", true),
@@ -72,18 +70,18 @@ class QuestionBankFoundationPersistenceIT extends IntegrationTestConfiguration {
 
         assertThat(saveBankItemPort.replaceDraft(replacement, 0)).isTrue();
 
-        QuestionBankItem reloaded = loadBankItemPort
-                .findByCourseIdAndId(ids.courseId(), saved.getId())
+        QuestionDraft reloaded = loadBankItemPort
+                .findDraftByCourseIdAndId(ids.courseId(), saved.getId())
                 .orElseThrow();
         assertThat(reloaded.getVersion()).isEqualTo(1);
         assertThat(reloaded.getContent()).isEqualTo("Replacement question");
         assertThat(reloaded.getAnswers()).extracting(QuestionBankAnswer::getOrderIndex)
                 .containsExactly(0, 1, 2);
 
-        QuestionBankItem stale = bankItem(ids, "Stale overwrite");
+        QuestionDraft stale = bankItem(ids, "Stale overwrite");
         stale.setId(saved.getId());
         assertThat(saveBankItemPort.replaceDraft(stale, 0)).isFalse();
-        assertThat(loadBankItemPort.findByCourseIdAndId(ids.courseId(), saved.getId()).orElseThrow().getContent())
+        assertThat(loadBankItemPort.findDraftByCourseIdAndId(ids.courseId(), saved.getId()).orElseThrow().getContent())
                 .isEqualTo("Replacement question");
     }
 
@@ -155,19 +153,19 @@ class QuestionBankFoundationPersistenceIT extends IntegrationTestConfiguration {
     @Test
     void deletingChapterClearsClassificationWithoutDeletingBankItem() {
         FoundationIds ids = createFoundationData();
-        QuestionBankItem saved = saveBankItemPort.create(bankItem(ids, "Historical bank question"));
+        QuestionDraft saved = saveBankItemPort.createDraft(bankItem(ids, "Historical bank question"));
 
         jdbc.update("DELETE FROM edu.chapters WHERE chapter_id = ?", ids.chapterId());
 
-        QuestionBankItem reloaded = loadBankItemPort
-                .findByCourseIdAndId(ids.courseId(), saved.getId())
+        QuestionDraft reloaded = loadBankItemPort
+                .findDraftByCourseIdAndId(ids.courseId(), saved.getId())
                 .orElseThrow();
         assertThat(reloaded.getChapterId()).isNull();
         assertThat(reloaded.getContent()).isEqualTo("Historical bank question");
     }
 
-    private QuestionBankItem bankItem(FoundationIds ids, String content) {
-        return QuestionBankItem.builder()
+    private QuestionDraft bankItem(FoundationIds ids, String content) {
+        return QuestionDraft.builder()
                 .courseId(ids.courseId())
                 .chapterId(ids.chapterId())
                 .content(content)

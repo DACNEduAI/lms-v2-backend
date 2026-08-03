@@ -84,7 +84,7 @@ public class ModifyQuestionService implements ModifyQuestionUseCase {
         updatedQuestion.setQuizId(existingQuestion.getQuizId());
         updatedQuestion.setReviewStatus(existingQuestion.getReviewStatus());
         updatedQuestion.setSourceType(existingQuestion.getSourceType());
-        updatedQuestion.setSourceBankItemId(existingQuestion.getSourceBankItemId());
+        updatedQuestion.setSourceBankQuestionId(existingQuestion.getSourceBankQuestionId());
         updatedQuestion.setSourceQuestionId(existingQuestion.getSourceQuestionId());
         updatedQuestion.setVersion(existingQuestion.getVersion() + 1);
         updatedQuestion.setReviewedBy(existingQuestion.getReviewedBy());

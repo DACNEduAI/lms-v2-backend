@@ -5,14 +5,13 @@ import java.util.Set;
 import java.util.UUID;
 
 import edu.ai.lms.core.quiz.app.domain.Question;
+import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode;
 
 public record QuestionBankItemCommand(
         UUID chapterId,
-        UUID ccctItemId,
         String content,
         Question.QuestionType questionType,
-        String cognitiveLevelCode,
-        String difficulty,
+        CognitiveLevelCode cognitiveLevelCode,
         List<Answer> answers,
         Set<UUID> learningOutcomeIds) {
 

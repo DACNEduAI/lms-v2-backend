@@ -9,12 +9,14 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode;
+import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelOption;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankAnswer;
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItem;
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItemStatus;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankPage;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSearchCriteria;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionBankItemPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionBankItemPort;
 import lombok.RequiredArgsConstructor;
@@ -26,107 +28,169 @@ class QuestionBankItemPersistenceAdapter implements LoadQuestionBankItemPort, Sa
 
     @Override
     @Transactional
-    public QuestionBankItem create(QuestionBankItem item) {
-        prepareNewItem(item);
-        repository.insertItem(item);
-        insertChildren(item);
-        return loadRequired(item.getCourseId(), item.getId());
+    public QuestionDraft createDraft(QuestionDraft draft) {
+        prepareNewDraft(draft);
+        repository.insertDraft(draft);
+        insertDraftChildren(draft);
+        return loadDraftRequired(draft.getCourseId(), draft.getId());
     }
 
     @Override
     @Transactional
-    public boolean replaceDraft(QuestionBankItem item, long expectedVersion) {
-        prepareChildren(item);
-        if (repository.updateDraft(item, expectedVersion) == 0) {
+    public boolean replaceDraft(QuestionDraft draft, long expectedVersion) {
+        prepareChildren(draft.getId(), draft.getAnswers(), false);
+        normalizeOutcomes(draft);
+        if (repository.updateDraft(draft, expectedVersion) == 0) {
             return false;
         }
-        repository.deleteAnswersByItemId(item.getId());
-        repository.deleteLearningOutcomesByItemId(item.getId());
-        insertChildren(item);
+        repository.deleteDraftAnswers(draft.getId());
+        repository.deleteDraftLearningOutcomes(draft.getId());
+        insertDraftChildren(draft);
         return true;
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Optional<QuestionBankItem> findByCourseIdAndId(UUID courseId, UUID itemId) {
-        return repository.findByCourseIdAndId(courseId, itemId).map(this::loadChildren);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public QuestionBankPage findPage(QuestionBankSearchCriteria criteria) {
-        return new QuestionBankPage(
-                repository.findPage(criteria),
-                repository.countPage(criteria),
-                criteria.page(),
-                criteria.size());
+    @Transactional
+    public QuestionBankQuestion createBankQuestion(QuestionBankQuestion question) {
+        prepareNewBankQuestion(question);
+        repository.insertBankQuestion(question);
+        insertBankChildren(question);
+        return loadBankRequired(question.getCourseId(), question.getId());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean existsExactDuplicate(UUID courseId, String content, UUID excludedItemId, boolean readyOnly) {
-        return repository.existsExactDuplicate(courseId, content, excludedItemId, readyOnly) > 0;
+    public Optional<QuestionDraft> findDraftByCourseIdAndId(UUID courseId, UUID draftId) {
+        return repository.findDraftByCourseIdAndId(courseId, draftId).map(this::loadDraftChildren);
     }
 
     @Override
     @Transactional
-    public boolean markReady(QuestionBankItem item, long expectedVersion) {
-        return repository.markReady(item, expectedVersion) == 1;
+    public Optional<QuestionDraft> findDraftByCourseIdAndIdForUpdate(UUID courseId, UUID draftId) {
+        return repository.findDraftByCourseIdAndIdForUpdate(courseId, draftId).map(this::loadDraftChildren);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<QuestionBankQuestion> findBankByCourseIdAndId(UUID courseId, UUID questionId) {
+        return repository.findBankByCourseIdAndId(courseId, questionId).map(this::loadBankChildren);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public QuestionBankPage<QuestionDraft> findDraftPage(QuestionBankSearchCriteria criteria) {
+        return new QuestionBankPage(repository.findDraftPage(criteria), repository.countDraftPage(criteria),
+                criteria.page(), criteria.size());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public QuestionBankPage<QuestionBankQuestion> findBankPage(QuestionBankSearchCriteria criteria) {
+        return new QuestionBankPage(repository.findBankPage(criteria), repository.countBankPage(criteria),
+                criteria.page(), criteria.size());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsExactDraftDuplicate(UUID courseId, String content, UUID excludedDraftId) {
+        return repository.existsExactDraftDuplicate(courseId, content, excludedDraftId) > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsExactBankDuplicate(UUID courseId, String content) {
+        return repository.existsExactBankDuplicate(courseId, content) > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<CognitiveLevelOption> findCognitiveLevel(CognitiveLevelCode code) {
+        return repository.findCognitiveLevel(code);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CognitiveLevelOption> findCognitiveLevels() {
+        return repository.findCognitiveLevels();
     }
 
     @Override
     @Transactional
-    public boolean archive(QuestionBankItem item, long expectedVersion) {
-        return repository.archive(item, expectedVersion) == 1;
+    public boolean deleteDraft(QuestionDraft draft, long expectedVersion) {
+        return repository.deleteDraft(draft, expectedVersion) == 1;
     }
 
-    @Override
-    @Transactional
-    public boolean deleteDraft(QuestionBankItem item, long expectedVersion) {
-        return repository.deleteDraft(item, expectedVersion) == 1;
+    private void prepareNewDraft(QuestionDraft draft) {
+        draft.setId(draft.getId() == null ? UUID.randomUUID() : draft.getId());
+        draft.setSourceType(draft.getSourceType() == null ? QuestionBankSourceType.MANUAL : draft.getSourceType());
+        draft.setVersion(0);
+        prepareChildren(draft.getId(), draft.getAnswers(), false);
+        normalizeOutcomes(draft);
     }
 
-    private void prepareNewItem(QuestionBankItem item) {
-        item.setId(item.getId() == null ? UUID.randomUUID() : item.getId());
-        item.setStatus(item.getStatus() == null ? QuestionBankItemStatus.DRAFT : item.getStatus());
-        item.setSourceType(item.getSourceType() == null ? QuestionBankSourceType.MANUAL : item.getSourceType());
-        item.setVersion(0);
-        prepareChildren(item);
+    private void prepareNewBankQuestion(QuestionBankQuestion question) {
+        question.setId(question.getId() == null ? UUID.randomUUID() : question.getId());
+        question.setSourceType(question.getSourceType() == null ? QuestionBankSourceType.MANUAL : question.getSourceType());
+        question.setVersion(0);
+        question.setAnswers(question.getAnswers() == null
+                ? new ArrayList<>() : new ArrayList<>(question.getAnswers()));
+        prepareChildren(question.getId(), question.getAnswers(), true);
+        question.setLearningOutcomeIds(question.getLearningOutcomeIds() == null
+                ? new LinkedHashSet<>() : new LinkedHashSet<>(question.getLearningOutcomeIds()));
     }
 
-    private void prepareChildren(QuestionBankItem item) {
-        List<QuestionBankAnswer> answers = item.getAnswers() == null
-                ? new ArrayList<>()
-                : new ArrayList<>(item.getAnswers());
+    private void prepareChildren(UUID parentId, List<QuestionBankAnswer> sourceAnswers, boolean regenerateIds) {
+        List<QuestionBankAnswer> answers = sourceAnswers == null
+                ? new ArrayList<>() : sourceAnswers;
         for (int index = 0; index < answers.size(); index++) {
             QuestionBankAnswer answer = answers.get(index);
-            answer.setId(answer.getId() == null ? UUID.randomUUID() : answer.getId());
-            answer.setQuestionBankItemId(item.getId());
+            if (regenerateIds || answer.getId() == null) {
+                answer.setId(UUID.randomUUID());
+            }
+            answer.setQuestionId(parentId);
             answer.setOrderIndex(index);
         }
-        item.setAnswers(answers);
-        item.setLearningOutcomeIds(item.getLearningOutcomeIds() == null
-                ? new LinkedHashSet<>()
-                : new LinkedHashSet<>(item.getLearningOutcomeIds()));
     }
 
-    private void insertChildren(QuestionBankItem item) {
-        if (!item.getAnswers().isEmpty()) {
-            repository.insertAnswers(item.getAnswers());
+    private void normalizeOutcomes(QuestionDraft draft) {
+        draft.setAnswers(draft.getAnswers() == null ? new ArrayList<>() : new ArrayList<>(draft.getAnswers()));
+        draft.setLearningOutcomeIds(draft.getLearningOutcomeIds() == null
+                ? new LinkedHashSet<>() : new LinkedHashSet<>(draft.getLearningOutcomeIds()));
+    }
+
+    private void insertDraftChildren(QuestionDraft draft) {
+        if (!draft.getAnswers().isEmpty()) repository.insertDraftAnswers(draft.getAnswers());
+        if (!draft.getLearningOutcomeIds().isEmpty()) {
+            repository.insertDraftLearningOutcomes(draft.getId(), List.copyOf(draft.getLearningOutcomeIds()));
         }
-        if (!item.getLearningOutcomeIds().isEmpty()) {
-            repository.insertLearningOutcomes(item.getId(), List.copyOf(item.getLearningOutcomeIds()));
+    }
+
+    private void insertBankChildren(QuestionBankQuestion question) {
+        if (!question.getAnswers().isEmpty()) repository.insertBankAnswers(question.getAnswers());
+        if (!question.getLearningOutcomeIds().isEmpty()) {
+            repository.insertBankLearningOutcomes(question.getId(), List.copyOf(question.getLearningOutcomeIds()));
         }
     }
 
-    private QuestionBankItem loadChildren(QuestionBankItem item) {
-        item.setAnswers(new ArrayList<>(repository.findAnswersByItemId(item.getId())));
-        item.setLearningOutcomeIds(new LinkedHashSet<>(repository.findLearningOutcomeIdsByItemId(item.getId())));
-        return item;
+    private QuestionDraft loadDraftChildren(QuestionDraft draft) {
+        draft.setAnswers(new ArrayList<>(repository.findDraftAnswers(draft.getId())));
+        draft.setLearningOutcomeIds(new LinkedHashSet<>(repository.findDraftLearningOutcomeIds(draft.getId())));
+        return draft;
     }
 
-    private QuestionBankItem loadRequired(UUID courseId, UUID itemId) {
-        return findByCourseIdAndId(courseId, itemId)
-                .orElseThrow(() -> new IllegalStateException("Question Bank item disappeared: " + itemId));
+    private QuestionBankQuestion loadBankChildren(QuestionBankQuestion question) {
+        question.setAnswers(new ArrayList<>(repository.findBankAnswers(question.getId())));
+        question.setLearningOutcomeIds(new LinkedHashSet<>(repository.findBankLearningOutcomeIds(question.getId())));
+        return question;
+    }
+
+    private QuestionDraft loadDraftRequired(UUID courseId, UUID itemId) {
+        return findDraftByCourseIdAndId(courseId, itemId)
+                .orElseThrow(() -> new IllegalStateException("Question Draft disappeared: " + itemId));
+    }
+
+    private QuestionBankQuestion loadBankRequired(UUID courseId, UUID itemId) {
+        return findBankByCourseIdAndId(courseId, itemId)
+                .orElseThrow(() -> new IllegalStateException("Question Bank question disappeared: " + itemId));
     }
 }

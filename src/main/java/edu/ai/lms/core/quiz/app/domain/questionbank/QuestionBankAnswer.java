@@ -16,7 +16,7 @@ import lombok.Setter;
 @Builder
 public class QuestionBankAnswer {
     private UUID id;
-    private UUID questionBankItemId;
+    private UUID questionId;
     private String content;
     private boolean correct;
     private String explanation;

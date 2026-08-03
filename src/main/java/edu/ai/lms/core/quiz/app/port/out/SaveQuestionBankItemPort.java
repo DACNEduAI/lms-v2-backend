@@ -1,15 +1,14 @@
 package edu.ai.lms.core.quiz.app.port.out;
 
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItem;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft;
 
 public interface SaveQuestionBankItemPort {
-    QuestionBankItem create(QuestionBankItem item);
+    QuestionDraft createDraft(QuestionDraft draft);
 
-    boolean replaceDraft(QuestionBankItem item, long expectedVersion);
+    boolean replaceDraft(QuestionDraft draft, long expectedVersion);
 
-    boolean markReady(QuestionBankItem item, long expectedVersion);
+    QuestionBankQuestion createBankQuestion(QuestionBankQuestion question);
 
-    boolean archive(QuestionBankItem item, long expectedVersion);
-
-    boolean deleteDraft(QuestionBankItem item, long expectedVersion);
+    boolean deleteDraft(QuestionDraft draft, long expectedVersion);
 }

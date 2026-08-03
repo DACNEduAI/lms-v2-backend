@@ -22,8 +22,14 @@ DROP TABLE IF EXISTS
     question_generation_provenance,
     question_images,
     answers,
-    question_bank_item_learning_outcomes,
+    question_draft_learning_outcomes,
+    question_bank_question_learning_outcomes,
+    question_draft_answers,
     question_bank_answers,
+    question_drafts,
+    question_bank_questions,
+    cognitive_levels,
+    question_bank_item_learning_outcomes,
     question_bank_items,
     attempts,
     quiz_generation_jobs,
@@ -433,65 +439,128 @@ CREATE TABLE IF NOT EXISTS enrollments
     PRIMARY KEY (course_id, user_id)
 );
 
--- Course-scoped reusable question masters. Quiz questions always receive a
--- physical snapshot; they never share live content with this table.
-CREATE TABLE IF NOT EXISTS question_bank_items
+-- Stable Bloom taxonomy. Exam Matrix custom levels remain matrix-owned and
+-- are not referenced directly by reusable questions.
+CREATE TABLE IF NOT EXISTS cognitive_levels
 (
-    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    course_id            UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
-    chapter_id           UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
-    ccct_item_id         UUID REFERENCES ccct_items (id) ON DELETE SET NULL,
-    content              TEXT         NOT NULL CHECK (btrim(content) <> ''),
-    question_type        VARCHAR(30)  NOT NULL
-        CHECK (question_type IN ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')),
-    cognitive_level_code VARCHAR(100),
-    difficulty           VARCHAR(30),
-    status               VARCHAR(30)  NOT NULL DEFAULT 'DRAFT'
-        CHECK (status IN ('DRAFT', 'READY_FOR_USE', 'ARCHIVED')),
-    source_type          VARCHAR(30)  NOT NULL DEFAULT 'MANUAL'
-        CHECK (source_type IN ('MANUAL', 'QUIZ_COPY', 'AI_GENERATED', 'IMPORTED')),
-    created_by           UUID REFERENCES users (id) ON DELETE SET NULL,
-    ready_by             UUID REFERENCES users (id) ON DELETE SET NULL,
-    ready_at             TIMESTAMP,
-    version              BIGINT       NOT NULL DEFAULT 0 CHECK (version >= 0),
-    created_at           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code       VARCHAR(30)  NOT NULL UNIQUE,
+    name       VARCHAR(100) NOT NULL,
+    sort_order INTEGER      NOT NULL UNIQUE CHECK (sort_order > 0),
+    CONSTRAINT cognitive_levels_code_check CHECK
+        (code IN ('REMEMBER', 'UNDERSTAND', 'APPLY', 'ANALYZE', 'EVALUATE', 'CREATE'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_question_bank_course_status_updated
-    ON question_bank_items (course_id, status, updated_at DESC, id);
-CREATE INDEX IF NOT EXISTS idx_question_bank_course_chapter
-    ON question_bank_items (course_id, chapter_id);
-CREATE INDEX IF NOT EXISTS idx_question_bank_course_ccct
-    ON question_bank_items (course_id, ccct_item_id);
-CREATE INDEX IF NOT EXISTS idx_question_bank_course_type
-    ON question_bank_items (course_id, question_type);
+INSERT INTO cognitive_levels (code, name, sort_order) VALUES
+    ('REMEMBER', 'Remember', 1),
+    ('UNDERSTAND', 'Understand', 2),
+    ('APPLY', 'Apply', 3),
+    ('ANALYZE', 'Analyze', 4),
+    ('EVALUATE', 'Evaluate', 5),
+    ('CREATE', 'Create', 6)
+ON CONFLICT (code) DO NOTHING;
+
+-- Draft workspace. A Draft is editable and can never be selected by a Quiz.
+CREATE TABLE IF NOT EXISTS question_drafts
+(
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id          UUID        NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+    chapter_id         UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
+    cognitive_level_id UUID REFERENCES cognitive_levels (id) ON DELETE RESTRICT,
+    content            TEXT        NOT NULL CHECK (btrim(content) <> ''),
+    question_type      VARCHAR(30) NOT NULL
+        CHECK (question_type IN ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')),
+    source_type        VARCHAR(30) NOT NULL DEFAULT 'MANUAL'
+        CHECK (source_type IN ('MANUAL', 'QUIZ_COPY', 'AI_GENERATED', 'IMPORTED')),
+    created_by         UUID REFERENCES users (id) ON DELETE SET NULL,
+    version            BIGINT      NOT NULL DEFAULT 0 CHECK (version >= 0),
+    created_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_question_drafts_course_updated
+    ON question_drafts (course_id, updated_at DESC, id);
+CREATE INDEX IF NOT EXISTS idx_question_drafts_classification
+    ON question_drafts (course_id, chapter_id, cognitive_level_id, question_type);
+
+CREATE TABLE IF NOT EXISTS question_draft_answers
+(
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    question_draft_id UUID      NOT NULL REFERENCES question_drafts (id) ON DELETE CASCADE,
+    content           TEXT      NOT NULL CHECK (btrim(content) <> ''),
+    is_correct        BOOLEAN   NOT NULL DEFAULT false,
+    explanation       TEXT,
+    order_index       INTEGER   NOT NULL CHECK (order_index >= 0),
+    created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_question_draft_answer_order UNIQUE (question_draft_id, order_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_question_draft_answers_parent
+    ON question_draft_answers (question_draft_id, order_index);
+
+CREATE TABLE IF NOT EXISTS question_draft_learning_outcomes
+(
+    question_draft_id   UUID NOT NULL REFERENCES question_drafts (id) ON DELETE CASCADE,
+    learning_outcome_id UUID NOT NULL REFERENCES learning_outcomes (id) ON DELETE RESTRICT,
+    PRIMARY KEY (question_draft_id, learning_outcome_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_question_draft_outcomes_outcome
+    ON question_draft_learning_outcomes (learning_outcome_id, question_draft_id);
+
+-- Validated reusable questions. Quiz questions receive physical snapshots and
+-- never read live content/answers from this table.
+CREATE TABLE IF NOT EXISTS question_bank_questions
+(
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    origin_draft_id    UUID        NOT NULL UNIQUE,
+    course_id          UUID        NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+    chapter_id         UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
+    cognitive_level_id UUID        NOT NULL REFERENCES cognitive_levels (id) ON DELETE RESTRICT,
+    content            TEXT        NOT NULL CHECK (btrim(content) <> ''),
+    question_type      VARCHAR(30) NOT NULL
+        CHECK (question_type IN ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')),
+    source_type        VARCHAR(30) NOT NULL DEFAULT 'MANUAL'
+        CHECK (source_type IN ('MANUAL', 'QUIZ_COPY', 'AI_GENERATED', 'IMPORTED')),
+    created_by         UUID REFERENCES users (id) ON DELETE SET NULL,
+    validated_by       UUID REFERENCES users (id) ON DELETE SET NULL,
+    validated_at       TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version            BIGINT      NOT NULL DEFAULT 0 CHECK (version >= 0),
+    created_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_question_bank_questions_course_updated
+    ON question_bank_questions (course_id, updated_at DESC, id);
+CREATE INDEX IF NOT EXISTS idx_question_bank_questions_classification
+    ON question_bank_questions (course_id, chapter_id, cognitive_level_id, question_type);
 
 CREATE TABLE IF NOT EXISTS question_bank_answers
 (
-    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    question_bank_item_id UUID        NOT NULL REFERENCES question_bank_items (id) ON DELETE CASCADE,
-    content               TEXT        NOT NULL CHECK (btrim(content) <> ''),
-    is_correct            BOOLEAN     NOT NULL DEFAULT false,
-    explanation           TEXT,
-    order_index           INTEGER     NOT NULL CHECK (order_index >= 0),
-    created_at            TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at            TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_question_bank_answer_order UNIQUE (question_bank_item_id, order_index)
+    id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    question_bank_question_id UUID      NOT NULL REFERENCES question_bank_questions (id) ON DELETE CASCADE,
+    content                   TEXT      NOT NULL CHECK (btrim(content) <> ''),
+    is_correct                BOOLEAN   NOT NULL DEFAULT false,
+    explanation               TEXT,
+    order_index               INTEGER   NOT NULL CHECK (order_index >= 0),
+    created_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_question_bank_answer_order UNIQUE (question_bank_question_id, order_index)
 );
 
-CREATE INDEX IF NOT EXISTS idx_question_bank_answers_item
-    ON question_bank_answers (question_bank_item_id, order_index);
+CREATE INDEX IF NOT EXISTS idx_question_bank_answers_parent
+    ON question_bank_answers (question_bank_question_id, order_index);
 
-CREATE TABLE IF NOT EXISTS question_bank_item_learning_outcomes
+CREATE TABLE IF NOT EXISTS question_bank_question_learning_outcomes
 (
-    question_bank_item_id UUID NOT NULL REFERENCES question_bank_items (id) ON DELETE CASCADE,
-    learning_outcome_id   UUID NOT NULL REFERENCES learning_outcomes (id) ON DELETE RESTRICT,
-    PRIMARY KEY (question_bank_item_id, learning_outcome_id)
+    question_bank_question_id UUID NOT NULL REFERENCES question_bank_questions (id) ON DELETE CASCADE,
+    learning_outcome_id       UUID NOT NULL REFERENCES learning_outcomes (id) ON DELETE RESTRICT,
+    PRIMARY KEY (question_bank_question_id, learning_outcome_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_question_bank_outcomes_outcome
-    ON question_bank_item_learning_outcomes (learning_outcome_id, question_bank_item_id);
+CREATE INDEX IF NOT EXISTS idx_question_bank_question_outcomes_outcome
+    ON question_bank_question_learning_outcomes (learning_outcome_id, question_bank_question_id);
 
 -- Quizzes table
 CREATE TABLE IF NOT EXISTS quizzes
@@ -581,7 +650,7 @@ CREATE TABLE IF NOT EXISTS questions
         CHECK (review_status IN ('PENDING_REVIEW', 'APPROVED', 'NEEDS_REVISION', 'REJECTED')),
     source_type         VARCHAR(30) NOT NULL DEFAULT 'MANUAL'
         CHECK (source_type IN ('MANUAL', 'BANK_COPY', 'AI_GENERATED', 'QUIZ_CLONE')),
-    source_bank_item_id UUID REFERENCES question_bank_items (id) ON DELETE SET NULL,
+    source_bank_question_id UUID REFERENCES question_bank_questions (id) ON DELETE SET NULL,
     source_question_id  UUID REFERENCES questions (id) ON DELETE SET NULL,
     version             BIGINT      NOT NULL DEFAULT 0 CHECK (version >= 0),
     reviewed_by         UUID REFERENCES users (id) ON DELETE SET NULL,
@@ -593,7 +662,7 @@ CREATE TABLE IF NOT EXISTS questions
 CREATE INDEX IF NOT EXISTS idx_questions_quiz_review
     ON questions (quiz_id, review_status, created_at, id);
 CREATE INDEX IF NOT EXISTS idx_questions_source_bank
-    ON questions (source_bank_item_id);
+    ON questions (source_bank_question_id);
 CREATE INDEX IF NOT EXISTS idx_questions_source_question
     ON questions (source_question_id);
 

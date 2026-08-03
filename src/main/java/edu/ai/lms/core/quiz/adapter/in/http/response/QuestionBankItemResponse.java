@@ -6,25 +6,26 @@ import java.util.Set;
 import java.util.UUID;
 
 import edu.ai.lms.core.quiz.app.domain.Question;
+import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankAnswer;
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItem;
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItemStatus;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft;
 
 public record QuestionBankItemResponse(
         UUID id,
+        UUID originDraftId,
         UUID courseId,
         UUID chapterId,
-        UUID ccctItemId,
+        UUID cognitiveLevelId,
+        CognitiveLevelCode cognitiveLevelCode,
+        String cognitiveLevelName,
         String content,
         Question.QuestionType questionType,
-        String cognitiveLevelCode,
-        String difficulty,
-        QuestionBankItemStatus status,
         QuestionBankSourceType sourceType,
         UUID createdBy,
-        UUID readyBy,
-        LocalDateTime readyAt,
+        UUID validatedBy,
+        LocalDateTime validatedAt,
         long version,
         List<AnswerResponse> answers,
         Set<UUID> learningOutcomeIds,
@@ -32,26 +33,39 @@ public record QuestionBankItemResponse(
         LocalDateTime updatedAt,
         boolean duplicateWarning) {
 
-    public static QuestionBankItemResponse from(QuestionBankItem item) {
-        return from(item, false);
+    public static QuestionBankItemResponse from(QuestionDraft draft) {
+        return from(draft, false);
     }
 
-    public static QuestionBankItemResponse from(QuestionBankItem item, boolean duplicateWarning) {
+    public static QuestionBankItemResponse from(QuestionDraft draft, boolean duplicateWarning) {
         return new QuestionBankItemResponse(
-                item.getId(), item.getCourseId(), item.getChapterId(), item.getCcctItemId(), item.getContent(),
-                item.getQuestionType(), item.getCognitiveLevelCode(), item.getDifficulty(), item.getStatus(),
-                item.getSourceType(), item.getCreatedBy(), item.getReadyBy(), item.getReadyAt(), item.getVersion(),
-                item.getAnswers() == null ? List.of() : item.getAnswers().stream().map(AnswerResponse::from).toList(),
-                item.getLearningOutcomeIds() == null ? Set.of() : Set.copyOf(item.getLearningOutcomeIds()),
-                item.getCreatedAt(), item.getUpdatedAt(), duplicateWarning);
+                draft.getId(), null, draft.getCourseId(), draft.getChapterId(),
+                draft.getCognitiveLevelId(), draft.getCognitiveLevelCode(), draft.getCognitiveLevelName(),
+                draft.getContent(), draft.getQuestionType(), draft.getSourceType(), draft.getCreatedBy(),
+                null, null, draft.getVersion(),
+                answers(draft.getAnswers()), outcomes(draft.getLearningOutcomeIds()),
+                draft.getCreatedAt(), draft.getUpdatedAt(), duplicateWarning);
     }
 
-    public record AnswerResponse(
-            UUID id,
-            String content,
-            boolean correct,
-            String explanation,
-            int orderIndex) {
+    public static QuestionBankItemResponse from(QuestionBankQuestion question) {
+        return new QuestionBankItemResponse(
+                question.getId(), question.getOriginDraftId(), question.getCourseId(), question.getChapterId(),
+                question.getCognitiveLevelId(), question.getCognitiveLevelCode(), question.getCognitiveLevelName(),
+                question.getContent(), question.getQuestionType(), question.getSourceType(), question.getCreatedBy(),
+                question.getValidatedBy(), question.getValidatedAt(), question.getVersion(),
+                answers(question.getAnswers()), outcomes(question.getLearningOutcomeIds()),
+                question.getCreatedAt(), question.getUpdatedAt(), false);
+    }
+
+    private static List<AnswerResponse> answers(List<QuestionBankAnswer> answers) {
+        return answers == null ? List.of() : answers.stream().map(AnswerResponse::from).toList();
+    }
+
+    private static Set<UUID> outcomes(Set<UUID> outcomes) {
+        return outcomes == null ? Set.of() : Set.copyOf(outcomes);
+    }
+
+    public record AnswerResponse(UUID id, String content, boolean correct, String explanation, int orderIndex) {
         static AnswerResponse from(QuestionBankAnswer answer) {
             return new AnswerResponse(answer.getId(), answer.getContent(), answer.isCorrect(),
                     answer.getExplanation(), answer.getOrderIndex());

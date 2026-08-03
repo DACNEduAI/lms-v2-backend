@@ -1,29 +1,34 @@
 package edu.ai.lms.core.quiz.app.port.in.usecase;
 
+import java.util.List;
 import java.util.UUID;
 
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItem;
+import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelOption;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankPage;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSearchCriteria;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft;
 import edu.ai.lms.core.quiz.app.port.in.command.QuestionBankItemCommand;
 
 public interface QuestionBankUseCase {
     MutationResult createDraft(UUID courseId, QuestionBankItemCommand command);
 
-    QuestionBankPage findPage(QuestionBankSearchCriteria criteria);
+    QuestionBankPage<QuestionDraft> findDraftPage(QuestionBankSearchCriteria criteria);
 
-    QuestionBankItem get(UUID courseId, UUID itemId);
+    QuestionBankPage<QuestionBankQuestion> findBankPage(QuestionBankSearchCriteria criteria);
 
-    MutationResult updateDraft(UUID courseId, UUID itemId, long version, QuestionBankItemCommand command);
+    QuestionDraft getDraft(UUID courseId, UUID draftId);
 
-    QuestionBankItem markReady(UUID courseId, UUID itemId, long version);
+    QuestionBankQuestion getBankQuestion(UUID courseId, UUID questionId);
 
-    QuestionBankItem archive(UUID courseId, UUID itemId, long version);
+    MutationResult updateDraft(UUID courseId, UUID draftId, long version, QuestionBankItemCommand command);
 
-    MutationResult duplicate(UUID courseId, UUID itemId, long version);
+    QuestionBankQuestion validateDraft(UUID courseId, UUID draftId, long version);
 
-    void deleteDraft(UUID courseId, UUID itemId, long version);
+    void deleteDraft(UUID courseId, UUID draftId, long version);
 
-    record MutationResult(QuestionBankItem item, boolean duplicateWarning) {
+    List<CognitiveLevelOption> getCognitiveLevels(UUID courseId);
+
+    record MutationResult(QuestionDraft item, boolean duplicateWarning) {
     }
 }

@@ -62,7 +62,7 @@ public class GetQuizResponse {
         private String content;
         private String type;
         private QuestionSourceType sourceType;
-        private UUID sourceBankItemId;
+        private UUID sourceBankQuestionId;
         private UUID sourceQuestionId;
         private long version;
         private List<LearningOutcomeSummary> learningOutcomes;

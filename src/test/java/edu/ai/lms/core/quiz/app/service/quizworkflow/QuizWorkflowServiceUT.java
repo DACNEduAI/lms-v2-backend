@@ -23,6 +23,8 @@ import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankAnswer;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion;
 import edu.ai.lms.core.quiz.app.exception.QuizLifecycleConflictException;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionBankItemPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
@@ -45,6 +47,42 @@ class QuizWorkflowServiceUT {
     @Mock SaveAnswerPort saveAnswerPort;
     @Mock SaveQuestionLearningOutcomePort saveQuestionLearningOutcomePort;
     @InjectMocks QuizWorkflowService service;
+
+    @Test
+    void copiesValidatedBankQuestionIntoIndependentQuizSnapshot() {
+        UUID actorId = UUID.randomUUID();
+        UUID courseId = UUID.randomUUID();
+        UUID quizId = UUID.randomUUID();
+        UUID bankQuestionId = UUID.randomUUID();
+        UUID snapshotId = UUID.randomUUID();
+        Quiz draft = Quiz.builder().id(quizId).courseId(courseId).teacherId(actorId)
+                .version(2).lifecycleStatus(QuizLifecycleStatus.DRAFT).build();
+        QuestionBankQuestion bankQuestion = QuestionBankQuestion.builder()
+                .id(bankQuestionId).courseId(courseId).content("Validated question")
+                .questionType(Question.QuestionType.MULTIPLE_CHOICE)
+                .answers(List.of(
+                        QuestionBankAnswer.builder().content("A").correct(true).build(),
+                        QuestionBankAnswer.builder().content("B").correct(false).build()))
+                .build();
+        Question snapshot = Question.builder().id(snapshotId).quizId(quizId)
+                .content("Validated question").type(Question.QuestionType.MULTIPLE_CHOICE)
+                .sourceBankQuestionId(bankQuestionId).build();
+
+        when(signedInUserPort.getAuthenticatedUser())
+                .thenReturn(Optional.of(CurrentActor.builder().id(actorId).role(Roles.TEACHER).build()));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(draft));
+        when(loadBankItemPort.findBankByCourseIdAndId(courseId, bankQuestionId))
+                .thenReturn(Optional.of(bankQuestion));
+        when(saveQuestionPort.save(any())).thenReturn(snapshot);
+        when(loadQuestionPort.getById(snapshotId)).thenReturn(Optional.of(snapshot));
+        when(lifecyclePort.touchContent(courseId, quizId, 2, QuizLifecycleStatus.DRAFT)).thenReturn(true);
+
+        Question result = service.addBankQuestions(courseId, quizId, 2, List.of(bankQuestionId)).getFirst();
+
+        assertEquals(bankQuestionId, result.getSourceBankQuestionId());
+        assertEquals("Validated question", result.getContent());
+        verify(saveAnswerPort, org.mockito.Mockito.times(2)).save(any());
+    }
 
     @Test
     void teacherPublishesDraftDirectlyAfterStructuralValidation() {

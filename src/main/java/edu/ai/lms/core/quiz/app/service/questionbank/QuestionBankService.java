@@ -13,12 +13,13 @@ import org.springframework.transaction.annotation.Transactional;
 import edu.ai.lms.common.api.Roles;
 import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.app.domain.Question;
+import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelOption;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankAnswer;
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItem;
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItemStatus;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankPage;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSearchCriteria;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft;
 import edu.ai.lms.core.quiz.app.exception.QuestionBankConflictException;
 import edu.ai.lms.core.quiz.app.exception.QuestionBankItemNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuestionBankValidationException;
@@ -51,120 +52,102 @@ public class QuestionBankService implements QuestionBankUseCase {
     public MutationResult createDraft(UUID courseId, QuestionBankItemCommand command) {
         CurrentActor actor = requireTeacher(courseId);
         validateDraft(courseId, command);
-        QuestionBankItem saved = saveItemPort.create(toDraft(courseId, actor.id(), command));
-        return new MutationResult(saved, hasActiveDuplicate(courseId, saved.getContent(), saved.getId()));
+        QuestionDraft saved = saveItemPort.createDraft(
+                toDraft(courseId, actor.id(), QuestionBankSourceType.MANUAL, command));
+        return new MutationResult(saved, hasDuplicate(courseId, saved.getContent(), saved.getId()));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public QuestionBankPage findPage(QuestionBankSearchCriteria criteria) {
+    public QuestionBankPage<QuestionDraft> findDraftPage(QuestionBankSearchCriteria criteria) {
         requireTeacher(criteria.courseId());
-        int page = Math.max(criteria.page(), 0);
-        int size = Math.min(Math.max(criteria.size(), 1), MAX_PAGE_SIZE);
-        return loadItemPort.findPage(new QuestionBankSearchCriteria(
-                criteria.courseId(), trimToNull(criteria.query()), criteria.status(), criteria.chapterId(),
-                criteria.ccctItemId(), criteria.learningOutcomeId(), criteria.questionType(),
-                criteria.sourceType(), page, size));
+        return loadItemPort.findDraftPage(normalize(criteria));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public QuestionBankItem get(UUID courseId, UUID itemId) {
+    public QuestionBankPage<QuestionBankQuestion> findBankPage(QuestionBankSearchCriteria criteria) {
+        requireTeacher(criteria.courseId());
+        return loadItemPort.findBankPage(normalize(criteria));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public QuestionDraft getDraft(UUID courseId, UUID draftId) {
         requireTeacher(courseId);
-        return loadRequired(courseId, itemId);
+        return loadDraftRequired(courseId, draftId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public QuestionBankQuestion getBankQuestion(UUID courseId, UUID questionId) {
+        requireTeacher(courseId);
+        return loadBankRequired(courseId, questionId);
     }
 
     @Override
     @Transactional
-    public MutationResult updateDraft(UUID courseId, UUID itemId, long version, QuestionBankItemCommand command) {
+    public MutationResult updateDraft(UUID courseId, UUID draftId, long version, QuestionBankItemCommand command) {
         requireTeacher(courseId);
-        QuestionBankItem current = loadRequired(courseId, itemId);
+        QuestionDraft current = loadDraftRequired(courseId, draftId);
         requireVersion(current, version);
-        requireStatus(current, QuestionBankItemStatus.DRAFT, "Only Draft items can be edited");
         validateDraft(courseId, command);
 
-        QuestionBankItem replacement = toDraft(courseId, current.getCreatedBy(), command);
-        replacement.setId(itemId);
-        if (!saveItemPort.replaceDraft(replacement, version)) {
-            throw staleConflict();
-        }
-        QuestionBankItem saved = loadRequired(courseId, itemId);
-        return new MutationResult(saved, hasActiveDuplicate(courseId, saved.getContent(), itemId));
+        QuestionDraft replacement = toDraft(courseId, current.getCreatedBy(), current.getSourceType(), command);
+        replacement.setId(draftId);
+        if (!saveItemPort.replaceDraft(replacement, version)) throw staleConflict();
+        QuestionDraft saved = loadDraftRequired(courseId, draftId);
+        return new MutationResult(saved, hasDuplicate(courseId, saved.getContent(), draftId));
     }
 
     @Override
     @Transactional
-    public QuestionBankItem markReady(UUID courseId, UUID itemId, long version) {
+    public QuestionBankQuestion validateDraft(UUID courseId, UUID draftId, long version) {
         CurrentActor actor = requireTeacher(courseId);
-        QuestionBankItem item = loadRequired(courseId, itemId);
-        requireVersion(item, version);
-        requireStatus(item, QuestionBankItemStatus.DRAFT, "Only Draft items can become Ready for use");
-        validateReady(courseId, item);
-        if (loadItemPort.existsExactDuplicate(courseId, item.getContent(), itemId, true)) {
-            throw new QuestionBankConflictException(
-                    "An identical Ready for use question already exists in this course");
+        QuestionDraft draft = loadItemPort.findDraftByCourseIdAndIdForUpdate(courseId, draftId)
+                .orElseThrow(() -> new QuestionBankItemNotFoundException("Question Draft was not found"));
+        requireVersion(draft, version);
+        validateForBank(courseId, draft);
+        if (loadItemPort.existsExactBankDuplicate(courseId, draft.getContent())) {
+            throw new QuestionBankConflictException("An identical validated question already exists in this course");
         }
-        item.setReadyBy(actor.id());
-        item.setReadyAt(LocalDateTime.now());
-        if (!saveItemPort.markReady(item, version)) {
-            throw staleConflict();
-        }
-        return loadRequired(courseId, itemId);
-    }
 
-    @Override
-    @Transactional
-    public QuestionBankItem archive(UUID courseId, UUID itemId, long version) {
-        requireTeacher(courseId);
-        QuestionBankItem item = loadRequired(courseId, itemId);
-        requireVersion(item, version);
-        requireStatus(item, QuestionBankItemStatus.READY_FOR_USE, "Only Ready for use items can be archived");
-        if (!saveItemPort.archive(item, version)) {
-            throw staleConflict();
-        }
-        return loadRequired(courseId, itemId);
-    }
-
-    @Override
-    @Transactional
-    public MutationResult duplicate(UUID courseId, UUID itemId, long version) {
-        CurrentActor actor = requireTeacher(courseId);
-        QuestionBankItem source = loadRequired(courseId, itemId);
-        requireVersion(source, version);
-        QuestionBankItem copy = QuestionBankItem.builder()
+        QuestionBankQuestion bankQuestion = QuestionBankQuestion.builder()
+                .originDraftId(draft.getId())
                 .courseId(courseId)
-                .chapterId(source.getChapterId())
-                .ccctItemId(source.getCcctItemId())
-                .content(source.getContent())
-                .questionType(source.getQuestionType())
-                .cognitiveLevelCode(source.getCognitiveLevelCode())
-                .difficulty(source.getDifficulty())
-                .status(QuestionBankItemStatus.DRAFT)
-                .sourceType(QuestionBankSourceType.MANUAL)
-                .createdBy(actor.id())
-                .answers(source.getAnswers().stream()
-                        .map(answer -> QuestionBankAnswer.builder()
-                                .content(answer.getContent())
-                                .correct(answer.isCorrect())
-                                .explanation(answer.getExplanation())
-                                .build())
-                        .toList())
-                .learningOutcomeIds(new LinkedHashSet<>(source.getLearningOutcomeIds()))
+                .chapterId(draft.getChapterId())
+                .cognitiveLevelId(draft.getCognitiveLevelId())
+                .cognitiveLevelCode(draft.getCognitiveLevelCode())
+                .cognitiveLevelName(draft.getCognitiveLevelName())
+                .content(draft.getContent())
+                .questionType(draft.getQuestionType())
+                .sourceType(draft.getSourceType())
+                .createdBy(draft.getCreatedBy())
+                .validatedBy(actor.id())
+                .validatedAt(LocalDateTime.now())
+                .createdAt(draft.getCreatedAt())
+                .answers(copyAnswers(draft.getAnswers()))
+                .learningOutcomeIds(new LinkedHashSet<>(draft.getLearningOutcomeIds()))
                 .build();
-        QuestionBankItem saved = saveItemPort.create(copy);
-        return new MutationResult(saved, true);
+        QuestionBankQuestion saved = saveItemPort.createBankQuestion(bankQuestion);
+        if (!saveItemPort.deleteDraft(draft, version)) throw staleConflict();
+        return saved;
     }
 
     @Override
     @Transactional
-    public void deleteDraft(UUID courseId, UUID itemId, long version) {
+    public void deleteDraft(UUID courseId, UUID draftId, long version) {
         requireTeacher(courseId);
-        QuestionBankItem item = loadRequired(courseId, itemId);
-        requireVersion(item, version);
-        requireStatus(item, QuestionBankItemStatus.DRAFT, "Only Draft items can be deleted");
-        if (!saveItemPort.deleteDraft(item, version)) {
-            throw staleConflict();
-        }
+        QuestionDraft draft = loadDraftRequired(courseId, draftId);
+        requireVersion(draft, version);
+        if (!saveItemPort.deleteDraft(draft, version)) throw staleConflict();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CognitiveLevelOption> getCognitiveLevels(UUID courseId) {
+        requireTeacher(courseId);
+        return loadItemPort.findCognitiveLevels();
     }
 
     private CurrentActor requireTeacher(UUID courseId) {
@@ -176,6 +159,15 @@ public class QuestionBankService implements QuestionBankUseCase {
         return actor;
     }
 
+    private QuestionBankSearchCriteria normalize(QuestionBankSearchCriteria criteria) {
+        int page = Math.max(criteria.page(), 0);
+        int size = Math.min(Math.max(criteria.size(), 1), MAX_PAGE_SIZE);
+        return new QuestionBankSearchCriteria(
+                criteria.courseId(), trimToNull(criteria.query()), criteria.chapterId(),
+                criteria.learningOutcomeId(), criteria.questionType(), criteria.cognitiveLevelCode(),
+                criteria.sourceType(), page, size);
+    }
+
     private void validateDraft(UUID courseId, QuestionBankItemCommand command) {
         if (command == null || trimToNull(command.content()) == null) {
             throw new QuestionBankValidationException("Question content is required");
@@ -184,55 +176,51 @@ public class QuestionBankService implements QuestionBankUseCase {
             throw new QuestionBankValidationException("MVP supports MULTIPLE_CHOICE questions only");
         }
         List<QuestionBankItemCommand.Answer> answers = safeAnswers(command.answers());
-        if (answers.size() > 10) {
-            throw new QuestionBankValidationException("A question can have at most 10 answers");
-        }
+        if (answers.size() > 10) throw new QuestionBankValidationException("A question can have at most 10 answers");
         if (answers.stream().anyMatch(answer -> trimToNull(answer.content()) == null)) {
             throw new QuestionBankValidationException("Saved answers cannot be blank");
         }
         if (answers.stream().filter(QuestionBankItemCommand.Answer::correct).count() > 1) {
             throw new QuestionBankValidationException("A multiple-choice Draft can have at most one correct answer");
         }
-        validateReferences(courseId, command.chapterId(), command.ccctItemId(), safeOutcomes(command.learningOutcomeIds()));
+        validateReferences(courseId, command.chapterId(), safeOutcomes(command.learningOutcomeIds()));
+        resolveCognitiveLevel(command.cognitiveLevelCode());
     }
 
-    private void validateReady(UUID courseId, QuestionBankItem item) {
+    private void validateForBank(UUID courseId, QuestionDraft item) {
         if (item.getChapterId() == null) {
-            throw new QuestionBankValidationException("Chapter is required before an item can become Ready for use");
+            throw new QuestionBankValidationException("Chapter is required before validation");
         }
         if (item.getLearningOutcomeIds() == null || item.getLearningOutcomeIds().isEmpty()) {
-            throw new QuestionBankValidationException(
-                    "At least one Learning Outcome is required before an item can become Ready for use");
+            throw new QuestionBankValidationException("At least one Learning Outcome is required before validation");
+        }
+        if (item.getCognitiveLevelId() == null) {
+            throw new QuestionBankValidationException("Cognitive level is required before validation");
         }
         if (item.getAnswers() == null || item.getAnswers().size() < 2) {
-            throw new QuestionBankValidationException(
-                    "At least two answers are required before an item can become Ready for use");
+            throw new QuestionBankValidationException("At least two answers are required before validation");
+        }
+        if (item.getAnswers().stream().anyMatch(answer -> trimToNull(answer.getContent()) == null)) {
+            throw new QuestionBankValidationException("Validated answers cannot be blank");
         }
         if (item.getAnswers().stream().filter(QuestionBankAnswer::isCorrect).count() != 1) {
-            throw new QuestionBankValidationException(
-                    "Exactly one correct answer is required before an item can become Ready for use");
+            throw new QuestionBankValidationException("Exactly one correct answer is required before validation");
         }
-        validateReferences(courseId, item.getChapterId(), item.getCcctItemId(), item.getLearningOutcomeIds());
+        validateReferences(courseId, item.getChapterId(), item.getLearningOutcomeIds());
     }
 
-    private void validateReferences(UUID courseId, UUID chapterId, UUID ccctItemId, Set<UUID> outcomeIds) {
+    private void validateReferences(UUID courseId, UUID chapterId, Set<UUID> outcomeIds) {
         if (chapterId != null && !referencesPort.chapterBelongsToCourse(courseId, chapterId)) {
             throw new QuestionBankValidationException("Chapter does not belong to this course");
         }
         if (!outcomeIds.isEmpty() && !learningOutcomesPort.allBelongToCourse(courseId, outcomeIds)) {
             throw new QuestionBankValidationException("One or more Learning Outcomes do not belong to this course");
         }
-        if (ccctItemId != null) {
-            UUID mappedChapterId = referencesPort.findPublishedExamCcctItemChapterId(courseId, ccctItemId)
-                    .orElseThrow(() -> new QuestionBankValidationException(
-                            "CCCT item must be LEARN_AND_EXAM in the Published profile of this course"));
-            if (chapterId != null && !chapterId.equals(mappedChapterId)) {
-                throw new QuestionBankValidationException("CCCT item and Chapter mapping do not match");
-            }
-        }
     }
 
-    private QuestionBankItem toDraft(UUID courseId, UUID creatorId, QuestionBankItemCommand command) {
+    private QuestionDraft toDraft(UUID courseId, UUID creatorId, QuestionBankSourceType sourceType,
+            QuestionBankItemCommand command) {
+        CognitiveLevelOption cognitiveLevel = resolveCognitiveLevel(command.cognitiveLevelCode());
         List<QuestionBankAnswer> answers = safeAnswers(command.answers()).stream()
                 .map(answer -> QuestionBankAnswer.builder()
                         .content(answer.content().trim())
@@ -240,45 +228,55 @@ public class QuestionBankService implements QuestionBankUseCase {
                         .explanation(trimToNull(answer.explanation()))
                         .build())
                 .toList();
-        return QuestionBankItem.builder()
+        return QuestionDraft.builder()
                 .courseId(courseId)
                 .chapterId(command.chapterId())
-                .ccctItemId(command.ccctItemId())
+                .cognitiveLevelId(cognitiveLevel == null ? null : cognitiveLevel.id())
+                .cognitiveLevelCode(cognitiveLevel == null ? null : cognitiveLevel.code())
+                .cognitiveLevelName(cognitiveLevel == null ? null : cognitiveLevel.name())
                 .content(command.content().trim())
                 .questionType(command.questionType())
-                .cognitiveLevelCode(trimToNull(command.cognitiveLevelCode()))
-                .difficulty(trimToNull(command.difficulty()))
-                .status(QuestionBankItemStatus.DRAFT)
-                .sourceType(QuestionBankSourceType.MANUAL)
+                .sourceType(sourceType)
                 .createdBy(creatorId)
                 .answers(new ArrayList<>(answers))
                 .learningOutcomeIds(new LinkedHashSet<>(safeOutcomes(command.learningOutcomeIds())))
                 .build();
     }
 
-    private QuestionBankItem loadRequired(UUID courseId, UUID itemId) {
-        return loadItemPort.findByCourseIdAndId(courseId, itemId)
-                .orElseThrow(() -> new QuestionBankItemNotFoundException("Question Bank item was not found"));
+    private CognitiveLevelOption resolveCognitiveLevel(
+            edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode code) {
+        if (code == null) return null;
+        return loadItemPort.findCognitiveLevel(code)
+                .orElseThrow(() -> new QuestionBankValidationException("Cognitive level is not supported"));
     }
 
-    private void requireVersion(QuestionBankItem item, long version) {
-        if (item.getVersion() != version) {
-            throw staleConflict();
-        }
+    private List<QuestionBankAnswer> copyAnswers(List<QuestionBankAnswer> answers) {
+        return answers.stream().map(answer -> QuestionBankAnswer.builder()
+                .content(answer.getContent()).correct(answer.isCorrect())
+                .explanation(answer.getExplanation()).build()).toList();
     }
 
-    private void requireStatus(QuestionBankItem item, QuestionBankItemStatus expected, String message) {
-        if (item.getStatus() != expected) {
-            throw new QuestionBankConflictException(message);
-        }
+    private QuestionDraft loadDraftRequired(UUID courseId, UUID draftId) {
+        return loadItemPort.findDraftByCourseIdAndId(courseId, draftId)
+                .orElseThrow(() -> new QuestionBankItemNotFoundException("Question Draft was not found"));
     }
 
-    private boolean hasActiveDuplicate(UUID courseId, String content, UUID excludedItemId) {
-        return loadItemPort.existsExactDuplicate(courseId, content, excludedItemId, false);
+    private QuestionBankQuestion loadBankRequired(UUID courseId, UUID questionId) {
+        return loadItemPort.findBankByCourseIdAndId(courseId, questionId)
+                .orElseThrow(() -> new QuestionBankItemNotFoundException("Question Bank question was not found"));
+    }
+
+    private void requireVersion(QuestionDraft item, long version) {
+        if (item.getVersion() != version) throw staleConflict();
+    }
+
+    private boolean hasDuplicate(UUID courseId, String content, UUID excludedDraftId) {
+        return loadItemPort.existsExactDraftDuplicate(courseId, content, excludedDraftId)
+                || loadItemPort.existsExactBankDuplicate(courseId, content);
     }
 
     private QuestionBankConflictException staleConflict() {
-        return new QuestionBankConflictException("This item was changed by another request; reload and try again");
+        return new QuestionBankConflictException("This Draft was changed by another request; reload and try again");
     }
 
     private List<QuestionBankItemCommand.Answer> safeAnswers(List<QuestionBankItemCommand.Answer> answers) {
@@ -290,9 +288,6 @@ public class QuestionBankService implements QuestionBankUseCase {
     }
 
     private String trimToNull(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return value.trim();
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

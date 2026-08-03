@@ -78,7 +78,7 @@ public class GetQuizService implements GetQuizUseCase {
                             .content(q.getContent())
                             .type(q.getType() != null ? q.getType().name() : null)
                             .sourceType(q.getSourceType())
-                            .sourceBankItemId(q.getSourceBankItemId())
+                            .sourceBankQuestionId(q.getSourceBankQuestionId())
                             .sourceQuestionId(q.getSourceQuestionId())
                             .version(q.getVersion())
                             .learningOutcomes(loSummaries)

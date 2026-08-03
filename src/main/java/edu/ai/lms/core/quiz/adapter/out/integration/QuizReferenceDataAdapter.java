@@ -103,8 +103,4 @@ class QuizReferenceDataAdapter implements LoadCourseMembershipPort, LoadQuizGene
         return questionBankReferenceApi.chapterBelongsToCourse(courseId, chapterId);
     }
 
-    @Override
-    public Optional<UUID> findPublishedExamCcctItemChapterId(UUID courseId, UUID ccctItemId) {
-        return questionBankReferenceApi.findPublishedExamCcctItemChapterId(courseId, ccctItemId);
-    }
 }

@@ -7,55 +7,81 @@ import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode;
+import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelOption;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankAnswer;
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItem;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSearchCriteria;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft;
 
 @Mapper
 interface QuestionBankItemRepository {
-    Optional<QuestionBankItem> findByCourseIdAndId(
+    Optional<QuestionDraft> findDraftByCourseIdAndId(
             @Param("courseId") UUID courseId,
             @Param("itemId") UUID itemId);
 
-    List<QuestionBankAnswer> findAnswersByItemId(@Param("itemId") UUID itemId);
+    Optional<QuestionDraft> findDraftByCourseIdAndIdForUpdate(
+            @Param("courseId") UUID courseId,
+            @Param("itemId") UUID itemId);
 
-    List<UUID> findLearningOutcomeIdsByItemId(@Param("itemId") UUID itemId);
+    Optional<QuestionBankQuestion> findBankByCourseIdAndId(
+            @Param("courseId") UUID courseId,
+            @Param("itemId") UUID itemId);
 
-    List<QuestionBankItem> findPage(QuestionBankSearchCriteria criteria);
+    List<QuestionBankAnswer> findDraftAnswers(@Param("itemId") UUID itemId);
 
-    long countPage(QuestionBankSearchCriteria criteria);
+    List<QuestionBankAnswer> findBankAnswers(@Param("itemId") UUID itemId);
 
-    int existsExactDuplicate(
+    List<UUID> findDraftLearningOutcomeIds(@Param("itemId") UUID itemId);
+
+    List<UUID> findBankLearningOutcomeIds(@Param("itemId") UUID itemId);
+
+    List<QuestionDraft> findDraftPage(QuestionBankSearchCriteria criteria);
+
+    long countDraftPage(QuestionBankSearchCriteria criteria);
+
+    List<QuestionBankQuestion> findBankPage(QuestionBankSearchCriteria criteria);
+
+    long countBankPage(QuestionBankSearchCriteria criteria);
+
+    int existsExactDraftDuplicate(
             @Param("courseId") UUID courseId,
             @Param("content") String content,
-            @Param("excludedItemId") UUID excludedItemId,
-            @Param("readyOnly") boolean readyOnly);
+            @Param("excludedItemId") UUID excludedItemId);
 
-    int insertItem(QuestionBankItem item);
+    int existsExactBankDuplicate(
+            @Param("courseId") UUID courseId,
+            @Param("content") String content);
+
+    Optional<CognitiveLevelOption> findCognitiveLevel(@Param("code") CognitiveLevelCode code);
+
+    List<CognitiveLevelOption> findCognitiveLevels();
+
+    int insertDraft(QuestionDraft draft);
 
     int updateDraft(
-            @Param("item") QuestionBankItem item,
+            @Param("item") QuestionDraft draft,
             @Param("expectedVersion") long expectedVersion);
 
-    int markReady(
-            @Param("item") QuestionBankItem item,
-            @Param("expectedVersion") long expectedVersion);
-
-    int archive(
-            @Param("item") QuestionBankItem item,
-            @Param("expectedVersion") long expectedVersion);
+    int insertBankQuestion(QuestionBankQuestion question);
 
     int deleteDraft(
-            @Param("item") QuestionBankItem item,
+            @Param("item") QuestionDraft draft,
             @Param("expectedVersion") long expectedVersion);
 
-    int deleteAnswersByItemId(@Param("itemId") UUID itemId);
+    int deleteDraftAnswers(@Param("itemId") UUID itemId);
 
-    int deleteLearningOutcomesByItemId(@Param("itemId") UUID itemId);
+    int deleteDraftLearningOutcomes(@Param("itemId") UUID itemId);
 
-    int insertAnswers(@Param("answers") List<QuestionBankAnswer> answers);
+    int insertDraftAnswers(@Param("answers") List<QuestionBankAnswer> answers);
 
-    int insertLearningOutcomes(
+    int insertBankAnswers(@Param("answers") List<QuestionBankAnswer> answers);
+
+    int insertDraftLearningOutcomes(
+            @Param("itemId") UUID itemId,
+            @Param("learningOutcomeIds") List<UUID> learningOutcomeIds);
+
+    int insertBankLearningOutcomes(
             @Param("itemId") UUID itemId,
             @Param("learningOutcomeIds") List<UUID> learningOutcomeIds);
 }

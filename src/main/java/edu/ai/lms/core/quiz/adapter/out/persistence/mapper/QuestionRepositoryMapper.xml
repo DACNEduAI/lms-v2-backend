@@ -12,7 +12,7 @@
     <result property="quizId" column="quiz_id" />
     <result property="reviewStatus" column="review_status" javaType="edu.ai.lms.core.quiz.app.domain.QuestionReviewStatus" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="sourceType" column="source_type" javaType="edu.ai.lms.core.quiz.app.domain.QuestionSourceType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
-    <result property="sourceBankItemId" column="source_bank_item_id" />
+    <result property="sourceBankQuestionId" column="source_bank_question_id" />
     <result property="sourceQuestionId" column="source_question_id" />
     <result property="version" column="version" />
     <result property="reviewedBy" column="reviewed_by" />
@@ -23,14 +23,14 @@
 
   <insert id="insert" parameterType="edu.ai.lms.core.quiz.app.domain.Question">
     INSERT INTO edu.questions
-      (id, content, type, quiz_id, review_status, source_type, source_bank_item_id,
+      (id, content, type, quiz_id, review_status, source_type, source_bank_question_id,
        source_question_id, version, reviewed_by, reviewed_at, created_at, updated_at)
     VALUES
       (#{id}, #{content}, #{type, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{quizId},
        #{reviewStatus, javaType=edu.ai.lms.core.quiz.app.domain.QuestionReviewStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{sourceType, javaType=edu.ai.lms.core.quiz.app.domain.QuestionSourceType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-       #{sourceBankItemId}, #{sourceQuestionId}, #{version}, #{reviewedBy}, #{reviewedAt}, NOW(), NOW())
+       #{sourceBankQuestionId}, #{sourceQuestionId}, #{version}, #{reviewedBy}, #{reviewedAt}, NOW(), NOW())
   </insert>
 
   <update id="update" parameterType="edu.ai.lms.core.quiz.app.domain.Question">
@@ -40,7 +40,7 @@
         quiz_id = #{quizId},
         review_status = #{reviewStatus, javaType=edu.ai.lms.core.quiz.app.domain.QuestionReviewStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         source_type = #{sourceType, javaType=edu.ai.lms.core.quiz.app.domain.QuestionSourceType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-        source_bank_item_id = #{sourceBankItemId},
+        source_bank_question_id = #{sourceBankQuestionId},
         source_question_id = #{sourceQuestionId},
         version = #{version},
         reviewed_by = #{reviewedBy},
@@ -54,13 +54,13 @@
   </delete>
 
   <select id="getById" resultMap="QuestionResultMap">
-    SELECT id, content, type, quiz_id, review_status, source_type, source_bank_item_id, source_question_id, version, reviewed_by, reviewed_at, created_at, updated_at
+    SELECT id, content, type, quiz_id, review_status, source_type, source_bank_question_id, source_question_id, version, reviewed_by, reviewed_at, created_at, updated_at
     FROM edu.questions
     WHERE id = #{questionId}
   </select>
 
   <select id="getByQuizId" resultMap="QuestionResultMap">
-    SELECT id, content, type, quiz_id, review_status, source_type, source_bank_item_id, source_question_id, version, reviewed_by, reviewed_at, created_at, updated_at
+    SELECT id, content, type, quiz_id, review_status, source_type, source_bank_question_id, source_question_id, version, reviewed_by, reviewed_at, created_at, updated_at
     FROM edu.questions
     WHERE quiz_id = #{quizId}
     ORDER BY created_at

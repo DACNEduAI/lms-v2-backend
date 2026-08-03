@@ -8,5 +8,5 @@ import jakarta.validation.constraints.PositiveOrZero;
 
 public record AddBankQuestionsRequest(
         @PositiveOrZero long version,
-        @NotEmpty List<UUID> bankItemIds) {
+        @NotEmpty List<UUID> bankQuestionIds) {
 }

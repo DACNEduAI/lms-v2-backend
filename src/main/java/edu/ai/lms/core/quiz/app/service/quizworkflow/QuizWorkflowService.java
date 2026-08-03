@@ -16,8 +16,7 @@ import edu.ai.lms.core.quiz.app.domain.QuestionReviewStatus;
 import edu.ai.lms.core.quiz.app.domain.QuestionSourceType;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus;
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItem;
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItemStatus;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion;
 import edu.ai.lms.core.quiz.app.exception.QuestionBankValidationException;
 import edu.ai.lms.core.quiz.app.exception.QuizLifecycleConflictException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
@@ -48,25 +47,21 @@ public class QuizWorkflowService implements QuizWorkflowUseCase {
 
     @Override
     @Transactional
-    public List<Question> addBankItems(UUID courseId, UUID quizId, long version, List<UUID> bankItemIds) {
+    public List<Question> addBankQuestions(UUID courseId, UUID quizId, long version, List<UUID> bankQuestionIds) {
         CurrentActor actor = requireActor();
         Quiz quiz = loadRequired(courseId, quizId);
         accessPolicy.requireCourseTeacher(actor, quiz);
         QuizAccessPolicy.requireMutable(quiz);
         requireVersion(quiz, version);
-        if (bankItemIds == null || bankItemIds.isEmpty()) {
-            throw new QuestionBankValidationException("Select at least one Question Bank item");
+        if (bankQuestionIds == null || bankQuestionIds.isEmpty()) {
+            throw new QuestionBankValidationException("Select at least one validated Question Bank question");
         }
 
         List<Question> created = new ArrayList<>();
-        for (UUID bankItemId : new LinkedHashSet<>(bankItemIds)) {
-            QuestionBankItem item = loadBankItemPort.findByCourseIdAndId(courseId, bankItemId)
+        for (UUID bankQuestionId : new LinkedHashSet<>(bankQuestionIds)) {
+            QuestionBankQuestion item = loadBankItemPort.findBankByCourseIdAndId(courseId, bankQuestionId)
                     .orElseThrow(() -> new QuestionBankValidationException(
-                            "Question Bank item does not belong to this course"));
-            if (item.getStatus() != QuestionBankItemStatus.READY_FOR_USE) {
-                throw new QuestionBankValidationException(
-                        "Only Ready for use Bank items can be added to a Quiz");
-            }
+                            "Validated Question Bank question does not belong to this course"));
             created.add(copyBankItem(item, quizId));
         }
 
@@ -99,14 +94,14 @@ public class QuizWorkflowService implements QuizWorkflowUseCase {
         return loadRequired(courseId, quizId);
     }
 
-    private Question copyBankItem(QuestionBankItem item, UUID quizId) {
+    private Question copyBankItem(QuestionBankQuestion item, UUID quizId) {
         Question question = saveQuestionPort.save(Question.builder()
                 .content(item.getContent())
                 .type(item.getQuestionType())
                 .quizId(quizId)
                 .reviewStatus(QuestionReviewStatus.APPROVED)
                 .sourceType(QuestionSourceType.BANK_COPY)
-                .sourceBankItemId(item.getId())
+                .sourceBankQuestionId(item.getId())
                 .version(0)
                 .build());
         item.getAnswers().forEach(answer -> saveAnswerPort.save(Answer.builder()

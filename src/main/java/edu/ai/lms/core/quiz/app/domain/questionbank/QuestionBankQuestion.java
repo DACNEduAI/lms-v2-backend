@@ -19,22 +19,21 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class QuestionBankItem {
+public class QuestionBankQuestion {
     private UUID id;
+    private UUID originDraftId;
     private UUID courseId;
     private UUID chapterId;
-    private UUID ccctItemId;
+    private UUID cognitiveLevelId;
+    private CognitiveLevelCode cognitiveLevelCode;
+    private String cognitiveLevelName;
     private String content;
     private Question.QuestionType questionType;
-    private String cognitiveLevelCode;
-    private String difficulty;
-    @Builder.Default
-    private QuestionBankItemStatus status = QuestionBankItemStatus.DRAFT;
     @Builder.Default
     private QuestionBankSourceType sourceType = QuestionBankSourceType.MANUAL;
     private UUID createdBy;
-    private UUID readyBy;
-    private LocalDateTime readyAt;
+    private UUID validatedBy;
+    private LocalDateTime validatedAt;
     @Builder.Default
     private long version = 0;
     @Builder.Default

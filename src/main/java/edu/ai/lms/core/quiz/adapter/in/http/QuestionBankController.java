@@ -1,6 +1,7 @@
 package edu.ai.lms.core.quiz.adapter.in.http;
 
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,8 @@ import edu.ai.lms.core.quiz.adapter.in.http.request.QuestionBankVersionRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuestionBankItemResponse;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuestionBankPageResponse;
 import edu.ai.lms.core.quiz.app.domain.Question;
-import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankItemStatus;
+import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode;
+import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelOption;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSearchCriteria;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType;
 import edu.ai.lms.core.quiz.app.port.in.usecase.QuestionBankUseCase;
@@ -28,89 +30,108 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/courses/{courseId}/question-bank/items")
+@RequestMapping("/api/courses/{courseId}")
 @PreAuthorize("hasRole('TEACHER')")
 @RequiredArgsConstructor
 public class QuestionBankController {
     private final QuestionBankUseCase useCase;
 
-    @PostMapping
-    public ResponseEntity<QuestionBankItemResponse> create(
+    @PostMapping("/question-drafts")
+    public ResponseEntity<QuestionBankItemResponse> createDraft(
             @PathVariable UUID courseId,
             @Valid @RequestBody QuestionBankItemRequest request) {
         var result = useCase.createDraft(courseId, request.toCommand());
         return ResponseEntity.created(URI.create(
-                        "/api/courses/" + courseId + "/question-bank/items/" + result.item().getId()))
+                        "/api/courses/" + courseId + "/question-drafts/" + result.item().getId()))
                 .body(QuestionBankItemResponse.from(result.item(), result.duplicateWarning()));
     }
 
-    @GetMapping
-    public ResponseEntity<QuestionBankPageResponse> findPage(
+    @GetMapping("/question-drafts")
+    public ResponseEntity<QuestionBankPageResponse> findDrafts(
             @PathVariable UUID courseId,
             @RequestParam(required = false) String query,
-            @RequestParam(required = false) QuestionBankItemStatus status,
             @RequestParam(required = false) UUID chapterId,
-            @RequestParam(required = false) UUID ccctItemId,
             @RequestParam(required = false) UUID learningOutcomeId,
             @RequestParam(required = false) Question.QuestionType questionType,
+            @RequestParam(required = false) CognitiveLevelCode cognitiveLevelCode,
             @RequestParam(required = false) QuestionBankSourceType sourceType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(QuestionBankPageResponse.from(useCase.findPage(new QuestionBankSearchCriteria(
-                courseId, query, status, chapterId, ccctItemId, learningOutcomeId,
-                questionType, sourceType, page, size))));
+        return ResponseEntity.ok(QuestionBankPageResponse.fromDrafts(useCase.findDraftPage(criteria(
+                courseId, query, chapterId, learningOutcomeId, questionType,
+                cognitiveLevelCode, sourceType, page, size))));
     }
 
-    @GetMapping("/{itemId}")
-    public ResponseEntity<QuestionBankItemResponse> get(
+    @GetMapping("/question-drafts/{draftId}")
+    public ResponseEntity<QuestionBankItemResponse> getDraft(
             @PathVariable UUID courseId,
-            @PathVariable UUID itemId) {
-        return ResponseEntity.ok(QuestionBankItemResponse.from(useCase.get(courseId, itemId)));
+            @PathVariable UUID draftId) {
+        return ResponseEntity.ok(QuestionBankItemResponse.from(useCase.getDraft(courseId, draftId)));
     }
 
-    @PutMapping("/{itemId}")
+    @PutMapping("/question-drafts/{draftId}")
     public ResponseEntity<QuestionBankItemResponse> updateDraft(
             @PathVariable UUID courseId,
-            @PathVariable UUID itemId,
+            @PathVariable UUID draftId,
             @RequestParam long version,
             @Valid @RequestBody QuestionBankItemRequest request) {
-        var result = useCase.updateDraft(courseId, itemId, version, request.toCommand());
+        var result = useCase.updateDraft(courseId, draftId, version, request.toCommand());
         return ResponseEntity.ok(QuestionBankItemResponse.from(result.item(), result.duplicateWarning()));
     }
 
-    @PostMapping("/{itemId}/ready")
-    public ResponseEntity<QuestionBankItemResponse> markReady(
+    @PostMapping("/question-drafts/{draftId}/validate")
+    public ResponseEntity<QuestionBankItemResponse> validateDraft(
             @PathVariable UUID courseId,
-            @PathVariable UUID itemId,
+            @PathVariable UUID draftId,
             @Valid @RequestBody QuestionBankVersionRequest request) {
-        return ResponseEntity.ok(QuestionBankItemResponse.from(useCase.markReady(courseId, itemId, request.version())));
+        return ResponseEntity.ok(QuestionBankItemResponse.from(
+                useCase.validateDraft(courseId, draftId, request.version())));
     }
 
-    @PostMapping("/{itemId}/archive")
-    public ResponseEntity<QuestionBankItemResponse> archive(
-            @PathVariable UUID courseId,
-            @PathVariable UUID itemId,
-            @Valid @RequestBody QuestionBankVersionRequest request) {
-        return ResponseEntity.ok(QuestionBankItemResponse.from(useCase.archive(courseId, itemId, request.version())));
-    }
-
-    @PostMapping("/{itemId}/duplicate")
-    public ResponseEntity<QuestionBankItemResponse> duplicate(
-            @PathVariable UUID courseId,
-            @PathVariable UUID itemId,
-            @Valid @RequestBody QuestionBankVersionRequest request) {
-        var result = useCase.duplicate(courseId, itemId, request.version());
-        return ResponseEntity.created(URI.create(
-                        "/api/courses/" + courseId + "/question-bank/items/" + result.item().getId()))
-                .body(QuestionBankItemResponse.from(result.item(), result.duplicateWarning()));
-    }
-
-    @DeleteMapping("/{itemId}")
+    @DeleteMapping("/question-drafts/{draftId}")
     public ResponseEntity<Void> deleteDraft(
             @PathVariable UUID courseId,
-            @PathVariable UUID itemId,
+            @PathVariable UUID draftId,
             @RequestParam long version) {
-        useCase.deleteDraft(courseId, itemId, version);
+        useCase.deleteDraft(courseId, draftId, version);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/question-bank/questions")
+    public ResponseEntity<QuestionBankPageResponse> findBankQuestions(
+            @PathVariable UUID courseId,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) UUID chapterId,
+            @RequestParam(required = false) UUID learningOutcomeId,
+            @RequestParam(required = false) Question.QuestionType questionType,
+            @RequestParam(required = false) CognitiveLevelCode cognitiveLevelCode,
+            @RequestParam(required = false) QuestionBankSourceType sourceType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(QuestionBankPageResponse.fromBankQuestions(useCase.findBankPage(criteria(
+                courseId, query, chapterId, learningOutcomeId, questionType,
+                cognitiveLevelCode, sourceType, page, size))));
+    }
+
+    @GetMapping("/question-bank/questions/{questionId}")
+    public ResponseEntity<QuestionBankItemResponse> getBankQuestion(
+            @PathVariable UUID courseId,
+            @PathVariable UUID questionId) {
+        return ResponseEntity.ok(QuestionBankItemResponse.from(
+                useCase.getBankQuestion(courseId, questionId)));
+    }
+
+    @GetMapping("/question-bank/cognitive-levels")
+    public ResponseEntity<List<CognitiveLevelOption>> getCognitiveLevels(@PathVariable UUID courseId) {
+        return ResponseEntity.ok(useCase.getCognitiveLevels(courseId));
+    }
+
+    private QuestionBankSearchCriteria criteria(
+            UUID courseId, String query, UUID chapterId, UUID learningOutcomeId,
+            Question.QuestionType questionType, CognitiveLevelCode cognitiveLevelCode,
+            QuestionBankSourceType sourceType, int page, int size) {
+        return new QuestionBankSearchCriteria(
+                courseId, query, chapterId, learningOutcomeId, questionType,
+                cognitiveLevelCode, sourceType, page, size);
     }
 }

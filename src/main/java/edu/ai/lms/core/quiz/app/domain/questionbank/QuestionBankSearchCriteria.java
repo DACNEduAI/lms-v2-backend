@@ -7,11 +7,10 @@ import edu.ai.lms.core.quiz.app.domain.Question;
 public record QuestionBankSearchCriteria(
         UUID courseId,
         String query,
-        QuestionBankItemStatus status,
         UUID chapterId,
-        UUID ccctItemId,
         UUID learningOutcomeId,
         Question.QuestionType questionType,
+        CognitiveLevelCode cognitiveLevelCode,
         QuestionBankSourceType sourceType,
         int page,
         int size) {

@@ -10,7 +10,7 @@ public record QuizQuestionSnapshotResponse(
         String content,
         Question.QuestionType questionType,
         String sourceType,
-        UUID sourceBankItemId,
+        UUID sourceBankQuestionId,
         UUID sourceQuestionId,
         long version,
         List<AnswerResponse> answers) {
@@ -19,7 +19,7 @@ public record QuizQuestionSnapshotResponse(
         return new QuizQuestionSnapshotResponse(
                 question.getId(), question.getContent(), question.getType(),
                 question.getSourceType().name(),
-                question.getSourceBankItemId(), question.getSourceQuestionId(), question.getVersion(),
+                question.getSourceBankQuestionId(), question.getSourceQuestionId(), question.getVersion(),
                 question.getAnswers().stream()
                         .map(answer -> new AnswerResponse(answer.getAnswerNumber(), answer.getContent(),
                                 answer.isCorrect(), answer.getExplanation()))

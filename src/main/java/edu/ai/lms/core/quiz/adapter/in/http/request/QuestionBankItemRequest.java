@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import edu.ai.lms.core.quiz.app.domain.Question;
+import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode;
 import edu.ai.lms.core.quiz.app.port.in.command.QuestionBankItemCommand;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -13,22 +14,18 @@ import jakarta.validation.constraints.Size;
 
 public record QuestionBankItemRequest(
         UUID chapterId,
-        UUID ccctItemId,
         @NotBlank @Size(max = 10000) String content,
         @NotNull Question.QuestionType questionType,
-        @Size(max = 100) String cognitiveLevelCode,
-        @Size(max = 30) String difficulty,
+        CognitiveLevelCode cognitiveLevelCode,
         @Size(max = 10) List<@Valid AnswerRequest> answers,
         Set<UUID> learningOutcomeIds) {
 
     public QuestionBankItemCommand toCommand() {
         return new QuestionBankItemCommand(
                 chapterId,
-                ccctItemId,
                 content,
                 questionType,
                 cognitiveLevelCode,
-                difficulty,
                 answers == null ? List.of() : answers.stream().map(AnswerRequest::toCommand).toList(),
                 learningOutcomeIds == null ? Set.of() : learningOutcomeIds);
     }

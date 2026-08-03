@@ -7,7 +7,7 @@ import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 
 public interface QuizWorkflowUseCase {
-    List<Question> addBankItems(UUID courseId, UUID quizId, long version, List<UUID> bankItemIds);
+    List<Question> addBankQuestions(UUID courseId, UUID quizId, long version, List<UUID> bankQuestionIds);
 
     Quiz publish(UUID courseId, UUID quizId, long version);
 }

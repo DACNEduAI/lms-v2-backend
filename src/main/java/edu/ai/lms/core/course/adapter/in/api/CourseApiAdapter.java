@@ -6,12 +6,10 @@ import edu.ai.lms.core.course.api.LearningOutcomeView;
 import edu.ai.lms.core.course.api.QuizGenerationContext;
 import edu.ai.lms.core.course.api.QuizGenerationContextApi;
 import edu.ai.lms.core.course.api.QuestionBankReferenceApi;
-import edu.ai.lms.core.course.app.domain.CcctCoverageStatus;
 import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
 import edu.ai.lms.core.course.app.domain.ExamMatrixQuestionType;
 import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
-import edu.ai.lms.core.course.app.port.out.LoadCcctProfilePort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadExamMatrixPort;
 import edu.ai.lms.core.course.app.port.out.LoadGroupLearningOutcomePort;
@@ -36,24 +34,10 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
     private final LoadLearningOutcomePort learningOutcomePort;
     private final LoadGroupLearningOutcomePort groupLearningOutcomePort;
     private final LoadChapterPort chapterPort;
-    private final LoadCcctProfilePort ccctProfilePort;
 
     @Override
     public boolean chapterBelongsToCourse(UUID courseId, UUID chapterId) {
         return chapterPort.findByKey(courseId, chapterId).isPresent();
-    }
-
-    @Override
-    public Optional<UUID> findPublishedExamCcctItemChapterId(UUID courseId, UUID ccctItemId) {
-        return ccctProfilePort.findPublishedByCourseId(courseId).stream()
-                .flatMap(profile -> profile.getChapters().stream())
-                .filter(chapter -> chapter.getCourseChapterId() != null)
-                .filter(chapter -> chapter.getTopics().stream()
-                        .flatMap(topic -> topic.getItems().stream())
-                        .anyMatch(item -> ccctItemId.equals(item.getId())
-                                && item.getCoverageStatus() == CcctCoverageStatus.LEARN_AND_EXAM))
-                .map(chapter -> chapter.getCourseChapterId())
-                .findFirst();
     }
 
     @Override

@@ -45,7 +45,7 @@ public class Question {
     @Builder.Default
     private QuestionSourceType sourceType = QuestionSourceType.MANUAL;
 
-    private UUID sourceBankItemId;
+    private UUID sourceBankQuestionId;
 
     private UUID sourceQuestionId;
 
