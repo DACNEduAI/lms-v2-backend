@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.coderunner.adapter.out.persistence.CodeRunnerContractRepository">
+
+  <resultMap id="ConfigRowMap" type="edu.ai.lms.core.coderunner.adapter.out.persistence.CodeRunnerConfigRow">
+    <id property="id" column="id" />
+    <result property="schemaVersion" column="schema_version" />
+    <result property="contractId" column="contract_id" />
+    <result property="contractVersion" column="contract_version" />
+    <result property="contractStatus" column="contract_status" />
+    <result property="title" column="title" />
+    <result property="statement" column="statement" />
+    <result property="executionProfileId" column="execution_profile_id" />
+    <result property="executionProfileVersion" column="execution_profile_version" />
+    <result property="archetypeId" column="archetype_id" />
+    <result property="archetypeVersion" column="archetype_version" />
+    <result property="comparatorId" column="comparator_id" />
+    <result property="comparatorVersion" column="comparator_version" />
+    <result property="entryPoint" column="entry_point" />
+    <result property="signatureJson" column="signature_json" />
+    <result property="starterCode" column="starter_code" />
+    <result property="bannedApiPatternsJson" column="banned_api_patterns_json" />
+    <result property="referenceSolution" column="reference_solution" />
+    <result property="revision" column="revision" />
+  </resultMap>
+
+  <resultMap id="TestCaseRowMap" type="edu.ai.lms.core.coderunner.adapter.out.persistence.CodeRunnerTestCaseRow">
+    <result property="externalTestId" column="external_test_id" />
+    <result property="category" column="category" />
+    <result property="visibility" column="visibility" />
+    <result property="argumentsJson" column="arguments_json" />
+    <result property="expectedOutputJson" column="expected_output_json" />
+    <result property="points" column="points" />
+    <result property="ordinal" column="ordinal" />
+  </resultMap>
+
+  <select id="nextRevision" resultType="int">
+    SELECT COALESCE(MAX(revision), 0) + 1
+    FROM edu.code_runner_configs
+    WHERE question_id = #{questionId}
+  </select>
+
+  <insert id="insertConfig">
+    INSERT INTO edu.code_runner_configs (
+      id, question_id, schema_version, contract_id, contract_version, contract_status,
+      title, statement, execution_profile_id, execution_profile_version,
+      archetype_id, archetype_version, comparator_id, comparator_version,
+      entry_point, signature_json, starter_code, banned_api_patterns_json,
+      reference_solution, revision, created_at, updated_at
+    ) VALUES (
+      #{id}, #{questionId}, #{schemaVersion}, #{contractId}, #{contractVersion}, #{contractStatus},
+      #{title}, #{statement}, #{executionProfileId}, #{executionProfileVersion},
+      #{archetypeId}, #{archetypeVersion}, #{comparatorId}, #{comparatorVersion},
+      #{entryPoint}, CAST(#{signatureJson} AS jsonb), #{starterCode},
+      CAST(#{bannedApiPatternsJson} AS jsonb), #{referenceSolution}, #{revision}, NOW(), NOW()
+    )
+  </insert>
+
+  <insert id="insertTestCase">
+    INSERT INTO edu.code_runner_test_cases (
+      id, code_runner_config_id, external_test_id, category, visibility,
+      arguments_json, expected_output_json, points, ordinal, created_at
+    ) VALUES (
+      #{id}, #{configId}, #{externalTestId}, #{category}, #{visibility},
+      CAST(#{argumentsJson} AS jsonb), CAST(#{expectedOutputJson} AS jsonb),
+      #{points}, #{ordinal}, NOW()
+    )
+  </insert>
+
+  <select id="findLatestConfig" resultMap="ConfigRowMap">
+    SELECT id, schema_version, contract_id, contract_version, contract_status,
+           title, statement, execution_profile_id, execution_profile_version,
+           archetype_id, archetype_version, comparator_id, comparator_version,
+           entry_point, signature_json::text AS signature_json, starter_code,
+           banned_api_patterns_json::text AS banned_api_patterns_json,
+           reference_solution, revision
+    FROM edu.code_runner_configs
+    WHERE question_id = #{questionId}
+    ORDER BY revision DESC
+    LIMIT 1
+  </select>
+
+  <select id="findTestCases" resultMap="TestCaseRowMap">
+    SELECT external_test_id, category, visibility,
+           arguments_json::text AS arguments_json,
+           expected_output_json::text AS expected_output_json,
+           points, ordinal
+    FROM edu.code_runner_test_cases
+    WHERE code_runner_config_id = #{configId}
+    ORDER BY ordinal
+  </select>
+
+</mapper>
