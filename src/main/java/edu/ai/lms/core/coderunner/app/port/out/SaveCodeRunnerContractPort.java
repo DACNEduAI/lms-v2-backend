@@ -7,4 +7,6 @@ import java.util.UUID;
 public interface SaveCodeRunnerContractPort {
 
     UUID saveRevision(UUID questionId, ExecutableAssessmentContract contract);
+
+    void markLatestVerified(UUID questionId);
 }

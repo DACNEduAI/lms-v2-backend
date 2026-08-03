@@ -716,8 +716,8 @@ CREATE TABLE IF NOT EXISTS answers
 );
 
 -- Immutable revisions of executable Code Runner contracts. Question review
--- status remains the single approval source; private grading data is never
--- selected by learner-facing queries.
+-- remains the business approval source; contract_status records executable
+-- verification of a revision. Private grading data never enters learner APIs.
 CREATE TABLE IF NOT EXISTS code_runner_configs
 (
     id                         UUID PRIMARY KEY DEFAULT gen_random_uuid(),

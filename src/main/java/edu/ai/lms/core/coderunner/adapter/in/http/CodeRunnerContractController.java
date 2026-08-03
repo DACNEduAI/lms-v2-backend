@@ -51,6 +51,10 @@ public class CodeRunnerContractController {
             @PathVariable UUID quizId,
             @PathVariable UUID questionId) {
         ExecutableAssessmentContract contract = service.getForTeacher(courseId, quizId, questionId);
-        return verificationService.verifyReference(contract);
+        CodeRunnerVerificationResponse response = verificationService.verifyReference(contract);
+        if (response.passed()) {
+            service.markVerified(courseId, quizId, questionId);
+        }
+        return response;
     }
 }

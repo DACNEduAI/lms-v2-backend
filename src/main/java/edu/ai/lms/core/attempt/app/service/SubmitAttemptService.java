@@ -67,7 +67,9 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
 
         double score = attemptScoringService.calculateScore(
                 loadQuizAttemptPolicyPort.getQuestionAnswerKeys(command.quizId()),
-                command.submittedAnswers()
+                command.submittedAnswers(),
+                startedAttempt.getId(),
+                user.getId()
         );
 
         startedAttempt.setSubmittedTime(now);

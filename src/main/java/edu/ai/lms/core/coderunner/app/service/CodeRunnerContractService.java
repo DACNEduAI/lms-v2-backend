@@ -56,6 +56,13 @@ public class CodeRunnerContractService {
                 .orElseThrow(() -> new CodeRunnerNotFoundException("Code Runner contract not found"));
     }
 
+    public void markVerified(UUID courseId, UUID quizId, UUID questionId) {
+        CodeRunnerActor actor = requireTeacher();
+        CodeRunnerQuestionContext context = requireContext(courseId, quizId, questionId);
+        requireCourseAccess(actor, context);
+        saveContractPort.markLatestVerified(questionId);
+    }
+
     private CodeRunnerActor requireTeacher() {
         CodeRunnerActor actor = actorPort.loadCurrentActor()
                 .orElseThrow(() -> new CodeRunnerAccessDeniedException("User is not authenticated"));

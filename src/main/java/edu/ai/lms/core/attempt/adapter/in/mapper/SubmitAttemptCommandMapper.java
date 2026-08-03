@@ -20,6 +20,7 @@ public class SubmitAttemptCommandMapper {
                 .map(item -> SubmittedAnswer.builder()
                         .questionId(item.getQuestionId())
                         .studentAnswerId(item.getStudentAnswerId())
+                        .codeSubmissionId(item.getCodeSubmissionId())
                         .build())
                 .toList();
 

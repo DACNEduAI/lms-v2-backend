@@ -27,6 +27,7 @@
   </resultMap>
 
   <resultMap id="TestCaseRowMap" type="edu.ai.lms.core.coderunner.adapter.out.persistence.CodeRunnerTestCaseRow">
+    <id property="id" column="id" />
     <result property="externalTestId" column="external_test_id" />
     <result property="category" column="category" />
     <result property="visibility" column="visibility" />
@@ -83,7 +84,7 @@
   </select>
 
   <select id="findTestCases" resultMap="TestCaseRowMap">
-    SELECT external_test_id, category, visibility,
+    SELECT id, external_test_id, category, visibility,
            arguments_json::text AS arguments_json,
            expected_output_json::text AS expected_output_json,
            points, ordinal
@@ -91,5 +92,16 @@
     WHERE code_runner_config_id = #{configId}
     ORDER BY ordinal
   </select>
+
+  <update id="markLatestVerified">
+    UPDATE edu.code_runner_configs
+    SET contract_status = 'VERIFIED_EXECUTION_GOLD', updated_at = NOW()
+    WHERE id = (
+      SELECT id FROM edu.code_runner_configs
+      WHERE question_id = #{questionId}
+      ORDER BY revision DESC
+      LIMIT 1
+    )
+  </update>
 
 </mapper>

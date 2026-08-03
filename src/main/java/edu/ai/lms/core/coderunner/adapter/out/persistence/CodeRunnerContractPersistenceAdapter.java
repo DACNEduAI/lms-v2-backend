@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.ai.lms.core.coderunner.app.domain.ExecutableAssessmentContract;
+import edu.ai.lms.core.coderunner.app.domain.StoredCodeRunnerContract;
 import edu.ai.lms.core.coderunner.app.port.out.LoadCodeRunnerContractPort;
 import edu.ai.lms.core.coderunner.app.port.out.SaveCodeRunnerContractPort;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -64,6 +66,13 @@ public class CodeRunnerContractPersistenceAdapter
         return configId;
     }
 
+    @Override
+    public void markLatestVerified(UUID questionId) {
+        if (repository.markLatestVerified(questionId) == 0) {
+            throw new IllegalStateException("No Code Runner contract exists to verify");
+        }
+    }
+
     private void insertTestCase(UUID configId, ExecutableAssessmentContract.TestCase testCase, int ordinal) {
         repository.insertTestCase(
                 UUID.randomUUID(),
@@ -80,6 +89,17 @@ public class CodeRunnerContractPersistenceAdapter
     @Override
     public Optional<ExecutableAssessmentContract> findLatestByQuestionId(UUID questionId) {
         return repository.findLatestConfig(questionId).map(this::toContract);
+    }
+
+    @Override
+    public Optional<StoredCodeRunnerContract> findLatestStoredByQuestionId(UUID questionId) {
+        return repository.findLatestConfig(questionId).map(row -> {
+            Map<String, UUID> testCaseIds = new LinkedHashMap<>();
+            repository.findTestCases(row.getId())
+                    .forEach(test -> testCaseIds.put(test.getExternalTestId(), test.getId()));
+            return new StoredCodeRunnerContract(
+                    row.getId(), toContract(row), Map.copyOf(testCaseIds));
+        });
     }
 
     private ExecutableAssessmentContract toContract(CodeRunnerConfigRow row) {
