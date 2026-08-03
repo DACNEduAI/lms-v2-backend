@@ -27,7 +27,7 @@ public class Question {
     @AllArgsConstructor
     @Builder
     public static class Image {
-        public enum SourceType { LATEX, SVG, UPLOAD }
+        public enum SourceType { AUTO, LATEX, SVG, UPLOAD }
         public enum Status { PENDING, PROCESSING, READY, FAILED }
         private UUID id;
         private SourceType sourceType;

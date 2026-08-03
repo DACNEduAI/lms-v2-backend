@@ -26,7 +26,8 @@ public class GenerateQuizCommandMapper {
                                 .toList())
                 .selectedMaterialIds(request.getSelectedMaterialIds())
                 .prompt(request.getPrompt())
-                .questionDefaults(toQuestionDefaults(request.getQuestionDefaults()))
+                .questionDefaultsConfiguration(toQuestionDefaultsConfiguration(
+                        request.getQuestionDefaultsConfiguration()))
                 .strictMode(request.getStrictMode())
                 .codeRunnerPolicy(request.getCodeRunnerPolicy())
                 .idempotencyKey(idempotencyKey)
@@ -41,8 +42,8 @@ public class GenerateQuizCommandMapper {
                 .build();
     }
 
-    private GenerateQuizCommand.QuestionDefaults toQuestionDefaults(
-            GenerateQuizRequest.QuestionDefaults defaults) {
+    private GenerateQuizCommand.QuestionDefaultsConfiguration toQuestionDefaultsConfiguration(
+            GenerateQuizRequest.QuestionDefaultsConfiguration defaults) {
         GenerateQuizRequest.MultipleChoiceDefaults multipleChoice =
                 defaults == null ? null : defaults.getMultipleChoice();
         int answerOptionCount = multipleChoice == null || multipleChoice.getAnswerOptionCount() == null
@@ -52,7 +53,7 @@ public class GenerateQuizCommandMapper {
         boolean requireAnswerExplanation = multipleChoice == null
                 || multipleChoice.getRequireAnswerExplanation() == null
                 || Boolean.TRUE.equals(multipleChoice.getRequireAnswerExplanation());
-        return new GenerateQuizCommand.QuestionDefaults(
+        return new GenerateQuizCommand.QuestionDefaultsConfiguration(
                 new GenerateQuizCommand.MultipleChoiceDefaults(
                         answerOptionCount,
                         allowMultipleCorrectAnswers,

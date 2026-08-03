@@ -310,7 +310,7 @@ class QuizWebhookProcessingServiceUT {
                         QuizWebhookRequest.AnswerPayload.builder().content("A").isCorrect(true).build(),
                         QuizWebhookRequest.AnswerPayload.builder().content("B").isCorrect(false).build()))
                 .visual(QuizWebhookRequest.VisualPayload.builder()
-                        .type("SVG").brief("Draw a diagram").altText("A diagram").build())
+                        .type("AUTO").brief("Draw a diagram").altText("A diagram").build())
                 .build();
         QuizWebhookRequest request = QuizWebhookRequest.builder()
                 .eventId(UUID.randomUUID()).jobId(jobId).status("COMPLETED")
@@ -320,7 +320,7 @@ class QuizWebhookProcessingServiceUT {
         var response = service.handleWebhook(request);
 
         assertEquals(QuizGenerationJob.Phase.VISUAL_GENERATION, response.getPhase());
-        verify(visualJobs).create(eq(jobId), any(UUID.class), eq("SVG"));
+        verify(visualJobs).create(eq(jobId), any(UUID.class), eq("AUTO"));
         verify(visualGenerationService).requestDispatchAfterCommit(eq(jobId), any());
     }
 

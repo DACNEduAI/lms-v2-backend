@@ -8,8 +8,8 @@ import java.util.UUID;
 public interface QuestionVisualJobPort {
     void create(UUID parentJobId, UUID questionImageId, String visualType);
     List<WorkItem> claimAvailable(int limit, LocalDateTime leaseUntil);
-    boolean completeLatex(UUID jobId, UUID imageId, String source, String hash, long byteSize);
-    boolean completeSvg(UUID jobId, UUID imageId, String source, String storageKey, String url, String hash, long byteSize);
+    boolean completeVisual(UUID jobId, UUID imageId, String actualType, String source,
+                           String storageKey, String url, String hash, long byteSize);
     boolean retry(UUID jobId, String code, String message, LocalDateTime nextAttemptAt);
     boolean fail(UUID jobId, UUID imageId, String code, String message);
     Optional<RetryItem> retryFailed(UUID quizId, UUID questionId, UUID requestedBy);

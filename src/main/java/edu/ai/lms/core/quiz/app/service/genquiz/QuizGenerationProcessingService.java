@@ -73,12 +73,13 @@ public class QuizGenerationProcessingService {
             List<UUID> materialIds = new ArrayList<>();
             snapshot.path("selectedMaterials").forEach(node -> materialIds.add(UUID.fromString(node.path("materialId").asText())));
             AiExamMatrix aiExamMatrix = toAiExamMatrixFromSnapshot(snapshot);
-            GenerateQuizCommand.QuestionDefaults questionDefaults = questionDefaultsFromSnapshot(snapshot);
+            GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfiguration =
+                    questionDefaultsConfigurationFromSnapshot(snapshot);
             AiGenerationRequest request = new AiGenerationRequest(
                     job.getId(), aiExamMatrix.contractVersion(), job.getCourseId(),
                     snapshot.path("courseTitle").asText(), job.getQuizTitle(),
                     aiExamMatrix.rows(), aiExamMatrix.learningOutcomeIds(), materialIds, job.getPrompt(),
-                    questionDefaults,
+                    questionDefaultsConfiguration,
                     Boolean.TRUE.equals(job.getStrictMode()), job.getCodeRunnerPolicy(),
                     job.getIdempotencyKey(), callbackUrl(), webhookSecret);
 
@@ -182,9 +183,10 @@ public class QuizGenerationProcessingService {
         return new AiExamMatrix(snapshotVersion, rows, List.copyOf(learningOutcomeIds));
     }
 
-    GenerateQuizCommand.QuestionDefaults questionDefaultsFromSnapshot(JsonNode snapshot) {
-        JsonNode multipleChoice = snapshot.path("questionDefaults").path("multipleChoice");
-        return new GenerateQuizCommand.QuestionDefaults(
+    GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfigurationFromSnapshot(
+            JsonNode snapshot) {
+        JsonNode multipleChoice = snapshot.path("questionDefaultsConfiguration").path("multipleChoice");
+        return new GenerateQuizCommand.QuestionDefaultsConfiguration(
                 new GenerateQuizCommand.MultipleChoiceDefaults(
                         multipleChoice.path("answerOptionCount").asInt(4),
                         multipleChoice.path("allowMultipleCorrectAnswers").asBoolean(false),
@@ -204,7 +206,7 @@ public class QuizGenerationProcessingService {
             List<UUID> learningOutcomeIds,
             @JsonProperty("material_ids") List<UUID> selectedMaterialIds,
             String teacherInstruction,
-            GenerateQuizCommand.QuestionDefaults questionDefaults,
+            GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfiguration,
             boolean strictMode,
             String codeRunnerPolicy,
             String idempotencyKey,

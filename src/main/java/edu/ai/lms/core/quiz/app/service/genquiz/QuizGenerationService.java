@@ -85,8 +85,8 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         }).toList();
 
         validateTiming(command);
-        GenerateQuizCommand.QuestionDefaults questionDefaults = normalizeQuestionDefaults(
-                command.questionDefaults());
+        GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfiguration =
+                normalizeQuestionDefaultsConfiguration(command.questionDefaultsConfiguration());
         Map<String, Integer> visualCounts = validateVisualRequirements(context, command.visualRequirements());
         Map<String, String> questionTypes = validateQuestionTypeOverrides(
                 context, command.questionTypeOverrides());
@@ -103,7 +103,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         snapshot.put("questionCount", questionCount);
         snapshot.put("quizTitle", command.quizTitle());
         snapshot.put("teacherInstruction", command.prompt());
-        snapshot.put("questionDefaults", questionDefaults);
+        snapshot.put("questionDefaultsConfiguration", questionDefaultsConfiguration);
         snapshot.put("strictMode", command.strictMode() == null || command.strictMode());
         snapshot.put("codeRunnerPolicy", command.codeRunnerPolicy() == null
                 ? "PRESERVE" : command.codeRunnerPolicy());
@@ -333,8 +333,8 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         }
     }
 
-    private GenerateQuizCommand.QuestionDefaults normalizeQuestionDefaults(
-            GenerateQuizCommand.QuestionDefaults defaults) {
+    private GenerateQuizCommand.QuestionDefaultsConfiguration normalizeQuestionDefaultsConfiguration(
+            GenerateQuizCommand.QuestionDefaultsConfiguration defaults) {
         GenerateQuizCommand.MultipleChoiceDefaults multipleChoice =
                 defaults == null ? null : defaults.multipleChoice();
         if (multipleChoice == null) {
@@ -344,7 +344,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
             throw new InvalidQuizGenerationRequestException(
                     "Answer option count must be between 4 and 10");
         }
-        return new GenerateQuizCommand.QuestionDefaults(multipleChoice);
+        return new GenerateQuizCommand.QuestionDefaultsConfiguration(multipleChoice);
     }
 
     private void verifyTeacherMembership(UUID userId, UUID courseId) {

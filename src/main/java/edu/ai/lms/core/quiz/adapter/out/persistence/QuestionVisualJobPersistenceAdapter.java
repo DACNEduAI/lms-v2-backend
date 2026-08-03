@@ -61,24 +61,14 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
 
     @Override
     @Transactional
-    public boolean completeLatex(UUID jobId, UUID imageId, String source, String hash, long byteSize) {
+    public boolean completeVisual(UUID jobId, UUID imageId, String actualType, String source,
+                                  String storageKey, String url, String hash, long byteSize) {
         if (!complete(jobId)) return false;
         jdbc.update("""
-                UPDATE edu.question_images SET source_text=?, status='READY', media_type='application/x-latex',
-                  content_hash=?, byte_size=?, error_code=NULL, error_message=NULL, updated_at=NOW() WHERE id=?
-                """, source, hash, byteSize, imageId);
-        return true;
-    }
-
-    @Override
-    @Transactional
-    public boolean completeSvg(UUID jobId, UUID imageId, String source, String storageKey, String url, String hash, long byteSize) {
-        if (!complete(jobId)) return false;
-        jdbc.update("""
-                UPDATE edu.question_images SET source_text=?, storage_key=?, url=?, status='READY',
+                UPDATE edu.question_images SET source_type=?, source_text=?, storage_key=?, url=?, status='READY',
                   media_type='image/svg+xml', content_hash=?, byte_size=?, error_code=NULL,
                   error_message=NULL, updated_at=NOW() WHERE id=?
-                """, source, storageKey, url, hash, byteSize, imageId);
+                """, actualType, source, storageKey, url, hash, byteSize, imageId);
         return true;
     }
 

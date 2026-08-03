@@ -534,7 +534,7 @@ CREATE TABLE IF NOT EXISTS question_images
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     question_id      UUID         NOT NULL REFERENCES questions (id) ON DELETE CASCADE,
     source_type      VARCHAR(20)  NOT NULL DEFAULT 'UPLOAD'
-        CHECK (source_type IN ('LATEX', 'SVG', 'UPLOAD')),
+        CHECK (source_type IN ('AUTO', 'LATEX', 'SVG', 'UPLOAD')),
     source_text      TEXT,
     generation_brief TEXT,
     alt_text         TEXT,
@@ -550,7 +550,8 @@ CREATE TABLE IF NOT EXISTS question_images
     error_message    TEXT,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CHECK ((source_type = 'LATEX' AND (status IN ('PENDING', 'PROCESSING', 'FAILED') OR source_text IS NOT NULL))
+    CHECK ((source_type = 'AUTO' AND status IN ('PENDING', 'PROCESSING', 'FAILED'))
+        OR (source_type = 'LATEX' AND (status IN ('PENDING', 'PROCESSING', 'FAILED') OR source_text IS NOT NULL))
         OR (source_type = 'SVG' AND (status IN ('PENDING', 'PROCESSING', 'FAILED') OR source_text IS NOT NULL))
         OR (source_type = 'UPLOAD' AND (storage_key IS NOT NULL OR url IS NOT NULL)))
 );
@@ -563,7 +564,7 @@ CREATE TABLE IF NOT EXISTS question_image_generation_jobs
     id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     quiz_generation_job_id UUID        NOT NULL REFERENCES quiz_generation_jobs (id) ON DELETE CASCADE,
     question_image_id      UUID        NOT NULL UNIQUE REFERENCES question_images (id) ON DELETE CASCADE,
-    visual_type            VARCHAR(20) NOT NULL CHECK (visual_type IN ('LATEX', 'SVG')),
+    visual_type            VARCHAR(20) NOT NULL CHECK (visual_type IN ('AUTO', 'LATEX', 'SVG')),
     status                 VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')),
     attempt_count          INTEGER     NOT NULL DEFAULT 0,
     next_attempt_at        TIMESTAMP,
@@ -579,6 +580,22 @@ CREATE INDEX IF NOT EXISTS idx_question_image_generation_queue
     ON question_image_generation_jobs (status, next_attempt_at);
 CREATE INDEX IF NOT EXISTS idx_question_image_generation_parent
     ON question_image_generation_jobs (quiz_generation_job_id);
+
+-- Upgrade visual constraints for databases created before authoritative image routing.
+ALTER TABLE question_images DROP CONSTRAINT IF EXISTS question_images_source_type_check;
+ALTER TABLE question_images ADD CONSTRAINT question_images_source_type_check
+    CHECK (source_type IN ('AUTO', 'LATEX', 'SVG', 'UPLOAD'));
+ALTER TABLE question_images DROP CONSTRAINT IF EXISTS question_images_check;
+ALTER TABLE question_images ADD CONSTRAINT question_images_check
+    CHECK ((source_type = 'AUTO' AND status IN ('PENDING', 'PROCESSING', 'FAILED'))
+        OR (source_type = 'LATEX' AND (status IN ('PENDING', 'PROCESSING', 'FAILED') OR source_text IS NOT NULL))
+        OR (source_type = 'SVG' AND (status IN ('PENDING', 'PROCESSING', 'FAILED') OR source_text IS NOT NULL))
+        OR (source_type = 'UPLOAD' AND (storage_key IS NOT NULL OR url IS NOT NULL)));
+ALTER TABLE question_image_generation_jobs
+    DROP CONSTRAINT IF EXISTS question_image_generation_jobs_visual_type_check;
+ALTER TABLE question_image_generation_jobs
+    ADD CONSTRAINT question_image_generation_jobs_visual_type_check
+    CHECK (visual_type IN ('AUTO', 'LATEX', 'SVG'));
 
 -- Answers table (weak entity dependent on Question)
 CREATE TABLE IF NOT EXISTS answers

@@ -13,7 +13,7 @@ public record GenerateQuizCommand(
         List<QuestionTypeOverride> questionTypeOverrides,
         List<UUID> selectedMaterialIds,
         String prompt,
-        QuestionDefaults questionDefaults,
+        QuestionDefaultsConfiguration questionDefaultsConfiguration,
         Boolean strictMode,
         String codeRunnerPolicy,
         String idempotencyKey,
@@ -31,7 +31,7 @@ public record GenerateQuizCommand(
             UUID examMatrixRowId,
             UUID customLearningLevelId,
             String questionType) {}
-    public record QuestionDefaults(MultipleChoiceDefaults multipleChoice) {}
+    public record QuestionDefaultsConfiguration(MultipleChoiceDefaults multipleChoice) {}
     public record MultipleChoiceDefaults(
             int answerOptionCount,
             boolean allowMultipleCorrectAnswers,

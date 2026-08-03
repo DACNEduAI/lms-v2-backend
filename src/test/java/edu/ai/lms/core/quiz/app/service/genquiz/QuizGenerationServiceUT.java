@@ -84,7 +84,7 @@ class QuizGenerationServiceUT {
                 .visualRequirements(List.of(new GenerateQuizCommand.VisualRequirement(rowId, levelId, 2)))
                 .questionTypeOverrides(List.of(new GenerateQuizCommand.QuestionTypeOverride(
                         rowId, levelId, "ESSAY")))
-                .questionDefaults(new GenerateQuizCommand.QuestionDefaults(
+                .questionDefaultsConfiguration(new GenerateQuizCommand.QuestionDefaultsConfiguration(
                         new GenerateQuizCommand.MultipleChoiceDefaults(6, true, false)))
                 .selectedMaterialIds(List.of()).unlimited(true).build());
 
@@ -103,11 +103,11 @@ class QuizGenerationServiceUT {
                 .path("levelCounts").get(0).path("imageQuestionCount").asInt());
         assertEquals("SHORT_ANSWER", saved.path("examMatrix").get(0)
                 .path("levelCounts").get(0).path("questionType").asText());
-        assertEquals(6, saved.path("questionDefaults").path("multipleChoice")
+        assertEquals(6, saved.path("questionDefaultsConfiguration").path("multipleChoice")
                 .path("answerOptionCount").asInt());
-        assertEquals(true, saved.path("questionDefaults").path("multipleChoice")
+        assertEquals(true, saved.path("questionDefaultsConfiguration").path("multipleChoice")
                 .path("allowMultipleCorrectAnswers").asBoolean());
-        assertEquals(false, saved.path("questionDefaults").path("multipleChoice")
+        assertEquals(false, saved.path("questionDefaultsConfiguration").path("multipleChoice")
                 .path("requireAnswerExplanation").asBoolean());
     }
 }

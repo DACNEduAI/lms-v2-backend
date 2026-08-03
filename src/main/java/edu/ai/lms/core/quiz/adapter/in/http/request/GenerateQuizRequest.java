@@ -48,7 +48,7 @@ public class GenerateQuizRequest {
 
     @Valid
     @Builder.Default
-    private QuestionDefaults questionDefaults = new QuestionDefaults();
+    private QuestionDefaultsConfiguration questionDefaultsConfiguration = new QuestionDefaultsConfiguration();
 
     @Builder.Default
     private Boolean strictMode = true;
@@ -111,7 +111,7 @@ public class GenerateQuizRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
-    public static class QuestionDefaults {
+    public static class QuestionDefaultsConfiguration {
         @Valid
         @Builder.Default
         private MultipleChoiceDefaults multipleChoice = new MultipleChoiceDefaults();

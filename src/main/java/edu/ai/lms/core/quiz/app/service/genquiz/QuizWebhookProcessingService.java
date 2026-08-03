@@ -319,8 +319,8 @@ public class QuizWebhookProcessingService {
     private String visualType(QuizWebhookRequest.QuestionPayload question) {
         String type = question.getVisual() == null || question.getVisual().getType() == null
                 ? "NONE" : question.getVisual().getType().trim().toUpperCase();
-        if (!Set.of("NONE", "LATEX", "SVG").contains(type)) {
-            throw new IllegalArgumentException("AI quiz visuals may only be NONE, LATEX, or SVG");
+        if (!Set.of("NONE", "AUTO", "LATEX", "SVG").contains(type)) {
+            throw new IllegalArgumentException("AI quiz visuals may only be NONE, AUTO, LATEX, or SVG");
         }
         if (!"NONE".equals(type)) {
             if (question.getVisual().getBrief() == null || question.getVisual().getBrief().isBlank()

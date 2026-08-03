@@ -31,6 +31,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
@@ -49,17 +51,19 @@ import org.xml.sax.InputSource;
 public class QuestionVisualGenerationService {
     private static final int MAX_ATTEMPTS = 3;
     private static final Pattern LATEX_UNSAFE = Pattern.compile(
-            "\\\\(?:href|url|includegraphics|htmlClass|htmlId|htmlStyle|htmlData)\\b",
+            "\\\\(?:input|include|openin|openout|read|write|immediate|write18|includegraphics|href|url|"
+                    + "verbatiminput|lstinputlisting|tikzexternalize)\\b",
             Pattern.CASE_INSENSITIVE);
     private static final Set<String> SVG_ELEMENTS = Set.of(
             "svg", "g", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon",
-            "text", "tspan", "defs", "marker", "title", "desc");
+            "text", "tspan", "defs", "marker", "title", "desc", "symbol", "use", "clipPath");
     private static final Set<String> SVG_ATTRIBUTES = Set.of(
             "viewBox", "width", "height", "x", "y", "x1", "y1", "x2", "y2", "cx", "cy",
             "r", "rx", "ry", "d", "points", "fill", "stroke", "stroke-width", "stroke-linecap",
             "stroke-linejoin", "opacity", "transform", "font-size", "font-family", "text-anchor",
             "dominant-baseline", "marker-start", "marker-mid", "marker-end", "id", "class", "role",
-            "aria-label", "xmlns");
+            "aria-label", "xmlns", "style", "clip-path", "fill-rule", "fill-opacity",
+            "stroke-opacity", "stroke-miterlimit", "href", "version", "overflow");
 
     private final QuestionVisualJobPort visualJobs;
     private final LoadQuizGenerationJobPort loadParent;
@@ -190,29 +194,44 @@ public class QuestionVisualGenerationService {
                 expireParent(work.parentJobId());
                 return;
             }
-            if (!Set.of("LATEX", "SVG").contains(work.visualType())) {
-                terminalFailure(work, "UNSUPPORTED_VISUAL_TYPE", "Only LATEX and SVG are supported");
+            if (!Set.of("AUTO", "LATEX", "SVG").contains(work.visualType())) {
+                terminalFailure(work, "UNSUPPORTED_VISUAL_TYPE", "Only AUTO, LATEX, and SVG jobs are supported");
                 return;
             }
             VisualResponse response = requestVisual(work);
             if (response == null || !work.id().equals(response.visualJobId())
-                    || !work.visualType().equals(response.visualType())) {
+                    || !("LATEX".equals(response.visualType()) || "SVG".equals(response.visualType()))) {
                 throw new UnsafeSourceException("Visual response identity or type is invalid");
             }
-            String source = "LATEX".equals(work.visualType())
-                    ? validateLatex(response.sourceCode()) : sanitizeSvg(response.sourceCode());
-            byte[] bytes = source.getBytes(StandardCharsets.UTF_8);
-            String hash = sha256(bytes);
-            boolean completed;
-            if ("LATEX".equals(work.visualType())) {
-                completed = visualJobs.completeLatex(work.id(), work.imageId(), source, hash, bytes.length);
-            } else {
-                String key = "quizzes/" + work.quizId() + "/question-images/" + work.imageId() + "-"
-                        + hash.substring(0, 12) + ".svg";
-                uploadImage.uploadQuestionImage(key, bytes, "image/svg+xml", true);
-                completed = visualJobs.completeSvg(work.id(), work.imageId(), source, key,
-                        publicUrl.getPublicImageUrl(key), hash, bytes.length);
+            if (!"image/svg+xml".equals(response.renderedMediaType())) {
+                throw new UnsafeSourceException("Rendered visual media type must be image/svg+xml");
             }
+            String source = "LATEX".equals(response.visualType())
+                    ? validateLatex(response.sourceCode()) : sanitizeSvg(response.sourceCode());
+            if (response.renderedImageBase64() == null || response.renderedImageBase64().isBlank()) {
+                throw new UnsafeSourceException("Rendered visual is empty");
+            }
+            byte[] decoded;
+            try {
+                decoded = Base64.getDecoder().decode(response.renderedImageBase64());
+            } catch (IllegalArgumentException ex) {
+                throw new UnsafeSourceException("Rendered visual is not valid base64", ex);
+            }
+            if (decoded.length == 0 || decoded.length > 2_000_000) {
+                throw new UnsafeSourceException("Rendered visual is empty or exceeds the size limit");
+            }
+            String decodedSvg = new String(decoded, StandardCharsets.UTF_8);
+            if (!Arrays.equals(decoded, decodedSvg.getBytes(StandardCharsets.UTF_8))) {
+                throw new UnsafeSourceException("Rendered visual is not valid UTF-8");
+            }
+            String renderedSvg = sanitizeSvg(decodedSvg);
+            byte[] bytes = renderedSvg.getBytes(StandardCharsets.UTF_8);
+            String hash = sha256(bytes);
+            String key = "quizzes/" + work.quizId() + "/question-images/" + work.imageId() + "-"
+                    + hash.substring(0, 12) + ".svg";
+            uploadImage.uploadQuestionImage(key, bytes, "image/svg+xml", true);
+            boolean completed = visualJobs.completeVisual(work.id(), work.imageId(), response.visualType(),
+                    source, key, publicUrl.getPublicImageUrl(key), hash, bytes.length);
             if (!completed) return;
             cancelChildSafely(work.id());
             pushParentProgress(work.parentJobId());
@@ -235,7 +254,7 @@ public class QuestionVisualGenerationService {
     VisualResponse requestVisual(QuestionVisualJobPort.WorkItem work) {
         return aiWebClient.post().uri("/quiz-gen/visuals/generate")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(new VisualRequest(work.id(), work.visualType(), work.questionContent(),
+                .bodyValue(new VisualRequest(work.id(), work.questionContent(),
                         work.generationBrief(), work.altText()))
                 .retrieve().bodyToMono(VisualResponse.class).block(requestTimeout);
     }
@@ -316,14 +335,15 @@ public class QuestionVisualGenerationService {
     }
 
     static String validateLatex(String source) {
-        if (source == null || source.isBlank() || source.length() > 10_000) {
-            throw new UnsafeSourceException("LaTeX source is empty or exceeds 10,000 characters");
+        if (source == null || source.isBlank() || source.length() > 60_000) {
+            throw new UnsafeSourceException("LaTeX source is empty or exceeds 60,000 characters");
         }
         String value = source.trim();
         String lower = value.toLowerCase();
-        if (value.startsWith("```") || value.contains("$") || value.contains("<")
-                || lower.contains("\\begin{document}") || LATEX_UNSAFE.matcher(value).find()) {
-            throw new UnsafeSourceException("LaTeX contains forbidden delimiters, HTML, or external-resource commands");
+        if (value.startsWith("```") || value.contains("<")
+                || !lower.contains("\\documentclass") || !lower.contains("\\begin{document}")
+                || !lower.contains("\\end{document}") || LATEX_UNSAFE.matcher(value).find()) {
+            throw new UnsafeSourceException("LaTeX document is incomplete or contains unsafe commands");
         }
         return value;
     }
@@ -379,8 +399,15 @@ public class QuestionVisualGenerationService {
         var attributes = element.getAttributes();
         for (int index = 0; index < attributes.getLength(); index++) {
             Node attribute = attributes.item(index);
+            if (XMLConstants.XMLNS_ATTRIBUTE_NS_URI.equals(attribute.getNamespaceURI())) continue;
             String name = attribute.getLocalName() == null ? attribute.getNodeName() : attribute.getLocalName();
             String value = attribute.getNodeValue().toLowerCase();
+            if (("width".equals(name) || "height".equals(name)) && value.trim().endsWith("px")) {
+                throw new UnsafeSourceException("SVG must not use hardcoded pixel dimensions");
+            }
+            if ("href".equals(name) && !value.matches("#[a-z_][\\w.-]*")) {
+                throw new UnsafeSourceException("SVG href must reference a local fragment");
+            }
             if (name.toLowerCase().startsWith("on") || !SVG_ATTRIBUTES.contains(name)
                     || value.contains("javascript:") || value.contains("data:")
                     || value.contains("http:") || value.contains("https:")
@@ -445,9 +472,10 @@ public class QuestionVisualGenerationService {
         }
     }
 
-    record VisualRequest(UUID visualJobId, String visualType, String questionContent,
+    record VisualRequest(UUID visualJobId, String questionContent,
                          String generationBrief, String altText) {}
-    record VisualResponse(UUID visualJobId, String visualType, String sourceCode) {}
+    record VisualResponse(UUID visualJobId, String visualType, String sourceCode,
+                          String renderedImageBase64, String renderedMediaType) {}
     static class UnsafeSourceException extends IllegalArgumentException {
         UnsafeSourceException(String message) { super(message); }
         UnsafeSourceException(String message, Throwable cause) { super(message, cause); }

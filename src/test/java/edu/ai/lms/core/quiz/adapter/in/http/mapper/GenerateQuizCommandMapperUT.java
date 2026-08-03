@@ -13,14 +13,14 @@ class GenerateQuizCommandMapperUT {
     private final GenerateQuizCommandMapper mapper = new GenerateQuizCommandMapper();
 
     @Test
-    void mapsConfiguredQuestionDefaults() {
+    void mapsConfiguredQuestionDefaultsConfiguration() {
         GenerateQuizRequest request = new GenerateQuizRequest();
-        request.setQuestionDefaults(new GenerateQuizRequest.QuestionDefaults(
+        request.setQuestionDefaultsConfiguration(new GenerateQuizRequest.QuestionDefaultsConfiguration(
                 new GenerateQuizRequest.MultipleChoiceDefaults(6, true, false)));
 
         GenerateQuizCommand.MultipleChoiceDefaults defaults = mapper
                 .toCommand(request, "key")
-                .questionDefaults()
+                .questionDefaultsConfiguration()
                 .multipleChoice();
 
         assertEquals(6, defaults.answerOptionCount());
@@ -29,13 +29,13 @@ class GenerateQuizCommandMapperUT {
     }
 
     @Test
-    void normalizesMissingQuestionDefaults() {
+    void normalizesMissingQuestionDefaultsConfiguration() {
         GenerateQuizRequest request = new GenerateQuizRequest();
-        request.setQuestionDefaults(null);
+        request.setQuestionDefaultsConfiguration(null);
 
         GenerateQuizCommand.MultipleChoiceDefaults defaults = mapper
                 .toCommand(request, "key")
-                .questionDefaults()
+                .questionDefaultsConfiguration()
                 .multipleChoice();
 
         assertEquals(4, defaults.answerOptionCount());

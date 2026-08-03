@@ -137,7 +137,7 @@ class QuizGenerationProcessingServiceUT {
                 new QuizGenerationProcessingService.AiGenerationRequest(
                         UUID.randomUUID(), 2, courseId, "DSA", "Quiz", objectMapper.createArrayNode(),
                         java.util.List.of(), java.util.List.of(materialId), null,
-                        new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.QuestionDefaults(
+                        new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.QuestionDefaultsConfiguration(
                                 new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.MultipleChoiceDefaults(
                                         6, true, false)),
                         true, "PRESERVE",
@@ -151,23 +151,23 @@ class QuizGenerationProcessingServiceUT {
         assertEquals("idempotency-key", json.path("idempotencyKey").asText());
         assertFalse(json.has("courseId"));
         assertFalse(json.has("selectedMaterialIds"));
-        assertEquals(6, json.path("questionDefaults").path("multipleChoice")
+        assertEquals(6, json.path("questionDefaultsConfiguration").path("multipleChoice")
                 .path("answerOptionCount").asInt());
-        assertTrue(json.path("questionDefaults").path("multipleChoice")
+        assertTrue(json.path("questionDefaultsConfiguration").path("multipleChoice")
                 .path("allowMultipleCorrectAnswers").asBoolean());
-        assertFalse(json.path("questionDefaults").path("multipleChoice")
+        assertFalse(json.path("questionDefaultsConfiguration").path("multipleChoice")
                 .path("requireAnswerExplanation").asBoolean());
     }
 
     @Test
-    void shouldDefaultQuestionDefaultsForOlderSnapshots() throws Exception {
+    void shouldDefaultQuestionDefaultsConfigurationForOlderSnapshots() throws Exception {
         JsonNode snapshot = objectMapper.readTree("""
                 {"snapshotVersion": 4}
                 """);
         QuizGenerationProcessingService service = new QuizGenerationProcessingService(
                 null, null, null, null, null, objectMapper);
 
-        var defaults = service.questionDefaultsFromSnapshot(snapshot).multipleChoice();
+        var defaults = service.questionDefaultsConfigurationFromSnapshot(snapshot).multipleChoice();
 
         assertEquals(4, defaults.answerOptionCount());
         assertFalse(defaults.allowMultipleCorrectAnswers());

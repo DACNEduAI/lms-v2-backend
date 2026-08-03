@@ -23,6 +23,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -205,9 +207,14 @@ class QuestionVisualGenerationServiceUT {
     @Test
     void lateVisualResponseCannotPublishAfterDeadlineChangedJobState() {
         QuestionVisualJobPort.WorkItem work = workItem();
-        doReturn(new QuestionVisualGenerationService.VisualResponse(work.id(), "LATEX", "x^2"))
+        String latex = "\\documentclass{article}\\begin{document}x^2\\end{document}";
+        String svg = "<svg viewBox=\"0 0 10 10\"><path d=\"M0 0 L5 5\"/></svg>";
+        String rendered = Base64.getEncoder().encodeToString(svg.getBytes(StandardCharsets.UTF_8));
+        doReturn(new QuestionVisualGenerationService.VisualResponse(
+                work.id(), "LATEX", latex, rendered, "image/svg+xml"))
                 .when(service).requestVisual(work);
-        when(visualJobs.completeLatex(eq(work.id()), eq(work.imageId()), eq("x^2"), any(), eq(3L)))
+        when(visualJobs.completeVisual(eq(work.id()), eq(work.imageId()), eq("LATEX"),
+                eq(latex), any(), any(), any(), any(Long.class)))
                 .thenReturn(false);
 
         service.process(work);
@@ -219,7 +226,7 @@ class QuestionVisualGenerationServiceUT {
     private QuestionVisualJobPort.WorkItem workItem() {
         return new QuestionVisualJobPort.WorkItem(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                "LATEX", "Question", "Draw it", "Description", 0,
+                "AUTO", "Question", "Draw it", "Description", 0,
                 LocalDateTime.now(), LocalDateTime.now());
     }
 }
