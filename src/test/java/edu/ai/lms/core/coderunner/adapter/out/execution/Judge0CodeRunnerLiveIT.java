@@ -17,18 +17,23 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Explicit live gate. This test calls the official Judge0 CE service and is
- * intentionally excluded from normal *Test naming conventions.
+ * Explicit live gate. By default this test calls the project-controlled
+ * Judge0 instance on localhost and is excluded from normal *Test conventions.
  */
 class Judge0CodeRunnerLiveIT {
 
-    private static final int JUDGE0_CPP_GCC_14_LANGUAGE_ID = 105;
+    private static final String JUDGE0_URL = System.getProperty(
+            "judge0.live.url", "http://127.0.0.1:2358");
+    private static final String JUDGE0_TOKEN = System.getProperty(
+            "judge0.live.token", "lms-local-judge0-token");
+    private static final int JUDGE0_CPP_LANGUAGE_ID = Integer.getInteger(
+            "judge0.live.cpp-language-id", 54);
 
     private final Judge0CodeExecutionAdapter engine = new Judge0CodeExecutionAdapter(
             WebClient.builder(),
-            "https://ce.judge0.com",
-            "",
-            "X-Auth-Token",
+            JUDGE0_URL,
+            JUDGE0_TOKEN,
+            "X-Judge0-Token",
             Duration.ofSeconds(20));
     private final CppCodeRunnerHarnessBuilder harnessBuilder =
             new CppCodeRunnerHarnessBuilder(new ObjectMapper());
@@ -39,7 +44,7 @@ class Judge0CodeRunnerLiveIT {
         var verificationService = new CodeRunnerVerificationService(
                 engine,
                 harnessBuilder,
-                JUDGE0_CPP_GCC_14_LANGUAGE_ID,
+                JUDGE0_CPP_LANGUAGE_ID,
                 Duration.ofSeconds(60),
                 Duration.ofMillis(350));
 
@@ -59,7 +64,7 @@ class Judge0CodeRunnerLiveIT {
     private CodeExecutionEngine.ExecutionRequest request(String source) {
         return new CodeExecutionEngine.ExecutionRequest(
                 source,
-                JUDGE0_CPP_GCC_14_LANGUAGE_ID,
+                JUDGE0_CPP_LANGUAGE_ID,
                 "PASS\n",
                 2_000,
                 5_000,

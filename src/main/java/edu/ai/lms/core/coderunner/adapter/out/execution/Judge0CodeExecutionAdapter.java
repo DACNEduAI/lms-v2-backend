@@ -28,7 +28,7 @@ public class Judge0CodeExecutionAdapter implements CodeExecutionEngine {
             WebClient.Builder builder,
             @Value("${code-runner.judge0.base-url:http://localhost:2358}") String baseUrl,
             @Value("${code-runner.judge0.auth-token:}") String authToken,
-            @Value("${code-runner.judge0.auth-header:X-Auth-Token}") String authHeader,
+            @Value("${code-runner.judge0.auth-header:X-Judge0-Token}") String authHeader,
             @Value("${code-runner.judge0.request-timeout:15s}") Duration requestTimeout) {
         WebClient.Builder configured = builder.baseUrl(baseUrl);
         if (authToken != null && !authToken.isBlank()) {
@@ -49,6 +49,11 @@ public class Judge0CodeExecutionAdapter implements CodeExecutionEngine {
         body.put("memory_limit", request.memoryKb());
         body.put("max_file_size", request.outputLimitKb());
         body.put("max_processes_and_or_threads", request.maxProcessesAndThreads());
+        // Judge0 1.13.1's bundled isolate uses cgroup v1. Docker Desktop exposes
+        // cgroup v2, so per-process RLIMITs keep the sandbox functional on the
+        // supported local-development deployment without weakening isolation.
+        body.put("enable_per_process_and_thread_time_limit", true);
+        body.put("enable_per_process_and_thread_memory_limit", true);
         body.put("enable_network", false);
 
         JsonNode response = bounded(client.post()
