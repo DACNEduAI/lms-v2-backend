@@ -83,6 +83,20 @@ public class QuizGenerationProcessingService {
                     Boolean.TRUE.equals(job.getStrictMode()), job.getCodeRunnerPolicy(),
                     job.getIdempotencyKey(), callbackUrl(), webhookSecret);
 
+            // --- START OF LOGGING BLOCK ---
+            try {
+                // Convert the request object to a nicely formatted JSON string
+                String jsonPayload = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(request);
+
+                // Print to terminal (or use your preferred logger, e.g., log.info(...))
+                System.out.println("========== OUTGOING AI GENERATION REQUEST ==========");
+                System.out.println(jsonPayload);
+                System.out.println("====================================================");
+            } catch (Exception e) {
+                System.err.println("Failed to serialize AiGenerationRequest for logging: " + e.getMessage());
+            }
+            // --- END OF LOGGING BLOCK ---
+
             WebClient.RequestBodySpec call = aiWebClient.post().uri("/quiz-gen/generate")
                     .contentType(MediaType.APPLICATION_JSON);
             call.bodyValue(request).retrieve().toBodilessEntity()
