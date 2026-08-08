@@ -457,6 +457,7 @@ CREATE TABLE IF NOT EXISTS quizzes
 (
     id                 UUID PRIMARY KEY      DEFAULT gen_random_uuid(),
     quiz_title         VARCHAR(255) NOT NULL,
+    description        TEXT,
     unlimited          BOOLEAN      NOT NULL DEFAULT false,
     time_limit_minutes INTEGER,
     pass_score         DOUBLE PRECISION,
@@ -482,6 +483,7 @@ CREATE TABLE IF NOT EXISTS quiz_generation_jobs
     requested_by        UUID         NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     requested_role      VARCHAR(50)  NOT NULL,
     quiz_title          VARCHAR(255),
+    description         TEXT,
     prompt              TEXT,
     request_snapshot    JSONB        NOT NULL,
     payload_hash        VARCHAR(64)  NOT NULL,
@@ -510,6 +512,9 @@ CREATE TABLE IF NOT EXISTS quiz_generation_jobs
     updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_quiz_generation_request UNIQUE (requested_by, idempotency_key)
 );
+
+ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE quiz_generation_jobs ADD COLUMN IF NOT EXISTS description TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_quiz_generation_queue
     ON quiz_generation_jobs (status, next_attempt_at);

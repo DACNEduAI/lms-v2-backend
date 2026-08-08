@@ -18,6 +18,7 @@ public record GenerateQuizCommand(
         String codeRunnerPolicy,
         String idempotencyKey,
         String quizTitle,
+        String description,
         Boolean unlimited,
         Integer timeLimitMinutes,
         Double passScore,

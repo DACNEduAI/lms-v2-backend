@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import edu.ai.lms.core.quiz.app.service.crudquiz.ModifyQuizService;
@@ -142,6 +143,31 @@ class ModifyQuizServiceUT {
         verify(loadSignedInUserPort, times(1)).getAuthenticatedUser();
         verify(loadQuizPort, times(1)).getById(quizId);
         verify(saveQuizPort, times(1)).save(any(Quiz.class));
+    }
+
+    @Test
+    @DisplayName("Should persist description and clear a finite attempt limit")
+    void testModifyQuiz_WithUnlimitedAttempts_ShouldClearAttemptLimit() {
+        existingQuiz.setDescription("Old instructions");
+        existingQuiz.setAttemptLimited(3);
+        Quiz update = Quiz.builder()
+                .description("New instructions")
+                .build();
+        ModifyQuizCommand command = ModifyQuizCommand.builder()
+                .courseId(courseId)
+                .quizId(quizId)
+                .quiz(update)
+                .clearAttemptLimit(true)
+                .build();
+
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(saveQuizPort.save(any(Quiz.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ModifyQuizResponse response = modifyQuizService.modifyQuiz(command);
+
+        assertEquals("New instructions", response.getDescription());
+        assertNull(response.getAttemptLimited());
     }
 
     @Test

@@ -16,6 +16,8 @@ public class ModifyQuizRequest {
 
     private String quizTitle;
 
+    private String description;
+
     private Boolean unlimited;
 
     private Integer timeLimitMinutes;
@@ -30,6 +32,8 @@ public class ModifyQuizRequest {
     private LocalDateTime dueTime;
 
     private Integer attemptLimited;
+
+    private Boolean attemptUnlimited;
 
     private Boolean display;
 }

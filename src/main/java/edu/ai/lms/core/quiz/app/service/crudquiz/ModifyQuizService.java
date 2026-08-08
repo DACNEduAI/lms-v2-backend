@@ -54,7 +54,7 @@ public class ModifyQuizService implements ModifyQuizUseCase {
         verifyQuizOwnership(user, existingQuiz);
 
         Quiz requestedQuiz = command.quiz();
-        Quiz updatedQuiz = mergeQuiz(existingQuiz, requestedQuiz);
+        Quiz updatedQuiz = mergeQuiz(existingQuiz, requestedQuiz, command.clearAttemptLimit());
         validateQuizTimeConfiguration(updatedQuiz);
         if (Boolean.TRUE.equals(updatedQuiz.getDisplay())
                 && visualJobs.hasUnreadyRequiredVisual(updatedQuiz.getId())) {
@@ -86,6 +86,7 @@ public class ModifyQuizService implements ModifyQuizUseCase {
         return ModifyQuizResponse.builder()
                 .quizId(savedQuiz.getId())
                 .quizTitle(savedQuiz.getQuizTitle())
+                .description(savedQuiz.getDescription())
             .unlimited(savedQuiz.getUnlimited())
                 .timeLimitMinutes(savedQuiz.getTimeLimitMinutes())
                 .passScore(savedQuiz.getPassScore())
@@ -98,16 +99,21 @@ public class ModifyQuizService implements ModifyQuizUseCase {
                 .build();
     }
 
-    private Quiz mergeQuiz(Quiz existingQuiz, Quiz requestedQuiz) {
+    private Quiz mergeQuiz(Quiz existingQuiz, Quiz requestedQuiz, boolean clearAttemptLimit) {
         Quiz merged = Quiz.builder()
                 .id(existingQuiz.getId())
                 .quizTitle(requestedQuiz.getQuizTitle() != null ? requestedQuiz.getQuizTitle() : existingQuiz.getQuizTitle())
+                .description(requestedQuiz.getDescription() != null ? requestedQuiz.getDescription() : existingQuiz.getDescription())
                 .unlimited(requestedQuiz.getUnlimited() != null ? requestedQuiz.getUnlimited() : existingQuiz.getUnlimited())
                 .timeLimitMinutes(requestedQuiz.getTimeLimitMinutes() != null ? requestedQuiz.getTimeLimitMinutes() : existingQuiz.getTimeLimitMinutes())
                 .passScore(requestedQuiz.getPassScore() != null ? requestedQuiz.getPassScore() : existingQuiz.getPassScore())
                 .startTime(requestedQuiz.getStartTime() != null ? requestedQuiz.getStartTime() : existingQuiz.getStartTime())
                 .dueTime(requestedQuiz.getDueTime() != null ? requestedQuiz.getDueTime() : existingQuiz.getDueTime())
-                .attemptLimited(requestedQuiz.getAttemptLimited() != null ? requestedQuiz.getAttemptLimited() : existingQuiz.getAttemptLimited())
+                .attemptLimited(clearAttemptLimit
+                        ? null
+                        : requestedQuiz.getAttemptLimited() != null
+                                ? requestedQuiz.getAttemptLimited()
+                                : existingQuiz.getAttemptLimited())
                 .courseId(existingQuiz.getCourseId())
                 .studentId(existingQuiz.getStudentId())
                 .teacherId(existingQuiz.getTeacherId())

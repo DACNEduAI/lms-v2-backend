@@ -134,6 +134,7 @@ public class GetQuizService implements GetQuizUseCase {
         return GetQuizResponse.builder()
                 .quizId(quiz.getId())
                 .quizTitle(quiz.getQuizTitle())
+                .description(quiz.getDescription())
                 .unlimited(quiz.getUnlimited())
                 .timeLimitMinutes(quiz.getTimeLimitMinutes())
                 .passScore(quiz.getPassScore())

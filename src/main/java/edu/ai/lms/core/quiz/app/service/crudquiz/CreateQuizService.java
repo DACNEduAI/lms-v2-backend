@@ -137,6 +137,7 @@ public class CreateQuizService implements CreateQuizUseCase {
         return CreateQuizResponse.builder()
                 .quizId(savedQuiz.getId())
                 .quizTitle(savedQuiz.getQuizTitle())
+                .description(savedQuiz.getDescription())
                 .unlimited(savedQuiz.getUnlimited())
                 .timeLimitMinutes(savedQuiz.getTimeLimitMinutes())
                 .passScore(savedQuiz.getPassScore())

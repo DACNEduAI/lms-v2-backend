@@ -363,6 +363,7 @@ public class QuizWebhookProcessingService {
         Quiz quiz = Quiz.builder()
                 .quizTitle(job.getQuizTitle() == null || job.getQuizTitle().isBlank()
                         ? payload.getQuizTitle() : job.getQuizTitle())
+                .description(job.getDescription())
                 .courseId(job.getCourseId())
                 .teacherId(job.getRequestedRole() == Roles.TEACHER ? job.getRequestedBy() : null)
                 .studentId(job.getRequestedRole() == Roles.STUDENT ? job.getRequestedBy() : null)

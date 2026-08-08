@@ -16,6 +16,7 @@ import java.util.UUID;
 public class CreateQuizResponse {
     private UUID quizId;
     private String quizTitle;
+    private String description;
     private Boolean unlimited;
     private Integer timeLimitMinutes;
     private Double passScore;

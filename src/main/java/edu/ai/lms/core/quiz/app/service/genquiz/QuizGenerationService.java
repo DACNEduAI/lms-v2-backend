@@ -102,6 +102,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         snapshot.put("selectedMaterials", materialSnapshot);
         snapshot.put("questionCount", questionCount);
         snapshot.put("quizTitle", command.quizTitle());
+        snapshot.put("description", command.description());
         snapshot.put("teacherInstruction", command.prompt());
         snapshot.put("questionDefaultsConfiguration", questionDefaultsConfiguration);
         snapshot.put("strictMode", command.strictMode() == null || command.strictMode());
@@ -132,6 +133,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
                 .requestedBy(user.getId())
                 .requestedRole(user.getRole())
                 .quizTitle(command.quizTitle())
+                .description(command.description())
                 .prompt(command.prompt())
                 .requestSnapshot(snapshotJson)
                 .payloadHash(payloadHash)

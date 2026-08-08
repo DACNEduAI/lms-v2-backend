@@ -36,6 +36,8 @@ public class QuizGenerationJob {
 
     private String quizTitle;
 
+    private String description;
+
     private Integer questionCount;
 
     private Question.QuestionType questionType;

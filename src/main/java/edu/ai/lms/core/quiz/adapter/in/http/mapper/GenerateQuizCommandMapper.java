@@ -32,6 +32,7 @@ public class GenerateQuizCommandMapper {
                 .codeRunnerPolicy(request.getCodeRunnerPolicy())
                 .idempotencyKey(idempotencyKey)
                 .quizTitle(request.getQuizTitle())
+                .description(request.getDescription())
                 .unlimited(request.getUnlimited())
                 .timeLimitMinutes(request.getTimeLimitMinutes())
                 .passScore(request.getPassScore())
