@@ -31,6 +31,8 @@
 		<spring-boot-admin.version>3.5.5</spring-boot-admin.version>
 		<spring-cloud.version>2025.0.0</spring-cloud.version>
 		<spring-modulith.version>1.4.7</spring-modulith.version>
+		<!-- 1.21.4 restores compatibility with Docker Engine 29 without the 2.x module migration. -->
+		<testcontainers.version>1.21.4</testcontainers.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -306,7 +308,7 @@
 				<executions>
 					<execution>
 						<id>attach-javadocs</id>
-						<phase>compile</phase>
+						<phase>package</phase>
 						<goals>
 							<goal>javadoc</goal>
 						</goals>

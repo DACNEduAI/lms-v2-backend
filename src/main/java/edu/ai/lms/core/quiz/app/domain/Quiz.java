@@ -18,6 +18,8 @@ public class Quiz {
 
     private String quizTitle;
 
+    private String description;
+
     @Builder.Default
     private Boolean unlimited = false;
 

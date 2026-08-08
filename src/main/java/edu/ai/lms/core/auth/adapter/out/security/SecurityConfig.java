@@ -17,6 +17,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -41,6 +42,10 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // An SSE connection is authenticated on its initial REQUEST dispatch.
+                        // Tomcat later performs ASYNC redispatches without the original
+                        // thread-local SecurityContext, after the response is committed.
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         // Public endpoints - Authentication
                         .requestMatchers("/api/auth/**").permitAll()
                         // Service-to-service callback; authenticated by HMAC in the controller.

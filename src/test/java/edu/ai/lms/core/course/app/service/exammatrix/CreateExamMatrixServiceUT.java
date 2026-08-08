@@ -34,7 +34,6 @@ class CreateExamMatrixServiceUT {
     @Test
     void createsMatrixAndThreeMatrixOwnedLevelsAtomically() {
         UUID courseId = UUID.randomUUID();
-        UUID profileId = UUID.randomUUID();
         UUID outcomeId = UUID.randomUUID();
         Course course = Course.builder().id(courseId)
                 .learningOutcomes(List.of(LearningOutcome.builder().id(outcomeId).build())).build();
@@ -44,19 +43,15 @@ class CreateExamMatrixServiceUT {
                 level("temp-1", "CLL1", outcomeId, 0),
                 level("temp-2", "CLL2", outcomeId, 1),
                 level("temp-3", "CLL3", outcomeId, 2));
-        var command = CreateExamMatrixCommand.builder().courseId(courseId).ccctProfileId(profileId).title("Matrix")
+        var command = CreateExamMatrixCommand.builder().courseId(courseId).title("Matrix")
                 .customLearningLevels(levels).rows(List.of()).build();
         when(access.requireCourseTeacher(courseId)).thenReturn(course);
-        when(validator.requirePublishedProfile(courseId, profileId)).thenReturn(
-                CcctProfile.builder().id(profileId).courseId(courseId)
-                        .status(CcctProfileStatus.PUBLISHED).build());
         when(savePort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(loadPort.findByCourseIdAndId(eq(courseId), any())).thenReturn(Optional.of(reloaded));
         when(assembler.toResponse(reloaded)).thenReturn(expected);
 
         assertSame(expected, service.createExamMatrix(command));
-        verify(savePort).save(argThat(matrix ->
-                matrix.getRows().isEmpty() && profileId.equals(matrix.getCcctProfileId())));
+        verify(savePort).save(argThat(matrix -> matrix.getRows().isEmpty()));
         verify(levelPort, times(3)).insert(argThat(level -> level.getMatrixId() != null));
     }
 

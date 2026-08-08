@@ -22,6 +22,7 @@ import edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand;
 import edu.ai.lms.core.quiz.app.port.in.usecase.GenerateQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.in.usecase.GetQuizGenerationJobUseCase;
 import edu.ai.lms.core.quiz.app.service.genquiz.SseQuizGenerationService;
+import edu.ai.lms.core.quiz.app.service.genquiz.QuestionVisualGenerationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,6 +38,7 @@ public class QuizGenerationController {
     private final GetQuizGenerationJobUseCase getQuizGenerationJobUseCase;
     private final GenerateQuizCommandMapper generateQuizCommandMapper;
     private final SseQuizGenerationService sseQuizGenerationService;
+    private final QuestionVisualGenerationService visualGenerationService;
 
     @Operation(summary = "Start async quiz generation")
     @PreAuthorize("hasRole('TEACHER')")
@@ -65,5 +67,14 @@ public class QuizGenerationController {
     public SseEmitter streamJobStatus(@PathVariable UUID jobId) {
         QuizGenerationStatusResponse status = getQuizGenerationJobUseCase.getStatus(jobId);
         return sseQuizGenerationService.subscribe(jobId, status);
+    }
+
+    @Operation(summary = "Retry a failed generated question visual")
+    @PreAuthorize("hasRole('TEACHER')")
+    @PostMapping("/quizzes/{quizId}/questions/{questionId}/image/retry")
+    public ResponseEntity<Void> retryQuestionImage(
+            @PathVariable UUID quizId, @PathVariable UUID questionId) {
+        visualGenerationService.retryFailed(quizId, questionId);
+        return ResponseEntity.accepted().build();
     }
 }

@@ -23,6 +23,7 @@ import edu.ai.lms.core.quiz.app.port.out.QuizGenerationContextView;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.ScheduleQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.ValidateMaterialSelectionPort;
+import edu.ai.lms.core.quiz.app.port.out.QuestionVisualJobPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +52,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
     private final LoadQuizGenerationContextPort generationContextPort;
     private final ValidateMaterialSelectionPort materialSelectionPort;
     private final ObjectMapper objectMapper;
+    private final QuestionVisualJobPort visualJobs;
 
     @Override
     @Transactional
@@ -83,19 +85,26 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         }).toList();
 
         validateTiming(command);
-        List<Map<String, Object>> rows = context.rows().stream().map(this::toRowSnapshot).toList();
+        GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfiguration =
+                normalizeQuestionDefaultsConfiguration(command.questionDefaultsConfiguration());
+        Map<String, Integer> visualCounts = validateVisualRequirements(context, command.visualRequirements());
+        Map<String, String> questionTypes = validateQuestionTypeOverrides(
+                context, command.questionTypeOverrides());
+        List<Map<String, Object>> rows = context.rows().stream()
+                .map(row -> toRowSnapshot(row, visualCounts, questionTypes)).toList();
         Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put("snapshotVersion", 3);
+        snapshot.put("snapshotVersion", 4);
         snapshot.put("courseId", command.courseId());
         snapshot.put("courseTitle", context.courseTitle());
         snapshot.put("examMatrixId", context.examMatrixId());
         snapshot.put("matrixTitle", context.matrixTitle());
-        snapshot.put("ccctProfileId", context.ccctProfileId());
         snapshot.put("examMatrix", rows);
         snapshot.put("selectedMaterials", materialSnapshot);
         snapshot.put("questionCount", questionCount);
         snapshot.put("quizTitle", command.quizTitle());
+        snapshot.put("description", command.description());
         snapshot.put("teacherInstruction", command.prompt());
+        snapshot.put("questionDefaultsConfiguration", questionDefaultsConfiguration);
         snapshot.put("strictMode", command.strictMode() == null || command.strictMode());
         snapshot.put("codeRunnerPolicy", command.codeRunnerPolicy() == null
                 ? "PRESERVE" : command.codeRunnerPolicy());
@@ -124,6 +133,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
                 .requestedBy(user.getId())
                 .requestedRole(user.getRole())
                 .quizTitle(command.quizTitle())
+                .description(command.description())
                 .prompt(command.prompt())
                 .requestSnapshot(snapshotJson)
                 .payloadHash(payloadHash)
@@ -138,6 +148,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
                 .attemptLimited(command.attemptLimited())
                 .display(false)
                 .status(QuizGenerationStatus.PENDING)
+                .phase(QuizGenerationJob.Phase.TEXT_GENERATION)
                 .attemptCount(0)
                 .nextAttemptAt(LocalDateTime.now())
                 .build();
@@ -183,13 +194,19 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         if (!job.getRequestedBy().equals(user.getId())) {
             throw new UserNotAuthorizedException("User is not allowed to access this job");
         }
-        return toStatusResponse(job);
+        QuizGenerationStatusResponse response = toStatusResponse(job);
+        QuestionVisualJobPort.Summary summary = visualJobs.summarize(job.getId());
+        response.setVisualSummary(new QuizGenerationStatusResponse.VisualSummary(
+                summary.requested(), summary.ready(), summary.failed()));
+        return response;
     }
 
-    private Map<String, Object> toRowSnapshot(QuizGenerationContextView.Row row) {
+    private Map<String, Object> toRowSnapshot(
+            QuizGenerationContextView.Row row,
+            Map<String, Integer> visualCounts,
+            Map<String, String> questionTypes) {
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("rowId", row.rowId());
-        snapshot.put("ccctItemId", row.ccctItemId());
         snapshot.put("chapterId", row.chapterId());
         snapshot.put("chapter", row.chapterTitle());
         snapshot.put("content", row.topic());
@@ -209,11 +226,88 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
             value.put("description", level.description());
             value.put("sortOrder", level.sortOrder());
             value.put("learningOutcomeIds", level.learningOutcomeIds());
-            value.put("questionType", level.questionType());
+            value.put("questionType", questionTypes.getOrDefault(
+                    groupKey(row.rowId(), level.customLearningLevelId()), level.questionType()));
             value.put("questionCount", level.questionCount());
+            value.put("imageQuestionCount", visualCounts.getOrDefault(
+                    groupKey(row.rowId(), level.customLearningLevelId()), 0));
             return value;
         }).toList());
         return snapshot;
+    }
+
+    private Map<String, Integer> validateVisualRequirements(
+            QuizGenerationContextView context,
+            List<GenerateQuizCommand.VisualRequirement> requirements) {
+        Map<String, Integer> available = new LinkedHashMap<>();
+        context.rows().forEach(row -> row.levelCounts().forEach(level ->
+                available.put(groupKey(row.rowId(), level.customLearningLevelId()), level.questionCount())));
+        Map<String, Integer> result = new LinkedHashMap<>();
+        for (GenerateQuizCommand.VisualRequirement requirement :
+                requirements == null ? List.<GenerateQuizCommand.VisualRequirement>of() : requirements) {
+            if (requirement == null || requirement.examMatrixRowId() == null
+                    || requirement.customLearningLevelId() == null) {
+                throw new InvalidQuizGenerationRequestException("Visual requirement group identifiers are required");
+            }
+            String key = groupKey(requirement.examMatrixRowId(), requirement.customLearningLevelId());
+            Integer questionCount = available.get(key);
+            if (questionCount == null) {
+                throw new InvalidQuizGenerationRequestException(
+                        "Visual requirement references a group outside the active exam matrix");
+            }
+            if (requirement.imageQuestionCount() < 0 || requirement.imageQuestionCount() > questionCount) {
+                throw new InvalidQuizGenerationRequestException(
+                        "Image question count must be between zero and the group's question count");
+            }
+            if (result.putIfAbsent(key, requirement.imageQuestionCount()) != null) {
+                throw new InvalidQuizGenerationRequestException("Duplicate visual requirement group");
+            }
+        }
+        return result;
+    }
+
+    private Map<String, String> validateQuestionTypeOverrides(
+            QuizGenerationContextView context,
+            List<GenerateQuizCommand.QuestionTypeOverride> overrides) {
+        java.util.Set<String> available = new java.util.HashSet<>();
+        context.rows().forEach(row -> row.levelCounts().forEach(level ->
+                available.add(groupKey(row.rowId(), level.customLearningLevelId()))));
+        Map<String, String> result = new LinkedHashMap<>();
+        for (GenerateQuizCommand.QuestionTypeOverride override :
+                overrides == null ? List.<GenerateQuizCommand.QuestionTypeOverride>of() : overrides) {
+            if (override == null || override.examMatrixRowId() == null
+                    || override.customLearningLevelId() == null) {
+                throw new InvalidQuizGenerationRequestException(
+                        "Question type override group identifiers are required");
+            }
+            String key = groupKey(override.examMatrixRowId(), override.customLearningLevelId());
+            if (!available.contains(key)) {
+                throw new InvalidQuizGenerationRequestException(
+                        "Question type override references a group outside the active exam matrix");
+            }
+            String questionType = normalizeGenerationQuestionType(override.questionType());
+            if (result.putIfAbsent(key, questionType) != null) {
+                throw new InvalidQuizGenerationRequestException("Duplicate question type override group");
+            }
+        }
+        return result;
+    }
+
+    private String normalizeGenerationQuestionType(String questionType) {
+        if (questionType == null) {
+            throw new InvalidQuizGenerationRequestException("Question type is required");
+        }
+        return switch (questionType.trim().toUpperCase(java.util.Locale.ROOT)) {
+            case "MULTIPLE_CHOICE" -> "MULTIPLE_CHOICE";
+            case "ESSAY" -> "SHORT_ANSWER";
+            case "CODE_RUNNER" -> "CODE_RUNNER";
+            default -> throw new InvalidQuizGenerationRequestException(
+                    "Question type must be MULTIPLE_CHOICE, ESSAY, or CODE_RUNNER");
+        };
+    }
+
+    private String groupKey(UUID rowId, UUID levelId) {
+        return rowId + "|" + levelId;
     }
 
     private void validateSelectedMaterials(UUID courseId, List<UUID> materialIds) {
@@ -239,6 +333,20 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         if (command.startTime() != null && command.dueTime() != null && command.dueTime().isBefore(command.startTime())) {
             throw new InvalidQuizGenerationRequestException("Quiz due time must not be before start time");
         }
+    }
+
+    private GenerateQuizCommand.QuestionDefaultsConfiguration normalizeQuestionDefaultsConfiguration(
+            GenerateQuizCommand.QuestionDefaultsConfiguration defaults) {
+        GenerateQuizCommand.MultipleChoiceDefaults multipleChoice =
+                defaults == null ? null : defaults.multipleChoice();
+        if (multipleChoice == null) {
+            multipleChoice = new GenerateQuizCommand.MultipleChoiceDefaults(4, false, true);
+        }
+        if (multipleChoice.answerOptionCount() < 4 || multipleChoice.answerOptionCount() > 10) {
+            throw new InvalidQuizGenerationRequestException(
+                    "Answer option count must be between 4 and 10");
+        }
+        return new GenerateQuizCommand.QuestionDefaultsConfiguration(multipleChoice);
     }
 
     private void verifyTeacherMembership(UUID userId, UUID courseId) {
@@ -278,6 +386,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
     static QuizGenerationStatusResponse toStatusResponse(QuizGenerationJob job) {
         return QuizGenerationStatusResponse.builder()
                 .jobId(job.getId()).status(job.getStatus()).quizId(job.getQuizId())
+                .phase(job.getPhase())
                 .errorCode(job.getErrorCode()).errorMessage(job.getErrorMessage())
                 .attemptCount(job.getAttemptCount()).createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt()).build();

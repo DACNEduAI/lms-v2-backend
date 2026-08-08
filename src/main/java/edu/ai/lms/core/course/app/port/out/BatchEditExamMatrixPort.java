@@ -8,7 +8,6 @@ import edu.ai.lms.core.course.app.domain.ExamMatrixRow;
 
 public interface BatchEditExamMatrixPort {
     Optional<ExamMatrix> lockByCourseIdAndId(UUID courseId, UUID matrixId);
-    void pinCcctProfile(UUID matrixId, UUID ccctProfileId);
     void updateMetadata(UUID matrixId, String title, String description);
     void deleteRow(UUID matrixId, UUID rowId);
     void replaceRow(ExamMatrixRow row);

@@ -22,6 +22,7 @@ import edu.ai.lms.core.quiz.app.domain.QuizSourceType;
 public class GetQuizResponse {
     private UUID quizId;
     private String quizTitle;
+    private String description;
     private Boolean unlimited;
     private Integer timeLimitMinutes;
     private Double passScore;
@@ -67,6 +68,27 @@ public class GetQuizResponse {
         private long version;
         private List<LearningOutcomeSummary> learningOutcomes;
         private List<AnswerSummary> answers;
+        @Builder.Default
+        private List<QuestionImageSummary> images = new ArrayList<>();
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class QuestionImageSummary {
+        private UUID id;
+        private String sourceType;
+        private String sourceText;
+        private String generationBrief;
+        private String altText;
+        private String status;
+        private String imageName;
+        private String url;
+        private String mediaType;
+        private String errorCode;
+        private String errorMessage;
     }
 
     @Getter

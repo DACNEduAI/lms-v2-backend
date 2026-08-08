@@ -8,11 +8,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import edu.ai.lms.common.api.ErrorResponse;
 import edu.ai.lms.core.course.app.exception.CcctConflictException;
+import edu.ai.lms.core.course.app.exception.CcctAiJobNotFoundException;
 import edu.ai.lms.core.course.app.exception.CcctPayloadTooLargeException;
 import edu.ai.lms.core.course.app.exception.CcctProfileNotFoundException;
 import edu.ai.lms.core.course.app.exception.CcctValidationException;
 
-@RestControllerAdvice(assignableTypes = edu.ai.lms.core.course.adapter.in.CcctProfileController.class)
+@RestControllerAdvice(assignableTypes = {
+        edu.ai.lms.core.course.adapter.in.CcctProfileController.class,
+        edu.ai.lms.core.course.adapter.in.CcctAiJobController.class
+})
 public class CcctExceptionHandler {
 
     @ExceptionHandler(CcctValidationException.class)
@@ -23,6 +27,11 @@ public class CcctExceptionHandler {
     @ExceptionHandler(CcctProfileNotFoundException.class)
     public ResponseEntity<ErrorResponse> notFound(CcctProfileNotFoundException exception) {
         return error(HttpStatus.NOT_FOUND, "CCCT Profile Not Found", exception.getMessage());
+    }
+
+    @ExceptionHandler(CcctAiJobNotFoundException.class)
+    public ResponseEntity<ErrorResponse> jobNotFound(CcctAiJobNotFoundException exception) {
+        return error(HttpStatus.NOT_FOUND, "CCCT AI Job Not Found", exception.getMessage());
     }
 
     @ExceptionHandler(CcctConflictException.class)

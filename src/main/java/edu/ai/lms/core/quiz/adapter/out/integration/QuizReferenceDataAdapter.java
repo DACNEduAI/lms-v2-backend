@@ -55,11 +55,9 @@ class QuizReferenceDataAdapter implements LoadCourseMembershipPort, LoadQuizGene
                         context.courseTitle(),
                         context.examMatrixId(),
                         context.matrixTitle(),
-                        context.ccctProfileId(),
                         context.rows().stream()
                                 .map(row -> new QuizGenerationContextView.Row(
                                         row.rowId(),
-                                        row.ccctItemId(),
                                         row.chapterId(),
                                         row.chapterTitle(),
                                         row.topic(),

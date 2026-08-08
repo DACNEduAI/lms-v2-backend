@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class QuizGenerationProcessingServiceUT {
 
@@ -94,18 +95,16 @@ class QuizGenerationProcessingServiceUT {
     }
 
     @Test
-    void shouldPreserveCcctRowsForVersionThreeContract() throws Exception {
+    void shouldPreserveMatrixRowsForVersionFourContract() throws Exception {
         UUID outcomeId = UUID.randomUUID();
         UUID rowId = UUID.randomUUID();
-        UUID itemId = UUID.randomUUID();
         UUID levelId = UUID.randomUUID();
         JsonNode snapshot = objectMapper.readTree("""
                 {
-                  "snapshotVersion": 3,
+                  "snapshotVersion": 4,
                   "examMatrix": [{
                     "rowId": "%s",
-                    "ccctItemId": "%s",
-                    "content": "Canonical CCCT content",
+                    "content": "Independent matrix topic",
                     "learningOutcomes": [
                       {"id": "%s", "code": "LO1", "description": "Explain"}
                     ],
@@ -117,15 +116,15 @@ class QuizGenerationProcessingServiceUT {
                     }]
                   }]
                 }
-                """.formatted(rowId, itemId, outcomeId, levelId, outcomeId));
+                """.formatted(rowId, outcomeId, levelId, outcomeId));
         QuizGenerationProcessingService service = new QuizGenerationProcessingService(
                 null, null, null, null, null, objectMapper);
 
         QuizGenerationProcessingService.AiExamMatrix result =
                 service.toAiExamMatrixFromSnapshot(snapshot);
 
-        assertEquals(3, result.contractVersion());
-        assertEquals(itemId.toString(), result.rows().get(0).path("ccctItemId").asText());
+        assertEquals(4, result.contractVersion());
+        assertFalse(result.rows().get(0).has("ccctItemId"));
         assertEquals("MULTIPLE_CHOICE", result.rows().get(0)
                 .path("levelCounts").get(0).path("questionType").asText());
     }
@@ -137,7 +136,11 @@ class QuizGenerationProcessingServiceUT {
         QuizGenerationProcessingService.AiGenerationRequest request =
                 new QuizGenerationProcessingService.AiGenerationRequest(
                         UUID.randomUUID(), 2, courseId, "DSA", "Quiz", objectMapper.createArrayNode(),
-                        java.util.List.of(), java.util.List.of(materialId), null, true, "PRESERVE",
+                        java.util.List.of(), java.util.List.of(materialId), null,
+                        new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.QuestionDefaultsConfiguration(
+                                new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.MultipleChoiceDefaults(
+                                        6, true, false)),
+                        true, "PRESERVE",
                         "idempotency-key", "http://lms/callback", "secret");
 
         JsonNode json = objectMapper.valueToTree(request);
@@ -148,5 +151,26 @@ class QuizGenerationProcessingServiceUT {
         assertEquals("idempotency-key", json.path("idempotencyKey").asText());
         assertFalse(json.has("courseId"));
         assertFalse(json.has("selectedMaterialIds"));
+        assertEquals(6, json.path("questionDefaultsConfiguration").path("multipleChoice")
+                .path("answerOptionCount").asInt());
+        assertTrue(json.path("questionDefaultsConfiguration").path("multipleChoice")
+                .path("allowMultipleCorrectAnswers").asBoolean());
+        assertFalse(json.path("questionDefaultsConfiguration").path("multipleChoice")
+                .path("requireAnswerExplanation").asBoolean());
+    }
+
+    @Test
+    void shouldDefaultQuestionDefaultsConfigurationForOlderSnapshots() throws Exception {
+        JsonNode snapshot = objectMapper.readTree("""
+                {"snapshotVersion": 4}
+                """);
+        QuizGenerationProcessingService service = new QuizGenerationProcessingService(
+                null, null, null, null, null, objectMapper);
+
+        var defaults = service.questionDefaultsConfigurationFromSnapshot(snapshot).multipleChoice();
+
+        assertEquals(4, defaults.answerOptionCount());
+        assertFalse(defaults.allowMultipleCorrectAnswers());
+        assertTrue(defaults.requireAnswerExplanation());
     }
 }

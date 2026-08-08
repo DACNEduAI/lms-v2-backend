@@ -67,7 +67,9 @@
   </select>
 
   <select id="getImagesByQuestionId" resultType="edu.ai.lms.core.quiz.app.domain.Question$Image">
-    SELECT image_name, url
+    SELECT id, source_type, source_text, generation_brief, alt_text, status,
+           image_name, storage_key, url, media_type, content_hash, byte_size,
+           error_code, error_message
     FROM edu.question_images
     WHERE question_id = #{questionId}
     ORDER BY created_at
@@ -78,8 +80,15 @@
   </delete>
 
   <insert id="insertImage">
-    INSERT INTO edu.question_images (id, question_id, image_name, url, created_at, updated_at)
-    VALUES (gen_random_uuid(), #{questionId}, #{imageName}, #{url}, NOW(), NOW())
+    INSERT INTO edu.question_images (id, question_id, source_type, source_text,
+      generation_brief, alt_text, status, image_name, storage_key, url, media_type,
+      content_hash, byte_size, error_code, error_message, created_at, updated_at)
+    VALUES (COALESCE(#{image.id}, gen_random_uuid()), #{questionId},
+      COALESCE(#{image.sourceType, javaType=edu.ai.lms.core.quiz.app.domain.Question$Image$SourceType, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, 'UPLOAD'),
+      #{image.sourceText}, #{image.generationBrief}, #{image.altText},
+      COALESCE(#{image.status, javaType=edu.ai.lms.core.quiz.app.domain.Question$Image$Status, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, 'READY'),
+      #{image.imageName}, #{image.storageKey}, #{image.url}, #{image.mediaType},
+      #{image.contentHash}, #{image.byteSize}, #{image.errorCode}, #{image.errorMessage}, NOW(), NOW())
   </insert>
 
 </mapper>

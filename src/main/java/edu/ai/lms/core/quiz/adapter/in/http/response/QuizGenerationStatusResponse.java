@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
+import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,6 +22,10 @@ public class QuizGenerationStatusResponse {
 
     private QuizGenerationStatus status;
 
+    private QuizGenerationJob.Phase phase;
+
+    private VisualSummary visualSummary;
+
     private UUID quizId;
 
     private String errorMessage;
@@ -32,4 +37,6 @@ public class QuizGenerationStatusResponse {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    public record VisualSummary(int requested, int ready, int failed) {}
 }

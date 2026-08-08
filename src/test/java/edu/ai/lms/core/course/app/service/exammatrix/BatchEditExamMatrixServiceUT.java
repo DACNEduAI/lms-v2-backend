@@ -26,40 +26,35 @@ class BatchEditExamMatrixServiceUT {
     @Mock ExamMatrixAccess access;
     @Mock ExamMatrixValidator validator;
     @Mock ExamMatrixResponseAssembler assembler;
+    @Mock edu.ai.lms.core.course.app.port.in.usecase.CustomLearningLevelUseCase customLearningLevelUseCase;
     @InjectMocks BatchEditExamMatrixService service;
 
     @Test
     void appliesDeleteUpdateCreateAndReturnsTempIdMapping() {
         UUID courseId = UUID.randomUUID(), matrixId = UUID.randomUUID();
-        UUID profileId = UUID.randomUUID();
         UUID deleteId = UUID.randomUUID(), updateId = UUID.randomUUID();
-        UUID retainedItemId = UUID.randomUUID(), createdItemId = UUID.randomUUID();
         Course course = Course.builder().id(courseId).build();
-        ExamMatrix existing = ExamMatrix.builder().id(matrixId).courseId(courseId).ccctProfileId(profileId)
-                .rows(List.of(ExamMatrixRow.builder().id(deleteId).ccctItemId(UUID.randomUUID()).orderIndex(0).build(),
-                        ExamMatrixRow.builder().id(updateId).ccctItemId(retainedItemId).orderIndex(1).build())).build();
+        ExamMatrix existing = ExamMatrix.builder().id(matrixId).courseId(courseId)
+                .rows(List.of(ExamMatrixRow.builder().id(deleteId).orderIndex(0).build(),
+                        ExamMatrixRow.builder().id(updateId).orderIndex(1).build())).build();
         var update = ExamMatrixRowCommand.builder().id(updateId)
-                .ccctItemId(retainedItemId).orderIndex(2).build();
+                .topic("Updated").orderIndex(2).build();
         var create = ExamMatrixRowCommand.builder().clientTempId("tmp-1")
-                .ccctItemId(createdItemId).orderIndex(1).build();
+                .topic("Created").orderIndex(1).build();
         ExamMatrixRow updated = ExamMatrixRow.builder().id(updateId).matrixId(matrixId)
-                .ccctItemId(retainedItemId).orderIndex(2).build();
+                .topic("Updated").orderIndex(2).build();
         ExamMatrixRow created = ExamMatrixRow.builder().matrixId(matrixId)
-                .ccctItemId(createdItemId).orderIndex(1).build();
+                .topic("Created").orderIndex(1).build();
         var command = BatchEditExamMatrixCommand.builder().courseId(courseId).matrixId(matrixId)
-                .ccctProfileId(profileId)
                 .create(List.of(create)).update(List.of(update)).delete(List.of(deleteId)).build();
-        CcctProfile profile = CcctProfile.builder().id(profileId).courseId(courseId)
-                .status(CcctProfileStatus.PUBLISHED).build();
         when(access.requireCourseTeacher(courseId)).thenReturn(course);
         when(batchPort.lockByCourseIdAndId(courseId, matrixId)).thenReturn(Optional.of(existing));
-        when(validator.requirePinnedProfile(courseId, profileId, profileId)).thenReturn(profile);
-        when(validator.validateAndMap(course, matrixId, profile, List.of(update))).thenReturn(List.of(updated));
-        when(validator.validateAndMap(course, matrixId, profile, List.of(create))).thenReturn(List.of(created));
+        when(validator.validateAndMap(course, matrixId, List.of(update))).thenReturn(List.of(updated));
+        when(validator.validateAndMap(course, matrixId, List.of(create))).thenReturn(List.of(created));
         UUID outcomeId = UUID.randomUUID();
-        ExamMatrix reloaded = ExamMatrix.builder().id(matrixId).courseId(courseId).ccctProfileId(profileId)
+        ExamMatrix reloaded = ExamMatrix.builder().id(matrixId).courseId(courseId)
                 .rows(List.of(ExamMatrixRow.builder().id(updateId)
-                        .ccctItemId(retainedItemId).chapterId(UUID.randomUUID())
+                        .topic("Updated").chapterId(UUID.randomUUID())
                         .learningOutcomeIds(List.of(outcomeId))
                         .levelCounts(List.of(ExamMatrixLevelCount.builder()
                                 .questionType(ExamMatrixQuestionType.MULTIPLE_CHOICE).build()))
@@ -87,7 +82,7 @@ class BatchEditExamMatrixServiceUT {
         UUID courseId = UUID.randomUUID();
         when(access.requireCourseTeacher(courseId)).thenReturn(Course.builder().id(courseId).build());
         var command = BatchEditExamMatrixCommand.builder()
-                .courseId(courseId).matrixId(UUID.randomUUID()).ccctProfileId(UUID.randomUUID()).build();
+                .courseId(courseId).matrixId(UUID.randomUUID()).build();
         assertThrows(ExamMatrixValidationException.class, () -> service.batchEdit(command));
         verifyNoInteractions(batchPort);
     }

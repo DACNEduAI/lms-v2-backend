@@ -71,16 +71,16 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
             return Optional.empty();
         }
         boolean incomplete = matrix.getCustomLearningLevels().size() < 3
-                || matrix.getCcctProfileId() == null
                 || !matrix.getUncoveredLearningOutcomeIds().isEmpty()
                 || matrix.getCustomLearningLevels().stream()
                         .anyMatch(level -> level.getLearningOutcomeIds().isEmpty())
                 || matrix.getRows().stream().anyMatch(row ->
                         row.getChapterId() == null
-                                || row.getCcctItemId() == null
+                                || row.getTopic() == null
+                                || row.getTopic().isBlank()
                                 || row.getLearningOutcomeIds().isEmpty()
                                 || row.getLevelCounts().stream().anyMatch(count ->
-                                        count.getQuestionType()
+                                        count.isActive() && count.getQuestionType()
                                                 != ExamMatrixQuestionType.MULTIPLE_CHOICE));
         if (incomplete) {
             throw new IllegalStateException(
@@ -117,7 +117,7 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
                                             count.getQuestionCount()))
                                     .toList();
                     return new QuizGenerationContext.QuizGenerationRow(
-                            row.getId(), row.getCcctItemId(), row.getChapterId(),
+                            row.getId(), row.getChapterId(),
                             chapterTitle == null ? "" : chapterTitle,
                             row.getTopic() == null ? "" : row.getTopic(),
                             outcomes, levelCounts);
@@ -128,7 +128,6 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
                 course.getCourseName(),
                 matrix.getId(),
                 matrix.getTitle(),
-                matrix.getCcctProfileId(),
                 rows));
     }
 

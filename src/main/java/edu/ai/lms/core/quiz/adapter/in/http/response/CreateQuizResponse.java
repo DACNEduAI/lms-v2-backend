@@ -19,6 +19,7 @@ import edu.ai.lms.core.quiz.app.domain.QuizSourceType;
 public class CreateQuizResponse {
     private UUID quizId;
     private String quizTitle;
+    private String description;
     private Boolean unlimited;
     private Integer timeLimitMinutes;
     private Double passScore;

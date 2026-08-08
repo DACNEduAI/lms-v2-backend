@@ -50,6 +50,9 @@ public class UpdateCcctProfileService implements UpdateCcctProfileUseCase {
     }
 
     private void requireEditableVersion(CcctProfile current, long expectedVersion) {
+        if (current.getFormatVersion() != 2) {
+            throw new CcctConflictException("Legacy CCCT profiles are read-only");
+        }
         if (current.getStatus() != CcctProfileStatus.DRAFT) {
             throw new CcctConflictException("Only DRAFT profiles can be updated");
         }

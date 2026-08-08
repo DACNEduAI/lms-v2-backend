@@ -9,7 +9,6 @@ import lombok.Builder;
 public record BatchEditExamMatrixCommand(
         UUID courseId,
         UUID matrixId,
-        UUID ccctProfileId,
         MatrixMetadataCommand metadata,
         BatchEditCustomLearningLevelsCommand customLearningLevels,
         List<ExamMatrixRowCommand> create,

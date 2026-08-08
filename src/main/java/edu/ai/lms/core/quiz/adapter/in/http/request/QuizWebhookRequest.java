@@ -58,8 +58,6 @@ public class QuizWebhookRequest {
 
         private UUID matrixRowId;
 
-        private UUID ccctItemId;
-
         private UUID customLearningLevelId;
 
         @Builder.Default
@@ -67,6 +65,19 @@ public class QuizWebhookRequest {
 
         @Builder.Default
         private List<AnswerPayload> answers = new ArrayList<>();
+
+        private VisualPayload visual;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class VisualPayload {
+        private String type;
+        private String brief;
+        private String altText;
     }
 
     @Getter
