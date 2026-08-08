@@ -212,6 +212,59 @@ class QuizWebhookProcessingServiceUT {
     }
 
     @Test
+    void acceptsVersionThreeQuestionMatchingCcctAllocation() {
+        UUID jobId = UUID.randomUUID(), courseId = UUID.randomUUID();
+        UUID rowId = UUID.randomUUID(), itemId = UUID.randomUUID();
+        UUID levelId = UUID.randomUUID(), outcomeId = UUID.randomUUID();
+        String snapshot = """
+                {
+                  "snapshotVersion":3,
+                  "questionCount":1,
+                  "examMatrix":[{
+                    "rowId":"%s",
+                    "ccctItemId":"%s",
+                    "levelCounts":[{
+                      "customLearningLevelId":"%s",
+                      "learningOutcomeIds":["%s"],
+                      "questionType":"MULTIPLE_CHOICE",
+                      "questionCount":1
+                    }]
+                  }]
+                }
+                """.formatted(rowId, itemId, levelId, outcomeId);
+        QuizGenerationJob job = QuizGenerationJob.builder().id(jobId).courseId(courseId)
+                .status(QuizGenerationStatus.PROCESSING).requestSnapshot(snapshot).build();
+        when(loadJobPort.getByIdForUpdate(jobId)).thenReturn(Optional.of(job));
+        when(saveQuizPort.save(any())).thenAnswer(invocation -> {
+            Quiz quiz = invocation.getArgument(0);
+            quiz.setId(UUID.randomUUID());
+            return quiz;
+        });
+        when(saveQuestionPort.save(any())).thenAnswer(invocation -> {
+            Question question = invocation.getArgument(0);
+            question.setId(UUID.randomUUID());
+            return question;
+        });
+        when(learningOutcomesPort.allBelongToCourse(courseId, List.of(outcomeId))).thenReturn(true);
+        when(saveJobPort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        QuizWebhookRequest.QuestionPayload question = dynamicQuestion(rowId, levelId, outcomeId)
+                .ccctItemId(itemId)
+                .type(Question.QuestionType.MULTIPLE_CHOICE)
+                .originalType("MULTIPLE_CHOICE")
+                .answers(List.of(
+                        QuizWebhookRequest.AnswerPayload.builder().content("A").isCorrect(true).build(),
+                        QuizWebhookRequest.AnswerPayload.builder().content("B").isCorrect(false).build()))
+                .build();
+        QuizWebhookRequest request = QuizWebhookRequest.builder()
+                .eventId(UUID.randomUUID()).jobId(jobId).status("COMPLETED")
+                .quiz(QuizWebhookRequest.QuizPayload.builder().questions(List.of(question)).build())
+                .build();
+
+        assertEquals(QuizGenerationStatus.COMPLETED, service.handleWebhook(request).getStatus());
+    }
+
+    @Test
     void acceptsVersionFourQuestionMatchingMatrixAllocation() {
         UUID jobId = UUID.randomUUID(), courseId = UUID.randomUUID();
         UUID rowId = UUID.randomUUID();

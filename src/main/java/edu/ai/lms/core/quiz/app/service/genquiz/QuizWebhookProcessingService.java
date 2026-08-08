@@ -16,6 +16,7 @@ import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
 import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
+import edu.ai.lms.core.quiz.app.port.out.QuestionVisualJobPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
@@ -126,6 +127,8 @@ public class QuizWebhookProcessingService {
             int snapshotVersion = snapshot.path("snapshotVersion").asInt(1);
             if (snapshotVersion >= 4) {
                 validateMatrixDistribution(snapshot, request.getQuiz().getQuestions());
+            } else if (snapshotVersion == 3) {
+                validateCcctDistribution(snapshot, request.getQuiz().getQuestions());
             } else if (snapshotVersion >= 2) {
                 validateDynamicDistribution(snapshot, request.getQuiz().getQuestions());
             } else {
@@ -135,6 +138,70 @@ public class QuizWebhookProcessingService {
             throw ex;
         } catch (Exception ex) {
             throw new IllegalStateException("Could not validate the request snapshot", ex);
+        }
+    }
+
+    private void validateCcctDistribution(
+            JsonNode snapshot,
+            List<QuizWebhookRequest.QuestionPayload> questions) {
+        Map<String, CcctRequirement> expectedRequirements = new HashMap<>();
+        snapshot.path("examMatrix").forEach(row -> row.path("levelCounts").forEach(level -> {
+            String rowId = row.path("rowId").asText();
+            String levelId = level.path("customLearningLevelId").asText();
+            String questionType = level.path("questionType").asText();
+            LinkedHashSet<UUID> outcomeIds = new LinkedHashSet<>();
+            level.path("learningOutcomeIds").forEach(id -> outcomeIds.add(UUID.fromString(id.asText())));
+            expectedRequirements.put(
+                    matrixKey(rowId, levelId, questionType),
+                    new CcctRequirement(
+                            level.path("questionCount").asInt(),
+                            UUID.fromString(row.path("ccctItemId").asText()),
+                            questionType,
+                            outcomeIds));
+        }));
+
+        Map<String, Integer> actualDistribution = new HashMap<>();
+        for (QuizWebhookRequest.QuestionPayload question : questions) {
+            validateQuestionShape(question);
+            if (!"NONE".equals(visualType(question))) {
+                throw new IllegalArgumentException("Contract version 3 does not permit generated visuals");
+            }
+            if (question.getMatrixRowId() == null
+                    || question.getCcctItemId() == null
+                    || question.getCustomLearningLevelId() == null) {
+                throw new IllegalArgumentException(
+                        "Every generated question must identify its matrix row, CCCT item, and custom learning level");
+            }
+            String type = question.getOriginalType().toUpperCase();
+            String key = matrixKey(
+                    question.getMatrixRowId().toString(),
+                    question.getCustomLearningLevelId().toString(),
+                    type);
+            CcctRequirement requirement = expectedRequirements.get(key);
+            if (requirement == null) {
+                throw new IllegalArgumentException(
+                        "Generated question references an unknown Matrix allocation");
+            }
+            if (!requirement.ccctItemId().equals(question.getCcctItemId())
+                    || !requirement.questionType().equals(type)) {
+                throw new IllegalArgumentException(
+                        "Generated question CCCT item or type does not match the accepted Matrix");
+            }
+            List<UUID> suppliedIds = question.getLearningOutcomeIds();
+            LinkedHashSet<UUID> suppliedSet = new LinkedHashSet<>(suppliedIds);
+            if (suppliedIds.size() != suppliedSet.size()
+                    || !suppliedSet.equals(requirement.learningOutcomeIds())) {
+                throw new IllegalArgumentException(
+                        "Generated question learning outcomes do not match the accepted Matrix requirement");
+            }
+            actualDistribution.merge(key, 1, Integer::sum);
+        }
+        Map<String, Integer> expectedDistribution = new HashMap<>();
+        expectedRequirements.forEach((key, requirement) ->
+                expectedDistribution.put(key, requirement.questionCount()));
+        if (!expectedDistribution.equals(actualDistribution)) {
+            throw new IllegalArgumentException(
+                    "Generated questions do not match the accepted item, level, type, and count distribution");
         }
     }
 
@@ -161,9 +228,7 @@ public class QuizWebhookProcessingService {
         Map<String, Integer> actualVisualDistribution = new HashMap<>();
         for (QuizWebhookRequest.QuestionPayload question : questions) {
             validateQuestionShape(question);
-            if (question.getMatrixRowId() == null
-                    || question.getCcctItemId() == null
-                    || question.getCustomLearningLevelId() == null) {
+            if (question.getMatrixRowId() == null || question.getCustomLearningLevelId() == null) {
                 throw new IllegalArgumentException(
                         "Every generated question must identify its matrix row and custom learning level");
             }
@@ -356,6 +421,13 @@ public class QuizWebhookProcessingService {
     private record MatrixRequirement(
             int questionCount,
             int imageQuestionCount,
+            String questionType,
+            LinkedHashSet<UUID> learningOutcomeIds) {
+    }
+
+    private record CcctRequirement(
+            int questionCount,
+            UUID ccctItemId,
             String questionType,
             LinkedHashSet<UUID> learningOutcomeIds) {
     }

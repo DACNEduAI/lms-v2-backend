@@ -58,6 +58,8 @@ public class QuizWebhookRequest {
 
         private UUID matrixRowId;
 
+        private UUID ccctItemId;
+
         private UUID customLearningLevelId;
 
         @Builder.Default

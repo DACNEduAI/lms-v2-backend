@@ -30,17 +30,15 @@
 
   <insert id="insert" parameterType="edu.ai.lms.core.quiz.app.domain.Quiz">
     INSERT INTO edu.quizzes
-      (id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time,
+      (id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time,
        attempt_limited, course_id, student_id, teacher_id, display, lifecycle_status,
        source_type, original_quiz_id, version, published_by, published_at, created_at, updated_at)
     VALUES
-      (#{id}, #{quizTitle}, #{unlimited}, #{timeLimitMinutes}, #{passScore}, #{startTime}, #{dueTime},
+      (#{id}, #{quizTitle}, #{description}, #{unlimited}, #{timeLimitMinutes}, #{passScore}, #{startTime}, #{dueTime},
        #{attemptLimited}, #{courseId}, #{studentId}, #{teacherId}, #{display},
        #{lifecycleStatus, javaType=edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{sourceType, javaType=edu.ai.lms.core.quiz.app.domain.QuizSourceType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{originalQuizId}, #{version}, #{publishedBy}, #{publishedAt}, NOW(), NOW())
-    INSERT INTO edu.quizzes (id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at)
-    VALUES (#{id}, #{quizTitle}, #{description}, #{unlimited}, #{timeLimitMinutes}, #{passScore}, #{startTime}, #{dueTime}, #{attemptLimited}, #{courseId}, #{studentId}, #{teacherId}, #{display}, NOW(), NOW())
   </insert>
 
   <update id="update" parameterType="edu.ai.lms.core.quiz.app.domain.Quiz">
@@ -96,31 +94,27 @@
   </delete>
 
   <select id="getById" resultMap="QuizResultMap">
-    SELECT id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
-    SELECT id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, lifecycle_status, source_type, original_quiz_id, version, published_by, published_at, created_at, updated_at
+    SELECT id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, lifecycle_status, source_type, original_quiz_id, version, published_by, published_at, created_at, updated_at
     FROM edu.quizzes
     WHERE id = #{quizId}
   </select>
 
   <select id="getByIdAndCourseId" resultMap="QuizResultMap">
-    SELECT id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
-    SELECT id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, lifecycle_status, source_type, original_quiz_id, version, published_by, published_at, created_at, updated_at
+    SELECT id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, lifecycle_status, source_type, original_quiz_id, version, published_by, published_at, created_at, updated_at
     FROM edu.quizzes
     WHERE id = #{quizId}
       AND course_id = #{courseId}
   </select>
 
   <select id="getAllByCourseId" resultMap="QuizResultMap">
-    SELECT id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, lifecycle_status, source_type, original_quiz_id, version, published_by, published_at, created_at, updated_at
-    SELECT id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
+    SELECT id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, lifecycle_status, source_type, original_quiz_id, version, published_by, published_at, created_at, updated_at
     FROM edu.quizzes
     WHERE course_id = #{courseId}
     ORDER BY created_at DESC
   </select>
 
   <select id="getTeacherCreatedByCourseId" resultMap="QuizResultMap">
-    SELECT id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, lifecycle_status, source_type, original_quiz_id, version, published_by, published_at, created_at, updated_at
-    SELECT id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
+    SELECT id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, lifecycle_status, source_type, original_quiz_id, version, published_by, published_at, created_at, updated_at
     FROM edu.quizzes
     WHERE course_id = #{courseId}
       AND teacher_id IS NOT NULL
@@ -128,8 +122,7 @@
   </select>
 
   <select id="getStudentCreatedByCourseIdAndStudentId" resultMap="QuizResultMap">
-    SELECT id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, lifecycle_status, source_type, original_quiz_id, version, published_by, published_at, created_at, updated_at
-    SELECT id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, created_at, updated_at
+    SELECT id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, lifecycle_status, source_type, original_quiz_id, version, published_by, published_at, created_at, updated_at
     FROM edu.quizzes
     WHERE course_id = #{courseId}
       AND student_id = #{studentId}

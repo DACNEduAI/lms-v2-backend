@@ -11,9 +11,9 @@ import edu.ai.lms.core.quiz.app.port.in.usecase.ModifyQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.quiz.app.port.out.QuestionVisualJobPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
 import edu.ai.lms.core.quiz.app.service.quizworkflow.QuizAccessPolicy;
-import edu.ai.lms.core.quiz.app.port.out.QuestionVisualJobPort;
 import edu.ai.lms.common.event.SystemNotificationEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -89,7 +89,7 @@ public class ModifyQuizService implements ModifyQuizUseCase {
                 .quizId(savedQuiz.getId())
                 .quizTitle(savedQuiz.getQuizTitle())
                 .description(savedQuiz.getDescription())
-            .unlimited(savedQuiz.getUnlimited())
+                .unlimited(savedQuiz.getUnlimited())
                 .timeLimitMinutes(savedQuiz.getTimeLimitMinutes())
                 .passScore(savedQuiz.getPassScore())
                 .startTime(savedQuiz.getStartTime())
