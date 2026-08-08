@@ -14,6 +14,7 @@ public class CreateQuizCommandMapper {
     public CreateQuizCommand toCommand(UUID courseId, CreateQuizRequest request) {
         Quiz quiz = Quiz.builder()
                 .quizTitle(request.getQuizTitle())
+                .description(request.getDescription())
             .unlimited(request.getUnlimited())
                 .timeLimitMinutes(request.getTimeLimitMinutes())
                 .passScore(request.getPassScore())

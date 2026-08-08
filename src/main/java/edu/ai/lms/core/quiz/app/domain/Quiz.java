@@ -18,6 +18,8 @@ public class Quiz {
 
     private String quizTitle;
 
+    private String description;
+
     @Builder.Default
     private Boolean unlimited = false;
 
@@ -39,6 +41,21 @@ public class Quiz {
 
     @Builder.Default
     private Boolean display = true;
+
+    @Builder.Default
+    private QuizLifecycleStatus lifecycleStatus = QuizLifecycleStatus.DRAFT;
+
+    @Builder.Default
+    private QuizSourceType sourceType = QuizSourceType.MANUAL;
+
+    private UUID originalQuizId;
+
+    @Builder.Default
+    private long version = 0;
+
+    private UUID publishedBy;
+
+    private LocalDateTime publishedAt;
 
     @Builder.Default
     private List<Question> questions = new ArrayList<>();

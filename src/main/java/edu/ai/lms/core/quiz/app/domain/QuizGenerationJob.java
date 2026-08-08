@@ -18,6 +18,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class QuizGenerationJob {
+    public enum Phase { TEXT_GENERATION, VISUAL_GENERATION, FINALIZING, DONE }
 
     private UUID id;
 
@@ -34,6 +35,8 @@ public class QuizGenerationJob {
     private Roles requestedRole;
 
     private String quizTitle;
+
+    private String description;
 
     private Integer questionCount;
 
@@ -68,6 +71,8 @@ public class QuizGenerationJob {
     private Boolean display;
 
     private QuizGenerationStatus status;
+
+    private Phase phase;
 
     private Integer attemptCount;
 

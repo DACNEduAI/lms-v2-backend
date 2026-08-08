@@ -13,6 +13,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import edu.ai.lms.config.IntegrationTestConfiguration;
 import edu.ai.lms.core.course.app.domain.CcctChapter;
+import edu.ai.lms.core.course.app.domain.CcctAiJob;
+import edu.ai.lms.core.course.app.domain.CcctAiJobStatus;
+import edu.ai.lms.core.course.app.domain.CcctAiJobType;
 import edu.ai.lms.core.course.app.domain.CcctCoverageStatus;
 import edu.ai.lms.core.course.app.domain.CcctItem;
 import edu.ai.lms.core.course.app.domain.CcctMode;
@@ -20,6 +23,7 @@ import edu.ai.lms.core.course.app.domain.CcctProfile;
 import edu.ai.lms.core.course.app.domain.CcctProfileStatus;
 import edu.ai.lms.core.course.app.domain.CcctTopic;
 import edu.ai.lms.core.course.app.port.out.DeleteCcctProfilePort;
+import edu.ai.lms.core.course.app.port.out.CcctAiJobPort;
 import edu.ai.lms.core.course.app.port.out.LoadCcctProfilePort;
 import edu.ai.lms.core.course.app.port.out.SaveCcctProfilePort;
 
@@ -36,6 +40,9 @@ class CcctPersistenceIT extends IntegrationTestConfiguration {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private CcctAiJobPort jobPort;
 
     @Test
     void createsLoadsAndWipeReplacesDraftWithOptimisticLocking() {
@@ -118,7 +125,7 @@ class CcctPersistenceIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    void archivedProfileRemainsPinnedAndSameItemCannotAppearTwiceInMatrix() {
+    void ccctLifecycleDoesNotAffectMatrixAndDuplicateTopicsAreAllowed() {
         UUID courseId = createCourse();
         UUID courseChapterId = createCourseChapter(courseId, "Pinned chapter");
         CcctProfile profile = savePort.create(profile(
@@ -127,35 +134,27 @@ class CcctPersistenceIT extends IntegrationTestConfiguration {
                 CcctProfileStatus.PUBLISHED,
                 courseChapterId,
                 "Pinned exam content"));
-        UUID itemId = profile.getChapters().getFirst().getTopics().getFirst().getItems().getFirst().getId();
         UUID matrixId = UUID.randomUUID();
 
         jdbcTemplate.update(
                 """
-                INSERT INTO edu.exam_matrices (id, course_id, ccct_profile_id, title)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO edu.exam_matrices (id, course_id, title)
+                VALUES (?, ?, ?)
                 """,
                 matrixId,
                 courseId,
-                profile.getId(),
                 "Pinned matrix");
-        insertMatrixRow(matrixId, courseChapterId, itemId, 0);
-
-        assertThatThrownBy(() -> insertMatrixRow(matrixId, courseChapterId, itemId, 1))
-                .isInstanceOf(DataIntegrityViolationException.class);
+        insertMatrixRow(matrixId, courseChapterId, 0);
+        insertMatrixRow(matrixId, courseChapterId, 1);
 
         jdbcTemplate.update(
                 "UPDATE edu.ccct_profiles SET status = 'ARCHIVED' WHERE id = ?",
                 profile.getId());
 
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT ccct_profile_id FROM edu.exam_matrices WHERE id = ?",
-                UUID.class,
-                matrixId)).isEqualTo(profile.getId());
-        assertThat(jdbcTemplate.queryForObject(
-                "SELECT ccct_item_id FROM edu.exam_matrix_rows WHERE matrix_id = ?",
-                UUID.class,
-                matrixId)).isEqualTo(itemId);
+                "SELECT COUNT(*) FROM edu.exam_matrix_rows WHERE matrix_id = ?",
+                Integer.class,
+                matrixId)).isEqualTo(2);
     }
 
     @Test
@@ -209,6 +208,30 @@ class CcctPersistenceIT extends IntegrationTestConfiguration {
         assertThat(loadPort.findByCourseIdAndId(publishedCourseId, published.getId())).isPresent();
     }
 
+    @Test
+    void persistsAndTransitionsAiJobLifecycle() {
+        UUID courseId = createCourse();
+        UUID chapterId = createCourseChapter(courseId, "AI chapter");
+        CcctProfile draft = savePort.create(profile(
+                courseId, "AI draft", CcctProfileStatus.DRAFT, chapterId, "Content"));
+        CcctAiJob created = jobPort.create(CcctAiJob.builder()
+                .courseId(courseId)
+                .profileId(draft.getId())
+                .type(CcctAiJobType.CUSTOM_TO_STRUCTURED)
+                .expectedVersion(draft.getVersion())
+                .build());
+
+        assertThat(created.getStatus()).isEqualTo(CcctAiJobStatus.QUEUED);
+        assertThat(jobPort.claim(created.getId())).isTrue();
+        jobPort.updateStage(created.getId(), "STRUCTURING_CONTENT");
+        jobPort.complete(created.getId(), List.of("Low confidence"));
+
+        CcctAiJob completed = jobPort.findById(created.getId()).orElseThrow();
+        assertThat(completed.getStatus()).isEqualTo(CcctAiJobStatus.COMPLETED);
+        assertThat(completed.getWarnings()).containsExactly("Low confidence");
+        assertThat(completed.getCompletedAt()).isNotNull();
+    }
+
     private CcctProfile profile(
             UUID courseId,
             String name,
@@ -232,8 +255,10 @@ class CcctPersistenceIT extends IntegrationTestConfiguration {
         return CcctProfile.builder()
                 .courseId(courseId)
                 .name(name)
-                .templateTitle("Course Content Coverage Template")
+                .templateTitle(name)
                 .status(status)
+                .formatVersion(2)
+                .structuredCurrent(true)
                 .lastMode(CcctMode.STRUCTURED)
                 .markdownContent("")
                 .chapters(List.of(chapter))
@@ -274,18 +299,16 @@ class CcctPersistenceIT extends IntegrationTestConfiguration {
     private void insertMatrixRow(
             UUID matrixId,
             UUID chapterId,
-            UUID itemId,
             int orderIndex) {
         jdbcTemplate.update(
                 """
                 INSERT INTO edu.exam_matrix_rows
-                    (id, matrix_id, chapter_id, ccct_item_id, topic, order_index)
-                VALUES (?, ?, ?, ?, ?, ?)
+                    (id, matrix_id, chapter_id, topic, order_index)
+                VALUES (?, ?, ?, ?, ?)
                 """,
                 UUID.randomUUID(),
                 matrixId,
                 chapterId,
-                itemId,
                 "Pinned exam content",
                 orderIndex);
     }

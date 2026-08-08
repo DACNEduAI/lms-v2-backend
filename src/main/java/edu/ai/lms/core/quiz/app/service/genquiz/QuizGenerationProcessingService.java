@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
+import edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.ScheduleQuizGenerationJobPort;
@@ -39,7 +40,7 @@ public class QuizGenerationProcessingService {
     private String webhookBaseUrl;
     @Value("${quiz.generation.webhook.secret}")
     private String webhookSecret;
-    @Value("${quiz.generation.timeout-minutes:15}")
+    @Value("${quiz.generation.timeout-minutes:20}")
     private long timeoutMinutes;
     @Value("${quiz.generation.max-attempts:3}")
     private int maxAttempts;
@@ -72,12 +73,29 @@ public class QuizGenerationProcessingService {
             List<UUID> materialIds = new ArrayList<>();
             snapshot.path("selectedMaterials").forEach(node -> materialIds.add(UUID.fromString(node.path("materialId").asText())));
             AiExamMatrix aiExamMatrix = toAiExamMatrixFromSnapshot(snapshot);
+            GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfiguration =
+                    questionDefaultsConfigurationFromSnapshot(snapshot);
             AiGenerationRequest request = new AiGenerationRequest(
                     job.getId(), aiExamMatrix.contractVersion(), job.getCourseId(),
                     snapshot.path("courseTitle").asText(), job.getQuizTitle(),
                     aiExamMatrix.rows(), aiExamMatrix.learningOutcomeIds(), materialIds, job.getPrompt(),
+                    questionDefaultsConfiguration,
                     Boolean.TRUE.equals(job.getStrictMode()), job.getCodeRunnerPolicy(),
                     job.getIdempotencyKey(), callbackUrl(), webhookSecret);
+
+            // --- START OF LOGGING BLOCK ---
+            try {
+                // Convert the request object to a nicely formatted JSON string
+                String jsonPayload = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(request);
+
+                // Print to terminal (or use your preferred logger, e.g., log.info(...))
+                System.out.println("========== OUTGOING AI GENERATION REQUEST ==========");
+                System.out.println(jsonPayload);
+                System.out.println("====================================================");
+            } catch (Exception e) {
+                System.err.println("Failed to serialize AiGenerationRequest for logging: " + e.getMessage());
+            }
+            // --- END OF LOGGING BLOCK ---
 
             WebClient.RequestBodySpec call = aiWebClient.post().uri("/quiz-gen/generate")
                     .contentType(MediaType.APPLICATION_JSON);
@@ -85,7 +103,8 @@ public class QuizGenerationProcessingService {
                     .block(Duration.ofMinutes(timeoutMinutes));
 
             QuizGenerationJob current = loadJobPort.getById(jobId).orElseThrow();
-            if (current.getStatus() == QuizGenerationStatus.PROCESSING) {
+            if (current.getStatus() == QuizGenerationStatus.PROCESSING
+                    && (current.getPhase() == null || current.getPhase() == QuizGenerationJob.Phase.TEXT_GENERATION)) {
                 retryOrFail(current, "CALLBACK_MISSING", "AI service returned without delivering a terminal webhook");
             }
         } catch (Exception ex) {
@@ -178,6 +197,16 @@ public class QuizGenerationProcessingService {
         return new AiExamMatrix(snapshotVersion, rows, List.copyOf(learningOutcomeIds));
     }
 
+    GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfigurationFromSnapshot(
+            JsonNode snapshot) {
+        JsonNode multipleChoice = snapshot.path("questionDefaultsConfiguration").path("multipleChoice");
+        return new GenerateQuizCommand.QuestionDefaultsConfiguration(
+                new GenerateQuizCommand.MultipleChoiceDefaults(
+                        multipleChoice.path("answerOptionCount").asInt(4),
+                        multipleChoice.path("allowMultipleCorrectAnswers").asBoolean(false),
+                        multipleChoice.path("requireAnswerExplanation").asBoolean(true)));
+    }
+
     record AiExamMatrix(int contractVersion, JsonNode rows, List<UUID> learningOutcomeIds) {
     }
 
@@ -191,6 +220,7 @@ public class QuizGenerationProcessingService {
             List<UUID> learningOutcomeIds,
             @JsonProperty("material_ids") List<UUID> selectedMaterialIds,
             String teacherInstruction,
+            GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfiguration,
             boolean strictMode,
             String codeRunnerPolicy,
             String idempotencyKey,

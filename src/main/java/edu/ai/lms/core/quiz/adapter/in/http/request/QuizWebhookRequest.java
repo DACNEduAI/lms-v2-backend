@@ -67,6 +67,19 @@ public class QuizWebhookRequest {
 
         @Builder.Default
         private List<AnswerPayload> answers = new ArrayList<>();
+
+        private VisualPayload visual;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class VisualPayload {
+        private String type;
+        private String brief;
+        private String altText;
     }
 
     @Getter

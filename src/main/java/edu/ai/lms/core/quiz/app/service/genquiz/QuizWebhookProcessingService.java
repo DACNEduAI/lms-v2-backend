@@ -7,11 +7,16 @@ import edu.ai.lms.core.quiz.adapter.in.http.request.QuizWebhookRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
+import edu.ai.lms.core.quiz.app.domain.QuestionReviewStatus;
+import edu.ai.lms.core.quiz.app.domain.QuestionSourceType;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus;
+import edu.ai.lms.core.quiz.app.domain.QuizSourceType;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
 import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
+import edu.ai.lms.core.quiz.app.port.out.QuestionVisualJobPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
@@ -50,6 +55,8 @@ public class QuizWebhookProcessingService {
     private final ScheduleQuizGenerationJobPort schedulerPort;
     private final SseQuizGenerationService sseService;
     private final ObjectMapper objectMapper;
+    private final QuestionVisualJobPort visualJobs;
+    private final QuestionVisualGenerationService visualGenerationService;
 
     @Transactional
     public QuizGenerationStatusResponse handleWebhook(QuizWebhookRequest request) {
@@ -86,10 +93,21 @@ public class QuizWebhookProcessingService {
         Quiz savedQuiz = persistQuiz(job, request.getQuiz());
         job.setQuizId(savedQuiz.getId());
         job.setCallbackEventId(request.getEventId());
+        job.setLeaseUntil(null);
+        QuestionVisualJobPort.Summary visualSummary = visualJobs.summarize(job.getId());
+        if (visualSummary.requested() > 0) {
+            job.setStatus(QuizGenerationStatus.PROCESSING);
+            job.setPhase(QuizGenerationJob.Phase.VISUAL_GENERATION);
+            job.setErrorCode(null);
+            job.setErrorMessage(null);
+            QuizGenerationJob processing = saveJobPort.save(job);
+            visualGenerationService.requestDispatchAfterCommit(job.getId(), job.getCreatedAt());
+            return QuizGenerationService.toStatusResponse(processing);
+        }
         job.setStatus(QuizGenerationStatus.COMPLETED);
+        job.setPhase(QuizGenerationJob.Phase.DONE);
         job.setErrorCode(null);
         job.setErrorMessage(null);
-        job.setLeaseUntil(null);
         job.setCompletedAt(LocalDateTime.now());
         QuizGenerationJob completed = saveJobPort.save(job);
         deferTerminalNotification(completed);
@@ -107,7 +125,9 @@ public class QuizWebhookProcessingService {
                 throw new IllegalArgumentException("Generated question count does not match the accepted matrix");
             }
             int snapshotVersion = snapshot.path("snapshotVersion").asInt(1);
-            if (snapshotVersion >= 3) {
+            if (snapshotVersion >= 4) {
+                validateMatrixDistribution(snapshot, request.getQuiz().getQuestions());
+            } else if (snapshotVersion == 3) {
                 validateCcctDistribution(snapshot, request.getQuiz().getQuestions());
             } else if (snapshotVersion >= 2) {
                 validateDynamicDistribution(snapshot, request.getQuiz().getQuestions());
@@ -132,7 +152,7 @@ public class QuizWebhookProcessingService {
             LinkedHashSet<UUID> outcomeIds = new LinkedHashSet<>();
             level.path("learningOutcomeIds").forEach(id -> outcomeIds.add(UUID.fromString(id.asText())));
             expectedRequirements.put(
-                    ccctKey(rowId, levelId, questionType),
+                    matrixKey(rowId, levelId, questionType),
                     new CcctRequirement(
                             level.path("questionCount").asInt(),
                             UUID.fromString(row.path("ccctItemId").asText()),
@@ -143,6 +163,9 @@ public class QuizWebhookProcessingService {
         Map<String, Integer> actualDistribution = new HashMap<>();
         for (QuizWebhookRequest.QuestionPayload question : questions) {
             validateQuestionShape(question);
+            if (!"NONE".equals(visualType(question))) {
+                throw new IllegalArgumentException("Contract version 3 does not permit generated visuals");
+            }
             if (question.getMatrixRowId() == null
                     || question.getCcctItemId() == null
                     || question.getCustomLearningLevelId() == null) {
@@ -150,7 +173,7 @@ public class QuizWebhookProcessingService {
                         "Every generated question must identify its matrix row, CCCT item, and custom learning level");
             }
             String type = question.getOriginalType().toUpperCase();
-            String key = ccctKey(
+            String key = matrixKey(
                     question.getMatrixRowId().toString(),
                     question.getCustomLearningLevelId().toString(),
                     type);
@@ -182,6 +205,75 @@ public class QuizWebhookProcessingService {
         }
     }
 
+    private void validateMatrixDistribution(
+            JsonNode snapshot,
+            List<QuizWebhookRequest.QuestionPayload> questions) {
+        Map<String, MatrixRequirement> expectedRequirements = new HashMap<>();
+        snapshot.path("examMatrix").forEach(row -> row.path("levelCounts").forEach(level -> {
+            String rowId = row.path("rowId").asText();
+            String levelId = level.path("customLearningLevelId").asText();
+            String questionType = level.path("questionType").asText();
+            LinkedHashSet<UUID> outcomeIds = new LinkedHashSet<>();
+            level.path("learningOutcomeIds").forEach(id -> outcomeIds.add(UUID.fromString(id.asText())));
+            expectedRequirements.put(
+                    matrixKey(rowId, levelId, questionType),
+                    new MatrixRequirement(
+                            level.path("questionCount").asInt(),
+                            level.path("imageQuestionCount").asInt(0),
+                            questionType,
+                            outcomeIds));
+        }));
+
+        Map<String, Integer> actualDistribution = new HashMap<>();
+        Map<String, Integer> actualVisualDistribution = new HashMap<>();
+        for (QuizWebhookRequest.QuestionPayload question : questions) {
+            validateQuestionShape(question);
+            if (question.getMatrixRowId() == null || question.getCustomLearningLevelId() == null) {
+                throw new IllegalArgumentException(
+                        "Every generated question must identify its matrix row and custom learning level");
+            }
+            String type = question.getOriginalType().toUpperCase();
+            String key = matrixKey(
+                    question.getMatrixRowId().toString(),
+                    question.getCustomLearningLevelId().toString(),
+                    type);
+            MatrixRequirement requirement = expectedRequirements.get(key);
+            if (requirement == null) {
+                throw new IllegalArgumentException(
+                        "Generated question references an unknown Matrix allocation");
+            }
+            if (!requirement.questionType().equals(type)) {
+                throw new IllegalArgumentException(
+                        "Generated question type does not match the accepted Matrix");
+            }
+            List<UUID> suppliedIds = question.getLearningOutcomeIds();
+            LinkedHashSet<UUID> suppliedSet = new LinkedHashSet<>(suppliedIds);
+            if (suppliedIds.size() != suppliedSet.size()
+                    || !suppliedSet.equals(requirement.learningOutcomeIds())) {
+                throw new IllegalArgumentException(
+                        "Generated question learning outcomes do not match the accepted Matrix requirement");
+            }
+            actualDistribution.merge(key, 1, Integer::sum);
+            if (!"NONE".equals(visualType(question))) {
+                actualVisualDistribution.merge(key, 1, Integer::sum);
+            }
+        }
+        Map<String, Integer> expectedDistribution = new HashMap<>();
+        expectedRequirements.forEach((key, requirement) ->
+                expectedDistribution.put(key, requirement.questionCount()));
+        if (!expectedDistribution.equals(actualDistribution)) {
+            throw new IllegalArgumentException(
+                    "Generated questions do not match the accepted row, level, type, and count distribution");
+        }
+        Map<String, Integer> expectedVisualDistribution = new HashMap<>();
+        expectedRequirements.forEach((key, requirement) ->
+                expectedVisualDistribution.put(key, requirement.imageQuestionCount()));
+        expectedVisualDistribution.entrySet().removeIf(entry -> entry.getValue() == 0);
+        if (!expectedVisualDistribution.equals(actualVisualDistribution)) {
+            throw new IllegalArgumentException("Generated visual counts do not match the accepted matrix quotas");
+        }
+    }
+
     private void validateDynamicDistribution(
             JsonNode snapshot,
             List<QuizWebhookRequest.QuestionPayload> questions) {
@@ -198,6 +290,9 @@ public class QuizWebhookProcessingService {
         Map<String, Integer> actualDistribution = new HashMap<>();
         for (QuizWebhookRequest.QuestionPayload question : questions) {
             validateQuestionShape(question);
+            if (!"NONE".equals(visualType(question))) {
+                throw new IllegalArgumentException("Contract version 2 does not permit generated visuals");
+            }
             if (question.getMatrixRowId() == null || question.getCustomLearningLevelId() == null) {
                 throw new IllegalArgumentException(
                         "Every generated question must identify its matrix row and custom learning level");
@@ -241,6 +336,9 @@ public class QuizWebhookProcessingService {
         Map<String, Integer> actualDistribution = new HashMap<>();
         for (QuizWebhookRequest.QuestionPayload question : questions) {
             validateQuestionShape(question);
+            if (!"NONE".equals(visualType(question))) {
+                throw new IllegalArgumentException("Contract version 1 does not permit generated visuals");
+            }
             if (question.getLearningOutcomeIds() == null || question.getLearningOutcomeIds().size() != 1
                     || question.getOriginalType() == null) {
                 throw new IllegalArgumentException(
@@ -284,6 +382,22 @@ public class QuizWebhookProcessingService {
             throw new IllegalArgumentException(
                     "Multiple-choice questions require answer options and a correct answer");
         }
+        visualType(question);
+    }
+
+    private String visualType(QuizWebhookRequest.QuestionPayload question) {
+        String type = question.getVisual() == null || question.getVisual().getType() == null
+                ? "NONE" : question.getVisual().getType().trim().toUpperCase();
+        if (!Set.of("NONE", "AUTO", "LATEX", "SVG").contains(type)) {
+            throw new IllegalArgumentException("AI quiz visuals may only be NONE, AUTO, LATEX, or SVG");
+        }
+        if (!"NONE".equals(type)) {
+            if (question.getVisual().getBrief() == null || question.getVisual().getBrief().isBlank()
+                    || question.getVisual().getAltText() == null || question.getVisual().getAltText().isBlank()) {
+                throw new IllegalArgumentException("Generated visuals require a brief and alt text");
+            }
+        }
+        return type;
     }
 
     private static void addExpected(Map<String, Integer> distribution, String outcomeId, String type, int count) {
@@ -300,8 +414,15 @@ public class QuizWebhookProcessingService {
         return rowId + "|" + levelId;
     }
 
-    private static String ccctKey(String rowId, String levelId, String questionType) {
+    private static String matrixKey(String rowId, String levelId, String questionType) {
         return rowId + "|" + levelId + "|" + questionType.toUpperCase();
+    }
+
+    private record MatrixRequirement(
+            int questionCount,
+            int imageQuestionCount,
+            String questionType,
+            LinkedHashSet<UUID> learningOutcomeIds) {
     }
 
     private record CcctRequirement(
@@ -318,6 +439,7 @@ public class QuizWebhookProcessingService {
         Quiz quiz = Quiz.builder()
                 .quizTitle(job.getQuizTitle() == null || job.getQuizTitle().isBlank()
                         ? payload.getQuizTitle() : job.getQuizTitle())
+                .description(job.getDescription())
                 .courseId(job.getCourseId())
                 .teacherId(job.getRequestedRole() == Roles.TEACHER ? job.getRequestedBy() : null)
                 .studentId(job.getRequestedRole() == Roles.STUDENT ? job.getRequestedBy() : null)
@@ -328,6 +450,8 @@ public class QuizWebhookProcessingService {
                 .dueTime(Boolean.TRUE.equals(job.getUnlimited()) ? null : job.getDueTime())
                 .attemptLimited(job.getAttemptLimited())
                 .display(false)
+                .lifecycleStatus(QuizLifecycleStatus.REVIEW_PENDING)
+                .sourceType(QuizSourceType.AI_GENERATED)
                 .build();
         Quiz savedQuiz = saveQuizPort.save(quiz);
         LinkedHashSet<UUID> quizOutcomeIds = new LinkedHashSet<>();
@@ -337,10 +461,24 @@ public class QuizWebhookProcessingService {
             if (!learningOutcomesPort.allBelongToCourse(job.getCourseId(), outcomeIds)) {
                 throw new IllegalArgumentException("Learning outcome is outside the job course");
             }
+            String generatedVisualType = visualType(item);
+            UUID generatedImageId = "NONE".equals(generatedVisualType) ? null : UUID.randomUUID();
             Question savedQuestion = saveQuestionPort.save(Question.builder()
                     .content(item.getContent())
                     .type(item.getType() == null ? Question.QuestionType.ESSAY : item.getType())
+                    .images(generatedImageId == null ? List.of() : List.of(Question.Image.builder()
+                            .id(generatedImageId)
+                            .sourceType(Question.Image.SourceType.valueOf(generatedVisualType))
+                            .generationBrief(item.getVisual().getBrief())
+                            .altText(item.getVisual().getAltText())
+                            .status(Question.Image.Status.PENDING)
+                            .build()))
+                    .reviewStatus(QuestionReviewStatus.PENDING_REVIEW)
+                    .sourceType(QuestionSourceType.AI_GENERATED)
                     .quizId(savedQuiz.getId()).build());
+            if (generatedImageId != null) {
+                visualJobs.create(job.getId(), generatedImageId, generatedVisualType);
+            }
             if (!outcomeIds.isEmpty()) {
                 saveQuestionLearningOutcomePort.addLearningOutcomes(savedQuestion.getId(), outcomeIds);
                 quizOutcomeIds.addAll(outcomeIds);

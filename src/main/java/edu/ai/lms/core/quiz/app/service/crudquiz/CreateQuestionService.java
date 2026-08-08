@@ -24,6 +24,8 @@ import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuestionResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
+import edu.ai.lms.core.quiz.app.domain.QuestionReviewStatus;
+import edu.ai.lms.core.quiz.app.domain.QuestionSourceType;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;
@@ -40,6 +42,7 @@ import edu.ai.lms.core.quiz.app.port.out.UploadQuestionImagePort;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionLearningOutcomePort;
 import lombok.RequiredArgsConstructor;
+import edu.ai.lms.core.quiz.app.service.quizworkflow.QuizAccessPolicy;
 
 @Service
 @RequiredArgsConstructor
@@ -74,6 +77,7 @@ public class CreateQuestionService implements CreateQuestionUseCase {
 
         // Verify user is the creator of the quiz
         verifyQuizOwnership(user, quiz);
+        QuizAccessPolicy.requireMutable(quiz);
 
         List<UUID> validOutcomeIds = loadCourseLearningOutcomePort
                 .findExistingLearningOutcomeIdsByCourseIdAndIds(quiz.getCourseId(), List.of(command.learningOutcomeId()));
@@ -84,6 +88,9 @@ public class CreateQuestionService implements CreateQuestionUseCase {
         // set quizId in question (to know that which quiz this question belongs to)
         Question question = command.question();
         question.setQuizId(quiz.getId());
+        question.setReviewStatus(QuestionReviewStatus.APPROVED);
+        question.setSourceType(QuestionSourceType.MANUAL);
+        question.setVersion(0);
 
         processQuestionImages(question, command.quizId(), command.images());
 

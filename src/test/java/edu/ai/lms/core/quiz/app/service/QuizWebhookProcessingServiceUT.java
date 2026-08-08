@@ -15,6 +15,8 @@ import edu.ai.lms.core.quiz.app.port.out.SaveQuizLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.ScheduleQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.ValidateLearningOutcomesPort;
+import edu.ai.lms.core.quiz.app.port.out.QuestionVisualJobPort;
+import edu.ai.lms.core.quiz.app.service.genquiz.QuestionVisualGenerationService;
 import edu.ai.lms.core.quiz.app.service.genquiz.QuizWebhookProcessingService;
 import edu.ai.lms.core.quiz.app.service.genquiz.SseQuizGenerationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +34,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(MockitoExtension.class)
 class QuizWebhookProcessingServiceUT {
@@ -46,6 +50,8 @@ class QuizWebhookProcessingServiceUT {
     @Mock private ValidateLearningOutcomesPort learningOutcomesPort;
     @Mock private ScheduleQuizGenerationJobPort schedulerPort;
     @Mock private SseQuizGenerationService sseService;
+    @Mock private QuestionVisualJobPort visualJobs;
+    @Mock private QuestionVisualGenerationService visualGenerationService;
 
     private QuizWebhookProcessingService service;
 
@@ -54,7 +60,8 @@ class QuizWebhookProcessingServiceUT {
         service = new QuizWebhookProcessingService(loadJobPort, saveJobPort, saveQuizPort,
                 saveQuestionPort, saveAnswerPort, saveQuizLearningOutcomePort,
                 saveQuestionLearningOutcomePort, learningOutcomesPort, schedulerPort,
-                sseService, new ObjectMapper());
+                sseService, new ObjectMapper(), visualJobs, visualGenerationService);
+        lenient().when(visualJobs.summarize(any())).thenReturn(new QuestionVisualJobPort.Summary(0, 0, 0, 0));
     }
 
     @Test
@@ -255,6 +262,119 @@ class QuizWebhookProcessingServiceUT {
                 .build();
 
         assertEquals(QuizGenerationStatus.COMPLETED, service.handleWebhook(request).getStatus());
+    }
+
+    @Test
+    void acceptsVersionFourQuestionMatchingMatrixAllocation() {
+        UUID jobId = UUID.randomUUID(), courseId = UUID.randomUUID();
+        UUID rowId = UUID.randomUUID();
+        UUID levelId = UUID.randomUUID(), outcomeId = UUID.randomUUID();
+        String snapshot = """
+                {
+                  "snapshotVersion":4,
+                  "questionCount":1,
+                  "examMatrix":[{
+                    "rowId":"%s",
+                    "levelCounts":[{
+                      "customLearningLevelId":"%s",
+                      "learningOutcomeIds":["%s"],
+                      "questionType":"MULTIPLE_CHOICE",
+                      "questionCount":1
+                    }]
+                  }]
+                }
+                """.formatted(rowId, levelId, outcomeId);
+        QuizGenerationJob job = QuizGenerationJob.builder().id(jobId).courseId(courseId)
+                .status(QuizGenerationStatus.PROCESSING).requestSnapshot(snapshot).build();
+        when(loadJobPort.getByIdForUpdate(jobId)).thenReturn(Optional.of(job));
+        when(saveQuizPort.save(any())).thenAnswer(invocation -> {
+            Quiz quiz = invocation.getArgument(0);
+            quiz.setId(UUID.randomUUID());
+            return quiz;
+        });
+        when(saveQuestionPort.save(any())).thenAnswer(invocation -> {
+            Question question = invocation.getArgument(0);
+            question.setId(UUID.randomUUID());
+            return question;
+        });
+        when(learningOutcomesPort.allBelongToCourse(courseId, List.of(outcomeId))).thenReturn(true);
+        when(saveJobPort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        QuizWebhookRequest.QuestionPayload question = dynamicQuestion(rowId, levelId, outcomeId)
+                .type(Question.QuestionType.MULTIPLE_CHOICE)
+                .originalType("MULTIPLE_CHOICE")
+                .answers(List.of(
+                        QuizWebhookRequest.AnswerPayload.builder().content("A").isCorrect(true).build(),
+                        QuizWebhookRequest.AnswerPayload.builder().content("B").isCorrect(false).build()))
+                .build();
+        QuizWebhookRequest request = QuizWebhookRequest.builder()
+                .eventId(UUID.randomUUID()).jobId(jobId).status("COMPLETED")
+                .quiz(QuizWebhookRequest.QuizPayload.builder().questions(List.of(question)).build())
+                .build();
+
+        assertEquals(QuizGenerationStatus.COMPLETED, service.handleWebhook(request).getStatus());
+        verify(visualGenerationService, never()).requestDispatchAfterCommit(any(), any());
+    }
+
+    @Test
+    void visualJobsDispatchOnlyAfterTextCallbackCreatesDurableWork() {
+        UUID jobId = UUID.randomUUID(), courseId = UUID.randomUUID();
+        UUID rowId = UUID.randomUUID();
+        UUID levelId = UUID.randomUUID(), outcomeId = UUID.randomUUID();
+        String snapshot = """
+                {
+                  "snapshotVersion":4,
+                  "questionCount":1,
+                  "examMatrix":[{
+                    "rowId":"%s",
+                    "levelCounts":[{
+                      "customLearningLevelId":"%s",
+                      "learningOutcomeIds":["%s"],
+                      "questionType":"MULTIPLE_CHOICE",
+                      "questionCount":1,
+                      "imageQuestionCount":1
+                    }]
+                  }]
+                }
+                """.formatted(rowId, levelId, outcomeId);
+        QuizGenerationJob job = QuizGenerationJob.builder().id(jobId).courseId(courseId)
+                .status(QuizGenerationStatus.PROCESSING)
+                .phase(QuizGenerationJob.Phase.TEXT_GENERATION)
+                .requestSnapshot(snapshot).build();
+        when(loadJobPort.getByIdForUpdate(jobId)).thenReturn(Optional.of(job));
+        when(saveQuizPort.save(any())).thenAnswer(invocation -> {
+            Quiz quiz = invocation.getArgument(0);
+            quiz.setId(UUID.randomUUID());
+            return quiz;
+        });
+        when(saveQuestionPort.save(any())).thenAnswer(invocation -> {
+            Question question = invocation.getArgument(0);
+            question.setId(UUID.randomUUID());
+            return question;
+        });
+        when(learningOutcomesPort.allBelongToCourse(courseId, List.of(outcomeId))).thenReturn(true);
+        when(saveJobPort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(visualJobs.summarize(jobId)).thenReturn(new QuestionVisualJobPort.Summary(1, 0, 0, 1));
+
+        QuizWebhookRequest.QuestionPayload question = dynamicQuestion(rowId, levelId, outcomeId)
+                .type(Question.QuestionType.MULTIPLE_CHOICE)
+                .originalType("MULTIPLE_CHOICE")
+                .answers(List.of(
+                        QuizWebhookRequest.AnswerPayload.builder().content("A").isCorrect(true).build(),
+                        QuizWebhookRequest.AnswerPayload.builder().content("B").isCorrect(false).build()))
+                .visual(QuizWebhookRequest.VisualPayload.builder()
+                        .type("AUTO").brief("Draw a diagram").altText("A diagram").build())
+                .build();
+        QuizWebhookRequest request = QuizWebhookRequest.builder()
+                .eventId(UUID.randomUUID()).jobId(jobId).status("COMPLETED")
+                .quiz(QuizWebhookRequest.QuizPayload.builder().questions(List.of(question)).build())
+                .build();
+
+        var response = service.handleWebhook(request);
+
+        assertEquals(QuizGenerationJob.Phase.VISUAL_GENERATION, response.getPhase());
+        verify(visualJobs).create(eq(jobId), any(UUID.class), eq("AUTO"));
+        verify(visualGenerationService).requestDispatchAfterCommit(eq(jobId), any());
     }
 
     private QuizWebhookRequest.QuestionPayload.QuestionPayloadBuilder dynamicQuestion(

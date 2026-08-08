@@ -38,6 +38,7 @@ import edu.ai.lms.core.quiz.app.port.out.SaveQuestionLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.UploadQuestionImagePort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionImagePublicUrlPort;
 import lombok.RequiredArgsConstructor;
+import edu.ai.lms.core.quiz.app.service.quizworkflow.QuizAccessPolicy;
 
 @Service
 @RequiredArgsConstructor
@@ -69,6 +70,7 @@ public class ModifyQuestionService implements ModifyQuestionUseCase {
 
         // Verify user is the creator of the quiz
         verifyQuizOwnership(user, quiz);
+        QuizAccessPolicy.requireMutable(quiz);
 
         Question existingQuestion = loadQuestionPort.getByIdWithoutAnswers(command.questionId())
                 .orElseThrow(() -> new QuestionNotFoundException("Question not found with id: " + command.questionId()));
@@ -80,6 +82,13 @@ public class ModifyQuestionService implements ModifyQuestionUseCase {
         Question updatedQuestion = command.question();
         updatedQuestion.setId(existingQuestion.getId());
         updatedQuestion.setQuizId(existingQuestion.getQuizId());
+        updatedQuestion.setReviewStatus(existingQuestion.getReviewStatus());
+        updatedQuestion.setSourceType(existingQuestion.getSourceType());
+        updatedQuestion.setSourceBankQuestionId(existingQuestion.getSourceBankQuestionId());
+        updatedQuestion.setSourceQuestionId(existingQuestion.getSourceQuestionId());
+        updatedQuestion.setVersion(existingQuestion.getVersion() + 1);
+        updatedQuestion.setReviewedBy(existingQuestion.getReviewedBy());
+        updatedQuestion.setReviewedAt(existingQuestion.getReviewedAt());
 
         // Xử lý ảnh nếu có
         processQuestionImages(updatedQuestion, command.quizId(), command.images());

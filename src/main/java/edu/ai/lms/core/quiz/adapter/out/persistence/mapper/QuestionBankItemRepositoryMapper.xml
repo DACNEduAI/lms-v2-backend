@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.quiz.adapter.out.persistence.QuestionBankItemRepository">
+
+  <resultMap id="QuestionDraftResultMap" type="edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft">
+    <id property="id" column="id" />
+    <result property="courseId" column="course_id" />
+    <result property="chapterId" column="chapter_id" />
+    <result property="cognitiveLevelId" column="cognitive_level_id" />
+    <result property="cognitiveLevelCode" column="cognitive_level_code" javaType="edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="cognitiveLevelName" column="cognitive_level_name" />
+    <result property="content" column="content" />
+    <result property="questionType" column="question_type" javaType="edu.ai.lms.core.quiz.app.domain.Question$QuestionType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="sourceType" column="source_type" javaType="edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="createdBy" column="created_by" />
+    <result property="version" column="version" />
+    <result property="createdAt" column="created_at" />
+    <result property="updatedAt" column="updated_at" />
+  </resultMap>
+
+  <resultMap id="QuestionBankQuestionResultMap" type="edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion"
+             extends="QuestionDraftResultMap">
+    <result property="originDraftId" column="origin_draft_id" />
+    <result property="validatedBy" column="validated_by" />
+    <result property="validatedAt" column="validated_at" />
+  </resultMap>
+
+  <resultMap id="QuestionBankAnswerResultMap" type="edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankAnswer">
+    <id property="id" column="id" />
+    <result property="questionId" column="question_id" />
+    <result property="content" column="content" />
+    <result property="correct" column="is_correct" />
+    <result property="explanation" column="explanation" />
+    <result property="orderIndex" column="order_index" />
+    <result property="createdAt" column="created_at" />
+    <result property="updatedAt" column="updated_at" />
+  </resultMap>
+
+  <resultMap id="CognitiveLevelResultMap" type="edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelOption">
+    <constructor>
+      <arg column="id" javaType="java.util.UUID" />
+      <arg column="code" javaType="edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+      <arg column="name" javaType="java.lang.String" />
+      <arg column="sort_order" javaType="int" />
+    </constructor>
+  </resultMap>
+
+  <sql id="QuestionColumns">
+    item.id, item.course_id, item.chapter_id, item.cognitive_level_id,
+    level.code AS cognitive_level_code, level.name AS cognitive_level_name,
+    item.content, item.question_type, item.source_type, item.created_by,
+    item.version, item.created_at, item.updated_at
+  </sql>
+
+  <select id="findDraftByCourseIdAndId" resultMap="QuestionDraftResultMap">
+    SELECT <include refid="QuestionColumns" />
+    FROM edu.question_drafts item
+    LEFT JOIN edu.cognitive_levels level ON level.id = item.cognitive_level_id
+    WHERE item.course_id = #{courseId} AND item.id = #{itemId}
+  </select>
+
+  <select id="findDraftByCourseIdAndIdForUpdate" resultMap="QuestionDraftResultMap">
+    SELECT <include refid="QuestionColumns" />
+    FROM edu.question_drafts item
+    LEFT JOIN edu.cognitive_levels level ON level.id = item.cognitive_level_id
+    WHERE item.course_id = #{courseId} AND item.id = #{itemId}
+    FOR UPDATE OF item
+  </select>
+
+  <select id="findBankByCourseIdAndId" resultMap="QuestionBankQuestionResultMap">
+    SELECT <include refid="QuestionColumns" />, item.origin_draft_id,
+           item.validated_by, item.validated_at
+    FROM edu.question_bank_questions item
+    JOIN edu.cognitive_levels level ON level.id = item.cognitive_level_id
+    WHERE item.course_id = #{courseId} AND item.id = #{itemId}
+  </select>
+
+  <select id="findDraftAnswers" resultMap="QuestionBankAnswerResultMap">
+    SELECT id, question_draft_id AS question_id, content, is_correct, explanation,
+           order_index, created_at, updated_at
+    FROM edu.question_draft_answers
+    WHERE question_draft_id = #{itemId}
+    ORDER BY order_index
+  </select>
+
+  <select id="findBankAnswers" resultMap="QuestionBankAnswerResultMap">
+    SELECT id, question_bank_question_id AS question_id, content, is_correct, explanation,
+           order_index, created_at, updated_at
+    FROM edu.question_bank_answers
+    WHERE question_bank_question_id = #{itemId}
+    ORDER BY order_index
+  </select>
+
+  <select id="findDraftLearningOutcomeIds" resultType="java.util.UUID">
+    SELECT learning_outcome_id
+    FROM edu.question_draft_learning_outcomes
+    WHERE question_draft_id = #{itemId}
+    ORDER BY learning_outcome_id
+  </select>
+
+  <select id="findBankLearningOutcomeIds" resultType="java.util.UUID">
+    SELECT learning_outcome_id
+    FROM edu.question_bank_question_learning_outcomes
+    WHERE question_bank_question_id = #{itemId}
+    ORDER BY learning_outcome_id
+  </select>
+
+  <sql id="CommonWhere">
+    WHERE item.course_id = #{courseId}
+    <if test="query != null and query != ''">
+      AND item.content ILIKE CONCAT('%', #{query}, '%')
+    </if>
+    <if test="chapterId != null">
+      AND item.chapter_id = #{chapterId}
+    </if>
+    <if test="questionType != null">
+      AND item.question_type = #{questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler}
+    </if>
+    <if test="cognitiveLevelCode != null">
+      AND level.code = #{cognitiveLevelCode, javaType=edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode, typeHandler=org.apache.ibatis.type.EnumTypeHandler}
+    </if>
+    <if test="sourceType != null">
+      AND item.source_type = #{sourceType, javaType=edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType, typeHandler=org.apache.ibatis.type.EnumTypeHandler}
+    </if>
+  </sql>
+
+  <select id="findDraftPage" resultMap="QuestionDraftResultMap">
+    SELECT <include refid="QuestionColumns" />
+    FROM edu.question_drafts item
+    LEFT JOIN edu.cognitive_levels level ON level.id = item.cognitive_level_id
+    <include refid="CommonWhere" />
+    <if test="learningOutcomeId != null">
+      AND EXISTS (
+        SELECT 1 FROM edu.question_draft_learning_outcomes link
+        WHERE link.question_draft_id = item.id
+          AND link.learning_outcome_id = #{learningOutcomeId}
+      )
+    </if>
+    ORDER BY item.updated_at DESC, item.id
+    LIMIT #{size} OFFSET #{offset}
+  </select>
+
+  <select id="countDraftPage" resultType="long">
+    SELECT COUNT(*)
+    FROM edu.question_drafts item
+    LEFT JOIN edu.cognitive_levels level ON level.id = item.cognitive_level_id
+    <include refid="CommonWhere" />
+    <if test="learningOutcomeId != null">
+      AND EXISTS (
+        SELECT 1 FROM edu.question_draft_learning_outcomes link
+        WHERE link.question_draft_id = item.id
+          AND link.learning_outcome_id = #{learningOutcomeId}
+      )
+    </if>
+  </select>
+
+  <select id="findBankPage" resultMap="QuestionBankQuestionResultMap">
+    SELECT <include refid="QuestionColumns" />, item.origin_draft_id,
+           item.validated_by, item.validated_at
+    FROM edu.question_bank_questions item
+    JOIN edu.cognitive_levels level ON level.id = item.cognitive_level_id
+    <include refid="CommonWhere" />
+    <if test="learningOutcomeId != null">
+      AND EXISTS (
+        SELECT 1 FROM edu.question_bank_question_learning_outcomes link
+        WHERE link.question_bank_question_id = item.id
+          AND link.learning_outcome_id = #{learningOutcomeId}
+      )
+    </if>
+    ORDER BY item.updated_at DESC, item.id
+    LIMIT #{size} OFFSET #{offset}
+  </select>
+
+  <select id="countBankPage" resultType="long">
+    SELECT COUNT(*)
+    FROM edu.question_bank_questions item
+    JOIN edu.cognitive_levels level ON level.id = item.cognitive_level_id
+    <include refid="CommonWhere" />
+    <if test="learningOutcomeId != null">
+      AND EXISTS (
+        SELECT 1 FROM edu.question_bank_question_learning_outcomes link
+        WHERE link.question_bank_question_id = item.id
+          AND link.learning_outcome_id = #{learningOutcomeId}
+      )
+    </if>
+  </select>
+
+  <select id="existsExactDraftDuplicate" resultType="int">
+    SELECT CASE WHEN EXISTS (
+      SELECT 1 FROM edu.question_drafts item
+      WHERE item.course_id = #{courseId}
+        AND LOWER(BTRIM(item.content)) = LOWER(BTRIM(#{content}))
+        <if test="excludedItemId != null">AND item.id != #{excludedItemId}</if>
+    ) THEN 1 ELSE 0 END
+  </select>
+
+  <select id="existsExactBankDuplicate" resultType="int">
+    SELECT CASE WHEN EXISTS (
+      SELECT 1 FROM edu.question_bank_questions item
+      WHERE item.course_id = #{courseId}
+        AND LOWER(BTRIM(item.content)) = LOWER(BTRIM(#{content}))
+    ) THEN 1 ELSE 0 END
+  </select>
+
+  <select id="findCognitiveLevel" resultMap="CognitiveLevelResultMap">
+    SELECT id, code, name, sort_order
+    FROM edu.cognitive_levels
+    WHERE code = #{code, javaType=edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode, typeHandler=org.apache.ibatis.type.EnumTypeHandler}
+  </select>
+
+  <select id="findCognitiveLevels" resultMap="CognitiveLevelResultMap">
+    SELECT id, code, name, sort_order
+    FROM edu.cognitive_levels
+    ORDER BY sort_order
+  </select>
+
+  <insert id="insertDraft">
+    INSERT INTO edu.question_drafts
+      (id, course_id, chapter_id, cognitive_level_id, content, question_type,
+       source_type, created_by, version, created_at, updated_at)
+    VALUES
+      (#{id}, #{courseId}, #{chapterId}, #{cognitiveLevelId}, #{content},
+       #{questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+       #{sourceType, javaType=edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+       #{createdBy}, 0, NOW(), NOW())
+  </insert>
+
+  <update id="updateDraft">
+    UPDATE edu.question_drafts
+    SET chapter_id = #{item.chapterId},
+        cognitive_level_id = #{item.cognitiveLevelId},
+        content = #{item.content},
+        question_type = #{item.questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        version = version + 1,
+        updated_at = NOW()
+    WHERE id = #{item.id}
+      AND course_id = #{item.courseId}
+      AND version = #{expectedVersion}
+  </update>
+
+  <insert id="insertBankQuestion">
+    INSERT INTO edu.question_bank_questions
+      (id, origin_draft_id, course_id, chapter_id, cognitive_level_id, content,
+       question_type, source_type, created_by, validated_by, validated_at,
+       version, created_at, updated_at)
+    VALUES
+      (#{id}, #{originDraftId}, #{courseId}, #{chapterId}, #{cognitiveLevelId}, #{content},
+       #{questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+       #{sourceType, javaType=edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+       #{createdBy}, #{validatedBy}, #{validatedAt}, 0, #{createdAt}, NOW())
+  </insert>
+
+  <delete id="deleteDraft">
+    DELETE FROM edu.question_drafts
+    WHERE id = #{item.id}
+      AND course_id = #{item.courseId}
+      AND version = #{expectedVersion}
+  </delete>
+
+  <delete id="deleteDraftAnswers">
+    DELETE FROM edu.question_draft_answers WHERE question_draft_id = #{itemId}
+  </delete>
+
+  <delete id="deleteDraftLearningOutcomes">
+    DELETE FROM edu.question_draft_learning_outcomes WHERE question_draft_id = #{itemId}
+  </delete>
+
+  <insert id="insertDraftAnswers">
+    INSERT INTO edu.question_draft_answers
+      (id, question_draft_id, content, is_correct, explanation, order_index, created_at, updated_at)
+    VALUES
+    <foreach collection="answers" item="answer" separator=",">
+      (#{answer.id}, #{answer.questionId}, #{answer.content}, #{answer.correct},
+       #{answer.explanation}, #{answer.orderIndex}, NOW(), NOW())
+    </foreach>
+  </insert>
+
+  <insert id="insertBankAnswers">
+    INSERT INTO edu.question_bank_answers
+      (id, question_bank_question_id, content, is_correct, explanation, order_index, created_at, updated_at)
+    VALUES
+    <foreach collection="answers" item="answer" separator=",">
+      (#{answer.id}, #{answer.questionId}, #{answer.content}, #{answer.correct},
+       #{answer.explanation}, #{answer.orderIndex}, NOW(), NOW())
+    </foreach>
+  </insert>
+
+  <insert id="insertDraftLearningOutcomes">
+    INSERT INTO edu.question_draft_learning_outcomes
+      (question_draft_id, learning_outcome_id)
+    VALUES
+    <foreach collection="learningOutcomeIds" item="learningOutcomeId" separator=",">
+      (#{itemId}, #{learningOutcomeId})
+    </foreach>
+  </insert>
+
+  <insert id="insertBankLearningOutcomes">
+    INSERT INTO edu.question_bank_question_learning_outcomes
+      (question_bank_question_id, learning_outcome_id)
+    VALUES
+    <foreach collection="learningOutcomeIds" item="learningOutcomeId" separator=",">
+      (#{itemId}, #{learningOutcomeId})
+    </foreach>
+  </insert>
+
+</mapper>

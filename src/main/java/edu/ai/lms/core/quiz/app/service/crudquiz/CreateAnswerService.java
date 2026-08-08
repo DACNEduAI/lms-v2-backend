@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.api.Roles;
+
 import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateAnswerResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
@@ -18,6 +19,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
+import edu.ai.lms.core.quiz.app.service.quizworkflow.QuizAccessPolicy;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -42,6 +44,7 @@ public class CreateAnswerService implements CreateAnswerUseCase {
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found"));
 
         verifyQuizOwnership(user, quiz);
+        QuizAccessPolicy.requireMutable(quiz);
 
         Answer answer = command.answer();
         answer.setQuestionId(question.getId());
@@ -61,9 +64,9 @@ public class CreateAnswerService implements CreateAnswerUseCase {
     private void verifyQuizOwnership(CurrentActor user, Quiz quiz) {
         boolean isOwner = (user.getRole() == Roles.TEACHER && user.getId().equals(quiz.getTeacherId()))
                 || (user.getRole() == Roles.STUDENT && user.getId().equals(quiz.getStudentId()));
-
         if (!isOwner) {
             throw new IllegalArgumentException("User is not authorized to add answers to this quiz's questions");
         }
     }
+
 }

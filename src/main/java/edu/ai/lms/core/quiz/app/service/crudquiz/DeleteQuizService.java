@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.common.api.Roles;
+
 import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.DeleteQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
@@ -15,6 +16,7 @@ import edu.ai.lms.core.quiz.app.port.in.usecase.DeleteQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.out.DeleteQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.quiz.app.service.quizworkflow.QuizAccessPolicy;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -42,10 +44,10 @@ public class DeleteQuizService implements DeleteQuizUseCase {
         // Verify user is the creator of the quiz
         boolean isOwner = (user.getRole() == Roles.TEACHER && user.getId().equals(existingQuiz.getTeacherId()))
                 || (user.getRole() == Roles.STUDENT && user.getId().equals(existingQuiz.getStudentId()));
-
         if (!isOwner) {
             throw new IllegalArgumentException("User is not authorized to delete this quiz");
         }
+        QuizAccessPolicy.requireMutable(existingQuiz);
 
         deleteQuizPort.deleteById(quizId);
 

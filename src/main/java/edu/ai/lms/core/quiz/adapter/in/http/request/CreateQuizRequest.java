@@ -23,6 +23,8 @@ public class CreateQuizRequest {
     @NotBlank(message = "Quiz title cannot be blank")
     private String quizTitle;
 
+    private String description;
+
     private Boolean unlimited;
 
     @Positive(message = "Time limit must be greater than 0 minutes")

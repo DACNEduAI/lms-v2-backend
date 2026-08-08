@@ -11,7 +11,9 @@ import edu.ai.lms.core.quiz.app.port.in.usecase.ModifyQuizUseCase;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.quiz.app.port.out.QuestionVisualJobPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
+import edu.ai.lms.core.quiz.app.service.quizworkflow.QuizAccessPolicy;
 import edu.ai.lms.common.event.SystemNotificationEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -33,6 +35,7 @@ public class ModifyQuizService implements ModifyQuizUseCase {
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadCourseMembershipPort loadCourseMembershipPort;
     private final ApplicationEventPublisher eventPublisher;
+    private final QuestionVisualJobPort visualJobs;
 
     @Override
     @Transactional
@@ -50,10 +53,16 @@ public class ModifyQuizService implements ModifyQuizUseCase {
 
         // Verify user is the creator of the quiz
         verifyQuizOwnership(user, existingQuiz);
+        QuizAccessPolicy.requireMutable(existingQuiz);
 
         Quiz requestedQuiz = command.quiz();
-        Quiz updatedQuiz = mergeQuiz(existingQuiz, requestedQuiz);
+        Quiz updatedQuiz = mergeQuiz(existingQuiz, requestedQuiz, command.clearAttemptLimit());
         validateQuizTimeConfiguration(updatedQuiz);
+        if (Boolean.TRUE.equals(updatedQuiz.getDisplay())
+                && visualJobs.hasUnreadyRequiredVisual(updatedQuiz.getId())) {
+            throw new IllegalArgumentException(
+                    "Quiz cannot be published while a required visual is pending, processing, or failed");
+        }
 
         Quiz savedQuiz = saveQuizPort.save(updatedQuiz);
 
@@ -79,7 +88,8 @@ public class ModifyQuizService implements ModifyQuizUseCase {
         return ModifyQuizResponse.builder()
                 .quizId(savedQuiz.getId())
                 .quizTitle(savedQuiz.getQuizTitle())
-            .unlimited(savedQuiz.getUnlimited())
+                .description(savedQuiz.getDescription())
+                .unlimited(savedQuiz.getUnlimited())
                 .timeLimitMinutes(savedQuiz.getTimeLimitMinutes())
                 .passScore(savedQuiz.getPassScore())
                 .startTime(savedQuiz.getStartTime())
@@ -91,20 +101,31 @@ public class ModifyQuizService implements ModifyQuizUseCase {
                 .build();
     }
 
-    private Quiz mergeQuiz(Quiz existingQuiz, Quiz requestedQuiz) {
+    private Quiz mergeQuiz(Quiz existingQuiz, Quiz requestedQuiz, boolean clearAttemptLimit) {
         Quiz merged = Quiz.builder()
                 .id(existingQuiz.getId())
                 .quizTitle(requestedQuiz.getQuizTitle() != null ? requestedQuiz.getQuizTitle() : existingQuiz.getQuizTitle())
+                .description(requestedQuiz.getDescription() != null ? requestedQuiz.getDescription() : existingQuiz.getDescription())
                 .unlimited(requestedQuiz.getUnlimited() != null ? requestedQuiz.getUnlimited() : existingQuiz.getUnlimited())
                 .timeLimitMinutes(requestedQuiz.getTimeLimitMinutes() != null ? requestedQuiz.getTimeLimitMinutes() : existingQuiz.getTimeLimitMinutes())
                 .passScore(requestedQuiz.getPassScore() != null ? requestedQuiz.getPassScore() : existingQuiz.getPassScore())
                 .startTime(requestedQuiz.getStartTime() != null ? requestedQuiz.getStartTime() : existingQuiz.getStartTime())
                 .dueTime(requestedQuiz.getDueTime() != null ? requestedQuiz.getDueTime() : existingQuiz.getDueTime())
-                .attemptLimited(requestedQuiz.getAttemptLimited() != null ? requestedQuiz.getAttemptLimited() : existingQuiz.getAttemptLimited())
+                .attemptLimited(clearAttemptLimit
+                        ? null
+                        : requestedQuiz.getAttemptLimited() != null
+                                ? requestedQuiz.getAttemptLimited()
+                                : existingQuiz.getAttemptLimited())
                 .courseId(existingQuiz.getCourseId())
                 .studentId(existingQuiz.getStudentId())
                 .teacherId(existingQuiz.getTeacherId())
                 .display(requestedQuiz.getDisplay() != null ? requestedQuiz.getDisplay() : existingQuiz.getDisplay())
+                .lifecycleStatus(existingQuiz.getLifecycleStatus())
+                .sourceType(existingQuiz.getSourceType())
+                .originalQuizId(existingQuiz.getOriginalQuizId())
+                .version(existingQuiz.getVersion())
+                .publishedBy(existingQuiz.getPublishedBy())
+                .publishedAt(existingQuiz.getPublishedAt())
                 .createdAt(existingQuiz.getCreatedAt())
                 .updatedAt(existingQuiz.getUpdatedAt())
                 .build();

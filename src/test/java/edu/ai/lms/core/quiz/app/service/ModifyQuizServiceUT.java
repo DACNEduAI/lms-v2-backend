@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import edu.ai.lms.core.quiz.app.service.crudquiz.ModifyQuizService;
@@ -34,6 +35,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
+import edu.ai.lms.core.quiz.app.port.out.QuestionVisualJobPort;
 import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,6 +55,9 @@ class ModifyQuizServiceUT {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private QuestionVisualJobPort visualJobs;
 
     @InjectMocks
     private ModifyQuizService modifyQuizService;
@@ -138,6 +143,46 @@ class ModifyQuizServiceUT {
         verify(loadSignedInUserPort, times(1)).getAuthenticatedUser();
         verify(loadQuizPort, times(1)).getById(quizId);
         verify(saveQuizPort, times(1)).save(any(Quiz.class));
+    }
+
+    @Test
+    @DisplayName("Should persist description and clear a finite attempt limit")
+    void testModifyQuiz_WithUnlimitedAttempts_ShouldClearAttemptLimit() {
+        existingQuiz.setDescription("Old instructions");
+        existingQuiz.setAttemptLimited(3);
+        Quiz update = Quiz.builder()
+                .description("New instructions")
+                .build();
+        ModifyQuizCommand command = ModifyQuizCommand.builder()
+                .courseId(courseId)
+                .quizId(quizId)
+                .quiz(update)
+                .clearAttemptLimit(true)
+                .build();
+
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(saveQuizPort.save(any(Quiz.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ModifyQuizResponse response = modifyQuizService.modifyQuiz(command);
+
+        assertEquals("New instructions", response.getDescription());
+        assertNull(response.getAttemptLimited());
+    }
+
+    @Test
+    @DisplayName("Should block publication while a required generated visual is not ready")
+    void testModifyQuiz_WithUnreadyVisual_ShouldRejectPublication() {
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadQuizPort.getById(quizId)).thenReturn(Optional.of(existingQuiz));
+        when(visualJobs.hasUnreadyRequiredVisual(quizId)).thenReturn(true);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> modifyQuizService.modifyQuiz(validCommand));
+
+        assertEquals("Quiz cannot be published while a required visual is pending, processing, or failed",
+                exception.getMessage());
+        verify(saveQuizPort, never()).save(any(Quiz.class));
     }
 
     @Test

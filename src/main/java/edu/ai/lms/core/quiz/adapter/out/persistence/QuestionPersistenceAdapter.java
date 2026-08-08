@@ -29,7 +29,7 @@ class QuestionPersistenceAdapter implements SaveQuestionPort, LoadQuestionPort, 
             questionRepository.deleteImagesByQuestionId(savedQuestion.getId());
 
             question.getImages().forEach(image ->
-                    questionRepository.insertImage(savedQuestion.getId(), image.getImageName(), image.getUrl()));
+                    questionRepository.insertImage(savedQuestion.getId(), image));
         }
 
         return questionRepository.getById(savedQuestion.getId())

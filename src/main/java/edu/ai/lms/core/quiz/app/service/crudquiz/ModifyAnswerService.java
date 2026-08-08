@@ -21,6 +21,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import lombok.RequiredArgsConstructor;
+import edu.ai.lms.core.quiz.app.service.quizworkflow.QuizAccessPolicy;
 
 @Service
 @RequiredArgsConstructor
@@ -45,6 +46,7 @@ public class ModifyAnswerService implements ModifyAnswerUseCase {
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found"));
 
         verifyQuizOwnership(user, quiz);
+        QuizAccessPolicy.requireMutable(quiz);
 
         Answer existingAnswer = loadAnswerPort.getByKey(command.questionId(), command.answerNumber())
                 .orElseThrow(() -> new AnswerNotFoundException("Answer not found"));

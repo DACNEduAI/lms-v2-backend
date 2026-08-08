@@ -11,7 +11,6 @@ import lombok.Builder;
 @Builder
 public record CreateExamMatrixCommand(
         UUID courseId,
-        UUID ccctProfileId,
         String title,
         String description,
         List<CustomLearningLevelValue> customLearningLevels,

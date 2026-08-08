@@ -17,6 +17,8 @@ import edu.ai.lms.common.event.SystemNotificationEvent;
 import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.adapter.in.http.response.CreateQuizResponse;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus;
+import edu.ai.lms.core.quiz.app.domain.QuizSourceType;
 import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.TimeValidationException;
@@ -80,16 +82,23 @@ public class CreateQuizService implements CreateQuizUseCase {
         if (quiz.getUnlimited() == null) {
             quiz.setUnlimited(false);
         }
-        if (quiz.getDisplay() == null) {
-            quiz.setDisplay(true);
-        }
+        quiz.setSourceType(QuizSourceType.MANUAL);
+        quiz.setVersion(0);
 
         if (user.getRole() == Roles.TEACHER) {
             quiz.setTeacherId(user.getId());
+            quiz.setDisplay(false);
+            quiz.setLifecycleStatus(QuizLifecycleStatus.DRAFT);
+            quiz.setPublishedBy(null);
+            quiz.setPublishedAt(null);
             validateQuizTimeConfiguration(quiz);
 
         } else {
             quiz.setStudentId(user.getId());
+            quiz.setDisplay(true);
+            quiz.setLifecycleStatus(QuizLifecycleStatus.PUBLISHED);
+            quiz.setPublishedBy(user.getId());
+            quiz.setPublishedAt(LocalDateTime.now());
             quiz.setUnlimited(true);
             quiz.setStartTime(null);
             quiz.setDueTime(null);
@@ -137,6 +146,7 @@ public class CreateQuizService implements CreateQuizUseCase {
         return CreateQuizResponse.builder()
                 .quizId(savedQuiz.getId())
                 .quizTitle(savedQuiz.getQuizTitle())
+                .description(savedQuiz.getDescription())
                 .unlimited(savedQuiz.getUnlimited())
                 .timeLimitMinutes(savedQuiz.getTimeLimitMinutes())
                 .passScore(savedQuiz.getPassScore())
@@ -145,6 +155,9 @@ public class CreateQuizService implements CreateQuizUseCase {
                 .attemptLimited(savedQuiz.getAttemptLimited())
                 .courseId(savedQuiz.getCourseId())
                 .display(savedQuiz.getDisplay())
+                .lifecycleStatus(savedQuiz.getLifecycleStatus())
+                .sourceType(savedQuiz.getSourceType())
+                .version(savedQuiz.getVersion())
                 .createdAt(savedQuiz.getCreatedAt())
                 .build();
     }

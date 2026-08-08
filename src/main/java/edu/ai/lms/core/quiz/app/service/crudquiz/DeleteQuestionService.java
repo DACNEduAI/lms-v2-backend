@@ -19,6 +19,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import lombok.RequiredArgsConstructor;
+import edu.ai.lms.core.quiz.app.service.quizworkflow.QuizAccessPolicy;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +40,7 @@ public class DeleteQuestionService implements DeleteQuestionUseCase {
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found with id: " + quizId));
 
         verifyQuizOwnership(user, quiz);
+        QuizAccessPolicy.requireMutable(quiz);
 
         Question question = loadQuestionPort.getByIdWithoutAnswers(questionId)
                 .orElseThrow(() -> new QuestionNotFoundException("Question not found with id: " + questionId));

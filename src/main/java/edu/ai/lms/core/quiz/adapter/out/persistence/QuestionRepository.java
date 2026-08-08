@@ -39,7 +39,5 @@ interface QuestionRepository {
 
     void deleteImagesByQuestionId(@Param("questionId") UUID questionId);
 
-    void insertImage(@Param("questionId") UUID questionId,
-                     @Param("imageName") String imageName,
-                     @Param("url") String url);
+    void insertImage(@Param("questionId") UUID questionId, @Param("image") Question.Image image);
 }

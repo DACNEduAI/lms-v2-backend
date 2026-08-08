@@ -6,5 +6,5 @@ import lombok.Builder;
 import java.util.UUID;
 
 @Builder
-public record ModifyQuizCommand(UUID courseId, UUID quizId, Quiz quiz) {
+public record ModifyQuizCommand(UUID courseId, UUID quizId, Quiz quiz, boolean clearAttemptLimit) {
 }

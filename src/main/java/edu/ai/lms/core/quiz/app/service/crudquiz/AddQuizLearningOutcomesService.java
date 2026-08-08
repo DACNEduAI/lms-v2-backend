@@ -23,6 +23,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizLearningOutcomePort;
 import lombok.RequiredArgsConstructor;
+import edu.ai.lms.core.quiz.app.service.quizworkflow.QuizAccessPolicy;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +45,7 @@ public class AddQuizLearningOutcomesService implements AddQuizLearningOutcomesUs
                 .orElseThrow(() -> new QuizNotFoundException("Quiz not found with id: " + command.quizId()));
 
         validateQuizOwnershipAndCourse(user, quiz, command.courseId(), "modify");
+        QuizAccessPolicy.requireMutable(quiz);
 
         UUID quizCourseId = quiz.getCourseId();
 

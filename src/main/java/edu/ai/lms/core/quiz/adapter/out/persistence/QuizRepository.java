@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
+import edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus;
 
 @Mapper
 interface QuizRepository {
@@ -39,4 +40,20 @@ interface QuizRepository {
     List<Quiz> getTeacherCreatedByCourseId(@Param("courseId") UUID courseId);
 
     List<Quiz> getStudentCreatedByCourseIdAndStudentId(@Param("courseId") UUID courseId, @Param("studentId") UUID studentId);
+
+    int touchContent(
+            @Param("courseId") UUID courseId,
+            @Param("quizId") UUID quizId,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("expectedStatus") QuizLifecycleStatus expectedStatus);
+
+    int transitionLifecycle(
+            @Param("courseId") UUID courseId,
+            @Param("quizId") UUID quizId,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("expectedStatus") QuizLifecycleStatus expectedStatus,
+            @Param("nextStatus") QuizLifecycleStatus nextStatus,
+            @Param("display") boolean display,
+            @Param("publishedBy") UUID publishedBy,
+            @Param("publishedAt") java.time.LocalDateTime publishedAt);
 }

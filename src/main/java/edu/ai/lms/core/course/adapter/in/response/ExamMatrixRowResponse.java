@@ -17,7 +17,6 @@ import lombok.Setter;
 public class ExamMatrixRowResponse {
     private UUID id;
     private UUID chapterId;
-    private UUID ccctItemId;
     private String topic;
     private int orderIndex;
     private List<UUID> learningOutcomeIds;

@@ -7,6 +7,7 @@ import java.util.UUID;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,9 +24,7 @@ public class ExamMatrixRowRequest {
     @NotNull(message = "Chapter ID cannot be null")
     private UUID chapterId;
 
-    @NotNull(message = "CCCT item ID cannot be null")
-    private UUID ccctItemId;
-
+    @NotBlank(message = "Topic cannot be blank")
     private String topic;
 
     @Min(value = 0, message = "orderIndex must be >= 0")

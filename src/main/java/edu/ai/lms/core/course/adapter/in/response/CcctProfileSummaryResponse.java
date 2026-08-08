@@ -11,6 +11,7 @@ public record CcctProfileSummaryResponse(
         String name,
         CcctProfileStatus status,
         long version,
+        int formatVersion,
         CcctMode lastMode,
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {

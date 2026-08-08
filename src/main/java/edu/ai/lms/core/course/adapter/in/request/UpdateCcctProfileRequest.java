@@ -16,6 +16,8 @@ public record UpdateCcctProfileRequest(
         String name,
         @NotNull(message = "lastMode is required")
         CcctMode lastMode,
+        Integer formatVersion,
+        Boolean structuredCurrent,
         @NotNull(message = "markdown is required")
         String markdown,
         @NotNull(message = "template is required")
