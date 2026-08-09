@@ -18,6 +18,7 @@ import edu.ai.lms.core.quiz.app.port.out.ValidateLearningOutcomesPort;
 import edu.ai.lms.core.quiz.app.port.out.QuestionVisualJobPort;
 import edu.ai.lms.core.quiz.app.service.genquiz.QuestionVisualGenerationService;
 import edu.ai.lms.core.quiz.app.service.genquiz.QuizWebhookProcessingService;
+import edu.ai.lms.core.quiz.app.service.genquiz.QuizGenerationTimingLogger;
 import edu.ai.lms.core.quiz.app.service.genquiz.SseQuizGenerationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 
@@ -52,6 +54,7 @@ class QuizWebhookProcessingServiceUT {
     @Mock private SseQuizGenerationService sseService;
     @Mock private QuestionVisualJobPort visualJobs;
     @Mock private QuestionVisualGenerationService visualGenerationService;
+    @Mock private QuizGenerationTimingLogger timingLogger;
 
     private QuizWebhookProcessingService service;
 
@@ -60,8 +63,9 @@ class QuizWebhookProcessingServiceUT {
         service = new QuizWebhookProcessingService(loadJobPort, saveJobPort, saveQuizPort,
                 saveQuestionPort, saveAnswerPort, saveQuizLearningOutcomePort,
                 saveQuestionLearningOutcomePort, learningOutcomesPort, schedulerPort,
-                sseService, new ObjectMapper(), visualJobs, visualGenerationService);
-        lenient().when(visualJobs.summarize(any())).thenReturn(new QuestionVisualJobPort.Summary(0, 0, 0, 0));
+                sseService, new ObjectMapper(), visualJobs, visualGenerationService, timingLogger);
+        lenient().when(visualJobs.summarize(any())).thenReturn(
+                new QuestionVisualJobPort.Summary(0, 0, 0, 0, null));
     }
 
     @Test
@@ -78,6 +82,7 @@ class QuizWebhookProcessingServiceUT {
         assertEquals(QuizGenerationStatus.COMPLETED, response.getStatus());
         assertEquals(quizId, response.getQuizId());
         verify(saveQuizPort, never()).save(org.mockito.ArgumentMatchers.any());
+        verifyNoInteractions(timingLogger);
     }
 
     @Test
@@ -261,6 +266,8 @@ class QuizWebhookProcessingServiceUT {
 
         assertEquals(QuizGenerationStatus.COMPLETED, service.handleWebhook(request).getStatus());
         verify(visualGenerationService, never()).requestDispatchAfterCommit(any(), any());
+        verify(timingLogger).textTerminal(any(), eq("completed"), eq(null), any());
+        verify(timingLogger).quizTerminal(any(), any(), any());
     }
 
     @Test
@@ -301,7 +308,8 @@ class QuizWebhookProcessingServiceUT {
         });
         when(learningOutcomesPort.allBelongToCourse(courseId, List.of(outcomeId))).thenReturn(true);
         when(saveJobPort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(visualJobs.summarize(jobId)).thenReturn(new QuestionVisualJobPort.Summary(1, 0, 0, 1));
+        when(visualJobs.summarize(jobId)).thenReturn(
+                new QuestionVisualJobPort.Summary(1, 0, 0, 1, java.time.LocalDateTime.now()));
 
         QuizWebhookRequest.QuestionPayload question = dynamicQuestion(rowId, levelId, outcomeId)
                 .type(Question.QuestionType.MULTIPLE_CHOICE)
@@ -322,6 +330,8 @@ class QuizWebhookProcessingServiceUT {
         assertEquals(QuizGenerationJob.Phase.VISUAL_GENERATION, response.getPhase());
         verify(visualJobs).create(eq(jobId), any(UUID.class), eq("AUTO"));
         verify(visualGenerationService).requestDispatchAfterCommit(eq(jobId), any());
+        verify(timingLogger).textTerminal(any(), eq("completed"), eq(null), any());
+        verify(timingLogger, never()).quizTerminal(any(), any(), any());
     }
 
     private QuizWebhookRequest.QuestionPayload.QuestionPayloadBuilder dynamicQuestion(

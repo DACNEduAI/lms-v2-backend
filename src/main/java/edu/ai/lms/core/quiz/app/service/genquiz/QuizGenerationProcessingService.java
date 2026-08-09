@@ -35,6 +35,7 @@ public class QuizGenerationProcessingService {
     private final SseQuizGenerationService sseService;
     private final WebClient aiWebClient;
     private final ObjectMapper objectMapper;
+    private final QuizGenerationTimingLogger timingLogger;
 
     @Value("${quiz.generation.webhook.base-url}")
     private String webhookBaseUrl;
@@ -67,6 +68,9 @@ public class QuizGenerationProcessingService {
         }
 
         QuizGenerationJob job = loadJobPort.getById(jobId).orElseThrow();
+        if (job.getAttemptCount() != null && job.getAttemptCount() == 1) {
+            timingLogger.textStarted(job);
+        }
         sseService.pushStatus(jobId, QuizGenerationService.toStatusResponse(job));
         try {
             JsonNode snapshot = objectMapper.readTree(job.getRequestSnapshot());
@@ -82,20 +86,6 @@ public class QuizGenerationProcessingService {
                     questionDefaultsConfiguration,
                     Boolean.TRUE.equals(job.getStrictMode()), job.getCodeRunnerPolicy(),
                     job.getIdempotencyKey(), callbackUrl(), webhookSecret);
-
-            // --- START OF LOGGING BLOCK ---
-            try {
-                // Convert the request object to a nicely formatted JSON string
-                String jsonPayload = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(request);
-
-                // Print to terminal (or use your preferred logger, e.g., log.info(...))
-                System.out.println("========== OUTGOING AI GENERATION REQUEST ==========");
-                System.out.println(jsonPayload);
-                System.out.println("====================================================");
-            } catch (Exception e) {
-                System.err.println("Failed to serialize AiGenerationRequest for logging: " + e.getMessage());
-            }
-            // --- END OF LOGGING BLOCK ---
 
             WebClient.RequestBodySpec call = aiWebClient.post().uri("/quiz-gen/generate")
                     .contentType(MediaType.APPLICATION_JSON);
@@ -129,8 +119,11 @@ public class QuizGenerationProcessingService {
             schedulerPort.schedule(saved.getId(), saved.getNextAttemptAt());
         } else {
             job.setStatus(QuizGenerationStatus.FAILED);
-            job.setCompletedAt(LocalDateTime.now());
+            LocalDateTime completedAt = LocalDateTime.now();
+            job.setCompletedAt(completedAt);
             QuizGenerationJob saved = saveJobPort.save(job);
+            timingLogger.textTerminal(saved, "failed", code, completedAt);
+            timingLogger.quizTerminal(saved, null, completedAt);
             sseService.pushStatus(saved.getId(), QuizGenerationService.toStatusResponse(saved));
         }
     }
@@ -140,8 +133,11 @@ public class QuizGenerationProcessingService {
         job.setLeaseUntil(null);
         job.setErrorCode("GENERATION_TIMEOUT");
         job.setErrorMessage("Quiz generation exceeded its deadline");
-        job.setCompletedAt(LocalDateTime.now());
+        LocalDateTime completedAt = LocalDateTime.now();
+        job.setCompletedAt(completedAt);
         QuizGenerationJob saved = saveJobPort.save(job);
+        timingLogger.textTerminal(saved, "timed_out", job.getErrorCode(), completedAt);
+        timingLogger.quizTerminal(saved, null, completedAt);
         sseService.pushStatus(saved.getId(), QuizGenerationService.toStatusResponse(saved));
     }
 
