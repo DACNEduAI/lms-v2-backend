@@ -96,6 +96,16 @@
     WHERE id=#{jobId} AND status='PENDING' AND (next_attempt_at IS NULL OR next_attempt_at &lt;= NOW())
   </update>
 
+  <update id="completeVisualPhase">
+    UPDATE edu.quiz_generation_jobs SET status='COMPLETED', phase='DONE', lease_until=NULL,
+      completed_at=#{completedAt}, error_code=#{errorCode}, error_message=#{errorMessage}, updated_at=NOW()
+    WHERE id=#{jobId} AND status='PROCESSING' AND phase='VISUAL_GENERATION'
+      AND NOT EXISTS (
+        SELECT 1 FROM edu.question_image_generation_jobs
+        WHERE quiz_generation_job_id=#{jobId} AND status IN ('PENDING','PROCESSING')
+      )
+  </update>
+
   <select id="findRecoverableIds" resultType="java.util.UUID">
     SELECT id FROM edu.quiz_generation_jobs
     WHERE (status='PENDING' AND (next_attempt_at IS NULL OR next_attempt_at &lt;= NOW()))

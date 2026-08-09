@@ -54,6 +54,7 @@ class QuestionVisualGenerationServiceUT {
     @Mock private SseQuizGenerationService sse;
     @Mock private LoadSignedInUserPort signedInUser;
     @Mock private ScheduleQuestionVisualJobPort visualScheduler;
+    @Mock private QuizGenerationTimingLogger timingLogger;
     @Mock private ThreadPoolTaskExecutor executor;
 
     private QuestionVisualGenerationService service;
@@ -62,7 +63,7 @@ class QuestionVisualGenerationServiceUT {
     void setUp() {
         service = spy(new QuestionVisualGenerationService(
                 visualJobs, loadParent, saveParent, uploadImage, publicUrl, aiWebClient, sse,
-                signedInUser, visualScheduler, 3, 20, 120, 30, executor));
+                signedInUser, visualScheduler, timingLogger, 3, 20, 120, 30, executor));
         lenient().when(visualJobs.claimAvailable(anyInt(), any(LocalDateTime.class))).thenReturn(List.of());
     }
 
@@ -146,6 +147,7 @@ class QuestionVisualGenerationServiceUT {
         verify(visualJobs).retry(eq(work.id()), eq("VISUAL_SERVICE_ERROR"),
                 eq("Visual generation will be retried"), any(LocalDateTime.class));
         verify(visualScheduler).scheduleRetry(eq(work.id()), any(LocalDateTime.class));
+        verify(timingLogger).visualRetry(work, "VISUAL_SERVICE_ERROR", 1);
     }
 
     @Test
@@ -190,9 +192,12 @@ class QuestionVisualGenerationServiceUT {
     void deadlineFailsActiveChildrenAndCompletesParentWithWarning() {
         UUID parentId = UUID.randomUUID();
         UUID childId = UUID.randomUUID();
-        QuestionVisualJobPort.Summary summary = new QuestionVisualJobPort.Summary(2, 1, 1, 0);
+        LocalDateTime startedAt = LocalDateTime.now().minusMinutes(1);
+        QuestionVisualJobPort.Summary summary = new QuestionVisualJobPort.Summary(2, 1, 1, 0, startedAt);
+        QuestionVisualJobPort.ExpiredItem expired = new QuestionVisualJobPort.ExpiredItem(
+                childId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "AUTO", 1, startedAt);
         when(visualJobs.expireParent(eq(parentId), eq("VISUAL_DEADLINE_EXCEEDED"), any()))
-                .thenReturn(new QuestionVisualJobPort.DeadlineResult(true, List.of(childId), summary));
+                .thenReturn(new QuestionVisualJobPort.DeadlineResult(true, List.of(expired), summary));
         QuizGenerationJob parent = QuizGenerationJob.builder().id(parentId)
                 .status(QuizGenerationStatus.COMPLETED).phase(QuizGenerationJob.Phase.DONE).build();
         when(loadParent.getById(parentId)).thenReturn(Optional.of(parent));
@@ -201,6 +206,10 @@ class QuestionVisualGenerationServiceUT {
 
         verify(visualScheduler).cancelChild(childId);
         verify(visualScheduler).cancelParent(parentId);
+        verify(timingLogger).visualExpired(eq(expired), eq(parentId),
+                eq("VISUAL_DEADLINE_EXCEEDED"), any(LocalDateTime.class));
+        verify(timingLogger).visualPhaseTerminal(eq(parent), eq(summary), any(LocalDateTime.class));
+        verify(timingLogger).quizTerminal(eq(parent), eq(summary), any(LocalDateTime.class));
         verify(sse).pushStatus(eq(parentId), any());
     }
 
@@ -221,11 +230,41 @@ class QuestionVisualGenerationServiceUT {
 
         verify(visualScheduler, never()).cancelChild(work.id());
         verify(sse, never()).pushStatus(any(), any());
+        verify(timingLogger, never()).visualCompleted(any(), any(), any());
+    }
+
+    @Test
+    void successfulVisualLogsChildPhaseAndWholeQuizAfterWinningTerminalTransitions() {
+        QuestionVisualJobPort.WorkItem work = workItem();
+        String svg = "<svg viewBox=\"0 0 10 10\"><path d=\"M0 0 L5 5\"/></svg>";
+        String rendered = Base64.getEncoder().encodeToString(svg.getBytes(StandardCharsets.UTF_8));
+        doReturn(new QuestionVisualGenerationService.VisualResponse(
+                work.id(), "SVG", svg, rendered, "image/svg+xml"))
+                .when(service).requestVisual(work);
+        when(publicUrl.getPublicImageUrl(any())).thenReturn("https://example.test/visual.svg");
+        when(visualJobs.completeVisual(eq(work.id()), eq(work.imageId()), eq("SVG"),
+                eq(svg), any(), any(), any(), any(Long.class))).thenReturn(true);
+        QuestionVisualJobPort.Summary summary = new QuestionVisualJobPort.Summary(
+                1, 1, 0, 0, work.createdAt());
+        when(visualJobs.summarize(work.parentJobId())).thenReturn(summary);
+        QuizGenerationJob completedParent = QuizGenerationJob.builder()
+                .id(work.parentJobId()).quizId(work.quizId()).status(QuizGenerationStatus.COMPLETED)
+                .phase(QuizGenerationJob.Phase.DONE).createdAt(work.parentCreatedAt())
+                .requestSnapshot("{\"questionCount\":1,\"examMatrix\":[]}").build();
+        when(loadParent.getById(work.parentJobId())).thenReturn(Optional.of(completedParent));
+        when(saveParent.completeVisualPhase(eq(work.parentJobId()), eq(null), eq(null),
+                any(LocalDateTime.class))).thenReturn(true);
+
+        service.process(work);
+
+        verify(timingLogger).visualCompleted(eq(work), eq("SVG"), any(LocalDateTime.class));
+        verify(timingLogger).visualPhaseTerminal(eq(completedParent), eq(summary), any(LocalDateTime.class));
+        verify(timingLogger).quizTerminal(eq(completedParent), eq(summary), any(LocalDateTime.class));
     }
 
     private QuestionVisualJobPort.WorkItem workItem() {
         return new QuestionVisualJobPort.WorkItem(
-                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 "AUTO", "Question", "Draw it", "Description", 0,
                 LocalDateTime.now(), LocalDateTime.now());
     }

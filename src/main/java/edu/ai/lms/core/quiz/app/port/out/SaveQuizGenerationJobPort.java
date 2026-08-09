@@ -9,5 +9,7 @@ public interface SaveQuizGenerationJobPort {
 
     boolean claim(UUID jobId, LocalDateTime leaseUntil);
 
+    boolean completeVisualPhase(UUID jobId, String errorCode, String errorMessage, LocalDateTime completedAt);
+
     int deleteTerminalBefore(LocalDateTime cutoff);
 }

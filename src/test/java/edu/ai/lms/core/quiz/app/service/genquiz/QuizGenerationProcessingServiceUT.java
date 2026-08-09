@@ -31,7 +31,7 @@ class QuizGenerationProcessingServiceUT {
                 }]
                 """.formatted(learningOutcomeId));
         QuizGenerationProcessingService service = new QuizGenerationProcessingService(
-                null, null, null, null, null, objectMapper);
+                null, null, null, null, null, objectMapper, null);
 
         QuizGenerationProcessingService.AiExamMatrix result = service.toAiExamMatrix(snapshotRows);
         JsonNode row = result.rows().get(0);
@@ -79,7 +79,7 @@ class QuizGenerationProcessingServiceUT {
                 """.formatted(rowId, UUID.randomUUID(), firstOutcomeId, secondOutcomeId,
                         levelId, firstOutcomeId, secondOutcomeId));
         QuizGenerationProcessingService service = new QuizGenerationProcessingService(
-                null, null, null, null, null, objectMapper);
+                null, null, null, null, null, objectMapper, null);
 
         QuizGenerationProcessingService.AiExamMatrix result =
                 service.toAiExamMatrixFromSnapshot(snapshot);
@@ -118,7 +118,7 @@ class QuizGenerationProcessingServiceUT {
                 }
                 """.formatted(rowId, outcomeId, levelId, outcomeId));
         QuizGenerationProcessingService service = new QuizGenerationProcessingService(
-                null, null, null, null, null, objectMapper);
+                null, null, null, null, null, objectMapper, null);
 
         QuizGenerationProcessingService.AiExamMatrix result =
                 service.toAiExamMatrixFromSnapshot(snapshot);
@@ -165,7 +165,7 @@ class QuizGenerationProcessingServiceUT {
                 {"snapshotVersion": 4}
                 """);
         QuizGenerationProcessingService service = new QuizGenerationProcessingService(
-                null, null, null, null, null, objectMapper);
+                null, null, null, null, null, objectMapper, null);
 
         var defaults = service.questionDefaultsConfigurationFromSnapshot(snapshot).multipleChoice();
 
