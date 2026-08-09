@@ -49,6 +49,13 @@ class QuizGenerationJobPersistenceAdapter implements SaveQuizGenerationJobPort, 
     }
 
     @Override
+    public boolean completeVisualPhase(UUID jobId, String errorCode, String errorMessage,
+                                       LocalDateTime completedAt) {
+        return quizGenerationJobRepository.completeVisualPhase(
+                jobId, errorCode, errorMessage, completedAt) == 1;
+    }
+
+    @Override
     public int deleteTerminalBefore(LocalDateTime cutoff) {
         return quizGenerationJobRepository.deleteTerminalBefore(cutoff);
     }

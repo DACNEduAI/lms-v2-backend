@@ -57,6 +57,7 @@ public class QuizWebhookProcessingService {
     private final ObjectMapper objectMapper;
     private final QuestionVisualJobPort visualJobs;
     private final QuestionVisualGenerationService visualGenerationService;
+    private final QuizGenerationTimingLogger timingLogger;
 
     @Transactional
     public QuizGenerationStatusResponse handleWebhook(QuizWebhookRequest request) {
@@ -80,8 +81,11 @@ public class QuizWebhookProcessingService {
             job.setErrorCode(request.getErrorCode() == null ? "GENERATION_FAILED" : request.getErrorCode());
             job.setErrorMessage("Quiz generation could not be completed.");
             job.setLeaseUntil(null);
-            job.setCompletedAt(LocalDateTime.now());
+            LocalDateTime completedAt = LocalDateTime.now();
+            job.setCompletedAt(completedAt);
             QuizGenerationJob saved = saveJobPort.save(job);
+            timingLogger.textTerminal(saved, "failed", saved.getErrorCode(), completedAt);
+            timingLogger.quizTerminal(saved, null, completedAt);
             deferTerminalNotification(saved);
             return QuizGenerationService.toStatusResponse(saved);
         }
@@ -101,6 +105,7 @@ public class QuizWebhookProcessingService {
             job.setErrorCode(null);
             job.setErrorMessage(null);
             QuizGenerationJob processing = saveJobPort.save(job);
+            timingLogger.textTerminal(processing, "completed", null, LocalDateTime.now());
             visualGenerationService.requestDispatchAfterCommit(job.getId(), job.getCreatedAt());
             return QuizGenerationService.toStatusResponse(processing);
         }
@@ -108,8 +113,11 @@ public class QuizWebhookProcessingService {
         job.setPhase(QuizGenerationJob.Phase.DONE);
         job.setErrorCode(null);
         job.setErrorMessage(null);
-        job.setCompletedAt(LocalDateTime.now());
+        LocalDateTime completedAt = LocalDateTime.now();
+        job.setCompletedAt(completedAt);
         QuizGenerationJob completed = saveJobPort.save(job);
+        timingLogger.textTerminal(completed, "completed", null, completedAt);
+        timingLogger.quizTerminal(completed, visualSummary, completedAt);
         deferTerminalNotification(completed);
         return QuizGenerationService.toStatusResponse(completed);
     }

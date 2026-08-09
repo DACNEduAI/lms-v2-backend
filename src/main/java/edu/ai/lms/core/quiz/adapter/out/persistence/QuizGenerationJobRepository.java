@@ -43,6 +43,11 @@ interface QuizGenerationJobRepository {
 
     int claim(@Param("jobId") UUID jobId, @Param("leaseUntil") LocalDateTime leaseUntil);
 
+    int completeVisualPhase(@Param("jobId") UUID jobId,
+                            @Param("errorCode") String errorCode,
+                            @Param("errorMessage") String errorMessage,
+                            @Param("completedAt") LocalDateTime completedAt);
+
     List<UUID> findRecoverableIds(@Param("limit") int limit);
 
     int deleteTerminalBefore(@Param("cutoff") LocalDateTime cutoff);

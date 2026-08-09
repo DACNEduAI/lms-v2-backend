@@ -18,12 +18,14 @@ public interface QuestionVisualJobPort {
     Summary summarize(UUID parentJobId);
     boolean hasUnreadyRequiredVisual(UUID quizId);
 
-    record WorkItem(UUID id, UUID parentJobId, UUID imageId, UUID quizId, String visualType,
+    record WorkItem(UUID id, UUID parentJobId, UUID imageId, UUID quizId, UUID questionId, String visualType,
                     String questionContent, String generationBrief, String altText,
                     int attemptCount, LocalDateTime createdAt, LocalDateTime parentCreatedAt) {}
     record RetryItem(UUID jobId, UUID parentJobId, LocalDateTime parentCreatedAt) {}
     record RecoveryItem(UUID jobId, UUID parentJobId, String status, LocalDateTime nextAttemptAt,
                         LocalDateTime leaseUntil, LocalDateTime parentCreatedAt) {}
-    record DeadlineResult(boolean applied, List<UUID> jobIds, Summary summary) {}
-    record Summary(int requested, int ready, int failed, int active) {}
+    record ExpiredItem(UUID jobId, UUID imageId, UUID quizId, UUID questionId, String visualType,
+                       int attemptCount, LocalDateTime createdAt) {}
+    record DeadlineResult(boolean applied, List<ExpiredItem> expiredItems, Summary summary) {}
+    record Summary(int requested, int ready, int failed, int active, LocalDateTime startedAt) {}
 }

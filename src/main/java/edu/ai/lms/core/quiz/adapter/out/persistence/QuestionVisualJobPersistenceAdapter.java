@@ -30,7 +30,7 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
     @Transactional
     public List<WorkItem> claimAvailable(int limit, LocalDateTime leaseUntil) {
         List<WorkItem> work = jdbc.query("""
-                SELECT j.id, j.quiz_generation_job_id, j.question_image_id, q.quiz_id,
+                SELECT j.id, j.quiz_generation_job_id, j.question_image_id, q.quiz_id, q.id AS question_id,
                        j.visual_type, q.content, i.generation_brief, i.alt_text,
                        j.attempt_count, j.created_at, p.created_at AS parent_created_at
                 FROM edu.question_image_generation_jobs j
@@ -44,6 +44,7 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
                 """, (rs, row) -> new WorkItem(
                 rs.getObject("id", UUID.class), rs.getObject("quiz_generation_job_id", UUID.class),
                 rs.getObject("question_image_id", UUID.class), rs.getObject("quiz_id", UUID.class),
+                rs.getObject("question_id", UUID.class),
                 rs.getString("visual_type"), rs.getString("content"), rs.getString("generation_brief"),
                 rs.getString("alt_text"), rs.getInt("attempt_count"),
                 rs.getTimestamp("created_at").toLocalDateTime(),
@@ -173,11 +174,19 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
         if (parent.isEmpty()) {
             return new DeadlineResult(false, List.of(), summarize(parentJobId));
         }
-        List<UUID> activeIds = jdbc.query("""
-                SELECT id FROM edu.question_image_generation_jobs
-                WHERE quiz_generation_job_id=? AND status IN ('PENDING','PROCESSING')
-                FOR UPDATE
-                """, (rs, row) -> rs.getObject(1, UUID.class), parentJobId);
+        List<ExpiredItem> activeItems = jdbc.query("""
+                SELECT j.id, j.question_image_id, q.quiz_id, q.id AS question_id,
+                       j.visual_type, j.attempt_count, j.created_at
+                FROM edu.question_image_generation_jobs j
+                JOIN edu.question_images i ON i.id=j.question_image_id
+                JOIN edu.questions q ON q.id=i.question_id
+                WHERE j.quiz_generation_job_id=? AND j.status IN ('PENDING','PROCESSING')
+                FOR UPDATE OF j
+                """, (rs, row) -> new ExpiredItem(
+                rs.getObject("id", UUID.class), rs.getObject("question_image_id", UUID.class),
+                rs.getObject("quiz_id", UUID.class), rs.getObject("question_id", UUID.class),
+                rs.getString("visual_type"), rs.getInt("attempt_count"),
+                rs.getTimestamp("created_at").toLocalDateTime()), parentJobId);
         jdbc.update("""
                 UPDATE edu.question_images i SET status='FAILED', error_code=?, error_message=?, updated_at=NOW()
                 FROM edu.question_image_generation_jobs j
@@ -195,7 +204,7 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
                   completed_at=NOW(), error_code='VISUALS_PARTIALLY_FAILED',
                   error_message=?, updated_at=NOW() WHERE id=?
                 """, summary.failed() + " required visual(s) failed; the hidden quiz remains reviewable", parentJobId);
-        return new DeadlineResult(true, activeIds, summary);
+        return new DeadlineResult(true, activeItems, summary);
     }
 
     @Override
@@ -204,10 +213,11 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
                 SELECT COUNT(*) AS requested,
                   COUNT(*) FILTER (WHERE status='COMPLETED') AS ready,
                   COUNT(*) FILTER (WHERE status='FAILED') AS failed,
-                  COUNT(*) FILTER (WHERE status IN ('PENDING','PROCESSING')) AS active
+                  COUNT(*) FILTER (WHERE status IN ('PENDING','PROCESSING')) AS active,
+                  MIN(created_at) AS started_at
                 FROM edu.question_image_generation_jobs WHERE quiz_generation_job_id=?
                 """, (rs, row) -> new Summary(rs.getInt("requested"), rs.getInt("ready"),
-                rs.getInt("failed"), rs.getInt("active")), parentJobId);
+                rs.getInt("failed"), rs.getInt("active"), timestamp(rs, "started_at")), parentJobId);
     }
 
     @Override

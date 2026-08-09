@@ -1,7 +1,6 @@
 package edu.ai.lms.core.quiz.app.service.genquiz;
 
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
-import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionImagePublicUrlPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.QuestionVisualJobPort;
@@ -74,6 +73,7 @@ public class QuestionVisualGenerationService {
     private final SseQuizGenerationService sse;
     private final LoadSignedInUserPort signedInUser;
     private final ScheduleQuestionVisualJobPort visualScheduler;
+    private final QuizGenerationTimingLogger timingLogger;
     private final int maxConcurrency;
     private final long generationTimeoutMinutes;
     private final Duration requestTimeout;
@@ -91,6 +91,7 @@ public class QuestionVisualGenerationService {
             SseQuizGenerationService sse,
             LoadSignedInUserPort signedInUser,
             ScheduleQuestionVisualJobPort visualScheduler,
+            QuizGenerationTimingLogger timingLogger,
             @Value("${quiz.visual.max-concurrency:3}") int maxConcurrency,
             @Value("${quiz.generation.timeout-minutes:20}") long generationTimeoutMinutes,
             @Value("${quiz.visual.request-timeout-seconds:120}") long requestTimeoutSeconds,
@@ -109,6 +110,7 @@ public class QuestionVisualGenerationService {
         this.sse = sse;
         this.signedInUser = signedInUser;
         this.visualScheduler = visualScheduler;
+        this.timingLogger = timingLogger;
         this.maxConcurrency = maxConcurrency;
         this.generationTimeoutMinutes = generationTimeoutMinutes;
         this.requestTimeout = Duration.ofSeconds(requestTimeoutSeconds);
@@ -233,6 +235,7 @@ public class QuestionVisualGenerationService {
             boolean completed = visualJobs.completeVisual(work.id(), work.imageId(), response.visualType(),
                     source, key, publicUrl.getPublicImageUrl(key), hash, bytes.length);
             if (!completed) return;
+            timingLogger.visualCompleted(work, response.visualType(), LocalDateTime.now());
             cancelChildSafely(work.id());
             pushParentProgress(work.parentJobId());
             finalizeParentIfTerminal(work.parentJobId());
@@ -243,6 +246,7 @@ public class QuestionVisualGenerationService {
             if (attempted < MAX_ATTEMPTS) {
                 LocalDateTime retryAt = LocalDateTime.now().plusSeconds(1L << attempted);
                 if (visualJobs.retry(work.id(), "VISUAL_SERVICE_ERROR", "Visual generation will be retried", retryAt)) {
+                    timingLogger.visualRetry(work, "VISUAL_SERVICE_ERROR", attempted);
                     scheduleRetryOrFail(work, retryAt);
                 }
             } else {
@@ -261,6 +265,7 @@ public class QuestionVisualGenerationService {
 
     private void terminalFailure(QuestionVisualJobPort.WorkItem work, String code, String message) {
         if (!visualJobs.fail(work.id(), work.imageId(), code, message)) return;
+        timingLogger.visualFailed(work, code, LocalDateTime.now());
         cancelChildSafely(work.id());
         pushParentProgress(work.parentJobId());
         finalizeParentIfTerminal(work.parentJobId());
@@ -271,10 +276,16 @@ public class QuestionVisualGenerationService {
         QuestionVisualJobPort.DeadlineResult result = visualJobs.expireParent(
                 parentId, "VISUAL_DEADLINE_EXCEEDED", message);
         if (!result.applied()) return;
-        result.jobIds().forEach(this::cancelChildSafely);
+        LocalDateTime completedAt = LocalDateTime.now();
+        result.expiredItems().forEach(item -> {
+            timingLogger.visualExpired(item, parentId, "VISUAL_DEADLINE_EXCEEDED", completedAt);
+            cancelChildSafely(item.jobId());
+        });
         cancelParentSafely(parentId);
         QuizGenerationJob parent = loadParent.getById(parentId).orElse(null);
         if (parent == null) return;
+        timingLogger.visualPhaseTerminal(parent, result.summary(), completedAt);
+        timingLogger.quizTerminal(parent, result.summary(), completedAt);
         var response = QuizGenerationService.toStatusResponse(parent);
         response.setVisualSummary(new edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusResponse.VisualSummary(
                 result.summary().requested(), result.summary().ready(), result.summary().failed()));
@@ -314,19 +325,18 @@ public class QuestionVisualGenerationService {
     private void finalizeParentIfTerminal(UUID parentId) {
         QuestionVisualJobPort.Summary summary = visualJobs.summarize(parentId);
         if (summary.active() > 0) return;
-        QuizGenerationJob parent = loadParent.getById(parentId).orElse(null);
-        if (parent == null || parent.getStatus() != QuizGenerationStatus.PROCESSING) return;
-        parent.setPhase(QuizGenerationJob.Phase.FINALIZING);
-        saveParent.save(parent);
-        parent.setStatus(QuizGenerationStatus.COMPLETED);
-        parent.setPhase(QuizGenerationJob.Phase.DONE);
-        parent.setLeaseUntil(null);
-        parent.setCompletedAt(LocalDateTime.now());
+        LocalDateTime completedAt = LocalDateTime.now();
+        String errorCode = null;
+        String errorMessage = null;
         if (summary.failed() > 0) {
-            parent.setErrorCode("VISUALS_PARTIALLY_FAILED");
-            parent.setErrorMessage(summary.failed() + " required visual(s) failed; the hidden quiz remains reviewable");
+            errorCode = "VISUALS_PARTIALLY_FAILED";
+            errorMessage = summary.failed() + " required visual(s) failed; the hidden quiz remains reviewable";
         }
-        QuizGenerationJob saved = saveParent.save(parent);
+        if (!saveParent.completeVisualPhase(parentId, errorCode, errorMessage, completedAt)) return;
+        QuizGenerationJob saved = loadParent.getById(parentId).orElse(null);
+        if (saved == null) return;
+        timingLogger.visualPhaseTerminal(saved, summary, completedAt);
+        timingLogger.quizTerminal(saved, summary, completedAt);
         cancelParentSafely(parentId);
         var response = QuizGenerationService.toStatusResponse(saved);
         response.setVisualSummary(new edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusResponse.VisualSummary(
