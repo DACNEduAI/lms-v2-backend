@@ -8,5 +8,5 @@ public interface SaveCodeRunnerContractPort {
 
     UUID saveRevision(UUID questionId, ExecutableAssessmentContract contract);
 
-    void markLatestVerified(UUID questionId);
+    boolean markVerified(UUID questionId, UUID configId);
 }

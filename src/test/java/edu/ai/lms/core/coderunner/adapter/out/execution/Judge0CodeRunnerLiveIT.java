@@ -49,23 +49,26 @@ class Judge0CodeRunnerLiveIT {
                 Duration.ofMillis(350));
 
         var verified = verificationService.verifyReference(contract);
-        assertThat(verified.passed()).isTrue();
+        assertThat(verified.passed()).as("Judge0 results: %s", verified.results()).isTrue();
         assertThat(verified.passedTests()).isEqualTo(2);
 
         String wrongHarness = harnessBuilder.buildCase(
                 contract,
                 "bool isEven(int value) { return true; }",
                 contract.privateGrading().hiddenTests().getFirst());
-        var wrongTicket = engine.submit(request(wrongHarness));
+        var wrongTicket = engine.submit(request(
+                wrongHarness,
+                harnessBuilder.expectedOutput(
+                        contract, contract.privateGrading().hiddenTests().getFirst())));
         assertThat(await(wrongTicket.engineSubmissionId()).verdict())
                 .isEqualTo(CodeExecutionEngine.Verdict.WRONG_ANSWER);
     }
 
-    private CodeExecutionEngine.ExecutionRequest request(String source) {
+    private CodeExecutionEngine.ExecutionRequest request(String source, String expectedOutput) {
         return new CodeExecutionEngine.ExecutionRequest(
-                source,
-                JUDGE0_CPP_LANGUAGE_ID,
-                "PASS\n",
+            source,
+            JUDGE0_CPP_LANGUAGE_ID,
+            expectedOutput,
                 2_000,
                 5_000,
                 131_072,

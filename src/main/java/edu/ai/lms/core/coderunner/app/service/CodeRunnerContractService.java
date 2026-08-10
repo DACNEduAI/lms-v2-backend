@@ -4,6 +4,7 @@ import edu.ai.lms.common.api.Roles;
 import edu.ai.lms.core.coderunner.app.domain.CodeRunnerActor;
 import edu.ai.lms.core.coderunner.app.domain.CodeRunnerQuestionContext;
 import edu.ai.lms.core.coderunner.app.domain.ExecutableAssessmentContract;
+import edu.ai.lms.core.coderunner.app.domain.StoredCodeRunnerContract;
 import edu.ai.lms.core.coderunner.app.exception.CodeRunnerAccessDeniedException;
 import edu.ai.lms.core.coderunner.app.exception.CodeRunnerConflictException;
 import edu.ai.lms.core.coderunner.app.exception.CodeRunnerNotFoundException;
@@ -42,25 +43,33 @@ public class CodeRunnerContractService {
             throw new CodeRunnerConflictException(
                     "Code Runner contract is locked because the quiz status is " + context.quizLifecycleStatus());
         }
-        contract.validateForPersistence();
-        saveContractPort.saveRevision(questionId, contract);
+        ExecutableAssessmentContract reviewContract = contract.withStatus("READY_FOR_REVIEW");
+        reviewContract.validateForPersistence();
+        saveContractPort.saveRevision(questionId, reviewContract);
         return loadContractPort.findLatestByQuestionId(questionId)
                 .orElseThrow(() -> new IllegalStateException("Saved Code Runner contract could not be reloaded"));
     }
 
     public ExecutableAssessmentContract getForTeacher(UUID courseId, UUID quizId, UUID questionId) {
+        return getStoredForTeacher(courseId, quizId, questionId).contract();
+    }
+
+    public StoredCodeRunnerContract getStoredForTeacher(UUID courseId, UUID quizId, UUID questionId) {
         CodeRunnerActor actor = requireTeacher();
         CodeRunnerQuestionContext context = requireContext(courseId, quizId, questionId);
         requireCourseAccess(actor, context);
-        return loadContractPort.findLatestByQuestionId(questionId)
+        return loadContractPort.findLatestStoredByQuestionId(questionId)
                 .orElseThrow(() -> new CodeRunnerNotFoundException("Code Runner contract not found"));
     }
 
-    public void markVerified(UUID courseId, UUID quizId, UUID questionId) {
+    public void markVerified(UUID courseId, UUID quizId, UUID questionId, UUID configId) {
         CodeRunnerActor actor = requireTeacher();
         CodeRunnerQuestionContext context = requireContext(courseId, quizId, questionId);
         requireCourseAccess(actor, context);
-        saveContractPort.markLatestVerified(questionId);
+        if (!saveContractPort.markVerified(questionId, configId)) {
+            throw new CodeRunnerConflictException(
+                    "Code Runner contract changed during verification; verify the latest revision again");
+        }
     }
 
     private CodeRunnerActor requireTeacher() {

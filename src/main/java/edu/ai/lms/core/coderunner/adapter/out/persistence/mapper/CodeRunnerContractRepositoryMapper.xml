@@ -93,10 +93,13 @@
     ORDER BY ordinal
   </select>
 
-  <update id="markLatestVerified">
+  <update id="markVerified">
     UPDATE edu.code_runner_configs
     SET contract_status = 'VERIFIED_EXECUTION_GOLD', updated_at = NOW()
-    WHERE id = (
+    WHERE id = #{configId}
+      AND question_id = #{questionId}
+      AND contract_status = 'READY_FOR_REVIEW'
+      AND id = (
       SELECT id FROM edu.code_runner_configs
       WHERE question_id = #{questionId}
       ORDER BY revision DESC

@@ -76,6 +76,24 @@ class CodeRunnerContractPersistenceAdapterIT extends IntegrationTestConfiguratio
                 questionId)).isEqualTo(2);
     }
 
+    @Test
+    void onlyMarksTheExactLatestReviewRevisionAsVerified() {
+        UUID teacherId = UUID.randomUUID();
+        UUID courseId = UUID.randomUUID();
+        UUID quizId = UUID.randomUUID();
+        UUID questionId = UUID.randomUUID();
+        seedQuestion(teacherId, courseId, quizId, questionId);
+
+        UUID firstConfigId = adapter.saveRevision(questionId, contract());
+        UUID latestConfigId = adapter.saveRevision(questionId, contract());
+
+        assertThat(adapter.markVerified(questionId, firstConfigId)).isFalse();
+        assertThat(adapter.markVerified(questionId, latestConfigId)).isTrue();
+        assertThat(adapter.markVerified(questionId, latestConfigId)).isFalse();
+        assertThat(adapter.findLatestByQuestionId(questionId).orElseThrow().status())
+                .isEqualTo("VERIFIED_EXECUTION_GOLD");
+    }
+
     private void seedQuestion(UUID teacherId, UUID courseId, UUID quizId, UUID questionId) {
         jdbc.update("INSERT INTO edu.users (id, email, password, role) VALUES (?, ?, 'secret', 'TEACHER')",
                 teacherId,

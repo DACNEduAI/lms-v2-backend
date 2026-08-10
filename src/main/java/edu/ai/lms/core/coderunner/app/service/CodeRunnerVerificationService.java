@@ -46,17 +46,19 @@ public class CodeRunnerVerificationService {
                     test);
             CodeExecutionEngine.ExecutionTicket ticket = executionEngine.submit(
                     new CodeExecutionEngine.ExecutionRequest(
-                            harness, cpp17LanguageId, "PASS\n",
+                            harness, cpp17LanguageId, null,
                             2_000, 5_000, 131_072, 64, 16));
             CodeExecutionEngine.ExecutionResult result = await(ticket.engineSubmissionId());
+            CodeExecutionEngine.Verdict verdict = effectiveVerdict(
+                    result, harnessBuilder.expectedOutput(contract, test));
             results.add(new CodeRunnerVerificationResponse.TestResult(
                     test.id(),
                     test.visibility(),
-                    result.verdict() == null ? "INTERNAL_ERROR" : result.verdict().name(),
+                    verdict.name(),
                     result.timeMs(),
                     result.memoryKb(),
                     diagnostic(result)));
-            if (result.verdict() == CodeExecutionEngine.Verdict.COMPILE_ERROR) {
+            if (verdict == CodeExecutionEngine.Verdict.COMPILE_ERROR) {
                 break;
             }
         }
@@ -69,6 +71,19 @@ public class CodeRunnerVerificationService {
                 passed,
                 tests.size(),
                 List.copyOf(results));
+    }
+
+    private CodeExecutionEngine.Verdict effectiveVerdict(
+            CodeExecutionEngine.ExecutionResult result,
+            String expectedOutput) {
+        if (result.verdict() == null) {
+            return CodeExecutionEngine.Verdict.INTERNAL_ERROR;
+        }
+        if (result.verdict() == CodeExecutionEngine.Verdict.ACCEPTED
+                && !expectedOutput.equals(result.stdout())) {
+            return CodeExecutionEngine.Verdict.WRONG_ANSWER;
+        }
+        return result.verdict();
     }
 
     private CodeExecutionEngine.ExecutionResult await(String token) {

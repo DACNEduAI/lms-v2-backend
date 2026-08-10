@@ -24,6 +24,18 @@ public record ExecutableAssessmentContract(
         RuntimeContract runtime,
         @JsonProperty("private_grading") PrivateGrading privateGrading) {
 
+    public ExecutableAssessmentContract withStatus(String newStatus) {
+        return new ExecutableAssessmentContract(
+                schemaVersion,
+                contractId,
+                contractVersion,
+                newStatus,
+                title,
+                statement,
+                runtime,
+                privateGrading);
+    }
+
     private static final Set<String> ACCEPTED_STATUSES = Set.of(
             "READY_FOR_REVIEW", "VERIFIED_EXECUTION_GOLD");
     private static final Set<String> FIXTURES = Set.of(

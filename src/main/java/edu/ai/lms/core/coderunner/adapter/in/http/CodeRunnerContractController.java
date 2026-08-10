@@ -1,6 +1,7 @@
 package edu.ai.lms.core.coderunner.adapter.in.http;
 
 import edu.ai.lms.core.coderunner.app.domain.ExecutableAssessmentContract;
+import edu.ai.lms.core.coderunner.app.domain.StoredCodeRunnerContract;
 import edu.ai.lms.core.coderunner.adapter.in.http.response.CodeRunnerVerificationResponse;
 import edu.ai.lms.core.coderunner.app.service.CodeRunnerContractService;
 import edu.ai.lms.core.coderunner.app.service.CodeRunnerVerificationService;
@@ -50,10 +51,10 @@ public class CodeRunnerContractController {
             @PathVariable UUID courseId,
             @PathVariable UUID quizId,
             @PathVariable UUID questionId) {
-        ExecutableAssessmentContract contract = service.getForTeacher(courseId, quizId, questionId);
-        CodeRunnerVerificationResponse response = verificationService.verifyReference(contract);
+        StoredCodeRunnerContract stored = service.getStoredForTeacher(courseId, quizId, questionId);
+        CodeRunnerVerificationResponse response = verificationService.verifyReference(stored.contract());
         if (response.passed()) {
-            service.markVerified(courseId, quizId, questionId);
+            service.markVerified(courseId, quizId, questionId, stored.configId());
         }
         return response;
     }

@@ -42,8 +42,8 @@ class StudentCodeRunnerAttemptLiveIT extends IntegrationTestConfiguration {
         UUID questionId = UUID.randomUUID();
         UUID attemptId = UUID.randomUUID();
         seed(studentId, teacherId, courseId, quizId, questionId, attemptId);
-        contracts.saveRevision(questionId, contract());
-        contracts.markLatestVerified(questionId);
+        UUID configId = contracts.saveRevision(questionId, contract());
+        assertThat(contracts.markVerified(questionId, configId)).isTrue();
 
         var result = service.execute(attemptId, studentId, quizId, questionId,
                 "bool isEven(int value) { return value % 2 == 0; }",

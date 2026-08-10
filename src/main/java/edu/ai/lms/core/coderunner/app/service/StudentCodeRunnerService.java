@@ -89,9 +89,11 @@ public class StudentCodeRunnerService {
             for (var test : tests) {
                 String harness = harnessBuilder.buildCase(stored.contract(), sourceCode, test);
                 var ticket = executionEngine.submit(new CodeExecutionEngine.ExecutionRequest(
-                        harness, cpp17LanguageId, "PASS\n", 2_000, 5_000, 131_072, 64, 16));
+                        harness, cpp17LanguageId, null, 2_000, 5_000, 131_072, 64, 16));
                 var engineResult = await(ticket.engineSubmissionId());
-                String verdict = engineResult.verdict() == null ? "INTERNAL_ERROR" : engineResult.verdict().name();
+                CodeExecutionEngine.Verdict effectiveVerdict = effectiveVerdict(
+                        engineResult, harnessBuilder.expectedOutput(stored.contract(), test));
+                String verdict = effectiveVerdict.name();
                 double earned = mode == CodeSubmission.Mode.SUBMIT && "ACCEPTED".equals(verdict)
                         ? test.points() : 0;
                 CodeSubmissionTestResult result = new CodeSubmissionTestResult(
@@ -100,8 +102,8 @@ public class StudentCodeRunnerService {
                         engineResult.memoryKb(), diagnostic(engineResult), ticket.engineSubmissionId());
                 submissionPort.insertTestResult(result);
                 results.add(result);
-                if (engineResult.verdict() == CodeExecutionEngine.Verdict.COMPILE_ERROR
-                        || engineResult.verdict() == CodeExecutionEngine.Verdict.INTERNAL_ERROR) break;
+                if (effectiveVerdict == CodeExecutionEngine.Verdict.COMPILE_ERROR
+                        || effectiveVerdict == CodeExecutionEngine.Verdict.INTERNAL_ERROR) break;
             }
             double score = results.stream().mapToDouble(CodeSubmissionTestResult::pointsEarned).sum();
             String verdict = aggregateVerdict(results, tests.size());
@@ -111,6 +113,19 @@ public class StudentCodeRunnerService {
             submissionPort.complete(submissionId, "FAILED", "INTERNAL_ERROR", 0);
             throw exception;
         }
+    }
+
+    private CodeExecutionEngine.Verdict effectiveVerdict(
+            CodeExecutionEngine.ExecutionResult result,
+            String expectedOutput) {
+        if (result.verdict() == null) {
+            return CodeExecutionEngine.Verdict.INTERNAL_ERROR;
+        }
+        if (result.verdict() == CodeExecutionEngine.Verdict.ACCEPTED
+                && !expectedOutput.equals(result.stdout())) {
+            return CodeExecutionEngine.Verdict.WRONG_ANSWER;
+        }
+        return result.verdict();
     }
 
     public Optional<CodeRunnerSubmissionScoreView> findCompletedSubmit(

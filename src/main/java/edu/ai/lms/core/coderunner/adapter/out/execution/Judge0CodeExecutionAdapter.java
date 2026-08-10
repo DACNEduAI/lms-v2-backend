@@ -43,7 +43,9 @@ public class Judge0CodeExecutionAdapter implements CodeExecutionEngine {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("source_code", base64(request.sourceCode()));
         body.put("language_id", request.languageId());
-        body.put("expected_output", base64(request.expectedOutput()));
+        if (request.expectedOutput() != null) {
+            body.put("expected_output", base64(request.expectedOutput()));
+        }
         body.put("cpu_time_limit", request.cpuTimeMs() / 1000.0);
         body.put("wall_time_limit", request.wallTimeMs() / 1000.0);
         body.put("memory_limit", request.memoryKb());
@@ -135,7 +137,9 @@ public class Judge0CodeExecutionAdapter implements CodeExecutionEngine {
             return null;
         }
         try {
-            return new String(Base64.getDecoder().decode(value), StandardCharsets.UTF_8);
+            // Judge0 may wrap Base64 output across lines. The MIME decoder
+            // accepts those line breaks while still returning the exact bytes.
+            return new String(Base64.getMimeDecoder().decode(value), StandardCharsets.UTF_8);
         } catch (IllegalArgumentException ignored) {
             return value;
         }

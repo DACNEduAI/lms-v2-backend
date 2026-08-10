@@ -67,10 +67,8 @@ public class CodeRunnerContractPersistenceAdapter
     }
 
     @Override
-    public void markLatestVerified(UUID questionId) {
-        if (repository.markLatestVerified(questionId) == 0) {
-            throw new IllegalStateException("No Code Runner contract exists to verify");
-        }
+    public boolean markVerified(UUID questionId, UUID configId) {
+        return repository.markVerified(questionId, configId) == 1;
     }
 
     private void insertTestCase(UUID configId, ExecutableAssessmentContract.TestCase testCase, int ordinal) {

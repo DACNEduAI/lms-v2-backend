@@ -49,5 +49,7 @@ interface CodeRunnerContractRepository {
 
     List<CodeRunnerTestCaseRow> findTestCases(@Param("configId") UUID configId);
 
-    int markLatestVerified(@Param("questionId") UUID questionId);
+    int markVerified(
+            @Param("questionId") UUID questionId,
+            @Param("configId") UUID configId);
 }
