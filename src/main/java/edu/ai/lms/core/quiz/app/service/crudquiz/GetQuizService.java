@@ -56,6 +56,8 @@ public class GetQuizService implements GetQuizUseCase {
             throw new QuizNotVisible("Quiz is not visible for student to view: " + quiz.getId());
         }
 
+        boolean revealAnswerKeys = user.getRole() == Roles.TEACHER;
+
         List<QuestionLearningOutcomeView> allQuestionOutcomes = loadQuestionLearningOutcomePort
                 .findLearningOutcomesByQuizId(quizId);
         Map<UUID, List<QuestionLearningOutcomeView>> outcomesByQuestion = allQuestionOutcomes.stream()
@@ -86,8 +88,8 @@ public class GetQuizService implements GetQuizUseCase {
                                     .map(a -> GetQuizResponse.AnswerSummary.builder()
                                             .answerNumber(a.getAnswerNumber())
                                             .content(a.getContent())
-                                            .correct(a.isCorrect())
-                                            .explanation(a.getExplanation())
+                                            .correct(revealAnswerKeys && a.isCorrect())
+                                            .explanation(revealAnswerKeys ? a.getExplanation() : null)
                                             .build())
                                     .collect(Collectors.toList()))
                             .images((q.getImages() == null ? List.<edu.ai.lms.core.quiz.app.domain.Question.Image>of() : q.getImages())

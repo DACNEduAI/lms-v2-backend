@@ -83,7 +83,7 @@ class SubmitAttemptServiceUT {
         when(loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)).thenReturn(Optional.of(policy));
         when(loadAttemptPort.getLatestStartedAttempt(studentId, quizId)).thenReturn(Optional.of(startedAttempt));
         when(loadQuizAttemptPolicyPort.getQuestionAnswerKeys(quizId)).thenReturn(List.of(QuestionAnswerKey.builder().build()));
-        when(attemptScoringService.calculateScore(any(), any())).thenReturn(8.0);
+        when(attemptScoringService.calculateScore(any(), any(), any(), any())).thenReturn(8.0);
         when(saveAttemptPort.save(any(Attempt.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = submitAttemptService.submitAttempt(command);

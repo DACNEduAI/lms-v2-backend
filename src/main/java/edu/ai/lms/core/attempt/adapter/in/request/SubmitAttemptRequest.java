@@ -38,7 +38,8 @@ public class SubmitAttemptRequest {
         @NotNull(message = "questionId is required")
         private UUID questionId;
 
-        @NotNull(message = "studentAnswerId is required")
         private Long studentAnswerId;
+
+        private UUID codeSubmissionId;
     }
 }

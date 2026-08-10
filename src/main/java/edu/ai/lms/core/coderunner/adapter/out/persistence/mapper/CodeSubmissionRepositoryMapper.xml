@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.coderunner.adapter.out.persistence.CodeSubmissionRepository">
+  <resultMap id="SubmissionMap" type="edu.ai.lms.core.coderunner.adapter.out.persistence.CodeSubmissionRow">
+    <id property="id" column="id"/><result property="questionId" column="question_id"/>
+    <result property="configId" column="code_runner_config_id"/><result property="attemptId" column="attempt_id"/>
+    <result property="studentId" column="student_id"/><result property="sourceCode" column="source_code"/>
+    <result property="idempotencyKey" column="idempotency_key"/><result property="mode" column="submission_mode"/>
+    <result property="status" column="status"/><result property="verdict" column="verdict"/>
+    <result property="score" column="score"/><result property="maxScore" column="max_score"/>
+    <result property="createdAt" column="created_at"/><result property="completedAt" column="completed_at"/>
+  </resultMap>
+  <resultMap id="TestResultMap" type="edu.ai.lms.core.coderunner.adapter.out.persistence.CodeSubmissionTestResultRow">
+    <id property="id" column="id"/><result property="submissionId" column="submission_id"/>
+    <result property="testCaseId" column="test_case_id"/><result property="externalTestId" column="external_test_id"/>
+    <result property="visibility" column="visibility"/><result property="executionStatus" column="execution_status"/>
+    <result property="verdict" column="verdict"/><result property="pointsEarned" column="points_earned"/>
+    <result property="timeMs" column="time_ms"/><result property="memoryKb" column="memory_kb"/>
+    <result property="diagnostic" column="diagnostic"/><result property="engineSubmissionId" column="engine_submission_id"/>
+  </resultMap>
+  <sql id="submissionColumns">id, question_id, code_runner_config_id, attempt_id, student_id, source_code,
+    idempotency_key, submission_mode, status, verdict, score, max_score, created_at, completed_at</sql>
+  <select id="findByStudentAndIdempotencyKey" resultMap="SubmissionMap">
+    SELECT <include refid="submissionColumns"/> FROM edu.code_submissions
+    WHERE student_id=#{studentId} AND idempotency_key=#{idempotencyKey}
+  </select>
+  <select id="findById" resultMap="SubmissionMap">
+    SELECT <include refid="submissionColumns"/> FROM edu.code_submissions WHERE id=#{submissionId}
+  </select>
+  <insert id="insert" parameterType="edu.ai.lms.core.coderunner.app.domain.CodeSubmission">
+    INSERT INTO edu.code_submissions (id, question_id, code_runner_config_id, attempt_id, student_id,
+      source_code, idempotency_key, submission_mode, status, verdict, score, max_score, created_at)
+    VALUES (#{id},#{questionId},#{configId},#{attemptId},#{studentId},#{sourceCode},#{idempotencyKey},
+      #{mode, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+      #{status, typeHandler=org.apache.ibatis.type.EnumTypeHandler},#{verdict},#{score},#{maxScore},NOW())
+  </insert>
+  <update id="complete">
+    UPDATE edu.code_submissions SET status=#{status}, verdict=#{verdict}, score=#{score}, completed_at=NOW()
+    WHERE id=#{submissionId}
+  </update>
+  <insert id="insertTestResult" parameterType="edu.ai.lms.core.coderunner.app.domain.CodeSubmissionTestResult">
+    INSERT INTO edu.code_submission_test_results (id, submission_id, test_case_id, execution_status,
+      verdict, points_earned, time_ms, memory_kb, diagnostic, engine_submission_id, created_at)
+    VALUES (#{id},#{submissionId},#{testCaseId},#{executionStatus},#{verdict},#{pointsEarned},
+      #{timeMs},#{memoryKb},#{diagnostic},#{engineSubmissionId},NOW())
+  </insert>
+  <select id="findTestResults" resultMap="TestResultMap">
+    SELECT r.id,r.submission_id,r.test_case_id,t.external_test_id,t.visibility,r.execution_status,
+      r.verdict,r.points_earned,r.time_ms,r.memory_kb,r.diagnostic,r.engine_submission_id
+    FROM edu.code_submission_test_results r
+    JOIN edu.code_runner_test_cases t ON t.id=r.test_case_id
+    WHERE r.submission_id=#{submissionId}
+    ORDER BY t.ordinal
+  </select>
+</mapper>

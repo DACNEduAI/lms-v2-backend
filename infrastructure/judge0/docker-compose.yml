@@ -1,0 +1,55 @@
+name: lms-judge0
+
+x-judge0-environment: &judge0-environment
+  AUTHN_HEADER: X-Judge0-Token
+  AUTHN_TOKEN: ${JUDGE0_AUTH_TOKEN:-lms-local-judge0-token}
+  REDIS_HOST: redis
+  REDIS_PASSWORD: ${JUDGE0_REDIS_PASSWORD:-lms-judge0-redis}
+  POSTGRES_HOST: db
+  POSTGRES_DB: judge0
+  POSTGRES_USER: judge0
+  POSTGRES_PASSWORD: ${JUDGE0_DB_PASSWORD:-lms-judge0-db}
+  RAILS_ENV: production
+  JUDGE0_TELEMETRY_ENABLE: "false"
+
+services:
+  server:
+    image: judge0/judge0:1.13.1
+    environment: *judge0-environment
+    ports:
+      - "127.0.0.1:2358:2358"
+    privileged: true
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+
+  worker:
+    image: judge0/judge0:1.13.1
+    command: ["./scripts/workers"]
+    environment: *judge0-environment
+    privileged: true
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:16.2
+    environment:
+      POSTGRES_DB: judge0
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: ${JUDGE0_DB_PASSWORD:-lms-judge0-db}
+    volumes:
+      - judge0-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.2.4
+    command: ["sh", "-c", "redis-server --appendonly no --requirepass \"$${REDIS_PASSWORD}\""]
+    environment:
+      REDIS_PASSWORD: ${JUDGE0_REDIS_PASSWORD:-lms-judge0-redis}
+    restart: unless-stopped
+
+volumes:
+  judge0-data:

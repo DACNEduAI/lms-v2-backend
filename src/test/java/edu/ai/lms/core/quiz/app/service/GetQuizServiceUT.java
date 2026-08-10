@@ -155,6 +155,8 @@ class GetQuizServiceUT {
         assertEquals("Sample Question", response.getQuestions().get(0).getContent());
         assertEquals(1, response.getQuestions().get(0).getAnswers().size());
         assertEquals("Sample Answer", response.getQuestions().get(0).getAnswers().get(0).getContent());
+        assertEquals(true, response.getQuestions().get(0).getAnswers().get(0).isCorrect());
+        assertEquals("Sample Explanation", response.getQuestions().get(0).getAnswers().get(0).getExplanation());
         assertEquals(1, response.getGroupedLearningOutcomes().size());
         assertEquals(1, response.getUngroupedLearningOutcomes().size());
 
@@ -177,6 +179,8 @@ class GetQuizServiceUT {
                 assertNotNull(response);
                 assertEquals(quizId, response.getQuizId());
                 assertEquals("Midterm Quiz", response.getQuizTitle());
+                assertEquals(false, response.getQuestions().get(0).getAnswers().get(0).isCorrect());
+                assertNull(response.getQuestions().get(0).getAnswers().get(0).getExplanation());
                 verify(loadQuizPort, times(1)).getByIdWithQuestionsAndAnswers(courseId, quizId);
         }
 
