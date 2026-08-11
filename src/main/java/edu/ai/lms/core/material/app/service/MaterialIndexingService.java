@@ -22,6 +22,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -50,7 +51,7 @@ public class MaterialIndexingService {
                 .fileKey(material.getFileKey())
                 .status(MaterialIndexJob.Status.PENDING)
                 .attemptCount(0)
-                .nextAttemptAt(LocalDateTime.now())
+                .nextAttemptAt(Instant.now())
                 .build();
         MaterialIndexJob saved = jobPort.save(job);
         scheduleAfterCommit(saved);
@@ -64,7 +65,7 @@ public class MaterialIndexingService {
                 .operation(MaterialIndexJob.Operation.DELETE)
                 .status(MaterialIndexJob.Status.PENDING)
                 .attemptCount(0)
-                .nextAttemptAt(LocalDateTime.now())
+                .nextAttemptAt(Instant.now())
                 .build();
         MaterialIndexJob saved = jobPort.save(job);
         scheduleAfterCommit(saved);
@@ -97,7 +98,7 @@ public class MaterialIndexingService {
     public void process(UUID jobId) {
         MaterialIndexJob initial = jobPort.findById(jobId).orElse(null);
         if (initial == null || isTerminal(initial.getStatus())) return;
-        if (!jobPort.claim(jobId, LocalDateTime.now().plusMinutes(timeoutMinutes))) return;
+        if (!jobPort.claim(jobId, Instant.now().plus(Duration.ofMinutes(timeoutMinutes)))) return;
         MaterialIndexJob job = jobPort.findById(jobId).orElseThrow();
         try {
             if (job.getOperation() == MaterialIndexJob.Operation.DELETE) {
@@ -110,7 +111,7 @@ public class MaterialIndexingService {
             job.setStatus(MaterialIndexJob.Status.COMPLETED);
             job.setLeaseUntil(null);
             job.setErrorMessage(null);
-            job.setCompletedAt(LocalDateTime.now());
+            job.setCompletedAt(Instant.now());
             jobPort.save(job);
         } catch (Exception ex) {
             retryOrFail(job, safeMessage(ex));
@@ -123,7 +124,7 @@ public class MaterialIndexingService {
         if (material == null || !job.getRevision().equals(material.getIngestionRevision())) {
             job.setStatus(MaterialIndexJob.Status.CANCELLED);
             job.setLeaseUntil(null);
-            job.setCompletedAt(LocalDateTime.now());
+            job.setCompletedAt(Instant.now());
             jobPort.save(job);
             throw new StaleMaterialRevisionException();
         }
@@ -164,8 +165,8 @@ public class MaterialIndexingService {
         job.setStatus(exhausted ? MaterialIndexJob.Status.FAILED : MaterialIndexJob.Status.PENDING);
         job.setLeaseUntil(null);
         job.setErrorMessage(message);
-        job.setNextAttemptAt(exhausted ? null : LocalDateTime.now().plusSeconds(backoffSeconds(job.getAttemptCount())));
-        if (exhausted) job.setCompletedAt(LocalDateTime.now());
+        job.setNextAttemptAt(exhausted ? null : Instant.now().plusSeconds(backoffSeconds(job.getAttemptCount())));
+        if (exhausted) job.setCompletedAt(Instant.now());
         MaterialIndexJob saved = jobPort.save(job);
 
         materialPort.findByIdAndCourseId(job.getMaterialId(), job.getCourseId())

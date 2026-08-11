@@ -9,7 +9,7 @@ import org.quartz.JobExecutionContext;
 import org.springframework.scheduling.quartz.QuartzJobBean;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Slf4j
 @Component
@@ -23,7 +23,7 @@ public class MaterialIndexRecoveryJob extends QuartzJobBean {
     protected void executeInternal(JobExecutionContext context) {
         for (var jobId : jobPort.findRecoverableIds(25)) {
             try {
-                schedulerPort.schedule(jobId, LocalDateTime.now());
+                schedulerPort.schedule(jobId, Instant.now());
             } catch (RuntimeException ex) {
                 log.warn("Could not recover material index job {}", jobId, ex);
             }

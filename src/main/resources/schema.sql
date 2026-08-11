@@ -161,12 +161,12 @@ CREATE TABLE IF NOT EXISTS material_index_jobs
     file_key        VARCHAR(255),
     status          VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED')),
     attempt_count   INTEGER     NOT NULL DEFAULT 0,
-    next_attempt_at TIMESTAMP,
-    lease_until     TIMESTAMP,
+    next_attempt_at TIMESTAMPTZ,
+    lease_until     TIMESTAMPTZ,
     error_message   TEXT,
-    completed_at    TIMESTAMP,
-    created_at      TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+    completed_at    TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_material_index_queue
     ON material_index_jobs (status, next_attempt_at);
@@ -177,6 +177,9 @@ CREATE INDEX IF NOT EXISTS idx_material_index_identity
 CREATE UNIQUE INDEX IF NOT EXISTS uq_material_index_processing
     ON material_index_jobs (course_id, material_id)
     WHERE status = 'PROCESSING';
+CREATE UNIQUE INDEX IF NOT EXISTS uq_material_index_active_ingest_revision
+    ON material_index_jobs (course_id, material_id, revision)
+    WHERE operation = 'INGEST' AND status IN ('PENDING', 'PROCESSING');
 
 UPDATE materials
 SET ingestion_revision = gen_random_uuid()

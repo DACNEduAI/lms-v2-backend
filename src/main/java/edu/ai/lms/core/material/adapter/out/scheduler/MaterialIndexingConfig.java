@@ -8,8 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.quartz.*;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
 
@@ -39,7 +38,7 @@ class MaterialIndexingConfig implements ScheduleMaterialIndexJobPort {
     }
 
     @Override
-    public void schedule(UUID jobId, LocalDateTime fireAt) {
+    public void schedule(UUID jobId, Instant fireAt) {
         JobKey key = JobKey.jobKey(jobId.toString(), JOB_GROUP);
         JobDataMap data = new JobDataMap();
         data.put(MaterialIndexJob.JOB_ID_KEY, jobId.toString());
@@ -48,8 +47,7 @@ class MaterialIndexingConfig implements ScheduleMaterialIndexJobPort {
         Trigger trigger = TriggerBuilder.newTrigger()
                 .withIdentity(jobId.toString(), JOB_GROUP + "-trigger")
                 .forJob(detail)
-                .startAt(Date.from((fireAt == null ? LocalDateTime.now() : fireAt)
-                        .atZone(ZoneId.systemDefault()).toInstant()))
+                .startAt(Date.from(fireAt == null ? Instant.now() : fireAt))
                 .withSchedule(SimpleScheduleBuilder.simpleSchedule().withMisfireHandlingInstructionFireNow())
                 .build();
         try {

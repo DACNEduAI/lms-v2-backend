@@ -2,6 +2,7 @@ package edu.ai.lms.config;
 
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,7 @@ import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
+@Slf4j
 public class WebClientConfig {
 
     @Value("${ai.service.url:http://localhost:8000}")
@@ -39,6 +41,8 @@ public class WebClientConfig {
                 .clientConnector(new ReactorClientHttpConnector(httpClient));
         if (aiServiceToken != null && !aiServiceToken.isBlank()) {
             builder.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + aiServiceToken);
+        } else {
+            log.warn("AI_SERVICE_TOKEN is not configured; protected AI service calls will be rejected");
         }
         return builder.build();
     }

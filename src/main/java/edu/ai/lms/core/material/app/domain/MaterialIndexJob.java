@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -26,10 +26,10 @@ public class MaterialIndexJob {
     private String fileKey;
     private Status status;
     private int attemptCount;
-    private LocalDateTime nextAttemptAt;
-    private LocalDateTime leaseUntil;
+    private Instant nextAttemptAt;
+    private Instant leaseUntil;
     private String errorMessage;
-    private LocalDateTime completedAt;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private Instant completedAt;
+    private Instant createdAt;
+    private Instant updatedAt;
 }

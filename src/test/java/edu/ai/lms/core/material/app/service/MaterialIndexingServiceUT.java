@@ -21,11 +21,15 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -67,6 +71,30 @@ class MaterialIndexingServiceUT {
         assertEquals(material.getIngestionRevision(), job.getRevision());
         assertEquals(MaterialIndexJob.Operation.INGEST, job.getOperation());
         verify(schedulerPort).schedule(job.getId(), job.getNextAttemptAt());
+    }
+
+    @Test
+    void queueIngestUsesAnAbsoluteInstantWhenJvmRunsInHoChiMinhTime() {
+        TimeZone original = TimeZone.getDefault();
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+        try {
+            Material material = readyToQueue();
+            when(jobPort.save(any())).thenAnswer(invocation -> {
+                MaterialIndexJob job = invocation.getArgument(0);
+                job.setId(UUID.randomUUID());
+                return job;
+            });
+            Instant before = Instant.now();
+
+            MaterialIndexJob job = service.queueIngest(material);
+
+            Instant after = Instant.now();
+            assertFalse(job.getNextAttemptAt().isBefore(before));
+            assertFalse(job.getNextAttemptAt().isAfter(after));
+            assertTrue(TimeZone.getDefault().hasSameRules(TimeZone.getTimeZone("Asia/Ho_Chi_Minh")));
+        } finally {
+            TimeZone.setDefault(original);
+        }
     }
 
     @Test
