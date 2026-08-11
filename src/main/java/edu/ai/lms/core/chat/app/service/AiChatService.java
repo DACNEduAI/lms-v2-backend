@@ -1,5 +1,7 @@
 package edu.ai.lms.core.chat.app.service;
 
+import edu.ai.lms.config.CorrelationIdFilter;
+
 import edu.ai.lms.core.chat.adapter.in.http.request.AiChatRequest;
 import edu.ai.lms.core.chat.app.domain.AiChatSession;
 import edu.ai.lms.core.chat.app.domain.AiCourseChatMessage;
@@ -135,6 +137,7 @@ public class AiChatService {
 
         return aiWebClient.post()
                 .uri("/api/chat")
+                .header(CorrelationIdFilter.HEADER_NAME, sessionId.toString())
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.TEXT_EVENT_STREAM)
                 .bodyValue(pythonPayload)

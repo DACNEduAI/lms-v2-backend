@@ -40,6 +40,10 @@ khi khởi động lại.
 
 Backend chạy tại `http://localhost:8080`.
 
+Backend ghi request API và lời gọi AI ra console kèm `X-Correlation-ID`. Chỉ đặt
+`APP_LOG_LEVEL=DEBUG` khi cần chẩn đoán sâu ở local. Workflow log không ghi body,
+credential, prompt hoặc signed URL.
+
 ## Kiểm thử
 
 ```powershell

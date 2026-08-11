@@ -1,5 +1,6 @@
 package edu.ai.lms.core.quiz.app.service.genquiz;
 
+import edu.ai.lms.config.CorrelationIdFilter;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionImagePublicUrlPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
@@ -257,6 +258,7 @@ public class QuestionVisualGenerationService {
 
     VisualResponse requestVisual(QuestionVisualJobPort.WorkItem work) {
         return aiWebClient.post().uri("/quiz-gen/visuals/generate")
+                .header(CorrelationIdFilter.HEADER_NAME, work.id().toString())
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(new VisualRequest(work.id(), work.questionContent(),
                         work.generationBrief(), work.altText()))

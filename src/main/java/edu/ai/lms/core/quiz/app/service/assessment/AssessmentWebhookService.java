@@ -10,15 +10,22 @@ import org.springframework.stereotype.Service;
 
 import edu.ai.lms.core.quiz.adapter.out.persistence.AssessmentWorkflowRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AssessmentWebhookService {
     private final AssessmentWorkflowRepository workflow;
 
     public void handle(AssessmentWebhookPayload payload) {
         if (payload == null || payload.batchId() == null) throw new IllegalArgumentException("batchId is required");
+        int draftCount = payload.drafts() == null ? 0 : payload.drafts().size();
+        log.info("event=assessment.generation.callback_received event_id={} batch_id={} status={} draft_count={}",
+                payload.eventId(), payload.batchId(), payload.status(), draftCount);
         if ("FAILED".equalsIgnoreCase(payload.status())) {
+            log.warn("event=assessment.generation.callback_failed batch_id={} error_code={}",
+                    payload.batchId(), payload.errorCode());
             workflow.failBatch(payload.batchId(), payload.errorMessage() == null ? "AI generation failed" : payload.errorMessage());
             return;
         }
@@ -33,6 +40,8 @@ public class AssessmentWebhookService {
                                 .toList()))
                 .toList();
         workflow.persistGeneratedDrafts(payload.batchId(), drafts);
+        log.info("event=assessment.generation.callback_persisted batch_id={} draft_count={}",
+                payload.batchId(), drafts.size());
     }
 
     public record AssessmentWebhookPayload(UUID eventId, UUID batchId, String status,

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import edu.ai.lms.config.CorrelationIdFilter;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
 import edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand;
@@ -88,6 +89,7 @@ public class QuizGenerationProcessingService {
                     job.getIdempotencyKey(), callbackUrl(), webhookSecret);
 
             WebClient.RequestBodySpec call = aiWebClient.post().uri("/quiz-gen/generate")
+                    .header(CorrelationIdFilter.HEADER_NAME, job.getId().toString())
                     .contentType(MediaType.APPLICATION_JSON);
             call.bodyValue(request).retrieve().toBodilessEntity()
                     .block(Duration.ofMinutes(timeoutMinutes));

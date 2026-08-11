@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import edu.ai.lms.config.CorrelationIdFilter;
 import edu.ai.lms.core.course.app.domain.CcctAiJob;
 import edu.ai.lms.core.course.app.domain.CcctAiJobType;
 import edu.ai.lms.core.course.app.domain.CcctChapter;
@@ -25,9 +26,11 @@ import edu.ai.lms.core.course.app.port.out.LoadCcctProfilePort;
 import edu.ai.lms.core.course.app.port.out.SaveCcctProfilePort;
 import edu.ai.lms.core.material.api.TemporaryStorageApi;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class CcctAiJobProcessor {
     private final CcctAiJobPort jobPort;
     private final LoadCcctProfilePort loadProfilePort;
@@ -38,8 +41,14 @@ public class CcctAiJobProcessor {
 
     @Async
     public void processAsync(UUID jobId) {
-        if (!jobPort.claim(jobId)) return;
+        if (!jobPort.claim(jobId)) {
+            log.info("event=ccct.ai.skipped job_id={} reason=not_claimed", jobId);
+            return;
+        }
         CcctAiJob job = jobPort.findById(jobId).orElseThrow();
+        long startedAt = System.nanoTime();
+        log.info("event=ccct.ai.started job_id={} course_id={} profile_id={} type={}",
+                job.getId(), job.getCourseId(), job.getProfileId(), job.getType());
         try {
             CcctProfile profile = requireCurrent(job);
             if (job.getType() == CcctAiJobType.PDF_TO_CUSTOM) {
@@ -47,9 +56,16 @@ public class CcctAiJobProcessor {
             } else {
                 processStructure(job, profile);
             }
+            log.info("event=ccct.ai.completed job_id={} course_id={} profile_id={} type={} duration_ms={}",
+                    job.getId(), job.getCourseId(), job.getProfileId(), job.getType(), elapsedMillis(startedAt));
         } catch (StaleJobException exception) {
+            log.warn("event=ccct.ai.stale job_id={} course_id={} profile_id={} duration_ms={}",
+                    job.getId(), job.getCourseId(), job.getProfileId(), elapsedMillis(startedAt));
             jobPort.stale(jobId, exception.getMessage());
         } catch (Exception exception) {
+            log.error("event=ccct.ai.failed job_id={} course_id={} profile_id={} type={} duration_ms={} error_type={}",
+                    job.getId(), job.getCourseId(), job.getProfileId(), job.getType(), elapsedMillis(startedAt),
+                    exception.getClass().getSimpleName(), exception);
             jobPort.fail(jobId, safeMessage(exception));
         } finally {
             if (job.getFileKey() != null) {
@@ -67,6 +83,7 @@ public class CcctAiJobProcessor {
         String fileUrl = temporaryStorageApi.createDownloadLink(job.getFileKey(), Duration.ofMinutes(30));
         AiPdfResponse response = aiWebClient.post()
                 .uri("/ccct/extract-pdf")
+                .header(CorrelationIdFilter.HEADER_NAME, job.getId().toString())
                 .bodyValue(new AiPdfRequest(
                         job.getCourseId(),
                         job.getProfileId(),
@@ -99,6 +116,7 @@ public class CcctAiJobProcessor {
         jobPort.updateStage(job.getId(), "STRUCTURING_CONTENT");
         AiStructureResponse response = aiWebClient.post()
                 .uri("/ccct/structure")
+                .header(CorrelationIdFilter.HEADER_NAME, job.getId().toString())
                 .bodyValue(new AiStructureRequest(
                         job.getCourseId(),
                         job.getProfileId(),
@@ -175,6 +193,10 @@ public class CcctAiJobProcessor {
         return message == null || message.isBlank()
                 ? "CCCT AI processing failed"
                 : message.substring(0, Math.min(message.length(), 1000));
+    }
+
+    private static long elapsedMillis(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000L;
     }
 
     private static final class StaleJobException extends RuntimeException {
