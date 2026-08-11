@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,11 +30,11 @@ import edu.ai.lms.core.material.app.domain.Material;
 import edu.ai.lms.core.material.app.domain.Material.MaterialStatus;
 import edu.ai.lms.core.material.app.domain.Material.MaterialType;
 import edu.ai.lms.core.material.app.exception.MaterialAlreadyUploadedException;
-import edu.ai.lms.core.material.app.exception.MaterialUploadPendingException;
 import edu.ai.lms.core.material.app.port.in.command.CreateMaterialForChapterCommand;
 import edu.ai.lms.core.material.app.port.in.command.CreateMaterialForCourseCommand;
 import edu.ai.lms.core.material.app.port.out.persistence.CreateMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
+import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
 import edu.ai.lms.core.material.app.port.out.storage.CreateUploadLinkPort;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,6 +45,9 @@ class CreateMaterialServiceUT {
 
     @Mock
     private GetMaterialPort getMaterialPort;
+
+    @Mock
+    private ModifyMaterialPort modifyMaterialPort;
 
     @Mock
     private CreateUploadLinkPort createUploadLinkPort;
@@ -139,26 +143,50 @@ class CreateMaterialServiceUT {
     }
 
     @Test
-    @DisplayName("Should throw MaterialUploadPendingException when fileKey exists with PENDING status")
-    void testCreateMaterialForCourse_WithDuplicatePendingFileKey_ShouldThrowException() {
+    @DisplayName("Should resume course upload when fileKey exists with PENDING status")
+    void testCreateMaterialForCourse_WithDuplicatePendingFileKey_ShouldResumeUpload() {
         // Arrange
-        Material existingMaterial = Material.builder()
-                .id(UUID.randomUUID())
-                .fileKey(material.getFileKey())
-                .status(MaterialStatus.PENDING)
-                .build();
-        when(getMaterialPort.findByFileKey(material.getFileKey())).thenReturn(Optional.of(existingMaterial));
+        when(getMaterialPort.findByFileKey(material.getFileKey())).thenReturn(Optional.of(savedMaterial));
+        when(modifyMaterialPort.update(savedMaterial)).thenReturn(savedMaterial);
+        when(createUploadLinkPort.createUploadLink(savedMaterial.getFileKey(), "application/pdf", null))
+                .thenReturn("https://presigned-url.example.com/retry");
 
         CreateMaterialForCourseCommand command = CreateMaterialForCourseCommand.builder()
                 .courseId(courseId)
                 .material(material)
                 .build();
 
-        // Act & Assert
-        MaterialUploadPendingException exception = assertThrows(MaterialUploadPendingException.class,
-                () -> createMaterialService.createMaterialForCourse(command));
+        // Act
+        CreateMaterialResponse response = createMaterialService.createMaterialForCourse(command);
 
-        assertTrue(exception.getMessage().contains("upload status is unknown"));
+        // Assert
+        assertEquals(materialId, response.getId());
+        assertEquals("PENDING", response.getStatus());
+        assertEquals("https://presigned-url.example.com/retry", response.getPresignedUploadUrl());
+        verify(modifyMaterialPort).update(savedMaterial);
+        verify(createMaterialPort, never()).createForCourse(any(), any());
+    }
+
+    @Test
+    @DisplayName("Should reset FAILED course material and resume upload")
+    void testCreateMaterialForCourse_WithDuplicateFailedFileKey_ShouldResumeUpload() {
+        savedMaterial.setStatus(MaterialStatus.FAILED);
+        savedMaterial.setIngestionStatus(Material.IngestionStatus.FAILED);
+        savedMaterial.setIngestionError("Previous upload failed");
+        when(getMaterialPort.findByFileKey(material.getFileKey())).thenReturn(Optional.of(savedMaterial));
+        when(modifyMaterialPort.update(savedMaterial)).thenReturn(savedMaterial);
+        when(createUploadLinkPort.createUploadLink(savedMaterial.getFileKey(), "application/pdf", null))
+                .thenReturn("https://presigned-url.example.com/retry-failed");
+
+        CreateMaterialResponse response = createMaterialService.createMaterialForCourse(
+                CreateMaterialForCourseCommand.builder().courseId(courseId).material(material).build());
+
+        assertEquals(materialId, response.getId());
+        assertEquals("PENDING", response.getStatus());
+        assertEquals("NOT_STARTED", response.getIngestionStatus());
+        assertEquals("https://presigned-url.example.com/retry-failed", response.getPresignedUploadUrl());
+        assertNull(savedMaterial.getIngestionError());
+        verify(modifyMaterialPort).update(savedMaterial);
         verify(createMaterialPort, never()).createForCourse(any(), any());
     }
 
@@ -259,15 +287,13 @@ class CreateMaterialServiceUT {
     }
 
     @Test
-    @DisplayName("Should throw MaterialUploadPendingException when creating chapter material with duplicate pending fileKey")
-    void testCreateMaterialForChapter_WithDuplicatePendingFileKey_ShouldThrowException() {
+    @DisplayName("Should resume chapter upload when fileKey exists with PENDING status")
+    void testCreateMaterialForChapter_WithDuplicatePendingFileKey_ShouldResumeUpload() {
         // Arrange
-        Material existingMaterial = Material.builder()
-                .id(UUID.randomUUID())
-                .fileKey(material.getFileKey())
-                .status(MaterialStatus.PENDING)
-                .build();
-        when(getMaterialPort.findByFileKey(material.getFileKey())).thenReturn(Optional.of(existingMaterial));
+        when(getMaterialPort.findByFileKey(material.getFileKey())).thenReturn(Optional.of(savedMaterial));
+        when(modifyMaterialPort.update(savedMaterial)).thenReturn(savedMaterial);
+        when(createUploadLinkPort.createUploadLink(savedMaterial.getFileKey(), "application/pdf", null))
+                .thenReturn("https://presigned-url.example.com/chapter-retry");
 
         CreateMaterialForChapterCommand command = CreateMaterialForChapterCommand.builder()
                 .courseId(courseId)
@@ -275,11 +301,37 @@ class CreateMaterialServiceUT {
                 .material(material)
                 .build();
 
-        // Act & Assert
-        MaterialUploadPendingException exception = assertThrows(MaterialUploadPendingException.class,
-                () -> createMaterialService.createMaterialForChapter(command));
+        // Act
+        CreateMaterialResponse response = createMaterialService.createMaterialForChapter(command);
 
-        assertTrue(exception.getMessage().contains("upload status is unknown"));
+        // Assert
+        assertEquals(materialId, response.getId());
+        assertEquals("PENDING", response.getStatus());
+        assertEquals("https://presigned-url.example.com/chapter-retry", response.getPresignedUploadUrl());
+        verify(modifyMaterialPort).update(savedMaterial);
+        verify(createMaterialPort, never()).createForChapter(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Should reset FAILED chapter material and resume upload")
+    void testCreateMaterialForChapter_WithDuplicateFailedFileKey_ShouldResumeUpload() {
+        savedMaterial.setStatus(MaterialStatus.FAILED);
+        when(getMaterialPort.findByFileKey(material.getFileKey())).thenReturn(Optional.of(savedMaterial));
+        when(modifyMaterialPort.update(savedMaterial)).thenReturn(savedMaterial);
+        when(createUploadLinkPort.createUploadLink(savedMaterial.getFileKey(), "application/pdf", null))
+                .thenReturn("https://presigned-url.example.com/chapter-retry-failed");
+
+        CreateMaterialResponse response = createMaterialService.createMaterialForChapter(
+                CreateMaterialForChapterCommand.builder()
+                        .courseId(courseId)
+                        .chapterId(UUID.randomUUID())
+                        .material(material)
+                        .build());
+
+        assertEquals(materialId, response.getId());
+        assertEquals("PENDING", response.getStatus());
+        assertEquals("https://presigned-url.example.com/chapter-retry-failed", response.getPresignedUploadUrl());
+        verify(modifyMaterialPort).update(savedMaterial);
         verify(createMaterialPort, never()).createForChapter(any(), any(), any());
     }
 

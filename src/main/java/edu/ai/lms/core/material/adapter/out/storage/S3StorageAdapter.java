@@ -38,7 +38,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 /**
  * Facade that delegates storage operations to the appropriate S3Client:
  *  - "prod" profile → DigitalOceanConfig's S3Client
- *  - "dev"  profile → LocalStorageConfig's S3Client (LocalStack)
+ *  - "dev"  profile → DevConfig's S3-compatible client (Supabase Storage locally)
  *
  * Spring automatically injects the profile-active bean; this class adds
  * helper methods and a uniform API on top of it.

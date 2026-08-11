@@ -7,11 +7,11 @@ import org.springframework.transaction.annotation.Transactional;
 import edu.ai.lms.core.material.adapter.in.response.CreateMaterialResponse;
 import edu.ai.lms.core.material.app.domain.Material;
 import edu.ai.lms.core.material.app.exception.MaterialAlreadyUploadedException;
-import edu.ai.lms.core.material.app.exception.MaterialUploadPendingException;
 import edu.ai.lms.core.material.app.port.in.command.CreateMaterialForChapterCommand;
 import edu.ai.lms.core.material.app.port.in.command.CreateMaterialForCourseCommand;
 import edu.ai.lms.core.material.app.port.out.persistence.CreateMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
+import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
 import edu.ai.lms.core.material.app.port.out.storage.CreateUploadLinkPort;
 import lombok.RequiredArgsConstructor;
 
@@ -21,12 +21,16 @@ public class CreateMaterialService implements CreateMaterialUseCase {
 
     private final CreateMaterialPort createMaterialPort;
     private final GetMaterialPort getMaterialPort;
+    private final ModifyMaterialPort modifyMaterialPort;
     private final CreateUploadLinkPort createUploadLinkPort;
 
     @Override
     @Transactional
     public CreateMaterialResponse createMaterialForCourse(CreateMaterialForCourseCommand command) {
-        checkForDuplicateFileKey(command.material().getFileKey());
+        CreateMaterialResponse resumed = resumeIncompleteUpload(command.material());
+        if (resumed != null) {
+            return resumed;
+        }
 
         Material saved = createMaterialPort.createForCourse(
                 command.courseId(),
@@ -41,7 +45,10 @@ public class CreateMaterialService implements CreateMaterialUseCase {
     @Override
     @Transactional
     public CreateMaterialResponse createMaterialForChapter(CreateMaterialForChapterCommand command) {
-        checkForDuplicateFileKey(command.material().getFileKey());
+        CreateMaterialResponse resumed = resumeIncompleteUpload(command.material());
+        if (resumed != null) {
+            return resumed;
+        }
 
         Material saved = createMaterialPort.createForChapter(
                 command.courseId(),
@@ -71,18 +78,31 @@ public class CreateMaterialService implements CreateMaterialUseCase {
 
 
 
-    private void checkForDuplicateFileKey(String fileKey) {
-        getMaterialPort.findByFileKey(fileKey).ifPresent(existing -> {
-            if (existing.getStatus() == Material.MaterialStatus.UPLOADED) {
-                throw new MaterialAlreadyUploadedException(
-                        "A material with the same file name has already been uploaded. " +
-                        "Use the PUT endpoint to replace the existing file.");
-            }
-            if (existing.getStatus() == Material.MaterialStatus.PENDING) {
-                throw new MaterialUploadPendingException(
-                        "A material with the same file name already exists but its upload status is unknown. " +
-                        "Use the PATCH endpoint to check the upload status of the file.");
-            }
-        });
+    private CreateMaterialResponse resumeIncompleteUpload(Material requested) {
+        Material existing = getMaterialPort.findByFileKey(requested.getFileKey()).orElse(null);
+        if (existing == null) {
+            return null;
+        }
+
+        if (existing.getStatus() == Material.MaterialStatus.UPLOADED) {
+            throw new MaterialAlreadyUploadedException(
+                    "A material with the same file name has already been uploaded. " +
+                    "Use the PUT endpoint to replace the existing file.");
+        }
+
+        existing.setTitle(requested.getTitle());
+        existing.setType(requested.getType());
+        existing.setDownloadable(requested.isDownloadable());
+        existing.setStatus(Material.MaterialStatus.PENDING);
+        existing.setIngestionStatus(Material.IngestionStatus.NOT_STARTED);
+        existing.setIngestionError(null);
+        existing.setIngestionRevision(null);
+        existing.setIngestedAt(null);
+
+        Material resumed = modifyMaterialPort.update(existing);
+        String presignedUploadUrl = createUploadLinkPort.createUploadLink(
+                resumed.getFileKey(), resumed.getContentType(), null);
+
+        return toResponse(resumed, presignedUploadUrl);
     }
 }
