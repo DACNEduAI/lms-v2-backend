@@ -4,7 +4,7 @@ import edu.ai.lms.core.material.app.domain.MaterialIndexJob;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,6 +13,6 @@ import java.util.UUID;
 interface MaterialIndexJobRepository {
     void save(MaterialIndexJob job);
     Optional<MaterialIndexJob> findById(@Param("id") UUID id);
-    int claim(@Param("id") UUID id, @Param("leaseUntil") LocalDateTime leaseUntil);
+    int claim(@Param("id") UUID id, @Param("leaseUntil") Instant leaseUntil);
     List<UUID> findRecoverableIds(@Param("limit") int limit);
 }

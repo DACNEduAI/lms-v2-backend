@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,7 +29,7 @@ class MaterialIndexJobPersistenceAdapter implements MaterialIndexJobPort {
     }
 
     @Override
-    public boolean claim(UUID jobId, LocalDateTime leaseUntil) {
+    public boolean claim(UUID jobId, Instant leaseUntil) {
         try {
             return repository.claim(jobId, leaseUntil) == 1;
         } catch (DataIntegrityViolationException ex) {

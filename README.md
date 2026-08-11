@@ -15,9 +15,22 @@ STORAGE_S3_ACCESS_KEY_ID=<access-key>
 STORAGE_S3_SECRET_ACCESS_KEY=<secret-key>
 STORAGE_S3_FORCE_PATH_STYLE=true
 STORAGE_PRIVATE_BUCKET=<private-bucket>
+AI_SERVICE_URL=http://localhost:8000
+AI_SERVICE_TOKEN=<same-value-as-AI_Pipeline/.env>
 ```
 
+`AI_SERVICE_TOKEN` là secret dùng riêng cho giao tiếp BE → AI. FE không được nhận
+hoặc gửi token này. Giá trị phải trùng với `AI_Pipeline/.env`.
+
 Các key chỉ dùng ở backend, không đưa vào frontend hoặc log.
+
+Database đã có dữ liệu phải dùng `DATABASE_INITIALIZATION_OPTION=never`.
+Giá trị `always` chỉ dành cho database development có thể xóa toàn bộ, vì
+`schema.sql` drop và tạo lại schema ứng dụng khi backend khởi động.
+
+Với database có `material_index_jobs` cũ, dừng backend và chạy một lần
+`src/main/resources/db/manual/V20260811_01__material_index_jobs_utc.sql` trước
+khi khởi động lại.
 
 ## Chạy backend
 
