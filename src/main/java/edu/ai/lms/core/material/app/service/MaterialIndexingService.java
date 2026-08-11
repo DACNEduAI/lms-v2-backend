@@ -2,6 +2,7 @@ package edu.ai.lms.core.material.app.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
+import edu.ai.lms.config.CorrelationIdFilter;
 import edu.ai.lms.core.material.adapter.in.response.ConfirmUploadResponse;
 import edu.ai.lms.core.material.app.domain.Material;
 import edu.ai.lms.core.material.app.domain.MaterialIndexJob;
@@ -54,6 +55,8 @@ public class MaterialIndexingService {
                 .nextAttemptAt(Instant.now())
                 .build();
         MaterialIndexJob saved = jobPort.save(job);
+        log.info("event=material.index.queued job_id={} course_id={} material_id={} operation={} revision={}",
+                saved.getId(), saved.getCourseId(), saved.getMaterialId(), saved.getOperation(), saved.getRevision());
         scheduleAfterCommit(saved);
         return saved;
     }
@@ -68,6 +71,8 @@ public class MaterialIndexingService {
                 .nextAttemptAt(Instant.now())
                 .build();
         MaterialIndexJob saved = jobPort.save(job);
+        log.info("event=material.index.queued job_id={} course_id={} material_id={} operation={}",
+                saved.getId(), saved.getCourseId(), saved.getMaterialId(), saved.getOperation());
         scheduleAfterCommit(saved);
         return saved;
     }
@@ -97,13 +102,27 @@ public class MaterialIndexingService {
 
     public void process(UUID jobId) {
         MaterialIndexJob initial = jobPort.findById(jobId).orElse(null);
-        if (initial == null || isTerminal(initial.getStatus())) return;
-        if (!jobPort.claim(jobId, Instant.now().plus(Duration.ofMinutes(timeoutMinutes)))) return;
+        if (initial == null) {
+            log.warn("event=material.index.skipped job_id={} reason=not_found", jobId);
+            return;
+        }
+        if (isTerminal(initial.getStatus())) {
+            log.info("event=material.index.skipped job_id={} status={} reason=terminal", jobId, initial.getStatus());
+            return;
+        }
+        if (!jobPort.claim(jobId, Instant.now().plus(Duration.ofMinutes(timeoutMinutes)))) {
+            log.info("event=material.index.skipped job_id={} reason=not_claimed", jobId);
+            return;
+        }
         MaterialIndexJob job = jobPort.findById(jobId).orElseThrow();
+        long startedAt = System.nanoTime();
+        log.info("event=material.index.started job_id={} course_id={} material_id={} operation={} attempt={}",
+                job.getId(), job.getCourseId(), job.getMaterialId(), job.getOperation(), job.getAttemptCount());
         try {
             if (job.getOperation() == MaterialIndexJob.Operation.DELETE) {
                 aiWebClient.delete()
                         .uri("/api/ingest/{courseId}/{materialId}", job.getCourseId(), job.getMaterialId())
+                        .header(CorrelationIdFilter.HEADER_NAME, job.getId().toString())
                         .retrieve().toBodilessEntity().block(Duration.ofMinutes(timeoutMinutes));
             } else {
                 ingest(job);
@@ -113,7 +132,12 @@ public class MaterialIndexingService {
             job.setErrorMessage(null);
             job.setCompletedAt(Instant.now());
             jobPort.save(job);
+            log.info("event=material.index.completed job_id={} course_id={} material_id={} operation={} duration_ms={}",
+                    job.getId(), job.getCourseId(), job.getMaterialId(), job.getOperation(), elapsedMillis(startedAt));
         } catch (Exception ex) {
+            log.error("event=material.index.attempt_failed job_id={} course_id={} material_id={} operation={} duration_ms={} error_type={}",
+                    job.getId(), job.getCourseId(), job.getMaterialId(), job.getOperation(), elapsedMillis(startedAt),
+                    ex.getClass().getSimpleName(), ex);
             retryOrFail(job, safeMessage(ex));
         }
     }
@@ -134,6 +158,7 @@ public class MaterialIndexingService {
 
         String fileUrl = downloadLinkPort.createDownloadLink(material.getFileKey(), null);
         JsonNode response = aiWebClient.post().uri("/api/ingest")
+                .header(CorrelationIdFilter.HEADER_NAME, job.getId().toString())
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(new AiIngestRequest(
                         material.getCourseId().toString(), material.getId().toString(), fileUrl))
@@ -168,6 +193,9 @@ public class MaterialIndexingService {
         job.setNextAttemptAt(exhausted ? null : Instant.now().plusSeconds(backoffSeconds(job.getAttemptCount())));
         if (exhausted) job.setCompletedAt(Instant.now());
         MaterialIndexJob saved = jobPort.save(job);
+        log.warn("event=material.index.retry_scheduled job_id={} course_id={} material_id={} status={} attempt={} next_attempt_at={}",
+                job.getId(), job.getCourseId(), job.getMaterialId(), saved.getStatus(), saved.getAttemptCount(),
+                saved.getNextAttemptAt());
 
         materialPort.findByIdAndCourseId(job.getMaterialId(), job.getCourseId())
                 .filter(material -> job.getRevision() != null && job.getRevision().equals(material.getIngestionRevision()))
@@ -210,6 +238,10 @@ public class MaterialIndexingService {
     private String safeMessage(Exception ex) {
         String value = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
         return value.substring(0, Math.min(1000, value.length()));
+    }
+
+    private static long elapsedMillis(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000L;
     }
 
     private record AiIngestRequest(
