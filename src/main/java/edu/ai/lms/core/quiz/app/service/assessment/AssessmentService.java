@@ -3,6 +3,7 @@ package edu.ai.lms.core.quiz.app.service.assessment;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ public class AssessmentService {
     private final LoadSignedInUserPort signedInUserPort;
     private final LoadCourseMembershipPort membershipPort;
     private final AssessmentGenerationDispatcher dispatcher;
+    private final AssessmentDraftValidationService draftValidator;
     private final ObjectMapper objectMapper;
 
     public List<AssessmentView> list(UUID courseId) {
@@ -228,6 +230,25 @@ public class AssessmentService {
         return workflow.review(assessmentId);
     }
 
+    public DraftReviewPage reviewPage(UUID courseId, UUID assessmentId, DraftReviewSearch search) {
+        requireTeacher(courseId);
+        required(courseId, assessmentId);
+        int page = Math.max(0, search.page());
+        int size = List.of(10, 25, 50).contains(search.size()) ? search.size() : 25;
+        String status = trimToNull(search.status());
+        if (status != null && !List.of("NOT_VALIDATED", "VALIDATED", "REJECTED").contains(status)) {
+            throw new IllegalArgumentException("Unsupported review status");
+        }
+        return workflow.reviewPage(assessmentId, new DraftReviewSearch(trimToNull(search.query()), status,
+                search.chapterId(), search.learningOutcomeId(), trimToNull(search.cognitiveLevelCode()),
+                search.generationBatchId(), trimToNull(search.questionType()), page, size));
+    }
+
+    public DraftReviewCriteria reviewCriteria(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        return workflow.reviewCriteria(required(courseId, assessmentId));
+    }
+
     public DraftReviewView reject(UUID courseId, UUID assessmentId, UUID draftId, long version, String reason) {
         CurrentActor actor = requireTeacher(courseId);
         required(courseId, assessmentId);
@@ -236,34 +257,29 @@ public class AssessmentService {
         return workflow.review(assessmentId);
     }
 
-    @Transactional
-    public DraftReviewView validate(UUID courseId, UUID assessmentId, UUID draftId, long version) {
+    public DraftValidationResult validate(UUID courseId, UUID assessmentId, UUID draftId, long version) {
         requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
-        validateQuiz2Draft(questionBank.getDraft(courseId, draftId), assessment.optionCount());
-        var provenance = workflow.draftProvenance(assessmentId, draftId);
-        QuestionBankQuestion saved = questionBank.validateDraft(courseId, draftId, version);
-        workflow.attachBankProvenance(assessmentId, saved.getOriginDraftId(), provenance);
-        return workflow.review(assessmentId);
+        draftValidator.validate(courseId, assessmentId, draftId, version, assessment.optionCount());
+        return new DraftValidationResult(draftId, "VALIDATED", null);
     }
 
-    private void validateQuiz2Draft(QuestionDraft draft, int optionCount) {
-        if (draft.getAnswers() == null || draft.getAnswers().size() != optionCount) {
-            throw new IllegalStateException("Quiz2 Draft must contain exactly " + optionCount + " answers");
-        }
-        if (draft.getAnswers().stream().filter(answer -> answer.isCorrect()).count() != 1) {
-            throw new IllegalStateException("Quiz2 Draft must contain exactly one correct answer");
-        }
-        if (draft.getAnswers().stream().anyMatch(answer -> trimToNull(answer.getExplanation()) == null)) {
-            throw new IllegalStateException("Every Quiz2 Draft answer requires an explanation");
-        }
-    }
-
-    @Transactional
-    public DraftReviewView validateBatch(UUID courseId, UUID assessmentId, List<DraftVersion> drafts) {
+    public BatchValidationResult validateBatch(UUID courseId, UUID assessmentId, List<DraftVersion> drafts) {
         if (drafts == null || drafts.isEmpty()) throw new IllegalArgumentException("Select at least one Draft");
-        for (DraftVersion draft : drafts) validate(courseId, assessmentId, draft.id(), draft.version());
-        return workflow.review(assessmentId);
+        requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        List<DraftValidationResult> results = new ArrayList<>();
+        for (DraftVersion draft : drafts) {
+            try {
+                draftValidator.validate(courseId, assessmentId, draft.id(), draft.version(), assessment.optionCount());
+                results.add(new DraftValidationResult(draft.id(), "VALIDATED", null));
+            } catch (RuntimeException ex) {
+                String message = ex.getMessage() == null ? "Draft validation failed" : ex.getMessage();
+                results.add(new DraftValidationResult(draft.id(), "FAILED", message));
+            }
+        }
+        int validated = (int) results.stream().filter(result -> "VALIDATED".equals(result.status())).count();
+        return new BatchValidationResult(results, validated, results.size() - validated);
     }
 
     public int resetRecentlyUsed(UUID courseId, List<UUID> questionIds) {

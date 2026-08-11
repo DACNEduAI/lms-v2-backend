@@ -6,9 +6,17 @@ import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.BankPl
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.BatchCellView;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.BatchView;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.DraftReviewItem;
+import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.DraftReviewCriteria;
+import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.DraftReviewPage;
+import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.DraftReviewSearch;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.DraftReviewView;
+import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.FilterOption;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.GeneratedDraft;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.PublishResult;
+import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.ReviewCriteriaCell;
+import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.ReviewFilterOptions;
+import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.ReviewLearningOutcome;
+import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.ReviewProgress;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.VariantQuestionView;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.VariantView;
 
@@ -18,6 +26,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -384,6 +394,161 @@ public class AssessmentWorkflowRepository {
         List<DraftReviewItem> rejected = draftItems(assessmentId, "REJECTED");
         List<DraftReviewItem> validated = bankItems(assessmentId);
         return new DraftReviewView(assessmentId, notValidated, validated, rejected);
+    }
+
+    public DraftReviewPage reviewPage(UUID assessmentId, DraftReviewSearch search) {
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("assessmentId", assessmentId)
+                .addValue("offset", search.page() * search.size())
+                .addValue("size", search.size());
+        String outcomeDraft = "";
+        String outcomeBank = "";
+        if (search.learningOutcomeId() != null) {
+            params.addValue("learningOutcomeId", search.learningOutcomeId());
+            outcomeDraft = " AND EXISTS (SELECT 1 FROM edu.question_draft_learning_outcomes dlo"
+                    + " WHERE dlo.question_draft_id = d.id AND dlo.learning_outcome_id = :learningOutcomeId)";
+            outcomeBank = " AND EXISTS (SELECT 1 FROM edu.question_bank_question_learning_outcomes blo"
+                    + " WHERE blo.question_bank_question_id = q.id AND blo.learning_outcome_id = :learningOutcomeId)";
+        }
+        String union = """
+                SELECT d.id AS review_id, NULL::uuid AS bank_question_id, d.generation_batch_id,
+                       d.matrix_row_id, d.custom_learning_level_id, d.content, d.question_type,
+                       cl.code AS cognitive_level_code, cl.name AS cognitive_level_name,
+                       d.chapter_id, ch.title AS chapter, d.review_status AS status, false AS recently_used,
+                       d.version, d.rejected_by AS reviewed_by, d.rejected_at AS reviewed_at,
+                       d.created_at, d.updated_at
+                FROM edu.question_drafts d
+                LEFT JOIN edu.cognitive_levels cl ON cl.id = d.cognitive_level_id
+                LEFT JOIN edu.chapters ch ON ch.chapter_id = d.chapter_id
+                WHERE d.assessment_id = :assessmentId
+                """ + outcomeDraft + """
+                UNION ALL
+                SELECT q.origin_draft_id AS review_id, q.id AS bank_question_id, q.generation_batch_id,
+                       q.matrix_row_id, q.custom_learning_level_id, q.content, q.question_type,
+                       cl.code AS cognitive_level_code, cl.name AS cognitive_level_name,
+                       q.chapter_id, ch.title AS chapter, 'VALIDATED' AS status, q.recently_used,
+                       q.version, q.validated_by AS reviewed_by, q.validated_at AS reviewed_at,
+                       q.created_at, q.updated_at
+                FROM edu.question_bank_questions q
+                LEFT JOIN edu.cognitive_levels cl ON cl.id = q.cognitive_level_id
+                LEFT JOIN edu.chapters ch ON ch.chapter_id = q.chapter_id
+                WHERE q.assessment_id = :assessmentId
+                """ + outcomeBank;
+        List<String> filters = new ArrayList<>();
+        if (search.query() != null && !search.query().isBlank()) {
+            filters.add("(lower(CAST(review_id AS text)) LIKE :query OR lower(content) LIKE :query)");
+            params.addValue("query", "%" + search.query().trim().toLowerCase() + "%");
+        }
+        if (search.status() != null && !search.status().isBlank()) {
+            filters.add("status = :status");
+            params.addValue("status", search.status());
+        }
+        if (search.chapterId() != null) {
+            filters.add("chapter_id = :chapterId");
+            params.addValue("chapterId", search.chapterId());
+        }
+        if (search.cognitiveLevelCode() != null && !search.cognitiveLevelCode().isBlank()) {
+            filters.add("lower(cognitive_level_code) = lower(:levelCode)");
+            params.addValue("levelCode", search.cognitiveLevelCode());
+        }
+        if (search.generationBatchId() != null) {
+            filters.add("generation_batch_id = :batchId");
+            params.addValue("batchId", search.generationBatchId());
+        }
+        if (search.questionType() != null && !search.questionType().isBlank()) {
+            filters.add("question_type = :questionType");
+            params.addValue("questionType", search.questionType());
+        }
+        String where = filters.isEmpty() ? "" : " WHERE " + String.join(" AND ", filters);
+        String countSql = "SELECT COUNT(*) FROM (" + union + ") review_items" + where;
+        Long total = jdbc.queryForObject(countSql, params, Long.class);
+        List<ReviewRow> rows = jdbc.query("SELECT * FROM (" + union + ") review_items" + where + """
+                ORDER BY CASE status WHEN 'NOT_VALIDATED' THEN 0 WHEN 'VALIDATED' THEN 1 ELSE 2 END,
+                         updated_at DESC, review_id
+                LIMIT :size OFFSET :offset
+                """, params, this::mapReviewRow);
+        return new DraftReviewPage(assessmentId, hydrateReviewRows(rows), total == null ? 0 : total,
+                search.page(), search.size());
+    }
+
+    public DraftReviewCriteria reviewCriteria(AssessmentView assessment) {
+        BankPlan plan = bankPlan(assessment);
+        Map<String, Integer> pending = groupedCounts("""
+                SELECT matrix_row_id, custom_learning_level_id, COUNT(*) AS count
+                FROM edu.question_drafts
+                WHERE assessment_id = :assessmentId AND review_status = 'NOT_VALIDATED'
+                GROUP BY matrix_row_id, custom_learning_level_id
+                """, assessment.id());
+        Map<String, Integer> validated = groupedCounts("""
+                SELECT matrix_row_id, custom_learning_level_id, COUNT(*) AS count
+                FROM edu.question_bank_questions
+                WHERE assessment_id = :assessmentId
+                GROUP BY matrix_row_id, custom_learning_level_id
+                """, assessment.id());
+        Map<String, Integer> processing = groupedCounts("""
+                SELECT i.matrix_row_id, i.custom_learning_level_id,
+                       SUM(GREATEST(i.required_count - i.generated_count, 0)) AS count
+                FROM edu.assessment_generation_batch_items i
+                JOIN edu.assessment_generation_batches b ON b.id = i.batch_id
+                WHERE b.assessment_id = :assessmentId AND i.status IN ('QUEUED', 'PROCESSING')
+                GROUP BY i.matrix_row_id, i.custom_learning_level_id
+                """, assessment.id());
+        Map<UUID, ReviewLearningOutcome> outcomes = learningOutcomeLabels(plan.cells().stream()
+                .flatMap(cell -> cell.learningOutcomeIds().stream()).collect(java.util.stream.Collectors.toSet()));
+        List<ReviewCriteriaCell> cells = plan.cells().stream().map(cell -> {
+            String key = cellKey(cell.matrixRowId(), cell.customLearningLevelId());
+            List<ReviewLearningOutcome> cellOutcomes = cell.learningOutcomeIds().stream()
+                    .map(outcomes::get).filter(java.util.Objects::nonNull).toList();
+            return new ReviewCriteriaCell(cell.matrixRowId(), cell.customLearningLevelId(), cell.chapterId(),
+                    cell.chapter(), cell.topic(), cellOutcomes, "MULTIPLE_CHOICE", cell.levelCode(),
+                    cell.levelName(), cell.required(), cell.available(), processing.getOrDefault(key, 0),
+                    pending.getOrDefault(key, 0), validated.getOrDefault(key, 0), cell.missing());
+        }).toList();
+        int pendingTotal = pending.values().stream().mapToInt(Integer::intValue).sum();
+        int validatedTotal = validated.values().stream().mapToInt(Integer::intValue).sum();
+        ReviewProgress progress = new ReviewProgress(pendingTotal + validatedTotal, validatedTotal,
+                plan.available(), plan.required());
+        return new DraftReviewCriteria(assessment.id(), progress, cells,
+                reviewFilters(assessment.id(), plan, outcomes));
+    }
+
+    private ReviewFilterOptions reviewFilters(UUID assessmentId, BankPlan plan,
+            Map<UUID, ReviewLearningOutcome> outcomes) {
+        List<FilterOption> chapters = plan.cells().stream().filter(cell -> cell.chapterId() != null)
+                .collect(java.util.stream.Collectors.toMap(BankPlanCell::chapterId,
+                        cell -> new FilterOption(cell.chapterId().toString(), cell.chapter()),
+                        (left, right) -> left, LinkedHashMap::new)).values().stream().toList();
+        List<FilterOption> levels = plan.cells().stream().collect(java.util.stream.Collectors.toMap(
+                BankPlanCell::levelCode, cell -> new FilterOption(cell.levelCode(), cell.levelName()),
+                (left, right) -> left, LinkedHashMap::new)).values().stream().toList();
+        List<FilterOption> batches = jdbc.query("""
+                SELECT id, status, created_at FROM edu.assessment_generation_batches
+                WHERE assessment_id = :assessmentId ORDER BY created_at DESC, id DESC
+                """, Map.of("assessmentId", assessmentId), (rs, rowNum) -> {
+            UUID id = rs.getObject("id", UUID.class);
+            return new FilterOption(id.toString(), id.toString().substring(0, 8) + " · " + rs.getString("status"));
+        });
+        return new ReviewFilterOptions(
+                List.of(new FilterOption("NOT_VALIDATED", "Not validated"),
+                        new FilterOption("VALIDATED", "Validated"),
+                        new FilterOption("REJECTED", "Needs revision")),
+                chapters, outcomes.values().stream()
+                        .map(outcome -> new FilterOption(outcome.id().toString(), outcome.label())).toList(),
+                levels, batches,
+                List.of(new FilterOption("MULTIPLE_CHOICE", "Multiple choice")));
+    }
+
+    private Map<String, Integer> groupedCounts(String sql, UUID assessmentId) {
+        Map<String, Integer> result = new HashMap<>();
+        jdbc.query(sql, Map.of("assessmentId", assessmentId), rs -> {
+            result.put(cellKey(rs.getObject("matrix_row_id", UUID.class),
+                    rs.getObject("custom_learning_level_id", UUID.class)), rs.getInt("count"));
+        });
+        return result;
+    }
+
+    private String cellKey(UUID rowId, UUID levelId) {
+        return rowId + "|" + levelId;
     }
 
     public void rejectDraft(UUID assessmentId, UUID draftId, long version, UUID actorId, String reason) {
@@ -761,21 +926,26 @@ public class AssessmentWorkflowRepository {
     private List<DraftReviewItem> draftItems(UUID assessmentId, String status) {
         return jdbc.query("""
                 SELECT d.id, d.generation_batch_id, d.matrix_row_id, d.custom_learning_level_id,
-                       d.content, d.question_type, cl.code AS cognitive_level_code, d.chapter_id,
+                       d.content, d.question_type, cl.code AS cognitive_level_code,
+                       cl.name AS cognitive_level_name, d.chapter_id, ch.title AS chapter,
                        d.review_status, d.version, d.rejected_by, d.rejected_at,
-                       EXISTS (SELECT 1 FROM edu.question_bank_questions q
-                               WHERE q.course_id = d.course_id AND lower(btrim(q.content)) = lower(btrim(d.content))) AS duplicate_warning
-                FROM edu.question_drafts d LEFT JOIN edu.cognitive_levels cl ON cl.id = d.cognitive_level_id
+                       d.created_at, d.updated_at
+                FROM edu.question_drafts d
+                LEFT JOIN edu.cognitive_levels cl ON cl.id = d.cognitive_level_id
+                LEFT JOIN edu.chapters ch ON ch.chapter_id = d.chapter_id
                 WHERE d.assessment_id = :assessmentId AND d.review_status = :status
                 ORDER BY d.updated_at, d.id
                 """, Map.of("assessmentId", assessmentId, "status", status), (rs, rowNum) -> {
             UUID id = rs.getObject("id", UUID.class);
+            List<ReviewLearningOutcome> outcomes = draftLearningOutcomes(id);
             return new DraftReviewItem(id, null, rs.getObject("generation_batch_id", UUID.class),
                     rs.getObject("matrix_row_id", UUID.class), rs.getObject("custom_learning_level_id", UUID.class),
                     rs.getString("content"), rs.getString("question_type"), rs.getString("cognitive_level_code"),
-                    rs.getObject("chapter_id", UUID.class), draftOutcomeIds(id), draftAnswers(id),
-                    rs.getString("review_status"), rs.getBoolean("duplicate_warning"), false, rs.getLong("version"),
-                    rs.getObject("rejected_by", UUID.class), rs.getObject("rejected_at", LocalDateTime.class));
+                    rs.getString("cognitive_level_name"), rs.getObject("chapter_id", UUID.class),
+                    rs.getString("chapter"), outcomes.stream().map(ReviewLearningOutcome::id).toList(), outcomes,
+                    draftAnswers(id), rs.getString("review_status"), false, rs.getLong("version"),
+                    rs.getObject("rejected_by", UUID.class), rs.getObject("rejected_at", LocalDateTime.class),
+                    rs.getObject("created_at", LocalDateTime.class), rs.getObject("updated_at", LocalDateTime.class));
         });
     }
 
@@ -783,20 +953,115 @@ public class AssessmentWorkflowRepository {
         return jdbc.query("""
                 SELECT q.id, q.origin_draft_id, q.generation_batch_id, q.matrix_row_id,
                        q.custom_learning_level_id, q.content, q.question_type,
-                       cl.code AS cognitive_level_code, q.chapter_id, q.version,
-                       q.validated_by, q.validated_at, q.recently_used
-                FROM edu.question_bank_questions q LEFT JOIN edu.cognitive_levels cl ON cl.id = q.cognitive_level_id
+                       cl.code AS cognitive_level_code, cl.name AS cognitive_level_name,
+                       q.chapter_id, ch.title AS chapter, q.version,
+                       q.validated_by, q.validated_at, q.recently_used, q.created_at, q.updated_at
+                FROM edu.question_bank_questions q
+                LEFT JOIN edu.cognitive_levels cl ON cl.id = q.cognitive_level_id
+                LEFT JOIN edu.chapters ch ON ch.chapter_id = q.chapter_id
                 WHERE q.assessment_id = :assessmentId ORDER BY q.validated_at, q.id
                 """, Map.of("assessmentId", assessmentId), (rs, rowNum) -> {
             UUID id = rs.getObject("id", UUID.class);
+            List<ReviewLearningOutcome> outcomes = bankLearningOutcomes(id);
             return new DraftReviewItem(rs.getObject("origin_draft_id", UUID.class), id,
                     rs.getObject("generation_batch_id", UUID.class), rs.getObject("matrix_row_id", UUID.class),
                     rs.getObject("custom_learning_level_id", UUID.class), rs.getString("content"),
                     rs.getString("question_type"), rs.getString("cognitive_level_code"),
-                    rs.getObject("chapter_id", UUID.class), bankOutcomeIds(id), bankAnswers(id), "VALIDATED", false,
-                    rs.getBoolean("recently_used"), rs.getLong("version"),
-                    rs.getObject("validated_by", UUID.class), rs.getObject("validated_at", LocalDateTime.class));
+                    rs.getString("cognitive_level_name"), rs.getObject("chapter_id", UUID.class),
+                    rs.getString("chapter"), outcomes.stream().map(ReviewLearningOutcome::id).toList(), outcomes,
+                    bankAnswers(id), "VALIDATED", rs.getBoolean("recently_used"), rs.getLong("version"),
+                    rs.getObject("validated_by", UUID.class), rs.getObject("validated_at", LocalDateTime.class),
+                    rs.getObject("created_at", LocalDateTime.class), rs.getObject("updated_at", LocalDateTime.class));
         });
+    }
+
+    private ReviewRow mapReviewRow(ResultSet rs, int rowNum) throws SQLException {
+        return new ReviewRow(rs.getObject("review_id", UUID.class), rs.getObject("bank_question_id", UUID.class),
+                rs.getObject("generation_batch_id", UUID.class), rs.getObject("matrix_row_id", UUID.class),
+                rs.getObject("custom_learning_level_id", UUID.class), rs.getString("content"),
+                rs.getString("question_type"), rs.getString("cognitive_level_code"),
+                rs.getString("cognitive_level_name"), rs.getObject("chapter_id", UUID.class),
+                rs.getString("chapter"), rs.getString("status"), rs.getBoolean("recently_used"),
+                rs.getLong("version"), rs.getObject("reviewed_by", UUID.class),
+                rs.getObject("reviewed_at", LocalDateTime.class), rs.getObject("created_at", LocalDateTime.class),
+                rs.getObject("updated_at", LocalDateTime.class));
+    }
+
+    private List<DraftReviewItem> hydrateReviewRows(List<ReviewRow> rows) {
+        List<UUID> draftIds = rows.stream().filter(row -> row.bankQuestionId() == null)
+                .map(ReviewRow::id).toList();
+        List<UUID> bankIds = rows.stream().map(ReviewRow::bankQuestionId).filter(java.util.Objects::nonNull).toList();
+        Map<UUID, List<AnswerView>> draftAnswers = answersByOwner(draftIds, true);
+        Map<UUID, List<AnswerView>> bankAnswers = answersByOwner(bankIds, false);
+        Map<UUID, List<ReviewLearningOutcome>> draftOutcomes = outcomesByOwner(draftIds, true);
+        Map<UUID, List<ReviewLearningOutcome>> bankOutcomes = outcomesByOwner(bankIds, false);
+        return rows.stream().map(row -> {
+            UUID ownerId = row.bankQuestionId() == null ? row.id() : row.bankQuestionId();
+            List<AnswerView> answers = row.bankQuestionId() == null
+                    ? draftAnswers.getOrDefault(ownerId, List.of()) : bankAnswers.getOrDefault(ownerId, List.of());
+            List<ReviewLearningOutcome> outcomes = row.bankQuestionId() == null
+                    ? draftOutcomes.getOrDefault(ownerId, List.of()) : bankOutcomes.getOrDefault(ownerId, List.of());
+            return new DraftReviewItem(row.id(), row.bankQuestionId(), row.generationBatchId(), row.matrixRowId(),
+                    row.customLearningLevelId(), row.content(), row.questionType(), row.cognitiveLevelCode(),
+                    row.cognitiveLevelName(), row.chapterId(), row.chapter(),
+                    outcomes.stream().map(ReviewLearningOutcome::id).toList(), outcomes, answers, row.status(),
+                    row.recentlyUsed(), row.version(), row.reviewedBy(), row.reviewedAt(), row.createdAt(),
+                    row.updatedAt());
+        }).toList();
+    }
+
+    private Map<UUID, List<AnswerView>> answersByOwner(List<UUID> ids, boolean draft) {
+        Map<UUID, List<AnswerView>> result = new LinkedHashMap<>();
+        if (ids.isEmpty()) return result;
+        String owner = draft ? "question_draft_id" : "question_bank_question_id";
+        String table = draft ? "question_draft_answers" : "question_bank_answers";
+        jdbc.query("SELECT " + owner + " AS owner_id, id, content, is_correct, explanation, order_index"
+                        + " FROM edu." + table + " WHERE " + owner + " IN (:ids) ORDER BY " + owner + ", order_index",
+                new MapSqlParameterSource("ids", ids), rs -> {
+            UUID ownerId = rs.getObject("owner_id", UUID.class);
+            result.computeIfAbsent(ownerId, ignored -> new ArrayList<>()).add(new AnswerView(
+                    rs.getObject("id", UUID.class), rs.getString("content"), rs.getBoolean("is_correct"),
+                    rs.getString("explanation"), rs.getInt("order_index")));
+        });
+        return result;
+    }
+
+    private Map<UUID, List<ReviewLearningOutcome>> outcomesByOwner(List<UUID> ids, boolean draft) {
+        Map<UUID, List<ReviewLearningOutcome>> result = new LinkedHashMap<>();
+        if (ids.isEmpty()) return result;
+        String owner = draft ? "question_draft_id" : "question_bank_question_id";
+        String table = draft ? "question_draft_learning_outcomes" : "question_bank_question_learning_outcomes";
+        jdbc.query("SELECT link." + owner + " AS owner_id, lo.id,"
+                        + " concat(COALESCE(lo.prefix_number::text || ' - ', ''), COALESCE(lo.description, '')) AS label"
+                        + " FROM edu." + table + " link JOIN edu.learning_outcomes lo ON lo.id = link.learning_outcome_id"
+                        + " WHERE link." + owner + " IN (:ids) ORDER BY link." + owner + ", lo.sort_order, lo.id",
+                new MapSqlParameterSource("ids", ids), rs -> {
+            UUID ownerId = rs.getObject("owner_id", UUID.class);
+            result.computeIfAbsent(ownerId, ignored -> new ArrayList<>()).add(new ReviewLearningOutcome(
+                    rs.getObject("id", UUID.class), rs.getString("label")));
+        });
+        return result;
+    }
+
+    private Map<UUID, ReviewLearningOutcome> learningOutcomeLabels(Collection<UUID> ids) {
+        if (ids.isEmpty()) return Map.of();
+        Map<UUID, ReviewLearningOutcome> result = new LinkedHashMap<>();
+        jdbc.query("""
+                SELECT id, concat(COALESCE(prefix_number::text || ' - ', ''), COALESCE(description, '')) AS label
+                FROM edu.learning_outcomes WHERE id IN (:ids) ORDER BY sort_order, id
+                """, new MapSqlParameterSource("ids", ids), rs -> {
+            UUID id = rs.getObject("id", UUID.class);
+            result.put(id, new ReviewLearningOutcome(id, rs.getString("label")));
+        });
+        return result;
+    }
+
+    private List<ReviewLearningOutcome> draftLearningOutcomes(UUID draftId) {
+        return outcomesByOwner(List.of(draftId), true).getOrDefault(draftId, List.of());
+    }
+
+    private List<ReviewLearningOutcome> bankLearningOutcomes(UUID bankId) {
+        return outcomesByOwner(List.of(bankId), false).getOrDefault(bankId, List.of());
     }
 
     private List<UUID> draftOutcomeIds(UUID draftId) {
@@ -850,6 +1115,27 @@ public class AssessmentWorkflowRepository {
     }
 
     public record DraftProvenance(UUID batchId, UUID matrixRowId, UUID customLearningLevelId) {
+    }
+
+    private record ReviewRow(
+            UUID id,
+            UUID bankQuestionId,
+            UUID generationBatchId,
+            UUID matrixRowId,
+            UUID customLearningLevelId,
+            String content,
+            String questionType,
+            String cognitiveLevelCode,
+            String cognitiveLevelName,
+            UUID chapterId,
+            String chapter,
+            String status,
+            boolean recentlyUsed,
+            long version,
+            UUID reviewedBy,
+            LocalDateTime reviewedAt,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
     }
 
     public record AnswerInput(String content, boolean correct, String explanation) {

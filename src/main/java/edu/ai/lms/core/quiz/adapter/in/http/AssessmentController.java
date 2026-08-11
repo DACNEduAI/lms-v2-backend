@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService;
@@ -112,6 +113,26 @@ public class AssessmentController {
         return service.review(courseId, assessmentId);
     }
 
+    @GetMapping("/{assessmentId}/draft-review/items")
+    public DraftReviewPage reviewItems(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) UUID chapterId,
+            @RequestParam(required = false) UUID learningOutcomeId,
+            @RequestParam(required = false) String cognitiveLevelCode,
+            @RequestParam(required = false) UUID generationBatchId,
+            @RequestParam(required = false) String questionType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size) {
+        return service.reviewPage(courseId, assessmentId, new DraftReviewSearch(query, status, chapterId,
+                learningOutcomeId, cognitiveLevelCode, generationBatchId, questionType, page, size));
+    }
+
+    @GetMapping("/{assessmentId}/draft-review/criteria")
+    public DraftReviewCriteria reviewCriteria(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+        return service.reviewCriteria(courseId, assessmentId);
+    }
+
     @PostMapping("/{assessmentId}/draft-review/{draftId}/reject")
     public DraftReviewView reject(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
             @PathVariable UUID draftId, @RequestBody RejectDraft request) {
@@ -119,7 +140,7 @@ public class AssessmentController {
     }
 
     @PostMapping("/{assessmentId}/draft-review/{draftId}/validate")
-    public DraftReviewView validate(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+    public DraftValidationResult validate(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
             @PathVariable UUID draftId, @RequestBody SourceVersion request) {
         return service.validate(courseId, assessmentId, draftId, request.version());
     }
@@ -133,7 +154,7 @@ public class AssessmentController {
     }
 
     @PostMapping("/{assessmentId}/draft-review/batch-validate")
-    public DraftReviewView validateBatch(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+    public BatchValidationResult validateBatch(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
             @RequestBody BatchValidate request) {
         return service.validateBatch(courseId, assessmentId, request.drafts());
     }

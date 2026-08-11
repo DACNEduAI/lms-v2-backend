@@ -32,6 +32,7 @@ class AssessmentServiceContextUT {
     @Mock LoadSignedInUserPort signedInUserPort;
     @Mock LoadCourseMembershipPort membershipPort;
     @Mock AssessmentGenerationDispatcher dispatcher;
+    @Mock AssessmentDraftValidationService draftValidator;
     @Mock ObjectMapper objectMapper;
     @InjectMocks AssessmentService service;
 

@@ -11,7 +11,7 @@ import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft;
 import edu.ai.lms.core.quiz.app.port.in.command.QuestionBankItemCommand;
 
 public interface QuestionBankUseCase {
-    MutationResult createDraft(UUID courseId, QuestionBankItemCommand command);
+    QuestionDraft createDraft(UUID courseId, QuestionBankItemCommand command);
 
     QuestionBankPage<QuestionDraft> findDraftPage(QuestionBankSearchCriteria criteria);
 
@@ -21,7 +21,7 @@ public interface QuestionBankUseCase {
 
     QuestionBankQuestion getBankQuestion(UUID courseId, UUID questionId);
 
-    MutationResult updateDraft(UUID courseId, UUID draftId, long version, QuestionBankItemCommand command);
+    QuestionDraft updateDraft(UUID courseId, UUID draftId, long version, QuestionBankItemCommand command);
 
     QuestionBankQuestion validateDraft(UUID courseId, UUID draftId, long version);
 
@@ -29,6 +29,4 @@ public interface QuestionBankUseCase {
 
     List<CognitiveLevelOption> getCognitiveLevels(UUID courseId);
 
-    record MutationResult(QuestionDraft item, boolean duplicateWarning) {
-    }
 }

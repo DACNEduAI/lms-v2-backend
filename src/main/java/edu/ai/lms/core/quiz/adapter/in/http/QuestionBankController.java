@@ -42,8 +42,8 @@ public class QuestionBankController {
             @Valid @RequestBody QuestionBankItemRequest request) {
         var result = useCase.createDraft(courseId, request.toCommand());
         return ResponseEntity.created(URI.create(
-                        "/api/courses/" + courseId + "/question-drafts/" + result.item().getId()))
-                .body(QuestionBankItemResponse.from(result.item(), result.duplicateWarning()));
+                        "/api/courses/" + courseId + "/question-drafts/" + result.getId()))
+                .body(QuestionBankItemResponse.from(result));
     }
 
     @GetMapping("/question-drafts")
@@ -76,7 +76,7 @@ public class QuestionBankController {
             @RequestParam long version,
             @Valid @RequestBody QuestionBankItemRequest request) {
         var result = useCase.updateDraft(courseId, draftId, version, request.toCommand());
-        return ResponseEntity.ok(QuestionBankItemResponse.from(result.item(), result.duplicateWarning()));
+        return ResponseEntity.ok(QuestionBankItemResponse.from(result));
     }
 
     @PostMapping("/question-drafts/{draftId}/validate")

@@ -54,7 +54,6 @@ class QuestionBankControllerIT extends IntegrationTestConfiguration {
                 .then().statusCode(201)
                 .body("version", equalTo(0))
                 .body("answers", hasSize(2))
-                .body("duplicateWarning", equalTo(false))
                 .extract();
         draftId = UUID.fromString(response.path("id"));
 
@@ -106,18 +105,16 @@ class QuestionBankControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(5)
-    void duplicateDraftCannotBeValidatedAsSecondBankQuestion() {
+    void duplicateDraftCanBeValidatedAsSecondBankQuestion() {
         UUID duplicateId = UUID.fromString(owner()
                 .body(itemBody(chapterId, learningOutcomeId, "What makes sorting stable?"))
                 .post(basePath(), courseId)
-                .then().statusCode(201).body("duplicateWarning", equalTo(true))
+                .then().statusCode(201)
                 .extract().path("id"));
         owner().body("{\"version\":0}")
                 .post(basePath() + "/{draftId}/validate", courseId, duplicateId)
-                .then().statusCode(409);
-        owner().queryParam("version", 0)
-                .delete(basePath() + "/{draftId}", courseId, duplicateId)
-                .then().statusCode(204);
+                .then().statusCode(200)
+                .body("originDraftId", equalTo(duplicateId.toString()));
     }
 
     @Test

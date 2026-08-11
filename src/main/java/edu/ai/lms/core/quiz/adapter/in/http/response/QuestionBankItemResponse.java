@@ -30,21 +30,16 @@ public record QuestionBankItemResponse(
         List<AnswerResponse> answers,
         Set<UUID> learningOutcomeIds,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt,
-        boolean duplicateWarning) {
+        LocalDateTime updatedAt) {
 
     public static QuestionBankItemResponse from(QuestionDraft draft) {
-        return from(draft, false);
-    }
-
-    public static QuestionBankItemResponse from(QuestionDraft draft, boolean duplicateWarning) {
         return new QuestionBankItemResponse(
                 draft.getId(), null, draft.getCourseId(), draft.getChapterId(),
                 draft.getCognitiveLevelId(), draft.getCognitiveLevelCode(), draft.getCognitiveLevelName(),
                 draft.getContent(), draft.getQuestionType(), draft.getSourceType(), draft.getCreatedBy(),
                 null, null, draft.getVersion(),
                 answers(draft.getAnswers()), outcomes(draft.getLearningOutcomeIds()),
-                draft.getCreatedAt(), draft.getUpdatedAt(), duplicateWarning);
+                draft.getCreatedAt(), draft.getUpdatedAt());
     }
 
     public static QuestionBankItemResponse from(QuestionBankQuestion question) {
@@ -54,7 +49,7 @@ public record QuestionBankItemResponse(
                 question.getContent(), question.getQuestionType(), question.getSourceType(), question.getCreatedBy(),
                 question.getValidatedBy(), question.getValidatedAt(), question.getVersion(),
                 answers(question.getAnswers()), outcomes(question.getLearningOutcomeIds()),
-                question.getCreatedAt(), question.getUpdatedAt(), false);
+                question.getCreatedAt(), question.getUpdatedAt());
     }
 
     private static List<AnswerResponse> answers(List<QuestionBankAnswer> answers) {

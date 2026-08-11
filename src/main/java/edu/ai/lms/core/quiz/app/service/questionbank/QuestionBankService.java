@@ -49,12 +49,11 @@ public class QuestionBankService implements QuestionBankUseCase {
 
     @Override
     @Transactional
-    public MutationResult createDraft(UUID courseId, QuestionBankItemCommand command) {
+    public QuestionDraft createDraft(UUID courseId, QuestionBankItemCommand command) {
         CurrentActor actor = requireTeacher(courseId);
         validateDraft(courseId, command);
-        QuestionDraft saved = saveItemPort.createDraft(
+        return saveItemPort.createDraft(
                 toDraft(courseId, actor.id(), QuestionBankSourceType.MANUAL, command));
-        return new MutationResult(saved, hasDuplicate(courseId, saved.getContent(), saved.getId()));
     }
 
     @Override
@@ -87,7 +86,7 @@ public class QuestionBankService implements QuestionBankUseCase {
 
     @Override
     @Transactional
-    public MutationResult updateDraft(UUID courseId, UUID draftId, long version, QuestionBankItemCommand command) {
+    public QuestionDraft updateDraft(UUID courseId, UUID draftId, long version, QuestionBankItemCommand command) {
         requireTeacher(courseId);
         QuestionDraft current = loadDraftRequired(courseId, draftId);
         requireVersion(current, version);
@@ -96,8 +95,7 @@ public class QuestionBankService implements QuestionBankUseCase {
         QuestionDraft replacement = toDraft(courseId, current.getCreatedBy(), current.getSourceType(), command);
         replacement.setId(draftId);
         if (!saveItemPort.replaceDraft(replacement, version)) throw staleConflict();
-        QuestionDraft saved = loadDraftRequired(courseId, draftId);
-        return new MutationResult(saved, hasDuplicate(courseId, saved.getContent(), draftId));
+        return loadDraftRequired(courseId, draftId);
     }
 
     @Override
@@ -108,10 +106,6 @@ public class QuestionBankService implements QuestionBankUseCase {
                 .orElseThrow(() -> new QuestionBankItemNotFoundException("Question Draft was not found"));
         requireVersion(draft, version);
         validateForBank(courseId, draft);
-        if (loadItemPort.existsExactBankDuplicate(courseId, draft.getContent())) {
-            throw new QuestionBankConflictException("An identical validated question already exists in this course");
-        }
-
         QuestionBankQuestion bankQuestion = QuestionBankQuestion.builder()
                 .originDraftId(draft.getId())
                 .courseId(courseId)
@@ -268,11 +262,6 @@ public class QuestionBankService implements QuestionBankUseCase {
 
     private void requireVersion(QuestionDraft item, long version) {
         if (item.getVersion() != version) throw staleConflict();
-    }
-
-    private boolean hasDuplicate(UUID courseId, String content, UUID excludedDraftId) {
-        return loadItemPort.existsExactDraftDuplicate(courseId, content, excludedDraftId)
-                || loadItemPort.existsExactBankDuplicate(courseId, content);
     }
 
     private QuestionBankConflictException staleConflict() {

@@ -142,15 +142,22 @@ public final class AssessmentModels {
             String content,
             String questionType,
             String cognitiveLevelCode,
+            String cognitiveLevelName,
             UUID chapterId,
+            String chapter,
             List<UUID> learningOutcomeIds,
+            List<ReviewLearningOutcome> learningOutcomes,
             List<AnswerView> answers,
             String status,
-            boolean duplicateWarning,
             boolean recentlyUsed,
             long version,
             UUID reviewedBy,
-            LocalDateTime reviewedAt) {
+            LocalDateTime reviewedAt,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
+    }
+
+    public record ReviewLearningOutcome(UUID id, String label) {
     }
 
     public record AnswerView(UUID id, String content, boolean correct, String explanation, int orderIndex) {
@@ -161,6 +168,67 @@ public final class AssessmentModels {
             List<DraftReviewItem> notValidated,
             List<DraftReviewItem> validated,
             List<DraftReviewItem> rejected) {
+    }
+
+    public record DraftReviewPage(UUID assessmentId, List<DraftReviewItem> items, long total, int page, int size) {
+    }
+
+    public record DraftReviewSearch(
+            String query,
+            String status,
+            UUID chapterId,
+            UUID learningOutcomeId,
+            String cognitiveLevelCode,
+            UUID generationBatchId,
+            String questionType,
+            int page,
+            int size) {
+    }
+
+    public record DraftReviewCriteria(
+            UUID assessmentId,
+            ReviewProgress progress,
+            List<ReviewCriteriaCell> cells,
+            ReviewFilterOptions filters) {
+    }
+
+    public record ReviewProgress(int generatedDrafts, int validatedDrafts, int eligibleBank, int required) {
+    }
+
+    public record ReviewCriteriaCell(
+            UUID matrixRowId,
+            UUID customLearningLevelId,
+            UUID chapterId,
+            String chapter,
+            String topic,
+            List<ReviewLearningOutcome> learningOutcomes,
+            String questionType,
+            String levelCode,
+            String levelName,
+            int required,
+            int eligibleBank,
+            int processing,
+            int pendingDrafts,
+            int validatedDrafts,
+            int remaining) {
+    }
+
+    public record ReviewFilterOptions(
+            List<FilterOption> statuses,
+            List<FilterOption> chapters,
+            List<FilterOption> learningOutcomes,
+            List<FilterOption> cognitiveLevels,
+            List<FilterOption> batches,
+            List<FilterOption> questionTypes) {
+    }
+
+    public record FilterOption(String value, String label) {
+    }
+
+    public record DraftValidationResult(UUID id, String status, String errorMessage) {
+    }
+
+    public record BatchValidationResult(List<DraftValidationResult> results, int validatedCount, int failedCount) {
     }
 
     public record VariantView(

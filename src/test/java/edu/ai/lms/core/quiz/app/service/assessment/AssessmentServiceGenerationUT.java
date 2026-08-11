@@ -36,6 +36,7 @@ class AssessmentServiceGenerationUT {
     @Mock LoadSignedInUserPort signedInUserPort;
     @Mock LoadCourseMembershipPort membershipPort;
     @Mock AssessmentGenerationDispatcher dispatcher;
+    @Mock AssessmentDraftValidationService draftValidator;
 
     private AssessmentService service;
     private final UUID courseId = UUID.randomUUID();
@@ -46,7 +47,7 @@ class AssessmentServiceGenerationUT {
     @BeforeEach
     void setUp() {
         service = new AssessmentService(assessments, workflow, questionBank, signedInUserPort,
-                membershipPort, dispatcher, new ObjectMapper());
+                membershipPort, dispatcher, draftValidator, new ObjectMapper());
         assessment = mock(AssessmentView.class);
         when(signedInUserPort.getAuthenticatedUser())
                 .thenReturn(Optional.of(new CurrentActor(actorId, Roles.TEACHER)));
