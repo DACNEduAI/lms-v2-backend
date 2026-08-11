@@ -11,6 +11,7 @@ import lombok.Setter;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
@@ -20,10 +21,12 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 @Getter
 @Setter
 public class DevConfig implements StorageConfig{
+    public String region;
     public String accessKey;
     public String secretKey;
     public String endPoint;
     public String bucketName;
+    public boolean forcePathStyle;
 
     @Override
     public S3Client s3Client() {
@@ -31,7 +34,8 @@ public class DevConfig implements StorageConfig{
                 .endpointOverride(URI.create(endPoint))
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(accessKey, secretKey)))
-                .region(Region.US_EAST_1)
+                .region(Region.of(region))
+                .forcePathStyle(forcePathStyle)
                 .build();
     }
 
@@ -41,7 +45,10 @@ public class DevConfig implements StorageConfig{
                 .endpointOverride(URI.create(endPoint))
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(accessKey, secretKey)))
-                .region(Region.US_EAST_1)
+                .region(Region.of(region))
+                .serviceConfiguration(S3Configuration.builder()
+                        .pathStyleAccessEnabled(forcePathStyle)
+                        .build())
                 .build();
     }
 }

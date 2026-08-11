@@ -1,41 +1,46 @@
-# LMS Backend - Lệnh chạy nhanh
+# LMS Backend - chạy local
 
-Yêu cầu: JDK 25, `.env.dev` và PostgreSQL.
+Yêu cầu: JDK 25, PostgreSQL và `.env.dev`.
 
-## 1. Run BE để FE kết nối
+## Supabase Storage S3
+
+Trong Supabase, bật S3 protocol và tạo S3 access key. Bucket trong `STORAGE_PRIVATE_BUCKET` phải tồn tại.
+
+`.env.dev` cần có:
+
+```properties
+STORAGE_S3_ENDPOINT=https://<project-ref>.storage.supabase.co/storage/v1/s3
+STORAGE_S3_REGION=<project-region>
+STORAGE_S3_ACCESS_KEY_ID=<access-key>
+STORAGE_S3_SECRET_ACCESS_KEY=<secret-key>
+STORAGE_S3_FORCE_PATH_STYLE=true
+STORAGE_PRIVATE_BUCKET=<private-bucket>
+```
+
+Các key chỉ dùng ở backend, không đưa vào frontend hoặc log.
+
+## Chạy backend
 
 ```powershell
 .\mvnw.cmd spring-boot:run "-Dspring-boot.run.arguments=--spring.config.import=optional:file:.env.dev[.properties]"
 ```
 
-BE chạy tại `http://localhost:8080`. Lệnh này compile code hiện tại nhưng không tạo JAR. Dừng bằng `Ctrl+C`.
+Backend chạy tại `http://localhost:8080`.
 
-## 2. Chạy test
+## Kiểm thử
 
 ```powershell
 .\mvnw.cmd test
 ```
 
-Chạy 67 unit/architecture test theo cấu hình hiện tại, không phải toàn bộ test trong repository.
-
-## Các lệnh build/package
-
-Full test và đóng gói JAR (cần Docker):
+Full build và integration test cần Docker:
 
 ```powershell
 .\mvnw.cmd clean verify
 ```
 
-Chạy 67 unit/architecture test + 19 integration test. JAR được tạo tại `target\lms_platform-0.0.1-SNAPSHOT.jar`.
-
 Đóng gói nhanh, bỏ qua test:
 
 ```powershell
 .\mvnw.cmd clean package -DskipTests
-```
-
-Chạy JAR đã đóng gói:
-
-```powershell
-java -jar "target\lms_platform-0.0.1-SNAPSHOT.jar" "--spring.config.import=optional:file:.env.dev[.properties]"
 ```
