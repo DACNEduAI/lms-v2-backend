@@ -110,6 +110,7 @@
     SELECT id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, student_id, teacher_id, display, lifecycle_status, source_type, original_quiz_id, version, published_by, published_at, created_at, updated_at
     FROM edu.quizzes
     WHERE course_id = #{courseId}
+      AND NOT EXISTS (SELECT 1 FROM edu.assessment_variants av WHERE av.quiz_id = quizzes.id)
     ORDER BY created_at DESC
   </select>
 
@@ -118,6 +119,7 @@
     FROM edu.quizzes
     WHERE course_id = #{courseId}
       AND teacher_id IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM edu.assessment_variants av WHERE av.quiz_id = quizzes.id)
     ORDER BY created_at DESC
   </select>
 
@@ -126,6 +128,7 @@
     FROM edu.quizzes
     WHERE course_id = #{courseId}
       AND student_id = #{studentId}
+      AND NOT EXISTS (SELECT 1 FROM edu.assessment_variants av WHERE av.quiz_id = quizzes.id)
     ORDER BY created_at DESC
   </select>
 

@@ -33,6 +33,7 @@
   <select id="lockByCourseIdAndId" resultMap="ExamMatrixResultMap">
     SELECT id, course_id, title, description, created_at, updated_at
     FROM edu.exam_matrices WHERE course_id = #{courseId} AND id = #{id}
+      AND lifecycle_status = 'DRAFT'
     FOR UPDATE
   </select>
 
@@ -279,12 +280,14 @@
   </update>
 
   <update id="updateMetadata">
-    UPDATE edu.exam_matrices SET title = #{title}, description = #{description}, updated_at = NOW()
-    WHERE id = #{id}
+    UPDATE edu.exam_matrices SET title = #{title}, description = #{description},
+      version = version + 1, updated_at = NOW()
+    WHERE id = #{id} AND lifecycle_status = 'DRAFT'
   </update>
 
   <update id="touch">
-    UPDATE edu.exam_matrices SET updated_at = NOW() WHERE id = #{id}
+    UPDATE edu.exam_matrices SET version = version + 1, updated_at = NOW()
+    WHERE id = #{id} AND lifecycle_status = 'DRAFT'
   </update>
 
   <delete id="deleteRow">

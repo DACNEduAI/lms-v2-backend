@@ -716,6 +716,166 @@ CREATE INDEX IF NOT EXISTS idx_question_provenance_job
 CREATE INDEX IF NOT EXISTS idx_question_provenance_allocation
     ON question_generation_provenance (matrix_row_id, custom_learning_level_id, question_type);
 
+-- Quiz2 assessment workflow. Course CCCT profiles keep their existing
+-- DRAFT/PUBLISHED/ARCHIVED lifecycle. Exam matrices gain an equivalent
+-- immutable-published lifecycle so an assessment can retain a stable source.
+ALTER TABLE exam_matrices
+    ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT'
+        CHECK (lifecycle_status IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')),
+    ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0 CHECK (version >= 0),
+    ADD COLUMN IF NOT EXISTS published_by UUID REFERENCES users (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS published_at TIMESTAMP;
+
+CREATE TABLE IF NOT EXISTS assessments
+(
+    id                              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id                       UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+    title                           VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
+    description                     TEXT,
+    unlimited                       BOOLEAN      NOT NULL DEFAULT false,
+    time_limit_minutes              INTEGER CHECK (time_limit_minutes IS NULL OR time_limit_minutes > 0),
+    pass_score                      DOUBLE PRECISION CHECK (pass_score IS NULL OR (pass_score >= 0 AND pass_score <= 100)),
+    start_time                      TIMESTAMP,
+    due_time                        TIMESTAMP,
+    attempt_limited                 INTEGER CHECK (attempt_limited IS NULL OR attempt_limited > 0),
+    variant_count                   INTEGER      NOT NULL DEFAULT 1 CHECK (variant_count BETWEEN 1 AND 20),
+    option_count                    INTEGER      NOT NULL DEFAULT 4 CHECK (option_count IN (4, 5)),
+    allow_recently_used_questions   BOOLEAN      NOT NULL DEFAULT false,
+    lifecycle_status                VARCHAR(30)  NOT NULL DEFAULT 'DRAFT'
+        CHECK (lifecycle_status IN ('DRAFT', 'GENERATING', 'REVIEW_PENDING', 'READY_TO_PUBLISH', 'PUBLISHED', 'ARCHIVED')),
+    current_step                    INTEGER      NOT NULL DEFAULT 1 CHECK (current_step BETWEEN 1 AND 10),
+    ccct_profile_id                 UUID REFERENCES ccct_profiles (id) ON DELETE RESTRICT,
+    ccct_profile_version            BIGINT,
+    exam_matrix_id                  UUID REFERENCES exam_matrices (id) ON DELETE RESTRICT,
+    exam_matrix_version             BIGINT,
+    previous_published_ccct_id      UUID REFERENCES ccct_profiles (id) ON DELETE SET NULL,
+    ccct_published_by_assessment    BOOLEAN      NOT NULL DEFAULT false,
+    matrix_published_by_assessment  BOOLEAN      NOT NULL DEFAULT false,
+    ai_generation_started           BOOLEAN      NOT NULL DEFAULT false,
+    recent_use_override_by          UUID REFERENCES users (id) ON DELETE SET NULL,
+    recent_use_override_at          TIMESTAMP,
+    created_by                      UUID REFERENCES users (id) ON DELETE SET NULL,
+    version                         BIGINT       NOT NULL DEFAULT 0 CHECK (version >= 0),
+    published_by                    UUID REFERENCES users (id) ON DELETE SET NULL,
+    published_at                    TIMESTAMP,
+    created_at                      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (due_time IS NULL OR start_time IS NULL OR due_time > start_time)
+);
+
+CREATE INDEX IF NOT EXISTS idx_assessments_course_updated
+    ON assessments (course_id, updated_at DESC, id);
+
+CREATE TABLE IF NOT EXISTS assessment_generation_batches
+(
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    assessment_id      UUID         NOT NULL REFERENCES assessments (id) ON DELETE CASCADE,
+    status             VARCHAR(20)  NOT NULL DEFAULT 'QUEUED'
+        CHECK (status IN ('QUEUED', 'PROCESSING', 'COMPLETED', 'PARTIAL', 'FAILED')),
+    option_count       INTEGER      NOT NULL CHECK (option_count IN (4, 5)),
+    total_cells        INTEGER      NOT NULL DEFAULT 0 CHECK (total_cells >= 0),
+    completed_cells    INTEGER      NOT NULL DEFAULT 0 CHECK (completed_cells >= 0),
+    generated_questions INTEGER     NOT NULL DEFAULT 0 CHECK (generated_questions >= 0),
+    request_snapshot   JSONB        NOT NULL,
+    idempotency_key    VARCHAR(255) NOT NULL UNIQUE,
+    error_message      TEXT,
+    created_by         UUID REFERENCES users (id) ON DELETE SET NULL,
+    created_at         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at       TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_assessment_batches_parent
+    ON assessment_generation_batches (assessment_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS assessment_generation_batch_items
+(
+    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    batch_id                 UUID        NOT NULL REFERENCES assessment_generation_batches (id) ON DELETE CASCADE,
+    matrix_row_id            UUID        NOT NULL REFERENCES exam_matrix_rows (id) ON DELETE RESTRICT,
+    custom_learning_level_id UUID        NOT NULL REFERENCES custom_learning_levels (id) ON DELETE RESTRICT,
+    required_count           INTEGER     NOT NULL CHECK (required_count > 0),
+    generated_count          INTEGER     NOT NULL DEFAULT 0 CHECK (generated_count >= 0),
+    status                   VARCHAR(20) NOT NULL DEFAULT 'QUEUED'
+        CHECK (status IN ('QUEUED', 'PROCESSING', 'COMPLETED', 'FAILED')),
+    error_message            TEXT,
+    retry_count              INTEGER     NOT NULL DEFAULT 0 CHECK (retry_count >= 0),
+    updated_at               TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_assessment_batch_cell UNIQUE (batch_id, matrix_row_id, custom_learning_level_id)
+);
+
+ALTER TABLE question_drafts
+    ADD COLUMN IF NOT EXISTS assessment_id UUID REFERENCES assessments (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS generation_batch_id UUID REFERENCES assessment_generation_batches (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS matrix_row_id UUID REFERENCES exam_matrix_rows (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS custom_learning_level_id UUID REFERENCES custom_learning_levels (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS review_status VARCHAR(20) NOT NULL DEFAULT 'NOT_VALIDATED'
+        CHECK (review_status IN ('NOT_VALIDATED', 'REJECTED')),
+    ADD COLUMN IF NOT EXISTS rejected_by UUID REFERENCES users (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+ALTER TABLE question_bank_questions
+    ADD COLUMN IF NOT EXISTS assessment_id UUID REFERENCES assessments (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS generation_batch_id UUID REFERENCES assessment_generation_batches (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS matrix_row_id UUID REFERENCES exam_matrix_rows (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS custom_learning_level_id UUID REFERENCES custom_learning_levels (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS recently_used BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMP;
+
+CREATE INDEX IF NOT EXISTS idx_question_drafts_assessment_review
+    ON question_drafts (assessment_id, review_status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_question_bank_assessment
+    ON question_bank_questions (assessment_id, validated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_question_bank_recently_used
+    ON question_bank_questions (course_id, recently_used, validated_at DESC);
+
+CREATE TABLE IF NOT EXISTS question_bank_allocations
+(
+    id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    question_bank_question_id UUID        NOT NULL REFERENCES question_bank_questions (id) ON DELETE RESTRICT,
+    assessment_id             UUID        NOT NULL REFERENCES assessments (id) ON DELETE CASCADE,
+    status                    VARCHAR(20) NOT NULL
+        CHECK (status IN ('RESERVED', 'USED', 'RELEASED')),
+    reserved_at               TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    used_at                   TIMESTAMP,
+    released_at               TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_question_bank_active_allocation
+    ON question_bank_allocations (question_bank_question_id)
+    WHERE status = 'RESERVED';
+CREATE INDEX IF NOT EXISTS idx_question_bank_allocations_assessment
+    ON question_bank_allocations (assessment_id, status);
+
+ALTER TABLE questions
+    ADD COLUMN IF NOT EXISTS chapter_id UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS cognitive_level_id UUID REFERENCES cognitive_levels (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS order_index INTEGER NOT NULL DEFAULT 0 CHECK (order_index >= 0);
+
+CREATE TABLE IF NOT EXISTS assessment_variants
+(
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    assessment_id       UUID         NOT NULL REFERENCES assessments (id) ON DELETE CASCADE,
+    quiz_id             UUID         NOT NULL UNIQUE REFERENCES quizzes (id) ON DELETE CASCADE,
+    variant_code        VARCHAR(20)  NOT NULL,
+    order_index         INTEGER      NOT NULL CHECK (order_index >= 0),
+    shuffle_seed        BIGINT       NOT NULL,
+    coverage_status     VARCHAR(20)  NOT NULL DEFAULT 'COMPLIANT'
+        CHECK (coverage_status IN ('COMPLIANT', 'DRIFTED')),
+    coverage_snapshot   JSONB        NOT NULL DEFAULT '{}'::jsonb,
+    override_reason     TEXT,
+    override_by         UUID REFERENCES users (id) ON DELETE SET NULL,
+    override_at         TIMESTAMP,
+    created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_assessment_variant_code UNIQUE (assessment_id, variant_code),
+    CONSTRAINT uq_assessment_variant_order UNIQUE (assessment_id, order_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_assessment_variants_parent
+    ON assessment_variants (assessment_id, order_index);
+
 CREATE TABLE IF NOT EXISTS question_images
 (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),

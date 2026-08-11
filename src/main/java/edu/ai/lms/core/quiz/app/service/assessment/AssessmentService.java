@@ -1,0 +1,381 @@
+package edu.ai.lms.core.quiz.app.service.assessment;
+
+import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.*;
+
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.quiz.adapter.out.persistence.AssessmentRepository;
+import edu.ai.lms.core.quiz.adapter.out.persistence.AssessmentWorkflowRepository;
+import edu.ai.lms.core.quiz.adapter.out.persistence.AssessmentWorkflowRepository.AnswerInput;
+import edu.ai.lms.core.quiz.app.domain.CurrentActor;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion;
+import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft;
+import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
+import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
+import edu.ai.lms.core.quiz.app.port.in.usecase.QuestionBankUseCase;
+import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
+import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class AssessmentService {
+    private final AssessmentRepository assessments;
+    private final AssessmentWorkflowRepository workflow;
+    private final QuestionBankUseCase questionBank;
+    private final LoadSignedInUserPort signedInUserPort;
+    private final LoadCourseMembershipPort membershipPort;
+    private final AssessmentGenerationDispatcher dispatcher;
+    private final ObjectMapper objectMapper;
+
+    public List<AssessmentView> list(UUID courseId) {
+        requireTeacher(courseId);
+        return assessments.list(courseId);
+    }
+
+    public AssessmentView get(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        return required(courseId, assessmentId);
+    }
+
+    public AssessmentView create(UUID courseId, AssessmentConfiguration input) {
+        CurrentActor actor = requireTeacher(courseId);
+        validateConfiguration(input);
+        return assessments.create(courseId, actor.id(), input.title().trim(), trimToNull(input.description()),
+                input.unlimited(), input.timeLimitMinutes(), input.passScore(), input.startTime(), input.dueTime(),
+                input.attemptLimited(), input.variantCount(), input.optionCount(),
+                input.allowRecentlyUsedQuestions());
+    }
+
+    public AssessmentView update(UUID courseId, UUID assessmentId, long version, AssessmentConfiguration input) {
+        CurrentActor actor = requireTeacher(courseId);
+        validateConfiguration(input);
+        if (!assessments.update(courseId, assessmentId, version, input.title().trim(), trimToNull(input.description()),
+                input.unlimited(), input.timeLimitMinutes(), input.passScore(), input.startTime(), input.dueTime(),
+                input.attemptLimited(), input.variantCount(), input.optionCount(),
+                input.allowRecentlyUsedQuestions(), actor.id())) {
+            throw new IllegalStateException("Assessment changed before this update; reload and try again");
+        }
+        return required(courseId, assessmentId);
+    }
+
+    public ContextView context(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        return new ContextView(required(courseId, assessmentId), assessments.listCcctProfiles(courseId),
+                assessments.listExamMatrices(courseId));
+    }
+
+    @Transactional
+    public ContextView selectContext(UUID courseId, UUID assessmentId, ContextSelection input) {
+        CurrentActor actor = requireTeacher(courseId);
+        if (input == null || input.ccct() == null || input.examMatrix() == null) {
+            throw new IllegalArgumentException("CCCT and Exam Matrix selections are required");
+        }
+        UUID ccctId = resolveCcct(courseId, actor.id(), input.ccct());
+        UUID matrixId = resolveMatrix(courseId, input.examMatrix());
+        assessments.selectSources(courseId, assessmentId, ccctId, matrixId);
+        return context(courseId, assessmentId);
+    }
+
+    private UUID resolveCcct(UUID courseId, UUID actorId, SourceSelection selection) {
+        return switch (selection.mode()) {
+            case USE_EXISTING -> requireSourceId(selection, "CCCT");
+            case COPY_AS_DRAFT -> assessments.cloneCcct(
+                    courseId, requireSourceId(selection, "CCCT"), actorId);
+            case CREATE_NEW_DRAFT -> assessments.createCcctDraft(
+                    courseId, requireDraftName(selection, "CCCT"), actorId);
+        };
+    }
+
+    private UUID resolveMatrix(UUID courseId, SourceSelection selection) {
+        return switch (selection.mode()) {
+            case USE_EXISTING -> requireSourceId(selection, "Exam Matrix");
+            case COPY_AS_DRAFT -> assessments.cloneMatrix(
+                    courseId, requireSourceId(selection, "Exam Matrix"));
+            case CREATE_NEW_DRAFT -> assessments.createMatrixDraft(
+                    courseId, requireDraftName(selection, "Exam Matrix"));
+        };
+    }
+
+    private UUID requireSourceId(SourceSelection selection, String source) {
+        if (selection.sourceId() == null) {
+            throw new IllegalArgumentException(source + " source is required");
+        }
+        return selection.sourceId();
+    }
+
+    private String requireDraftName(SourceSelection selection, String source) {
+        String name = trimToNull(selection.draftName());
+        if (name == null) throw new IllegalArgumentException(source + " Draft name is required");
+        if (name.length() > 255) throw new IllegalArgumentException(source + " Draft name cannot exceed 255 characters");
+        return name;
+    }
+
+    public AssessmentView confirmCcct(UUID courseId, UUID assessmentId, long sourceVersion) {
+        CurrentActor actor = requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        if (assessment.ccctProfileId() == null) throw new IllegalStateException("Select a CCCT first");
+        assessments.publishCcct(courseId, assessmentId, assessment.ccctProfileId(), sourceVersion, actor.id());
+        return required(courseId, assessmentId);
+    }
+
+    public AssessmentView confirmMatrix(UUID courseId, UUID assessmentId, long sourceVersion) {
+        CurrentActor actor = requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        if (assessment.examMatrixId() == null) throw new IllegalStateException("Select an Exam Matrix first");
+        assessments.publishMatrix(courseId, assessmentId, assessment.examMatrixId(), sourceVersion, actor.id());
+        return required(courseId, assessmentId);
+    }
+
+    public AssessmentView rollbackSources(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        assessments.rollbackSources(courseId, assessmentId);
+        return required(courseId, assessmentId);
+    }
+
+    public BankPlan bankPlan(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        return workflow.bankPlan(required(courseId, assessmentId));
+    }
+
+    @Transactional
+    public BatchView generateMissing(UUID courseId, UUID assessmentId) {
+        CurrentActor actor = requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        if (assessment.currentStep() < 5) throw new IllegalStateException("Publish CCCT and Exam Matrix before generation");
+        List<String> unavailable = assessments.unreadyMaterialNames(courseId);
+        if (!unavailable.isEmpty()) {
+            throw new IllegalStateException("Materials are not ready for AI generation: " + String.join(", ", unavailable));
+        }
+        List<UUID> materialIds = assessments.allMaterialIds(courseId);
+        if (materialIds.isEmpty()) throw new IllegalStateException("The course has no source materials");
+        BankPlan plan = workflow.bankPlan(assessment);
+        String snapshot = generationSnapshot(assessment, plan, materialIds);
+        BatchView batch = workflow.createBatch(assessment, plan, actor.id(), snapshot);
+        if (plan.missing() > 0) {
+            assessments.markGenerationStarted(courseId, assessmentId);
+            dispatcher.dispatch(batch.id());
+        }
+        return batch;
+    }
+
+    public BatchView getBatch(UUID courseId, UUID assessmentId, UUID batchId) {
+        requireTeacher(courseId);
+        required(courseId, assessmentId);
+        return workflow.getBatch(courseId, assessmentId, batchId);
+    }
+
+    public BatchView retryCell(UUID courseId, UUID assessmentId, UUID batchId, UUID cellId) {
+        requireTeacher(courseId);
+        required(courseId, assessmentId);
+        String snapshot = workflow.prepareCellRetry(courseId, assessmentId, batchId, cellId);
+        dispatcher.retryCell(batchId, snapshot);
+        return workflow.getBatch(courseId, assessmentId, batchId);
+    }
+
+    public DraftReviewView review(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        required(courseId, assessmentId);
+        return workflow.review(assessmentId);
+    }
+
+    public DraftReviewView reject(UUID courseId, UUID assessmentId, UUID draftId, long version, String reason) {
+        CurrentActor actor = requireTeacher(courseId);
+        required(courseId, assessmentId);
+        if (trimToNull(reason) == null) throw new IllegalArgumentException("A rejection reason is required");
+        workflow.rejectDraft(assessmentId, draftId, version, actor.id(), reason.trim());
+        return workflow.review(assessmentId);
+    }
+
+    @Transactional
+    public DraftReviewView validate(UUID courseId, UUID assessmentId, UUID draftId, long version) {
+        requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        validateQuiz2Draft(questionBank.getDraft(courseId, draftId), assessment.optionCount());
+        var provenance = workflow.draftProvenance(assessmentId, draftId);
+        QuestionBankQuestion saved = questionBank.validateDraft(courseId, draftId, version);
+        workflow.attachBankProvenance(assessmentId, saved.getOriginDraftId(), provenance);
+        return workflow.review(assessmentId);
+    }
+
+    private void validateQuiz2Draft(QuestionDraft draft, int optionCount) {
+        if (draft.getAnswers() == null || draft.getAnswers().size() != optionCount) {
+            throw new IllegalStateException("Quiz2 Draft must contain exactly " + optionCount + " answers");
+        }
+        if (draft.getAnswers().stream().filter(answer -> answer.isCorrect()).count() != 1) {
+            throw new IllegalStateException("Quiz2 Draft must contain exactly one correct answer");
+        }
+        if (draft.getAnswers().stream().anyMatch(answer -> trimToNull(answer.getExplanation()) == null)) {
+            throw new IllegalStateException("Every Quiz2 Draft answer requires an explanation");
+        }
+    }
+
+    @Transactional
+    public DraftReviewView validateBatch(UUID courseId, UUID assessmentId, List<DraftVersion> drafts) {
+        if (drafts == null || drafts.isEmpty()) throw new IllegalArgumentException("Select at least one Draft");
+        for (DraftVersion draft : drafts) validate(courseId, assessmentId, draft.id(), draft.version());
+        return workflow.review(assessmentId);
+    }
+
+    public int resetRecentlyUsed(UUID courseId, List<UUID> questionIds) {
+        requireTeacher(courseId);
+        return workflow.resetRecentlyUsed(courseId, questionIds);
+    }
+
+    public List<VariantView> createVariants(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        BankPlan plan = workflow.bankPlan(assessment);
+        if (plan.missing() > 0) throw new IllegalStateException("Question Bank is missing " + plan.missing() + " questions");
+        return workflow.createVariants(assessment, plan);
+    }
+
+    public List<VariantView> variants(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        required(courseId, assessmentId);
+        return workflow.variants(assessmentId);
+    }
+
+    public List<VariantView> recalculateCoverage(UUID courseId, UUID assessmentId, UUID variantId) {
+        requireTeacher(courseId);
+        workflow.recalculateCoverage(required(courseId, assessmentId), variantId);
+        return workflow.variants(assessmentId);
+    }
+
+    public List<VariantView> overrideCoverage(UUID courseId, UUID assessmentId, UUID variantId, String reason) {
+        CurrentActor actor = requireTeacher(courseId);
+        required(courseId, assessmentId);
+        if (trimToNull(reason) == null) throw new IllegalArgumentException("An override reason is required");
+        workflow.setOverride(assessmentId, variantId, actor.id(), reason.trim());
+        return workflow.variants(assessmentId);
+    }
+
+    public List<VariantView> updateVariantQuestion(UUID courseId, UUID assessmentId, UUID variantId,
+            UUID questionId, VariantQuestionInput input) {
+        requireTeacher(courseId);
+        required(courseId, assessmentId);
+        if (trimToNull(input.content()) == null) throw new IllegalArgumentException("Question content is required");
+        List<AnswerInput> answers = input.answers() == null ? List.of() : input.answers();
+        if ("MULTIPLE_CHOICE".equals(input.type())) {
+            if (!List.of(4, 5).contains(answers.size())) throw new IllegalArgumentException("MCQ requires four or five answers");
+            if (answers.stream().filter(AnswerInput::correct).count() != 1) {
+                throw new IllegalArgumentException("MCQ requires exactly one correct answer");
+            }
+            if (answers.stream().anyMatch(a -> trimToNull(a.content()) == null || trimToNull(a.explanation()) == null)) {
+                throw new IllegalArgumentException("Every MCQ answer requires content and explanation");
+            }
+        }
+        workflow.updateVariantQuestion(assessmentId, variantId, questionId, input.content().trim(), input.type(),
+                input.chapterId(), input.cognitiveLevelId(),
+                input.learningOutcomeIds() == null ? List.of() : input.learningOutcomeIds(), answers);
+        workflow.recalculateCoverage(required(courseId, assessmentId), variantId);
+        return workflow.variants(assessmentId);
+    }
+
+    public PublishResult publish(UUID courseId, UUID assessmentId) {
+        CurrentActor actor = requireTeacher(courseId);
+        return workflow.publish(required(courseId, assessmentId), actor.id());
+    }
+
+    private AssessmentView required(UUID courseId, UUID assessmentId) {
+        return assessments.get(courseId, assessmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Assessment was not found"));
+    }
+
+    private CurrentActor requireTeacher(UUID courseId) {
+        CurrentActor actor = signedInUserPort.getAuthenticatedUser()
+                .orElseThrow(() -> new UserNotAuthenticatedException("Authentication is required"));
+        if (actor.role() != Roles.TEACHER || !membershipPort.isTeacherInCourse(actor.id(), courseId)) {
+            throw new UserNotAuthorizedException("Only a teacher assigned to this course can manage Quiz2 assessments");
+        }
+        return actor;
+    }
+
+    private String generationSnapshot(AssessmentView assessment, BankPlan plan, List<UUID> materialIds) {
+        List<Map<String, Object>> cells = plan.cells().stream().filter(cell -> cell.missing() > 0).map(cell -> {
+            Map<String, Object> value = new LinkedHashMap<>();
+            value.put("matrixRowId", cell.matrixRowId());
+            value.put("customLearningLevelId", cell.customLearningLevelId());
+            value.put("chapterId", cell.chapterId());
+            value.put("chapter", cell.chapter());
+            value.put("topic", cell.topic());
+            value.put("levelCode", cell.levelCode());
+            value.put("levelName", cell.levelName());
+            value.put("learningOutcomeIds", cell.learningOutcomeIds());
+            value.put("count", cell.missing());
+            return value;
+        }).toList();
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("contractVersion", 1);
+        snapshot.put("assessmentId", assessment.id());
+        snapshot.put("courseId", assessment.courseId());
+        snapshot.put("courseTitle", assessments.courseTitle(assessment.courseId()));
+        snapshot.put("optionCount", assessment.optionCount());
+        snapshot.put("questionType", "MULTIPLE_CHOICE");
+        snapshot.put("materialIds", materialIds);
+        snapshot.put("cells", cells);
+        try {
+            return objectMapper.writeValueAsString(snapshot);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Could not snapshot the generation request", ex);
+        }
+    }
+
+    private void validateConfiguration(AssessmentConfiguration input) {
+        if (input == null || trimToNull(input.title()) == null) throw new IllegalArgumentException("Assessment title is required");
+        if (input.variantCount() < 1 || input.variantCount() > 20) throw new IllegalArgumentException("Variant count must be between 1 and 20");
+        if (!List.of(4, 5).contains(input.optionCount())) throw new IllegalArgumentException("Option count must be four or five");
+        if (!input.unlimited() && (input.timeLimitMinutes() == null || input.timeLimitMinutes() <= 0)) {
+            throw new IllegalArgumentException("A positive time limit is required when time is limited");
+        }
+        if (input.passScore() != null && (input.passScore() < 0 || input.passScore() > 100)) {
+            throw new IllegalArgumentException("Pass score must be between 0 and 100");
+        }
+        if (input.attemptLimited() != null && input.attemptLimited() < 1) throw new IllegalArgumentException("Attempts must be positive");
+        if (input.startTime() != null && input.dueTime() != null && !input.dueTime().isAfter(input.startTime())) {
+            throw new IllegalArgumentException("Due time must be after start time");
+        }
+    }
+
+    private String trimToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    public record AssessmentConfiguration(String title, String description, boolean unlimited,
+            Integer timeLimitMinutes, Double passScore, LocalDateTime startTime, LocalDateTime dueTime,
+            Integer attemptLimited, int variantCount, int optionCount, boolean allowRecentlyUsedQuestions) {
+    }
+
+    public enum SourceSelectionMode {
+        USE_EXISTING,
+        COPY_AS_DRAFT,
+        CREATE_NEW_DRAFT
+    }
+
+    public record SourceSelection(SourceSelectionMode mode, UUID sourceId, String draftName) {
+        public SourceSelection {
+            if (mode == null) throw new IllegalArgumentException("Source selection mode is required");
+        }
+    }
+
+    public record ContextSelection(SourceSelection ccct, SourceSelection examMatrix) {
+    }
+
+    public record DraftVersion(UUID id, long version) {
+    }
+
+    public record VariantQuestionInput(String content, String type, UUID chapterId, UUID cognitiveLevelId,
+            List<UUID> learningOutcomeIds, List<AnswerInput> answers) {
+    }
+}
