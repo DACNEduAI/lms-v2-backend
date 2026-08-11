@@ -247,13 +247,22 @@ public final class AssessmentModels {
     public record VariantQuestionView(
             UUID id,
             UUID sourceBankQuestionId,
-            UUID chapterId,
-            UUID cognitiveLevelId,
             String content,
             String type,
-            List<UUID> learningOutcomeIds,
+            VariantQuestionMetadata metadata,
             List<AnswerView> answers,
             int orderIndex) {
+    }
+
+    public record VariantQuestionMetadata(
+            String matrixRow,
+            String chapter,
+            String topic,
+            String customLearningLevelCode,
+            String customLearningLevelName,
+            List<ReviewLearningOutcome> learningOutcomes,
+            String cognitiveLevelCode,
+            String cognitiveLevelName) {
     }
 
     public record PublishResult(

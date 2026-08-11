@@ -318,21 +318,19 @@ public class AssessmentService {
     public List<VariantView> updateVariantQuestion(UUID courseId, UUID assessmentId, UUID variantId,
             UUID questionId, VariantQuestionInput input) {
         requireTeacher(courseId);
-        required(courseId, assessmentId);
+        AssessmentView assessment = required(courseId, assessmentId);
         if (trimToNull(input.content()) == null) throw new IllegalArgumentException("Question content is required");
         List<AnswerInput> answers = input.answers() == null ? List.of() : input.answers();
-        if ("MULTIPLE_CHOICE".equals(input.type())) {
-            if (!List.of(4, 5).contains(answers.size())) throw new IllegalArgumentException("MCQ requires four or five answers");
-            if (answers.stream().filter(AnswerInput::correct).count() != 1) {
-                throw new IllegalArgumentException("MCQ requires exactly one correct answer");
-            }
-            if (answers.stream().anyMatch(a -> trimToNull(a.content()) == null || trimToNull(a.explanation()) == null)) {
-                throw new IllegalArgumentException("Every MCQ answer requires content and explanation");
-            }
+        if (answers.size() != assessment.optionCount()) {
+            throw new IllegalArgumentException("This Assessment requires exactly " + assessment.optionCount() + " answers");
         }
-        workflow.updateVariantQuestion(assessmentId, variantId, questionId, input.content().trim(), input.type(),
-                input.chapterId(), input.cognitiveLevelId(),
-                input.learningOutcomeIds() == null ? List.of() : input.learningOutcomeIds(), answers);
+        if (answers.stream().filter(AnswerInput::correct).count() != 1) {
+            throw new IllegalArgumentException("MCQ requires exactly one correct answer");
+        }
+        if (answers.stream().anyMatch(a -> trimToNull(a.content()) == null || trimToNull(a.explanation()) == null)) {
+            throw new IllegalArgumentException("Every MCQ answer requires content and explanation");
+        }
+        workflow.updateVariantQuestion(assessmentId, variantId, questionId, input.content().trim(), answers);
         workflow.recalculateCoverage(required(courseId, assessmentId), variantId);
         return workflow.variants(assessmentId);
     }
@@ -429,7 +427,6 @@ public class AssessmentService {
     public record DraftVersion(UUID id, long version) {
     }
 
-    public record VariantQuestionInput(String content, String type, UUID chapterId, UUID cognitiveLevelId,
-            List<UUID> learningOutcomeIds, List<AnswerInput> answers) {
+    public record VariantQuestionInput(String content, List<AnswerInput> answers) {
     }
 }

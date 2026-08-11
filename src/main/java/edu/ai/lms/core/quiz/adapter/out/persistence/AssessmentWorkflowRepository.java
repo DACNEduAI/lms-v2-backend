@@ -17,6 +17,7 @@ import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.Review
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.ReviewFilterOptions;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.ReviewLearningOutcome;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.ReviewProgress;
+import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.VariantQuestionMetadata;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.VariantQuestionView;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.VariantView;
 
@@ -599,21 +600,23 @@ public class AssessmentWorkflowRepository {
                 Map.of("id", assessment.id()), Integer.class);
         if (existing != null && existing > 0) throw new IllegalStateException("Variants already exist for this assessment");
         if (plan.missing() > 0) throw new IllegalStateException("Question Bank still has missing Matrix cells");
-        List<UUID> selected = new ArrayList<>();
+        List<SelectedQuestion> selected = new ArrayList<>();
         Set<UUID> selectedSet = new HashSet<>();
         for (BankPlanCell cell : plan.cells()) {
             List<UUID> candidates = candidateQuestionIds(assessment, cell, selectedSet, cell.required());
             if (candidates.size() != cell.required()) throw new IllegalStateException("Question Bank capacity changed during allocation");
-            selected.addAll(candidates);
+            candidates.forEach(bankId -> selected.add(new SelectedQuestion(bankId, cell.matrixRowId(), cell.customLearningLevelId())));
             selectedSet.addAll(candidates);
         }
-        for (UUID bankId : selected) {
+        for (SelectedQuestion selectedQuestion : selected) {
             try {
                 jdbc.update("""
                         INSERT INTO edu.question_bank_allocations
-                            (id, question_bank_question_id, assessment_id, status)
-                        VALUES (:id, :bankId, :assessmentId, 'RESERVED')
-                        """, Map.of("id", UUID.randomUUID(), "bankId", bankId, "assessmentId", assessment.id()));
+                            (id, question_bank_question_id, assessment_id, matrix_row_id, custom_learning_level_id, status)
+                        VALUES (:id, :bankId, :assessmentId, :matrixRowId, :levelId, 'RESERVED')
+                        """, Map.of("id", UUID.randomUUID(), "bankId", selectedQuestion.bankId(),
+                                "assessmentId", assessment.id(), "matrixRowId", selectedQuestion.matrixRowId(),
+                                "levelId", selectedQuestion.customLearningLevelId()));
             } catch (DuplicateKeyException ex) {
                 throw new IllegalStateException("A selected question was reserved by another assessment", ex);
             }
@@ -643,7 +646,7 @@ public class AssessmentWorkflowRepository {
                     VALUES (:id, :assessmentId, :quizId, :code, :orderIndex, :seed)
                     """, Map.of("id", variantId, "assessmentId", assessment.id(), "quizId", quizId,
                     "code", code, "orderIndex", variantIndex, "seed", seed));
-            List<UUID> shuffled = new ArrayList<>(selected);
+            List<SelectedQuestion> shuffled = new ArrayList<>(selected);
             Collections.shuffle(shuffled, new Random(seed));
             for (int questionIndex = 0; questionIndex < shuffled.size(); questionIndex++) {
                 copyBankQuestionToQuiz(shuffled.get(questionIndex), quizId, questionIndex, seed);
@@ -762,24 +765,14 @@ public class AssessmentWorkflowRepository {
     }
 
     public void updateVariantQuestion(UUID assessmentId, UUID variantId, UUID questionId,
-            String content, String type, UUID chapterId, UUID cognitiveLevelId,
-            List<UUID> learningOutcomeIds, List<AnswerInput> answers) {
+            String content, List<AnswerInput> answers) {
         UUID quizId = variantQuiz(assessmentId, variantId);
         int updated = jdbc.update("""
-                UPDATE edu.questions SET content = :content, type = :type, chapter_id = :chapterId,
-                    cognitive_level_id = :cognitiveLevelId, version = version + 1, updated_at = CURRENT_TIMESTAMP
+                UPDATE edu.questions SET content = :content, version = version + 1, updated_at = CURRENT_TIMESTAMP
                 WHERE id = :questionId AND quiz_id = :quizId
-                """, new MapSqlParameterSource().addValue("content", content).addValue("type", type)
-                .addValue("chapterId", chapterId).addValue("cognitiveLevelId", cognitiveLevelId)
-                .addValue("questionId", questionId).addValue("quizId", quizId));
+                """, new MapSqlParameterSource().addValue("content", content).addValue("questionId", questionId)
+                .addValue("quizId", quizId));
         if (updated != 1) throw new IllegalArgumentException("Variant question was not found");
-        jdbc.update("DELETE FROM edu.question_learning_outcomes WHERE question_id = :id", Map.of("id", questionId));
-        for (UUID outcomeId : learningOutcomeIds) {
-            jdbc.update("""
-                    INSERT INTO edu.question_learning_outcomes (question_id, learning_outcome_id)
-                    VALUES (:questionId, :outcomeId)
-                    """, Map.of("questionId", questionId, "outcomeId", outcomeId));
-        }
         jdbc.update("DELETE FROM edu.answers WHERE question_id = :id", Map.of("id", questionId));
         for (AnswerInput answer : answers) {
             jdbc.update("""
@@ -817,7 +810,8 @@ public class AssessmentWorkflowRepository {
                 params, (rs, rowNum) -> rs.getObject("id", UUID.class));
     }
 
-    private void copyBankQuestionToQuiz(UUID bankId, UUID quizId, int orderIndex, long seed) {
+    private void copyBankQuestionToQuiz(SelectedQuestion selected, UUID quizId, int orderIndex, long seed) {
+        UUID bankId = selected.bankId();
         Map<String, Object> bank = jdbc.queryForMap("""
                 SELECT content, question_type AS type, chapter_id, cognitive_level_id
                 FROM edu.question_bank_questions WHERE id = :id
@@ -826,12 +820,14 @@ public class AssessmentWorkflowRepository {
         jdbc.update("""
                 INSERT INTO edu.questions
                     (id, content, type, quiz_id, review_status, source_type, source_bank_question_id,
-                     chapter_id, cognitive_level_id, order_index)
+                     chapter_id, cognitive_level_id, matrix_row_id, custom_learning_level_id, order_index)
                 VALUES (:id, :content, :type, :quizId, 'APPROVED', 'BANK_COPY', :bankId,
-                        :chapterId, :cognitiveLevelId, :orderIndex)
+                        :chapterId, :cognitiveLevelId, :matrixRowId, :levelId, :orderIndex)
                 """, new MapSqlParameterSource(bank).addValue("id", questionId).addValue("quizId", quizId)
                 .addValue("bankId", bankId).addValue("chapterId", bank.get("chapter_id"))
-                .addValue("cognitiveLevelId", bank.get("cognitive_level_id")).addValue("orderIndex", orderIndex));
+                .addValue("cognitiveLevelId", bank.get("cognitive_level_id"))
+                .addValue("matrixRowId", selected.matrixRowId()).addValue("levelId", selected.customLearningLevelId())
+                .addValue("orderIndex", orderIndex));
         List<Map<String, Object>> answers = new ArrayList<>(jdbc.queryForList("""
                 SELECT content, is_correct, explanation FROM edu.question_bank_answers
                 WHERE question_bank_question_id = :id ORDER BY order_index
@@ -852,13 +848,26 @@ public class AssessmentWorkflowRepository {
 
     private List<VariantQuestionView> variantQuestions(UUID quizId) {
         return jdbc.query("""
-                SELECT id, source_bank_question_id, chapter_id, cognitive_level_id, content, type, order_index
-                FROM edu.questions WHERE quiz_id = :quizId ORDER BY order_index, id
+                SELECT q.id, q.source_bank_question_id, q.content, q.type, q.order_index, q.matrix_row_id,
+                       mr.order_index AS matrix_row_order, ch.title AS chapter, mr.topic,
+                       cll.code AS custom_learning_level_code, cll.name AS custom_learning_level_name,
+                       cognitive.code AS cognitive_level_code, cognitive.name AS cognitive_level_name
+                FROM edu.questions q
+                LEFT JOIN edu.exam_matrix_rows mr ON mr.id = q.matrix_row_id
+                LEFT JOIN edu.chapters ch ON ch.chapter_id = q.chapter_id
+                LEFT JOIN edu.custom_learning_levels cll ON cll.id = q.custom_learning_level_id
+                LEFT JOIN edu.cognitive_levels cognitive ON cognitive.id = q.cognitive_level_id
+                WHERE q.quiz_id = :quizId ORDER BY q.order_index, q.id
                 """, Map.of("quizId", quizId), (rs, rowNum) -> {
             UUID questionId = rs.getObject("id", UUID.class);
             return new VariantQuestionView(questionId, rs.getObject("source_bank_question_id", UUID.class),
-                    rs.getObject("chapter_id", UUID.class), rs.getObject("cognitive_level_id", UUID.class),
-                    rs.getString("content"), rs.getString("type"), questionOutcomeIds(questionId),
+                    rs.getString("content"), rs.getString("type"), new VariantQuestionMetadata(
+                            matrixRowLabel(rs), labelOrUnrecorded(rs.getString("chapter")),
+                            labelOrUnrecorded(rs.getString("topic")),
+                            labelOrUnrecorded(rs.getString("custom_learning_level_code")),
+                            labelOrUnrecorded(rs.getString("custom_learning_level_name")),
+                            variantLearningOutcomes(questionId), labelOrUnrecorded(rs.getString("cognitive_level_code")),
+                            labelOrUnrecorded(rs.getString("cognitive_level_name"))),
                     quizAnswers(questionId), rs.getInt("order_index"));
         });
     }
@@ -1078,6 +1087,26 @@ public class AssessmentWorkflowRepository {
                 Map.of("id", questionId), (rs, rowNum) -> rs.getObject(1, UUID.class));
     }
 
+    private List<ReviewLearningOutcome> variantLearningOutcomes(UUID questionId) {
+        return jdbc.query("""
+                SELECT lo.id, concat(COALESCE(lo.prefix_number::text || ' - ', ''), COALESCE(lo.description, '')) AS label
+                FROM edu.question_learning_outcomes link
+                JOIN edu.learning_outcomes lo ON lo.id = link.learning_outcome_id
+                WHERE link.question_id = :id
+                ORDER BY lo.sort_order, lo.id
+                """, Map.of("id", questionId), (rs, rowNum) -> new ReviewLearningOutcome(
+                rs.getObject("id", UUID.class), rs.getString("label")));
+    }
+
+    private String matrixRowLabel(ResultSet rs) throws SQLException {
+        int order = rs.getInt("matrix_row_order");
+        return rs.wasNull() ? "Chưa ghi nhận" : "Hàng Matrix " + (order + 1);
+    }
+
+    private String labelOrUnrecorded(String value) {
+        return value == null || value.isBlank() ? "Chưa ghi nhận" : value;
+    }
+
     private List<AnswerView> draftAnswers(UUID draftId) {
         return jdbc.query("""
                 SELECT id, content, is_correct, explanation, order_index FROM edu.question_draft_answers
@@ -1138,5 +1167,8 @@ public class AssessmentWorkflowRepository {
     }
 
     public record AnswerInput(String content, boolean correct, String explanation) {
+    }
+
+    private record SelectedQuestion(UUID bankId, UUID matrixRowId, UUID customLearningLevelId) {
     }
 }

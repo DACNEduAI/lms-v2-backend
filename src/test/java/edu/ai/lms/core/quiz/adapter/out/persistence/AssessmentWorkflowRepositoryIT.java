@@ -40,7 +40,11 @@ class AssessmentWorkflowRepositoryIT extends IntegrationTestConfiguration {
             assertThat(question.type()).isEqualTo("MULTIPLE_CHOICE");
             assertThat(question.answers()).extracting(answer -> answer.content())
                     .containsExactlyInAnyOrder("Option A", "Option B", "Option C", "Option D");
-            assertThat(question.learningOutcomeIds()).containsExactly(fixture.learningOutcomeId());
+            assertThat(question.metadata().matrixRow()).isEqualTo("Hàng Matrix 1");
+            assertThat(question.metadata().topic()).isEqualTo("Stack operations");
+            assertThat(question.metadata().customLearningLevelCode()).isEqualTo("REMEMBER");
+            assertThat(question.metadata().learningOutcomes()).extracting(outcome -> outcome.id())
+                    .containsExactly(fixture.learningOutcomeId());
         });
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM edu.assessment_variants WHERE assessment_id = ?",
@@ -71,6 +75,9 @@ class AssessmentWorkflowRepositoryIT extends IntegrationTestConfiguration {
         UUID userId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID assessmentId = UUID.randomUUID();
+        UUID matrixId = UUID.randomUUID();
+        UUID matrixRowId = UUID.randomUUID();
+        UUID customLearningLevelId = UUID.randomUUID();
         UUID bankQuestionId = UUID.randomUUID();
         UUID learningOutcomeId = UUID.randomUUID();
         UUID cognitiveLevelId = jdbc.queryForObject(
@@ -89,11 +96,23 @@ class AssessmentWorkflowRepositoryIT extends IntegrationTestConfiguration {
                 INSERT INTO edu.learning_outcomes (id, prefix_number, description, course_id)
                 VALUES (?, 1, 'Learning outcome', ?)
                 """, learningOutcomeId, courseId);
+        jdbc.update("INSERT INTO edu.exam_matrices (id, course_id, title) VALUES (?, ?, 'Assessment matrix')",
+                matrixId, courseId);
+        jdbc.update("""
+                INSERT INTO edu.exam_matrix_rows (id, matrix_id, topic, order_index)
+                VALUES (?, ?, 'Stack operations', 0)
+                """, matrixRowId, matrixId);
+        jdbc.update("""
+                INSERT INTO edu.custom_learning_levels (id, matrix_id, code, name, sort_order)
+                VALUES (?, ?, 'REMEMBER', 'Remember', 1)
+                """, customLearningLevelId, matrixId);
         jdbc.update("""
                 INSERT INTO edu.question_bank_questions
-                    (id, origin_draft_id, assessment_id, course_id, cognitive_level_id, content, question_type, created_by, validated_by)
-                VALUES (?, ?, ?, ?, ?, 'Which option is correct?', 'MULTIPLE_CHOICE', ?, ?)
-                """, bankQuestionId, UUID.randomUUID(), assessmentId, courseId, cognitiveLevelId, userId, userId);
+                    (id, origin_draft_id, assessment_id, course_id, cognitive_level_id, matrix_row_id, custom_learning_level_id,
+                     content, question_type, created_by, validated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'Which option is correct?', 'MULTIPLE_CHOICE', ?, ?)
+                """, bankQuestionId, UUID.randomUUID(), assessmentId, courseId, cognitiveLevelId, matrixRowId,
+                customLearningLevelId, userId, userId);
         jdbc.update("""
                 INSERT INTO edu.question_bank_question_learning_outcomes
                     (question_bank_question_id, learning_outcome_id)
@@ -110,8 +129,8 @@ class AssessmentWorkflowRepositoryIT extends IntegrationTestConfiguration {
         LocalDateTime now = LocalDateTime.now();
         AssessmentView assessment = new AssessmentView(assessmentId, courseId, "Variant assessment", null,
                 true, null, null, null, null, null, 1, 4, false, LifecycleStatus.REVIEW_PENDING, 8,
-                null, null, null, null, true, 0, userId, null, null, now, now);
-        BankPlanCell cell = new BankPlanCell(UUID.randomUUID(), UUID.randomUUID(), null, null, null,
+                null, null, matrixId, null, true, 0, userId, null, null, now, now);
+        BankPlanCell cell = new BankPlanCell(matrixRowId, customLearningLevelId, null, null, "Stack operations",
                 "REMEMBER", "Remember", List.of(learningOutcomeId), 1, 1, 0, 0, 1, 0);
         BankPlan plan = new BankPlan(assessmentId, null, false, 1, 1, 0, 0, 1, 0, List.of(cell));
         return new Fixture(assessment, plan, bankQuestionId, learningOutcomeId);

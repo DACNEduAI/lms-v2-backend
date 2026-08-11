@@ -838,6 +838,8 @@ CREATE TABLE IF NOT EXISTS question_bank_allocations
     id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     question_bank_question_id UUID        NOT NULL REFERENCES question_bank_questions (id) ON DELETE RESTRICT,
     assessment_id             UUID        NOT NULL REFERENCES assessments (id) ON DELETE CASCADE,
+    matrix_row_id             UUID REFERENCES exam_matrix_rows (id) ON DELETE SET NULL,
+    custom_learning_level_id  UUID REFERENCES custom_learning_levels (id) ON DELETE SET NULL,
     status                    VARCHAR(20) NOT NULL
         CHECK (status IN ('RESERVED', 'USED', 'RELEASED')),
     reserved_at               TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -854,7 +856,31 @@ CREATE INDEX IF NOT EXISTS idx_question_bank_allocations_assessment
 ALTER TABLE questions
     ADD COLUMN IF NOT EXISTS chapter_id UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
     ADD COLUMN IF NOT EXISTS cognitive_level_id UUID REFERENCES cognitive_levels (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS matrix_row_id UUID REFERENCES exam_matrix_rows (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS custom_learning_level_id UUID REFERENCES custom_learning_levels (id) ON DELETE SET NULL,
     ADD COLUMN IF NOT EXISTS order_index INTEGER NOT NULL DEFAULT 0 CHECK (order_index >= 0);
+
+ALTER TABLE question_bank_allocations
+    ADD COLUMN IF NOT EXISTS matrix_row_id UUID REFERENCES exam_matrix_rows (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS custom_learning_level_id UUID REFERENCES custom_learning_levels (id) ON DELETE SET NULL;
+
+-- Backfill traces only when their Question Bank source already carries a recorded origin.
+-- Any remaining NULL remains explicitly unrecorded rather than guessed from compatible Matrix cells.
+UPDATE question_bank_allocations allocation
+SET matrix_row_id = COALESCE(allocation.matrix_row_id, bank.matrix_row_id),
+    custom_learning_level_id = COALESCE(allocation.custom_learning_level_id, bank.custom_learning_level_id)
+FROM question_bank_questions bank
+WHERE allocation.question_bank_question_id = bank.id
+  AND (allocation.matrix_row_id IS NULL OR allocation.custom_learning_level_id IS NULL)
+  AND (bank.matrix_row_id IS NOT NULL OR bank.custom_learning_level_id IS NOT NULL);
+
+UPDATE questions snapshot
+SET matrix_row_id = COALESCE(snapshot.matrix_row_id, bank.matrix_row_id),
+    custom_learning_level_id = COALESCE(snapshot.custom_learning_level_id, bank.custom_learning_level_id)
+FROM question_bank_questions bank
+WHERE snapshot.source_bank_question_id = bank.id
+  AND (snapshot.matrix_row_id IS NULL OR snapshot.custom_learning_level_id IS NULL)
+  AND (bank.matrix_row_id IS NOT NULL OR bank.custom_learning_level_id IS NOT NULL);
 
 CREATE TABLE IF NOT EXISTS assessment_variants
 (
