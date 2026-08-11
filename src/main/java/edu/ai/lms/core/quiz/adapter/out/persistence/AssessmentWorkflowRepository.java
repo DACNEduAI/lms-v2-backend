@@ -462,11 +462,10 @@ public class AssessmentWorkflowRepository {
         String where = filters.isEmpty() ? "" : " WHERE " + String.join(" AND ", filters);
         String countSql = "SELECT COUNT(*) FROM (" + union + ") review_items" + where;
         Long total = jdbc.queryForObject(countSql, params, Long.class);
-        List<ReviewRow> rows = jdbc.query("SELECT * FROM (" + union + ") review_items" + where + """
-                ORDER BY CASE status WHEN 'NOT_VALIDATED' THEN 0 WHEN 'VALIDATED' THEN 1 ELSE 2 END,
-                         updated_at DESC, review_id
-                LIMIT :size OFFSET :offset
-                """, params, this::mapReviewRow);
+        String pageSql = "SELECT * FROM (" + union + ") review_items" + where
+                + " ORDER BY CASE status WHEN 'NOT_VALIDATED' THEN 0 WHEN 'VALIDATED' THEN 1 ELSE 2 END,"
+                + " updated_at DESC, review_id LIMIT :size OFFSET :offset";
+        List<ReviewRow> rows = jdbc.query(pageSql, params, this::mapReviewRow);
         return new DraftReviewPage(assessmentId, hydrateReviewRows(rows), total == null ? 0 : total,
                 search.page(), search.size());
     }
@@ -820,7 +819,7 @@ public class AssessmentWorkflowRepository {
 
     private void copyBankQuestionToQuiz(UUID bankId, UUID quizId, int orderIndex, long seed) {
         Map<String, Object> bank = jdbc.queryForMap("""
-                SELECT content, question_type, chapter_id, cognitive_level_id
+                SELECT content, question_type AS type, chapter_id, cognitive_level_id
                 FROM edu.question_bank_questions WHERE id = :id
                 """, Map.of("id", bankId));
         UUID questionId = UUID.randomUUID();
