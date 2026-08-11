@@ -90,6 +90,11 @@ public class AssessmentController {
         return ResponseEntity.accepted().body(service.generateMissing(courseId, assessmentId));
     }
 
+    @GetMapping("/{assessmentId}/generation-batches")
+    public List<BatchView> batches(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+        return service.batches(courseId, assessmentId);
+    }
+
     @GetMapping("/{assessmentId}/generation-batches/{batchId}")
     public BatchView batch(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
             @PathVariable UUID batchId) {
@@ -117,6 +122,14 @@ public class AssessmentController {
     public DraftReviewView validate(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
             @PathVariable UUID draftId, @RequestBody SourceVersion request) {
         return service.validate(courseId, assessmentId, draftId, request.version());
+    }
+
+    @PostMapping("/{assessmentId}/draft-review/{draftId}/regenerate")
+    public ResponseEntity<BatchView> regenerateDraft(@PathVariable UUID courseId,
+            @PathVariable UUID assessmentId, @PathVariable UUID draftId,
+            @RequestBody SourceVersion request) {
+        return ResponseEntity.accepted()
+                .body(service.regenerateDraft(courseId, assessmentId, draftId, request.version()));
     }
 
     @PostMapping("/{assessmentId}/draft-review/batch-validate")

@@ -171,19 +171,34 @@ public class AssessmentWorkflowRepository {
                         rs.getObject("created_at", LocalDateTime.class),
                         rs.getObject("completed_at", LocalDateTime.class), List.of()))
                 .stream().findFirst().orElseThrow(() -> new IllegalArgumentException("Generation batch was not found"));
-        List<BatchCellView> cells = jdbc.query("""
-                SELECT id, matrix_row_id, custom_learning_level_id, required_count,
-                       generated_count, status, error_message, retry_count
-                FROM edu.assessment_generation_batch_items WHERE batch_id = :batchId
-                ORDER BY matrix_row_id, custom_learning_level_id
-                """, Map.of("batchId", batchId), (rs, rowNum) -> new BatchCellView(
-                rs.getObject("id", UUID.class), rs.getObject("matrix_row_id", UUID.class),
-                rs.getObject("custom_learning_level_id", UUID.class), rs.getInt("required_count"),
-                rs.getInt("generated_count"), rs.getString("status"), rs.getString("error_message"),
-                rs.getInt("retry_count")));
+        List<BatchCellView> cells = batchCells(batchId);
         return new BatchView(base.id(), base.assessmentId(), base.status(), base.optionCount(), base.totalCells(),
                 base.completedCells(), base.generatedQuestions(), base.errorMessage(), base.createdAt(),
                 base.completedAt(), cells);
+    }
+
+    public List<BatchView> listBatches(UUID courseId, UUID assessmentId) {
+        return jdbc.query("""
+                SELECT b.id FROM edu.assessment_generation_batches b
+                JOIN edu.assessments a ON a.id = b.assessment_id
+                WHERE a.course_id = :courseId AND b.assessment_id = :assessmentId
+                ORDER BY b.created_at DESC, b.id DESC
+                """, Map.of("courseId", courseId, "assessmentId", assessmentId),
+                (rs, rowNum) -> rs.getObject("id", UUID.class)).stream()
+                .map(batchId -> getBatch(courseId, assessmentId, batchId))
+                .toList();
+    }
+
+    public BatchView activeBatch(UUID courseId, UUID assessmentId) {
+        return jdbc.query("""
+                SELECT b.id FROM edu.assessment_generation_batches b
+                JOIN edu.assessments a ON a.id = b.assessment_id
+                WHERE a.course_id = :courseId AND b.assessment_id = :assessmentId
+                  AND b.status IN ('QUEUED', 'PROCESSING')
+                ORDER BY b.created_at DESC, b.id DESC LIMIT 1
+                """, Map.of("courseId", courseId, "assessmentId", assessmentId),
+                (rs, rowNum) -> rs.getObject("id", UUID.class)).stream()
+                .findFirst().map(batchId -> getBatch(courseId, assessmentId, batchId)).orElse(null);
     }
 
     public String batchRequestSnapshot(UUID batchId) {
@@ -708,14 +723,24 @@ public class AssessmentWorkflowRepository {
 
     private List<BatchCellView> batchCells(UUID batchId) {
         return jdbc.query("""
-                SELECT id, matrix_row_id, custom_learning_level_id, required_count,
-                       generated_count, status, error_message, retry_count
-                FROM edu.assessment_generation_batch_items WHERE batch_id = :batchId
-                """, Map.of("batchId", batchId), (rs, rowNum) -> new BatchCellView(
-                rs.getObject("id", UUID.class), rs.getObject("matrix_row_id", UUID.class),
-                rs.getObject("custom_learning_level_id", UUID.class), rs.getInt("required_count"),
-                rs.getInt("generated_count"), rs.getString("status"), rs.getString("error_message"),
-                rs.getInt("retry_count")));
+                SELECT i.id, i.matrix_row_id, i.custom_learning_level_id, r.chapter_id,
+                       ch.title AS chapter, r.topic, l.code AS level_code, l.name AS level_name,
+                       i.required_count, i.generated_count, i.status, i.error_message, i.retry_count
+                FROM edu.assessment_generation_batch_items i
+                JOIN edu.exam_matrix_rows r ON r.id = i.matrix_row_id
+                JOIN edu.custom_learning_levels l ON l.id = i.custom_learning_level_id
+                LEFT JOIN edu.chapters ch ON ch.chapter_id = r.chapter_id
+                WHERE i.batch_id = :batchId
+                ORDER BY r.order_index, l.sort_order, i.id
+                """, Map.of("batchId", batchId), (rs, rowNum) -> {
+            UUID rowId = rs.getObject("matrix_row_id", UUID.class);
+            UUID levelId = rs.getObject("custom_learning_level_id", UUID.class);
+            return new BatchCellView(rs.getObject("id", UUID.class), rowId, levelId,
+                    rs.getObject("chapter_id", UUID.class), rs.getString("chapter"), rs.getString("topic"),
+                    rs.getString("level_code"), rs.getString("level_name"), cellOutcomeIds(rowId, levelId),
+                    rs.getInt("required_count"), rs.getInt("generated_count"), rs.getString("status"),
+                    rs.getString("error_message"), rs.getInt("retry_count"));
+        });
     }
 
     private void validateGeneratedDraft(GeneratedDraft draft) {

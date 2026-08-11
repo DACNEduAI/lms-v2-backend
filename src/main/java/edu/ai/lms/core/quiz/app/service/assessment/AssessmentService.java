@@ -153,6 +153,8 @@ public class AssessmentService {
     public BatchView generateMissing(UUID courseId, UUID assessmentId) {
         CurrentActor actor = requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
+        BatchView active = workflow.activeBatch(courseId, assessmentId);
+        if (active != null) return active;
         if (assessment.currentStep() < 5) throw new IllegalStateException("Publish CCCT and Exam Matrix before generation");
         List<String> unavailable = assessments.unreadyMaterialNames(courseId);
         if (!unavailable.isEmpty()) {
@@ -170,6 +172,12 @@ public class AssessmentService {
         return batch;
     }
 
+    public List<BatchView> batches(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        required(courseId, assessmentId);
+        return workflow.listBatches(courseId, assessmentId);
+    }
+
     public BatchView getBatch(UUID courseId, UUID assessmentId, UUID batchId) {
         requireTeacher(courseId);
         required(courseId, assessmentId);
@@ -182,6 +190,36 @@ public class AssessmentService {
         String snapshot = workflow.prepareCellRetry(courseId, assessmentId, batchId, cellId);
         dispatcher.retryCell(batchId, snapshot);
         return workflow.getBatch(courseId, assessmentId, batchId);
+    }
+
+    @Transactional
+    public BatchView regenerateDraft(UUID courseId, UUID assessmentId, UUID draftId, long version) {
+        CurrentActor actor = requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        var provenance = workflow.draftProvenance(assessmentId, draftId);
+        BankPlan plan = workflow.bankPlan(assessment);
+        BankPlanCell source = plan.cells().stream()
+                .filter(cell -> cell.matrixRowId().equals(provenance.matrixRowId())
+                        && cell.customLearningLevelId().equals(provenance.customLearningLevelId()))
+                .findFirst().orElseThrow(() -> new IllegalStateException("The Draft Matrix cell no longer exists"));
+        List<String> unavailable = assessments.unreadyMaterialNames(courseId);
+        if (!unavailable.isEmpty()) {
+            throw new IllegalStateException("Materials are not ready for AI generation: " + String.join(", ", unavailable));
+        }
+        List<UUID> materialIds = assessments.allMaterialIds(courseId);
+        if (materialIds.isEmpty()) throw new IllegalStateException("The course has no source materials");
+
+        questionBank.deleteDraft(courseId, draftId, version);
+        BankPlanCell replacement = new BankPlanCell(source.matrixRowId(), source.customLearningLevelId(),
+                source.chapterId(), source.chapter(), source.topic(), source.levelCode(), source.levelName(),
+                source.learningOutcomeIds(), 1, 0, 0, 0, 0, 1);
+        BankPlan replacementPlan = new BankPlan(assessment.id(), assessment.examMatrixId(),
+                assessment.allowRecentlyUsedQuestions(), 1, 0, 0, 0, 0, 1, List.of(replacement));
+        String snapshot = generationSnapshot(assessment, replacementPlan, materialIds);
+        BatchView batch = workflow.createBatch(assessment, replacementPlan, actor.id(), snapshot);
+        assessments.markGenerationStarted(courseId, assessmentId);
+        dispatcher.dispatch(batch.id());
+        return batch;
     }
 
     public DraftReviewView review(UUID courseId, UUID assessmentId) {
