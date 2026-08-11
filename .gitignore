@@ -42,6 +42,9 @@ src/main/resources/application-local.properties
 
 ### Local Stack storage development ###
 /storage
+/backups
+backend-server.log
+backend-server.err.log
 
 ### postman
 postman/**
