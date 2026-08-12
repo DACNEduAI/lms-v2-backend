@@ -19,6 +19,7 @@ DROP TABLE IF EXISTS
     enrollments,
     quizzes,
     questions,
+    rich_content_assets,
     question_generation_provenance,
     question_images,
     answers,
@@ -494,6 +495,8 @@ CREATE TABLE IF NOT EXISTS question_drafts
     chapter_id         UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
     cognitive_level_id UUID REFERENCES cognitive_levels (id) ON DELETE RESTRICT,
     content            TEXT        NOT NULL CHECK (btrim(content) <> ''),
+    content_format     VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
+        CHECK (content_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     question_type      VARCHAR(30) NOT NULL
         CHECK (question_type IN ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')),
     source_type        VARCHAR(30) NOT NULL DEFAULT 'MANUAL'
@@ -516,6 +519,10 @@ CREATE TABLE IF NOT EXISTS question_draft_answers
     content           TEXT      NOT NULL CHECK (btrim(content) <> ''),
     is_correct        BOOLEAN   NOT NULL DEFAULT false,
     explanation       TEXT,
+    content_format    VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
+        CHECK (content_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
+    explanation_format VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
+        CHECK (explanation_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     order_index       INTEGER   NOT NULL CHECK (order_index >= 0),
     created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -545,6 +552,8 @@ CREATE TABLE IF NOT EXISTS question_bank_questions
     chapter_id         UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
     cognitive_level_id UUID        NOT NULL REFERENCES cognitive_levels (id) ON DELETE RESTRICT,
     content            TEXT        NOT NULL CHECK (btrim(content) <> ''),
+    content_format     VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
+        CHECK (content_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     question_type      VARCHAR(30) NOT NULL
         CHECK (question_type IN ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')),
     source_type        VARCHAR(30) NOT NULL DEFAULT 'MANUAL'
@@ -569,6 +578,10 @@ CREATE TABLE IF NOT EXISTS question_bank_answers
     content                   TEXT      NOT NULL CHECK (btrim(content) <> ''),
     is_correct                BOOLEAN   NOT NULL DEFAULT false,
     explanation               TEXT,
+    content_format            VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
+        CHECK (content_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
+    explanation_format        VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
+        CHECK (explanation_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     order_index               INTEGER   NOT NULL CHECK (order_index >= 0),
     created_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -677,6 +690,8 @@ CREATE TABLE IF NOT EXISTS questions
 (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content             TEXT,
+    content_format      VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
+        CHECK (content_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     type                VARCHAR(50),
     quiz_id             UUID REFERENCES quizzes (id) ON DELETE CASCADE,
     review_status       VARCHAR(30) NOT NULL DEFAULT 'APPROVED'
@@ -816,7 +831,8 @@ ALTER TABLE question_drafts
         CHECK (review_status IN ('NOT_VALIDATED', 'REJECTED')),
     ADD COLUMN IF NOT EXISTS rejected_by UUID REFERENCES users (id) ON DELETE SET NULL,
     ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+    ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
+    ADD COLUMN IF NOT EXISTS supersedes_bank_question_id UUID REFERENCES question_bank_questions (id) ON DELETE SET NULL;
 
 ALTER TABLE question_bank_questions
     ADD COLUMN IF NOT EXISTS assessment_id UUID REFERENCES assessments (id) ON DELETE SET NULL,
@@ -824,7 +840,8 @@ ALTER TABLE question_bank_questions
     ADD COLUMN IF NOT EXISTS matrix_row_id UUID REFERENCES exam_matrix_rows (id) ON DELETE SET NULL,
     ADD COLUMN IF NOT EXISTS custom_learning_level_id UUID REFERENCES custom_learning_levels (id) ON DELETE SET NULL,
     ADD COLUMN IF NOT EXISTS recently_used BOOLEAN NOT NULL DEFAULT false,
-    ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMP;
+    ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS supersedes_bank_question_id UUID REFERENCES question_bank_questions (id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_question_drafts_assessment_review
     ON question_drafts (assessment_id, review_status, updated_at DESC);
@@ -935,6 +952,31 @@ CREATE TABLE IF NOT EXISTS question_images
 CREATE INDEX IF NOT EXISTS idx_question_images_question_id ON question_images (question_id);
 UPDATE question_images SET source_type='UPLOAD' WHERE source_type IS NULL;
 
+-- Embedded editor images are separate from legacy/AI visual metadata.
+CREATE TABLE IF NOT EXISTS rich_content_assets
+(
+    id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    question_draft_id         UUID REFERENCES question_drafts (id) ON DELETE CASCADE,
+    question_bank_question_id UUID REFERENCES question_bank_questions (id) ON DELETE CASCADE,
+    question_id               UUID REFERENCES questions (id) ON DELETE CASCADE,
+    storage_key               VARCHAR(1024) NOT NULL,
+    media_type                VARCHAR(255)  NOT NULL,
+    byte_size                 BIGINT        NOT NULL CHECK (byte_size >= 0 AND byte_size <= 10485760),
+    sha256                    CHAR(64)      NOT NULL,
+    created_at                TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_rich_content_asset_exactly_one_owner CHECK (
+        ((question_draft_id IS NOT NULL)::int + (question_bank_question_id IS NOT NULL)::int
+            + (question_id IS NOT NULL)::int) = 1
+    )
+);
+CREATE INDEX IF NOT EXISTS idx_rich_content_assets_draft
+    ON rich_content_assets (question_draft_id) WHERE question_draft_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_rich_content_assets_bank
+    ON rich_content_assets (question_bank_question_id) WHERE question_bank_question_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_rich_content_assets_question
+    ON rich_content_assets (question_id) WHERE question_id IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS question_image_generation_jobs
 (
     id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -980,6 +1022,10 @@ CREATE TABLE IF NOT EXISTS answers
     content       TEXT,
     is_correct    BOOLEAN   DEFAULT false,
     explanation   TEXT,
+    content_format VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
+        CHECK (content_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
+    explanation_format VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
+        CHECK (explanation_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     question_id   UUID NOT NULL REFERENCES questions (id),
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
