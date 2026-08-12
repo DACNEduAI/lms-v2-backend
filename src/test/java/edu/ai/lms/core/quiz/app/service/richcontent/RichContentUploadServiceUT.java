@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
+import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentAsset;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichTextValue;
 import edu.ai.lms.core.quiz.app.exception.RichContentValidationException;
 import edu.ai.lms.core.quiz.app.port.out.RichContentAssetStoragePort;
@@ -52,5 +54,20 @@ class RichContentUploadServiceUT {
                 "<svg onload=\"alert(1)\"></svg>".getBytes());
         assertThrows(RichContentValidationException.class, () -> service.prepare(List.of(new RichTextValue(
                 "<img src=\"pending-image://" + id + "\">", RichContentFormat.TIPTAP_HTML)), List.of(unsafeSvg), List.of()));
+    }
+
+    @Test
+    void findsReferencedStorageKeysFromSingleOrDoubleQuotedImageSources() {
+        when(storage.publicUrl("quiz2/rich-content/existing.png"))
+                .thenReturn("https://storage.example/quiz2/rich-content/existing.png");
+        RichContentUploadService service = new RichContentUploadService(storage);
+        RichContentAsset existing = new RichContentAsset(UUID.randomUUID(), UUID.randomUUID(), null, null,
+                "quiz2/rich-content/existing.png", "image/png", 1, "hash", null, null);
+
+        Set<String> referenced = service.referencedStorageKeys(List.of(new RichTextValue(
+                "<p><img src='https://storage.example/quiz2/rich-content/existing.png'></p>",
+                RichContentFormat.TIPTAP_HTML)), List.of(existing), List.of());
+
+        assertTrue(referenced.contains("quiz2/rich-content/existing.png"));
     }
 }

@@ -53,7 +53,7 @@ class QuestionBankControllerIT extends IntegrationTestConfiguration {
                 .post(basePath(), courseId)
                 .then().statusCode(201)
                 .body("version", equalTo(0))
-                .body("answers", hasSize(2))
+                .body("answers", hasSize(4))
                 .extract();
         draftId = UUID.fromString(response.path("id"));
 
@@ -179,7 +179,9 @@ class QuestionBankControllerIT extends IntegrationTestConfiguration {
                  "cognitiveLevelCode":"UNDERSTAND",
                  "answers":[
                    {"content":"Yes","correct":true,"explanation":"Correct"},
-                   {"content":"No","correct":false}
+                   {"content":"No","correct":false,"explanation":"Incorrect"},
+                   {"content":"Maybe","correct":false,"explanation":"Incorrect"},
+                   {"content":"Unknown","correct":false,"explanation":"Incorrect"}
                  ],"learningOutcomeIds":["%s"]}
                 """.formatted(targetChapterId, content, targetOutcomeId);
     }

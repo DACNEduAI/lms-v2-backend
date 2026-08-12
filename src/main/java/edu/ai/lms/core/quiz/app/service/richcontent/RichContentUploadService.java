@@ -40,7 +40,7 @@ import lombok.RequiredArgsConstructor;
 public class RichContentUploadService {
     private static final long MAX_IMAGE_BYTES = 10L * 1024 * 1024;
     private static final Pattern PENDING_SOURCE = Pattern.compile("pending-image://([0-9a-fA-F-]{8,})");
-    private static final Pattern IMAGE_SOURCE = Pattern.compile("<img\\b[^>]*\\bsrc\\s*=\\s*\\\"([^\\\"]+)\\\"", Pattern.CASE_INSENSITIVE);
+    private static final Pattern IMAGE_SOURCE = Pattern.compile("<img\\b[^>]*\\bsrc\\s*=\\s*(['\\\"])(.*?)\\1", Pattern.CASE_INSENSITIVE);
     private static final Set<String> EXTENSIONS = Set.of("png", "jpg", "jpeg", "webp", "gif", "svg");
 
     private final RichContentAssetStoragePort storage;
@@ -108,6 +108,33 @@ public class RichContentUploadService {
         return assetsFor(null, null, questionId, assets);
     }
 
+    /**
+     * Resolves the storage keys still referenced by a document after pending
+     * image URLs have been rewritten. Metadata can be removed safely while the
+     * object itself is intentionally retained for v1 recovery/audit.
+     */
+    public Set<String> referencedStorageKeys(List<RichTextValue> values,
+            Collection<RichContentAsset> existingAssets, Collection<UploadedAsset> uploadedAssets) {
+        Map<String, String> keysByUrl = new HashMap<>();
+        if (existingAssets != null) existingAssets.forEach(asset ->
+                keysByUrl.put(storage.publicUrl(asset.storageKey()), asset.storageKey()));
+        if (uploadedAssets != null) uploadedAssets.forEach(asset ->
+                keysByUrl.put(asset.publicUrl(), asset.storageKey()));
+        Set<String> referenced = new LinkedHashSet<>();
+        for (RichTextValue value : values == null ? List.<RichTextValue>of() : values) {
+            if (value.contentFormat() != RichContentFormat.TIPTAP_HTML) continue;
+            Matcher image = IMAGE_SOURCE.matcher(value.content());
+            while (image.find()) {
+                String storageKey = keysByUrl.get(image.group(2));
+                if (storageKey == null) {
+                    throw new RichContentValidationException("External or unowned image URLs are not permitted");
+                }
+                referenced.add(storageKey);
+            }
+        }
+        return referenced;
+    }
+
     private List<RichContentAsset> assetsFor(UUID draftId, UUID bankId, UUID questionId, Collection<UploadedAsset> assets) {
         return assets.stream().map(asset -> new RichContentAsset(UUID.randomUUID(), draftId, bankId, questionId,
                 asset.storageKey(), asset.mediaType(), asset.byteSize(), asset.sha256(), null, null)).toList();
@@ -151,7 +178,7 @@ public class RichContentUploadService {
         pending.appendTail(rewritten);
         Matcher image = IMAGE_SOURCE.matcher(rewritten.toString());
         while (image.find()) {
-            if (!knownUrls.contains(image.group(1))) {
+            if (!knownUrls.contains(image.group(2))) {
                 throw new RichContentValidationException("External or unowned image URLs are not permitted");
             }
         }

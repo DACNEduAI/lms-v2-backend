@@ -1,6 +1,7 @@
 package edu.ai.lms.core.quiz.app.service.assessment;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -25,6 +26,8 @@ import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.AssessmentVie
 import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.BatchValidationResult;
 import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.DraftReviewPage;
 import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.DraftReviewSearch;
+import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.LifecycleStatus;
+import edu.ai.lms.core.quiz.app.exception.AssessmentValidationException;
 import edu.ai.lms.core.quiz.app.port.in.usecase.QuestionBankUseCase;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
@@ -99,5 +102,19 @@ class AssessmentServiceReviewUT {
         verify(draftValidator).validate(courseId, assessmentId, first, 1, 4);
         verify(draftValidator).validate(courseId, assessmentId, third, 3, 4);
         verify(workflow, never()).review(assessmentId);
+    }
+
+    @Test
+    void refusesConfigurationEditsAfterPublish() {
+        when(assessment.lifecycleStatus()).thenReturn(LifecycleStatus.PUBLISHED);
+
+        AssessmentValidationException error = assertThrows(AssessmentValidationException.class, () -> service.update(
+                courseId, assessmentId, 1,
+                new AssessmentService.AssessmentConfiguration("Assessment", null, true, null, null,
+                        null, null, null, 1, 4, false)));
+
+        assertEquals("ASSESSMENT_READ_ONLY", error.getCode());
+        verify(assessments, never()).update(any(), any(), anyLong(), any(), any(), anyBoolean(), any(), any(),
+                any(), any(), any(), anyInt(), anyInt(), anyBoolean(), any());
     }
 }

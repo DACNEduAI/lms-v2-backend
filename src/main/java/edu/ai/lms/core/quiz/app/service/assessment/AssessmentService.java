@@ -26,6 +26,7 @@ import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichTextValue;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
+import edu.ai.lms.core.quiz.app.exception.AssessmentValidationException;
 import edu.ai.lms.core.quiz.app.port.in.usecase.QuestionBankUseCase;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
@@ -68,6 +69,11 @@ public class AssessmentService {
 
     public AssessmentView update(UUID courseId, UUID assessmentId, long version, AssessmentConfiguration input) {
         CurrentActor actor = requireTeacher(courseId);
+        AssessmentView current = required(courseId, assessmentId);
+        if (current.lifecycleStatus() == LifecycleStatus.PUBLISHED) {
+            throw new AssessmentValidationException("ASSESSMENT_READ_ONLY", "configuration", null, null,
+                    "Assessment is published and read-only; unpublish it before editing");
+        }
         validateConfiguration(input);
         if (!assessments.update(courseId, assessmentId, version, input.title().trim(), trimToNull(input.description()),
                 input.unlimited(), input.timeLimitMinutes(), input.passScore(), input.startTime(), input.dueTime(),

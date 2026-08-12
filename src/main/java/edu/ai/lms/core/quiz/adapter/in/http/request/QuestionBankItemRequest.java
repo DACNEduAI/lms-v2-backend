@@ -15,7 +15,7 @@ import jakarta.validation.constraints.Size;
 
 public record QuestionBankItemRequest(
         UUID chapterId,
-        @NotBlank @Size(max = 10000) String content,
+        @NotBlank @Size(max = 262144) String content,
         RichContentFormat contentFormat,
         @NotNull Question.QuestionType questionType,
         CognitiveLevelCode cognitiveLevelCode,
@@ -39,10 +39,10 @@ public record QuestionBankItemRequest(
     }
 
     public record AnswerRequest(
-            @NotBlank @Size(max = 5000) String content,
+            @NotBlank @Size(max = 131072) String content,
             RichContentFormat contentFormat,
             boolean correct,
-            @Size(max = 5000) String explanation,
+            @Size(max = 131072) String explanation,
             RichContentFormat explanationFormat) {
         public AnswerRequest(String content, boolean correct, String explanation) {
             this(content, RichContentFormat.PLAIN_TEXT, correct, explanation, RichContentFormat.PLAIN_TEXT);

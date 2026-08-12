@@ -29,18 +29,23 @@ public class QuestionBankRichContentService {
         uploads.cleanupAfterRollback(prepared.uploadedAssets());
         QuestionDraft saved = questionBank.createDraft(courseId, rewrite(request, prepared.values()).toCommand());
         assets.saveAll(uploads.assetsForDraft(saved.getId(), prepared.uploadedAssets()));
+        assets.retainForDraft(saved.getId(), uploads.referencedStorageKeys(prepared.values(), List.of(),
+                prepared.uploadedAssets()));
         return saved;
     }
 
     @Transactional
     public QuestionDraft updateDraft(UUID courseId, UUID draftId, long version, QuestionBankItemRequest request,
             List<MultipartFile> images) {
+        List<edu.ai.lms.core.quiz.app.domain.richcontent.RichContentAsset> existing = assets.findByQuestionDraftId(draftId);
         RichContentUploadService.PreparedRichContent prepared = uploads.prepare(values(request), images,
-                assets.findByQuestionDraftId(draftId));
+                existing);
         uploads.cleanupAfterRollback(prepared.uploadedAssets());
         QuestionDraft saved = questionBank.updateDraft(courseId, draftId, version,
                 rewrite(request, prepared.values()).toCommand());
         assets.saveAll(uploads.assetsForDraft(saved.getId(), prepared.uploadedAssets()));
+        assets.retainForDraft(saved.getId(), uploads.referencedStorageKeys(prepared.values(), existing,
+                prepared.uploadedAssets()));
         return saved;
     }
 

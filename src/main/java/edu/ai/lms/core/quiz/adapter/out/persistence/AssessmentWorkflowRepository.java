@@ -51,6 +51,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.AssessmentView;
 import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.LifecycleStatus;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
+import edu.ai.lms.core.quiz.app.domain.richcontent.RichTextValue;
+import edu.ai.lms.core.quiz.app.exception.AssessmentValidationException;
+import edu.ai.lms.core.quiz.app.exception.RichContentValidationException;
+import edu.ai.lms.core.quiz.app.service.richcontent.RichContentPolicyService;
+import edu.ai.lms.core.quiz.app.service.richcontent.RichContentUploadService;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -59,6 +64,8 @@ public class AssessmentWorkflowRepository {
     private final NamedParameterJdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
     private final RichContentAssetRepository richContentAssets;
+    private final RichContentPolicyService richContentPolicy;
+    private final RichContentUploadService richContentUploads;
 
     public BankPlan bankPlan(AssessmentView assessment) {
         if (assessment.examMatrixId() == null) throw new IllegalStateException("Select an Exam Matrix first");
@@ -724,15 +731,23 @@ public class AssessmentWorkflowRepository {
 
     @Transactional
     public PublishResult publish(AssessmentView assessment, UUID actorId) {
+        AssessmentQuestionProgress progress = questionProgress(assessment);
+        if (!progress.complete()) {
+            throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED", "questions", null, null,
+                    "Every variant must contain exactly " + progress.requiredPerVariant() + " Matrix questions before publishing");
+        }
         List<VariantView> variants = variants(assessment.id());
-        if (variants.size() != assessment.variantCount()) throw new IllegalStateException("Assessment variants are incomplete");
+        if (variants.size() != assessment.variantCount()) {
+            throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED", "variants", null, null,
+                    "Assessment variants are incomplete");
+        }
         for (VariantView variant : variants) {
-            validateVariantStructure(variant.quizId(), assessment.optionCount());
+            validateVariantStructure(variant, assessment.optionCount());
+            validateVariantRichContent(variant);
             String status = recalculateCoverage(assessment, variant.id());
             if ("DRIFTED".equals(status)) {
-                String reason = jdbc.queryForObject("SELECT override_reason FROM edu.assessment_variants WHERE id = :id",
-                        Map.of("id", variant.id()), String.class);
-                if (reason == null || reason.isBlank()) throw new IllegalStateException("Every drifted variant needs an override reason");
+                throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED", "coverage", variant.id(), null,
+                        "Every variant must satisfy the Assessment Matrix before publishing; coverage overrides cannot bypass this rule");
             }
         }
         LocalDateTime publishedAt = LocalDateTime.now();
@@ -938,18 +953,62 @@ public class AssessmentWorkflowRepository {
                 .orElseThrow(() -> new IllegalArgumentException("Assessment variant was not found"));
     }
 
-    private void validateVariantStructure(UUID quizId, int optionCount) {
-        Integer invalidMcq = jdbc.queryForObject("""
-                SELECT COUNT(*) FROM edu.questions q
-                WHERE q.quiz_id = :quizId AND q.type = 'MULTIPLE_CHOICE'
-                  AND ((SELECT COUNT(*) FROM edu.answers a WHERE a.question_id = q.id) <> :optionCount
-                       OR (SELECT COUNT(*) FROM edu.answers a WHERE a.question_id = q.id AND a.is_correct) <> 1)
-                """, Map.of("quizId", quizId, "optionCount", optionCount), Integer.class);
-        Integer blank = jdbc.queryForObject("""
-                SELECT COUNT(*) FROM edu.questions q WHERE q.quiz_id = :quizId AND btrim(COALESCE(q.content, '')) = ''
-                """, Map.of("quizId", quizId), Integer.class);
-        if ((invalidMcq != null && invalidMcq > 0) || (blank != null && blank > 0)) {
-            throw new IllegalStateException("Variant contains structurally invalid questions");
+    private void validateVariantStructure(VariantView variant, int optionCount) {
+        for (int questionIndex = 0; questionIndex < variant.questions().size(); questionIndex++) {
+            VariantQuestionView question = variant.questions().get(questionIndex);
+            if (!"MULTIPLE_CHOICE".equals(question.type()) || question.answers().size() != optionCount
+                    || question.answers().stream().filter(AnswerView::correct).count() != 1) {
+                throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED",
+                        "questions[" + questionIndex + "]", variant.id(), question.id(),
+                        "Every variant question must be a multiple-choice question with exactly " + optionCount
+                                + " answers and one correct answer");
+            }
+        }
+    }
+
+    private void validateVariantRichContent(VariantView variant) {
+        for (int questionIndex = 0; questionIndex < variant.questions().size(); questionIndex++) {
+            VariantQuestionView question = variant.questions().get(questionIndex);
+            List<RichTextValue> values = new ArrayList<>();
+            validatePublishValue(new RichTextValue(question.content(), question.contentFormat()),
+                    RichContentPolicyService.MAX_PROMPT_HTML_LENGTH, true,
+                    "questions[" + questionIndex + "].content", variant.id(), question.id());
+            values.add(new RichTextValue(question.content(), question.contentFormat()));
+            for (int answerIndex = 0; answerIndex < question.answers().size(); answerIndex++) {
+                AnswerView answer = question.answers().get(answerIndex);
+                String prefix = "questions[" + questionIndex + "].answers[" + answerIndex + "]";
+                validatePublishValue(new RichTextValue(answer.content(), answer.contentFormat()),
+                        RichContentPolicyService.MAX_ANSWER_HTML_LENGTH, true, prefix + ".content", variant.id(), question.id());
+                validatePublishValue(new RichTextValue(answer.explanation(), answer.explanationFormat()),
+                        RichContentPolicyService.MAX_ANSWER_HTML_LENGTH, true, prefix + ".explanation", variant.id(), question.id());
+                values.add(new RichTextValue(answer.content(), answer.contentFormat()));
+                values.add(new RichTextValue(answer.explanation(), answer.explanationFormat()));
+            }
+            try {
+                richContentUploads.referencedStorageKeys(values, richContentAssets.findByQuestionId(question.id()), List.of());
+            } catch (RichContentValidationException ex) {
+                throw new AssessmentValidationException("IMAGE_REFERENCE_INVALID",
+                        "questions[" + questionIndex + "]", variant.id(), question.id(), ex.getMessage());
+            }
+        }
+    }
+
+    private void validatePublishValue(RichTextValue original, int maxLength, boolean required,
+            String fieldPath, UUID variantId, UUID questionId) {
+        try {
+            RichTextValue sanitized = richContentPolicy.sanitize(original, maxLength);
+            if (!sanitized.equals(original)) {
+                throw new AssessmentValidationException("RICH_CONTENT_INVALID", fieldPath, variantId, questionId,
+                        "Rich content must be saved through the supported editor before publishing");
+            }
+            if (required && !richContentPolicy.hasMeaningfulContent(sanitized)) {
+                throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED", fieldPath, variantId, questionId,
+                        "This field requires visible text, a formula, an image, or a non-empty table");
+            }
+        } catch (RichContentValidationException ex) {
+            String code = ex.getMessage() != null && ex.getMessage().toLowerCase().contains("latex")
+                    ? "LATEX_INVALID" : "RICH_CONTENT_INVALID";
+            throw new AssessmentValidationException(code, fieldPath, variantId, questionId, ex.getMessage());
         }
     }
 

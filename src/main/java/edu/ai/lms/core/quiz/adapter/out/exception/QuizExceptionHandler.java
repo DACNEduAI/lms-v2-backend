@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import edu.ai.lms.common.api.ErrorResponse;
 import edu.ai.lms.core.quiz.app.exception.InvalidLearningOutcomeException;
+import edu.ai.lms.core.quiz.app.exception.AssessmentValidationException;
 import edu.ai.lms.core.quiz.app.exception.InvalidQuizGenerationRequestException;
 import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.QuestionBankConflictException;
@@ -35,6 +36,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
  */
 @RestControllerAdvice(basePackages = "edu.ai.lms.core.quiz.adapter.in")
 public class QuizExceptionHandler {
+
+    @ExceptionHandler(AssessmentValidationException.class)
+    public ResponseEntity<ErrorResponse> handleAssessmentValidation(AssessmentValidationException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ErrorResponse.builder()
+                .status(HttpStatus.UNPROCESSABLE_ENTITY.value()).error("Assessment Validation Failed")
+                .message(ex.getMessage()).code(ex.getCode()).fieldPath(ex.getFieldPath())
+                .variantId(ex.getVariantId()).questionId(ex.getQuestionId()).build());
+    }
 
     @ExceptionHandler(QuizLifecycleConflictException.class)
     public ResponseEntity<ErrorResponse> handleQuizLifecycleConflict(QuizLifecycleConflictException ex) {

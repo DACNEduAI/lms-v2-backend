@@ -3,6 +3,7 @@ package edu.ai.lms.core.quiz.adapter.out.persistence;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -62,6 +63,18 @@ public class RichContentAssetRepository {
         return find("question_id", questionId);
     }
 
+    public void retainForDraft(UUID draftId, Set<String> storageKeys) {
+        retain("question_draft_id", draftId, storageKeys);
+    }
+
+    public void retainForBank(UUID bankId, Set<String> storageKeys) {
+        retain("question_bank_question_id", bankId, storageKeys);
+    }
+
+    public void retainForQuestion(UUID questionId, Set<String> storageKeys) {
+        retain("question_id", questionId, storageKeys);
+    }
+
     private List<RichContentAsset> find(String ownerColumn, UUID ownerId) {
         return jdbc.query("SELECT * FROM edu.rich_content_assets WHERE " + ownerColumn + " = :ownerId ORDER BY created_at, id",
                 Map.of("ownerId", ownerId), (rs, rowNum) -> new RichContentAsset(
@@ -79,5 +92,16 @@ public class RichContentAssetRepository {
                 SELECT gen_random_uuid(), :targetId, storage_key, media_type, byte_size, sha256
                 FROM edu.rich_content_assets WHERE %s = :sourceId
                 """.formatted(targetColumn, sourceColumn), Map.of("sourceId", sourceId, "targetId", targetId));
+    }
+
+    private void retain(String ownerColumn, UUID ownerId, Set<String> storageKeys) {
+        if (storageKeys == null || storageKeys.isEmpty()) {
+            jdbc.update("DELETE FROM edu.rich_content_assets WHERE " + ownerColumn + " = :ownerId",
+                    Map.of("ownerId", ownerId));
+            return;
+        }
+        jdbc.update("DELETE FROM edu.rich_content_assets WHERE " + ownerColumn
+                        + " = :ownerId AND storage_key NOT IN (:storageKeys)",
+                new MapSqlParameterSource().addValue("ownerId", ownerId).addValue("storageKeys", storageKeys));
     }
 }

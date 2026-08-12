@@ -40,6 +40,21 @@ class RichContentPolicyServiceUT {
     }
 
     @Test
+    void rejectsMalformedOrIncompleteMathNodesWithoutPretendingToParseKatex() {
+        assertThrows(RichContentValidationException.class, () -> service.sanitize(new RichTextValue(
+                "<span data-type=\"inline-math\"></span>", RichContentFormat.TIPTAP_HTML), 10_000));
+        assertThrows(RichContentValidationException.class, () -> service.sanitize(new RichTextValue(
+                "<span data-type=\"block-math\" data-latex=\"x^{2\"></span>", RichContentFormat.TIPTAP_HTML), 10_000));
+    }
+
+    @Test
+    void forcesSafeRelOnEveryExternalLink() {
+        var value = service.sanitize(new RichTextValue("<p><a href=\"https://example.test\">open</a></p>",
+                RichContentFormat.TIPTAP_HTML), 10_000);
+        assertTrue(value.content().contains("rel=\"noopener noreferrer\""));
+    }
+
+    @Test
     void detectsMathAndImagesAsMeaningfulContent() {
         assertTrue(service.hasMeaningfulContent(new RichTextValue(
                 "<span data-type=\"inline-math\" data-latex=\"x\"></span>", RichContentFormat.TIPTAP_HTML)));
