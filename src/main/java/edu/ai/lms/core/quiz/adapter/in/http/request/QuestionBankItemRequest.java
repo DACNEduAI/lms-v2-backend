@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode;
+import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
 import edu.ai.lms.core.quiz.app.port.in.command.QuestionBankItemCommand;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -15,15 +16,22 @@ import jakarta.validation.constraints.Size;
 public record QuestionBankItemRequest(
         UUID chapterId,
         @NotBlank @Size(max = 10000) String content,
+        RichContentFormat contentFormat,
         @NotNull Question.QuestionType questionType,
         CognitiveLevelCode cognitiveLevelCode,
         @Size(max = 10) List<@Valid AnswerRequest> answers,
         Set<UUID> learningOutcomeIds) {
 
+    public QuestionBankItemRequest(UUID chapterId, String content, Question.QuestionType questionType,
+            CognitiveLevelCode cognitiveLevelCode, List<AnswerRequest> answers, Set<UUID> learningOutcomeIds) {
+        this(chapterId, content, RichContentFormat.PLAIN_TEXT, questionType, cognitiveLevelCode, answers, learningOutcomeIds);
+    }
+
     public QuestionBankItemCommand toCommand() {
         return new QuestionBankItemCommand(
                 chapterId,
                 content,
+                contentFormat == null ? RichContentFormat.PLAIN_TEXT : contentFormat,
                 questionType,
                 cognitiveLevelCode,
                 answers == null ? List.of() : answers.stream().map(AnswerRequest::toCommand).toList(),
@@ -32,10 +40,19 @@ public record QuestionBankItemRequest(
 
     public record AnswerRequest(
             @NotBlank @Size(max = 5000) String content,
+            RichContentFormat contentFormat,
             boolean correct,
-            @Size(max = 5000) String explanation) {
+            @Size(max = 5000) String explanation,
+            RichContentFormat explanationFormat) {
+        public AnswerRequest(String content, boolean correct, String explanation) {
+            this(content, RichContentFormat.PLAIN_TEXT, correct, explanation, RichContentFormat.PLAIN_TEXT);
+        }
+
         QuestionBankItemCommand.Answer toCommand() {
-            return new QuestionBankItemCommand.Answer(content, correct, explanation);
+            return new QuestionBankItemCommand.Answer(content,
+                    contentFormat == null ? RichContentFormat.PLAIN_TEXT : contentFormat,
+                    correct, explanation,
+                    explanationFormat == null ? RichContentFormat.PLAIN_TEXT : explanationFormat);
         }
     }
 }

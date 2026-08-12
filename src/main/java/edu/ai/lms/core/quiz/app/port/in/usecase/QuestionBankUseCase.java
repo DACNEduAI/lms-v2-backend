@@ -21,6 +21,8 @@ public interface QuestionBankUseCase {
 
     QuestionBankQuestion getBankQuestion(UUID courseId, UUID questionId);
 
+    QuestionDraft createSuccessorDraft(UUID courseId, UUID questionId);
+
     QuestionDraft updateDraft(UUID courseId, UUID draftId, long version, QuestionBankItemCommand command);
 
     QuestionBankQuestion validateDraft(UUID courseId, UUID draftId, long version);

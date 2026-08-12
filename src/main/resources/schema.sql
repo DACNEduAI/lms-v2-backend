@@ -776,6 +776,8 @@ CREATE TABLE IF NOT EXISTS assessments
     version                         BIGINT       NOT NULL DEFAULT 0 CHECK (version >= 0),
     published_by                    UUID REFERENCES users (id) ON DELETE SET NULL,
     published_at                    TIMESTAMP,
+    last_unpublished_by             UUID REFERENCES users (id) ON DELETE SET NULL,
+    last_unpublished_at             TIMESTAMP,
     created_at                      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (due_time IS NULL OR start_time IS NULL OR due_time > start_time)

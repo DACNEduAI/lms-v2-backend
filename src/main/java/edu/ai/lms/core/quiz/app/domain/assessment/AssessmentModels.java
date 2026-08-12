@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
+
 public final class AssessmentModels {
     private AssessmentModels() {
     }
@@ -42,7 +44,27 @@ public final class AssessmentModels {
             UUID publishedBy,
             LocalDateTime publishedAt,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt) {
+            LocalDateTime updatedAt,
+            AssessmentQuestionProgress questionProgress) {
+        public AssessmentView(UUID id, UUID courseId, String title, String description, boolean unlimited,
+                Integer timeLimitMinutes, Double passScore, LocalDateTime startTime, LocalDateTime dueTime,
+                Integer attemptLimited, int variantCount, int optionCount, boolean allowRecentlyUsedQuestions,
+                LifecycleStatus lifecycleStatus, int currentStep, UUID ccctProfileId, Long ccctProfileVersion,
+                UUID examMatrixId, Long examMatrixVersion, boolean aiGenerationStarted, long version, UUID createdBy,
+                UUID publishedBy, LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
+            this(id, courseId, title, description, unlimited, timeLimitMinutes, passScore, startTime, dueTime,
+                    attemptLimited, variantCount, optionCount, allowRecentlyUsedQuestions, lifecycleStatus, currentStep,
+                    ccctProfileId, ccctProfileVersion, examMatrixId, examMatrixVersion, aiGenerationStarted, version,
+                    createdBy, publishedBy, publishedAt, createdAt, updatedAt, null);
+        }
+    }
+
+    public record AssessmentQuestionProgress(
+            Integer requiredPerVariant,
+            int minCurrentPerVariant,
+            int maxCurrentPerVariant,
+            int variantCount,
+            boolean complete) {
     }
 
     public record SourceOption(
@@ -140,6 +162,7 @@ public final class AssessmentModels {
             UUID matrixRowId,
             UUID customLearningLevelId,
             String content,
+            RichContentFormat contentFormat,
             String questionType,
             String cognitiveLevelCode,
             String cognitiveLevelName,
@@ -160,7 +183,11 @@ public final class AssessmentModels {
     public record ReviewLearningOutcome(UUID id, String label) {
     }
 
-    public record AnswerView(UUID id, String content, boolean correct, String explanation, int orderIndex) {
+    public record AnswerView(UUID id, String content, RichContentFormat contentFormat,
+            boolean correct, String explanation, RichContentFormat explanationFormat, int orderIndex) {
+        public AnswerView(UUID id, String content, boolean correct, String explanation, int orderIndex) {
+            this(id, content, RichContentFormat.PLAIN_TEXT, correct, explanation, RichContentFormat.PLAIN_TEXT, orderIndex);
+        }
     }
 
     public record DraftReviewView(
@@ -248,10 +275,15 @@ public final class AssessmentModels {
             UUID id,
             UUID sourceBankQuestionId,
             String content,
+            RichContentFormat contentFormat,
             String type,
             VariantQuestionMetadata metadata,
             List<AnswerView> answers,
             int orderIndex) {
+        public VariantQuestionView(UUID id, UUID sourceBankQuestionId, String content, String type,
+                VariantQuestionMetadata metadata, List<AnswerView> answers, int orderIndex) {
+            this(id, sourceBankQuestionId, content, RichContentFormat.PLAIN_TEXT, type, metadata, answers, orderIndex);
+        }
     }
 
     public record VariantQuestionMetadata(

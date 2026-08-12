@@ -121,6 +121,16 @@ public class QuestionBankController {
                 useCase.getBankQuestion(courseId, questionId)));
     }
 
+    @PostMapping("/question-bank/questions/{questionId}/successor-draft")
+    public ResponseEntity<QuestionBankItemResponse> createSuccessorDraft(
+            @PathVariable UUID courseId,
+            @PathVariable UUID questionId) {
+        var result = useCase.createSuccessorDraft(courseId, questionId);
+        return ResponseEntity.created(URI.create(
+                        "/api/courses/" + courseId + "/question-drafts/" + result.getId()))
+                .body(QuestionBankItemResponse.from(result));
+    }
+
     @GetMapping("/question-bank/cognitive-levels")
     public ResponseEntity<List<CognitiveLevelOption>> getCognitiveLevels(@PathVariable UUID courseId) {
         return ResponseEntity.ok(useCase.getCognitiveLevels(courseId));

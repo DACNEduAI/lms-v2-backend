@@ -22,11 +22,14 @@ import edu.ai.lms.core.quiz.adapter.out.persistence.AssessmentWorkflowRepository
 import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft;
+import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
+import edu.ai.lms.core.quiz.app.domain.richcontent.RichTextValue;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
 import edu.ai.lms.core.quiz.app.port.in.usecase.QuestionBankUseCase;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.quiz.app.service.richcontent.RichContentPolicyService;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -40,10 +43,12 @@ public class AssessmentService {
     private final AssessmentGenerationDispatcher dispatcher;
     private final AssessmentDraftValidationService draftValidator;
     private final ObjectMapper objectMapper;
+    private final RichContentPolicyService richContentPolicy;
 
     public List<AssessmentView> list(UUID courseId) {
         requireTeacher(courseId);
-        return assessments.list(courseId);
+        return assessments.list(courseId).stream()
+                .map(assessment -> withQuestionProgress(assessment, workflow.questionProgress(assessment))).toList();
     }
 
     public AssessmentView get(UUID courseId, UUID assessmentId) {
@@ -319,7 +324,14 @@ public class AssessmentService {
             UUID questionId, VariantQuestionInput input) {
         requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
-        if (trimToNull(input.content()) == null) throw new IllegalArgumentException("Question content is required");
+        if (assessment.lifecycleStatus() == LifecycleStatus.PUBLISHED) {
+            throw new IllegalStateException("Assessment is published and read-only; unpublish it before editing");
+        }
+        if (assessment.lifecycleStatus() != LifecycleStatus.READY_TO_PUBLISH) {
+            throw new IllegalStateException("Variant content can only be edited at the review step");
+        }
+        RichTextValue question = sanitizeRequired(input.content(), input.contentFormat(),
+                RichContentPolicyService.MAX_PROMPT_HTML_LENGTH, "Question content is required");
         List<AnswerInput> answers = input.answers() == null ? List.of() : input.answers();
         if (answers.size() != assessment.optionCount()) {
             throw new IllegalArgumentException("This Assessment requires exactly " + assessment.optionCount() + " answers");
@@ -327,10 +339,8 @@ public class AssessmentService {
         if (answers.stream().filter(AnswerInput::correct).count() != 1) {
             throw new IllegalArgumentException("MCQ requires exactly one correct answer");
         }
-        if (answers.stream().anyMatch(a -> trimToNull(a.content()) == null || trimToNull(a.explanation()) == null)) {
-            throw new IllegalArgumentException("Every MCQ answer requires content and explanation");
-        }
-        workflow.updateVariantQuestion(assessmentId, variantId, questionId, input.content().trim(), answers);
+        List<AnswerInput> sanitizedAnswers = answers.stream().map(this::sanitizeAnswer).toList();
+        workflow.updateVariantQuestion(assessmentId, variantId, questionId, question.content(), question.contentFormat(), sanitizedAnswers);
         workflow.recalculateCoverage(required(courseId, assessmentId), variantId);
         return workflow.variants(assessmentId);
     }
@@ -340,9 +350,30 @@ public class AssessmentService {
         return workflow.publish(required(courseId, assessmentId), actor.id());
     }
 
+    @Transactional
+    public AssessmentView unpublish(UUID courseId, UUID assessmentId) {
+        CurrentActor actor = requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        if (assessment.lifecycleStatus() != LifecycleStatus.PUBLISHED) {
+            throw new IllegalStateException("Only a published Assessment can be unpublished");
+        }
+        workflow.unpublish(assessment, actor.id());
+        return required(courseId, assessmentId);
+    }
+
     private AssessmentView required(UUID courseId, UUID assessmentId) {
         return assessments.get(courseId, assessmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Assessment was not found"));
+    }
+
+    private AssessmentView withQuestionProgress(AssessmentView assessment, AssessmentQuestionProgress progress) {
+        return new AssessmentView(assessment.id(), assessment.courseId(), assessment.title(), assessment.description(),
+                assessment.unlimited(), assessment.timeLimitMinutes(), assessment.passScore(), assessment.startTime(),
+                assessment.dueTime(), assessment.attemptLimited(), assessment.variantCount(), assessment.optionCount(),
+                assessment.allowRecentlyUsedQuestions(), assessment.lifecycleStatus(), assessment.currentStep(),
+                assessment.ccctProfileId(), assessment.ccctProfileVersion(), assessment.examMatrixId(),
+                assessment.examMatrixVersion(), assessment.aiGenerationStarted(), assessment.version(), assessment.createdBy(),
+                assessment.publishedBy(), assessment.publishedAt(), assessment.createdAt(), assessment.updatedAt(), progress);
     }
 
     private CurrentActor requireTeacher(UUID courseId) {
@@ -427,6 +458,26 @@ public class AssessmentService {
     public record DraftVersion(UUID id, long version) {
     }
 
-    public record VariantQuestionInput(String content, List<AnswerInput> answers) {
+    public record VariantQuestionInput(String content, RichContentFormat contentFormat, List<AnswerInput> answers) {
+        public VariantQuestionInput(String content, List<AnswerInput> answers) {
+            this(content, RichContentFormat.PLAIN_TEXT, answers);
+        }
+    }
+
+    private RichTextValue sanitizeRequired(String content, RichContentFormat format, int maxLength, String message) {
+        RichTextValue value = richContentPolicy.sanitize(new RichTextValue(content,
+                format == null ? RichContentFormat.PLAIN_TEXT : format), maxLength);
+        if (!richContentPolicy.hasMeaningfulContent(value)) throw new IllegalArgumentException(message);
+        return value.contentFormat() == RichContentFormat.PLAIN_TEXT
+                ? new RichTextValue(value.content().trim(), RichContentFormat.PLAIN_TEXT) : value;
+    }
+
+    private AnswerInput sanitizeAnswer(AnswerInput answer) {
+        RichTextValue content = sanitizeRequired(answer.content(), answer.contentFormat(),
+                RichContentPolicyService.MAX_ANSWER_HTML_LENGTH, "Every MCQ answer requires content");
+        RichTextValue explanation = sanitizeRequired(answer.explanation(), answer.explanationFormat(),
+                RichContentPolicyService.MAX_ANSWER_HTML_LENGTH, "Every MCQ answer requires explanation");
+        return new AnswerInput(content.content(), content.contentFormat(), answer.correct(),
+                explanation.content(), explanation.contentFormat());
     }
 }

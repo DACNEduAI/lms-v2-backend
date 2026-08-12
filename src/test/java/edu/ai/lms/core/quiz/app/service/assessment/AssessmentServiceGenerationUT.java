@@ -27,6 +27,7 @@ import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.BatchView;
 import edu.ai.lms.core.quiz.app.port.in.usecase.QuestionBankUseCase;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.quiz.app.service.richcontent.RichContentPolicyService;
 
 @ExtendWith(MockitoExtension.class)
 class AssessmentServiceGenerationUT {
@@ -37,6 +38,7 @@ class AssessmentServiceGenerationUT {
     @Mock LoadCourseMembershipPort membershipPort;
     @Mock AssessmentGenerationDispatcher dispatcher;
     @Mock AssessmentDraftValidationService draftValidator;
+    @Mock RichContentPolicyService richContentPolicy;
 
     private AssessmentService service;
     private final UUID courseId = UUID.randomUUID();
@@ -47,7 +49,7 @@ class AssessmentServiceGenerationUT {
     @BeforeEach
     void setUp() {
         service = new AssessmentService(assessments, workflow, questionBank, signedInUserPort,
-                membershipPort, dispatcher, draftValidator, new ObjectMapper());
+                membershipPort, dispatcher, draftValidator, new ObjectMapper(), richContentPolicy);
         assessment = mock(AssessmentView.class);
         when(signedInUserPort.getAuthenticatedUser())
                 .thenReturn(Optional.of(new CurrentActor(actorId, Roles.TEACHER)));

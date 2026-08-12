@@ -119,7 +119,7 @@ public class AssessmentRepository {
                     version = version + 1,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = :assessmentId AND course_id = :courseId AND version = :expectedVersion
-                  AND lifecycle_status = 'DRAFT'
+                  AND lifecycle_status IN ('DRAFT', 'READY_TO_PUBLISH')
                 """, new MapSqlParameterSource()
                 .addValue("assessmentId", assessmentId)
                 .addValue("courseId", courseId)
@@ -625,6 +625,6 @@ public class AssessmentRepository {
                 (Long) rs.getObject("exam_matrix_version"), rs.getBoolean("ai_generation_started"),
                 rs.getLong("version"), rs.getObject("created_by", UUID.class),
                 rs.getObject("published_by", UUID.class), rs.getObject("published_at", LocalDateTime.class),
-                rs.getObject("created_at", LocalDateTime.class), rs.getObject("updated_at", LocalDateTime.class));
+                rs.getObject("created_at", LocalDateTime.class), rs.getObject("updated_at", LocalDateTime.class), null);
     }
 }

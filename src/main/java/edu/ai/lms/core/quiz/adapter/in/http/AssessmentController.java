@@ -194,6 +194,11 @@ public class AssessmentController {
         return service.publish(courseId, assessmentId);
     }
 
+    @PostMapping("/{assessmentId}/unpublish")
+    public AssessmentView unpublish(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+        return service.unpublish(courseId, assessmentId);
+    }
+
     @PostMapping("/question-bank/recently-used/reset")
     public ResetRecentResult resetRecentlyUsed(@PathVariable UUID courseId, @RequestBody ResetRecent request) {
         return new ResetRecentResult(service.resetRecentlyUsed(courseId, request.questionIds()));
