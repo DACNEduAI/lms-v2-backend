@@ -53,7 +53,8 @@ public class AssessmentService {
 
     public AssessmentView get(UUID courseId, UUID assessmentId) {
         requireTeacher(courseId);
-        return required(courseId, assessmentId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        return withQuestionProgress(assessment, workflow.questionProgress(assessment));
     }
 
     public AssessmentView create(UUID courseId, AssessmentConfiguration input) {

@@ -34,6 +34,22 @@ public class RichContentAssetRepository {
                 .addValue("sha256", asset.sha256()));
     }
 
+    public void saveAll(List<RichContentAsset> assets) {
+        assets.forEach(this::save);
+    }
+
+    public void copyDraftAssetsToBank(UUID draftId, UUID bankId) {
+        copy("question_draft_id", draftId, "question_bank_question_id", bankId);
+    }
+
+    public void copyBankAssetsToDraft(UUID bankId, UUID draftId) {
+        copy("question_bank_question_id", bankId, "question_draft_id", draftId);
+    }
+
+    public void copyBankAssetsToQuestion(UUID bankId, UUID questionId) {
+        copy("question_bank_question_id", bankId, "question_id", questionId);
+    }
+
     public List<RichContentAsset> findByQuestionDraftId(UUID draftId) {
         return find("question_draft_id", draftId);
     }
@@ -54,5 +70,14 @@ public class RichContentAssetRepository {
                         rs.getString("storage_key"), rs.getString("media_type"), rs.getLong("byte_size"),
                         rs.getString("sha256"), rs.getObject("created_at", LocalDateTime.class),
                         rs.getObject("updated_at", LocalDateTime.class)));
+    }
+
+    private void copy(String sourceColumn, UUID sourceId, String targetColumn, UUID targetId) {
+        jdbc.update("""
+                INSERT INTO edu.rich_content_assets
+                    (id, %s, storage_key, media_type, byte_size, sha256)
+                SELECT gen_random_uuid(), :targetId, storage_key, media_type, byte_size, sha256
+                FROM edu.rich_content_assets WHERE %s = :sourceId
+                """.formatted(targetColumn, sourceColumn), Map.of("sourceId", sourceId, "targetId", targetId));
     }
 }

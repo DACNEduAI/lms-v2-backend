@@ -36,6 +36,7 @@ import edu.ai.lms.core.quiz.app.port.out.SaveQuestionBankItemPort;
 import edu.ai.lms.core.quiz.app.port.out.ValidateLearningOutcomesPort;
 import edu.ai.lms.core.quiz.app.port.out.ValidateQuestionBankReferencesPort;
 import edu.ai.lms.core.quiz.app.service.richcontent.RichContentPolicyService;
+import edu.ai.lms.core.quiz.adapter.out.persistence.RichContentAssetRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -50,6 +51,7 @@ public class QuestionBankService implements QuestionBankUseCase {
     private final ValidateLearningOutcomesPort learningOutcomesPort;
     private final ValidateQuestionBankReferencesPort referencesPort;
     private final RichContentPolicyService richContentPolicy;
+    private final RichContentAssetRepository richContentAssets;
 
     @Override
     @Transactional
@@ -101,7 +103,9 @@ public class QuestionBankService implements QuestionBankUseCase {
                 .sourceType(source.getSourceType()).createdBy(actor.id()).supersedesBankQuestionId(source.getId())
                 .answers(new ArrayList<>(copyAnswers(source.getAnswers())))
                 .learningOutcomeIds(new LinkedHashSet<>(source.getLearningOutcomeIds())).build();
-        return saveItemPort.createDraft(successor);
+        QuestionDraft saved = saveItemPort.createDraft(successor);
+        richContentAssets.copyBankAssetsToDraft(source.getId(), saved.getId());
+        return saved;
     }
 
     @Override
@@ -146,6 +150,7 @@ public class QuestionBankService implements QuestionBankUseCase {
                 .learningOutcomeIds(new LinkedHashSet<>(draft.getLearningOutcomeIds()))
                 .build();
         QuestionBankQuestion saved = saveItemPort.createBankQuestion(bankQuestion);
+        richContentAssets.copyDraftAssetsToBank(draft.getId(), saved.getId());
         if (!saveItemPort.deleteDraft(draft, version)) throw staleConflict();
         return saved;
     }

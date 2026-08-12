@@ -145,14 +145,23 @@ public final class AssessmentModels {
 
     public record GeneratedDraft(
             String content,
+            RichContentFormat contentFormat,
             String type,
             UUID matrixRowId,
             UUID customLearningLevelId,
             List<UUID> learningOutcomeIds,
             List<GeneratedAnswer> answers) {
+        public GeneratedDraft(String content, String type, UUID matrixRowId, UUID customLearningLevelId,
+                List<UUID> learningOutcomeIds, List<GeneratedAnswer> answers) {
+            this(content, RichContentFormat.PLAIN_TEXT, type, matrixRowId, customLearningLevelId, learningOutcomeIds, answers);
+        }
     }
 
-    public record GeneratedAnswer(String content, boolean correct, String explanation) {
+    public record GeneratedAnswer(String content, RichContentFormat contentFormat, boolean correct,
+            String explanation, RichContentFormat explanationFormat) {
+        public GeneratedAnswer(String content, boolean correct, String explanation) {
+            this(content, RichContentFormat.PLAIN_TEXT, correct, explanation, RichContentFormat.PLAIN_TEXT);
+        }
     }
 
     public record DraftReviewItem(

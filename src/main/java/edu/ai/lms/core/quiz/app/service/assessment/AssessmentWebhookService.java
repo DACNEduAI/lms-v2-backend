@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 import edu.ai.lms.core.quiz.adapter.out.persistence.AssessmentWorkflowRepository;
+import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,10 +34,11 @@ public class AssessmentWebhookService {
             throw new IllegalArgumentException("Webhook status must be COMPLETED or FAILED");
         }
         List<GeneratedDraft> drafts = payload.drafts() == null ? List.of() : payload.drafts().stream()
-                .map(draft -> new GeneratedDraft(draft.content(), draft.type(), draft.matrixRowId(),
+                .map(draft -> new GeneratedDraft(draft.content(), format(draft.contentFormat()), draft.type(), draft.matrixRowId(),
                         draft.customLearningLevelId(), draft.learningOutcomeIds() == null ? List.of() : draft.learningOutcomeIds(),
                         draft.answers() == null ? List.of() : draft.answers().stream()
-                                .map(answer -> new GeneratedAnswer(answer.content(), answer.correct(), answer.explanation()))
+                                .map(answer -> new GeneratedAnswer(answer.content(), format(answer.contentFormat()), answer.correct(),
+                                        answer.explanation(), format(answer.explanationFormat())))
                                 .toList()))
                 .toList();
         workflow.persistGeneratedDrafts(payload.batchId(), drafts);
@@ -48,10 +50,22 @@ public class AssessmentWebhookService {
             List<DraftPayload> drafts, String errorCode, String errorMessage) {
     }
 
-    public record DraftPayload(String content, String type, UUID matrixRowId, UUID customLearningLevelId,
+    public record DraftPayload(String content, RichContentFormat contentFormat, String type, UUID matrixRowId, UUID customLearningLevelId,
             List<UUID> learningOutcomeIds, List<AnswerPayload> answers) {
+        public DraftPayload(String content, String type, UUID matrixRowId, UUID customLearningLevelId,
+                List<UUID> learningOutcomeIds, List<AnswerPayload> answers) {
+            this(content, RichContentFormat.PLAIN_TEXT, type, matrixRowId, customLearningLevelId, learningOutcomeIds, answers);
+        }
     }
 
-    public record AnswerPayload(String content, boolean correct, String explanation) {
+    public record AnswerPayload(String content, RichContentFormat contentFormat, boolean correct,
+            String explanation, RichContentFormat explanationFormat) {
+        public AnswerPayload(String content, boolean correct, String explanation) {
+            this(content, RichContentFormat.PLAIN_TEXT, correct, explanation, RichContentFormat.PLAIN_TEXT);
+        }
+    }
+
+    private static RichContentFormat format(RichContentFormat value) {
+        return value == null ? RichContentFormat.PLAIN_TEXT : value;
     }
 }

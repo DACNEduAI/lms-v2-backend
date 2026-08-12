@@ -58,6 +58,7 @@ import lombok.RequiredArgsConstructor;
 public class AssessmentWorkflowRepository {
     private final NamedParameterJdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
+    private final RichContentAssetRepository richContentAssets;
 
     public BankPlan bankPlan(AssessmentView assessment) {
         if (assessment.examMatrixId() == null) throw new IllegalStateException("Select an Exam Matrix first");
@@ -328,26 +329,27 @@ public class AssessmentWorkflowRepository {
                     """, Map.of("levelId", draft.customLearningLevelId()), UUID.class);
             jdbc.update("""
                     INSERT INTO edu.question_drafts
-                        (id, course_id, chapter_id, cognitive_level_id, content, question_type,
+                        (id, course_id, chapter_id, cognitive_level_id, content, content_format, question_type,
                          source_type, created_by, assessment_id, generation_batch_id,
                          matrix_row_id, custom_learning_level_id, review_status)
-                    VALUES (:id, :courseId, :chapterId, :cognitiveLevelId, :content, 'MULTIPLE_CHOICE',
+                    VALUES (:id, :courseId, :chapterId, :cognitiveLevelId, :content, :contentFormat, 'MULTIPLE_CHOICE',
                             'AI_GENERATED', :createdBy, :assessmentId, :batchId, :matrixRowId, :levelId,
                             'NOT_VALIDATED')
                     """, new MapSqlParameterSource().addValue("id", draftId).addValue("courseId", courseId)
                     .addValue("chapterId", chapterId).addValue("cognitiveLevelId", cognitiveLevelId)
-                    .addValue("content", draft.content()).addValue("createdBy", createdBy)
+                    .addValue("content", draft.content()).addValue("contentFormat", format(draft.contentFormat()).name()).addValue("createdBy", createdBy)
                     .addValue("assessmentId", assessmentId).addValue("batchId", batchId)
                     .addValue("matrixRowId", draft.matrixRowId()).addValue("levelId", draft.customLearningLevelId()));
             for (int i = 0; i < draft.answers().size(); i++) {
                 var answer = draft.answers().get(i);
                 jdbc.update("""
                         INSERT INTO edu.question_draft_answers
-                            (id, question_draft_id, content, is_correct, explanation, order_index)
-                        VALUES (:id, :draftId, :content, :correct, :explanation, :orderIndex)
+                            (id, question_draft_id, content, content_format, is_correct, explanation, explanation_format, order_index)
+                        VALUES (:id, :draftId, :content, :contentFormat, :correct, :explanation, :explanationFormat, :orderIndex)
                         """, new MapSqlParameterSource().addValue("id", UUID.randomUUID()).addValue("draftId", draftId)
-                        .addValue("content", answer.content()).addValue("correct", answer.correct())
-                        .addValue("explanation", answer.explanation()).addValue("orderIndex", i));
+                        .addValue("content", answer.content()).addValue("contentFormat", format(answer.contentFormat()).name())
+                        .addValue("correct", answer.correct()).addValue("explanation", answer.explanation())
+                        .addValue("explanationFormat", format(answer.explanationFormat()).name()).addValue("orderIndex", i));
             }
             for (UUID outcomeId : draft.learningOutcomeIds()) {
                 jdbc.update("""
@@ -899,6 +901,7 @@ public class AssessmentWorkflowRepository {
                 SELECT :questionId, learning_outcome_id FROM edu.question_bank_question_learning_outcomes
                 WHERE question_bank_question_id = :bankId
                 """, Map.of("questionId", questionId, "bankId", bankId));
+        richContentAssets.copyBankAssetsToQuestion(bankId, questionId);
     }
 
     private List<VariantQuestionView> variantQuestions(UUID quizId) {
@@ -985,6 +988,10 @@ public class AssessmentWorkflowRepository {
                 || answer.explanation() == null || answer.explanation().isBlank())) {
             throw new IllegalStateException("Every generated answer requires content and explanation");
         }
+    }
+
+    private RichContentFormat format(RichContentFormat value) {
+        return value == null ? RichContentFormat.PLAIN_TEXT : value;
     }
 
     private List<DraftReviewItem> draftItems(UUID assessmentId, String status) {

@@ -4,4 +4,6 @@ public interface RichContentAssetStoragePort {
     void upload(String storageKey, byte[] content, String mediaType);
 
     String publicUrl(String storageKey);
+
+    void delete(String storageKey);
 }

@@ -5,6 +5,8 @@ import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.*;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,14 +16,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService;
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.AssessmentConfiguration;
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.ContextSelection;
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.DraftVersion;
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.VariantQuestionInput;
+import edu.ai.lms.core.quiz.app.service.richcontent.AssessmentRichContentService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -30,6 +35,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AssessmentController {
     private final AssessmentService service;
+    private final AssessmentRichContentService richContent;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     public List<AssessmentView> list(@PathVariable UUID courseId) {
@@ -182,11 +189,21 @@ public class AssessmentController {
         return service.overrideCoverage(courseId, assessmentId, variantId, request.reason());
     }
 
-    @PutMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}")
+    @PutMapping(value = "/{assessmentId}/variants/{variantId}/questions/{questionId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public List<VariantView> updateQuestion(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
             @PathVariable UUID variantId, @PathVariable UUID questionId,
             @RequestBody VariantQuestionInput request) {
-        return service.updateVariantQuestion(courseId, assessmentId, variantId, questionId, request);
+        return richContent.updateVariantQuestion(courseId, assessmentId, variantId, questionId, request, List.of());
+    }
+
+    @PutMapping(value = "/{assessmentId}/variants/{variantId}/questions/{questionId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public List<VariantView> updateQuestionWithImages(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId,
+            @RequestPart("payload") String payload,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images) throws Exception {
+        VariantQuestionInput request = objectMapper.readValue(payload, VariantQuestionInput.class);
+        return richContent.updateVariantQuestion(courseId, assessmentId, variantId, questionId, request,
+                images == null ? List.of() : images);
     }
 
     @PostMapping("/{assessmentId}/publish")
