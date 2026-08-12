@@ -2,8 +2,9 @@ package edu.ai.lms.core.quiz.app.service.richcontent;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Pattern;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
 import org.springframework.stereotype.Service;
 
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
@@ -19,10 +20,8 @@ public class RichContentPolicyService {
     public static final int MAX_ANSWER_HTML_LENGTH = 128 * 1024;
     public static final int MAX_LATEX_LENGTH = 8 * 1024;
 
-    private static final Pattern TAG_PATTERN = Pattern.compile("<[^>]+>");
-    private static final Pattern MATH_TAG_PATTERN = Pattern.compile("<(?:span|div)\\b([^>]*)>", Pattern.CASE_INSENSITIVE);
-    private static final Pattern ATTRIBUTE_PATTERN = Pattern.compile("\\b([a-zA-Z-]+)\\s*=\\s*(['\\\"])(.*?)\\2");
-    private static final Pattern IMAGE_PATTERN = Pattern.compile("<img\\b[^>]*\\bsrc=\\\"[^\\\"]+\\\"", Pattern.CASE_INSENSITIVE);
+    private static final String MATH_NODE_SELECTOR =
+            "span[data-type], span[data-latex], div[data-type], div[data-latex]";
     private static final List<String> FORBIDDEN_LATEX_COMMANDS = List.of(
             "\\\\html", "\\\\href", "\\\\url", "\\\\includegraphics", "\\\\def", "\\\\gdef", "\\\\newcommand", "\\\\catcode");
 
@@ -42,14 +41,14 @@ public class RichContentPolicyService {
     public boolean hasMeaningfulContent(RichTextValue value) {
         if (value == null) return false;
         if (value.contentFormat() == RichContentFormat.PLAIN_TEXT) return !value.content().isBlank();
-        String html = value.content();
-        if (IMAGE_PATTERN.matcher(html).find()) return true;
-        if (hasMathNode(html, false)) return true;
-        return !TAG_PATTERN.matcher(html).replaceAll("").replace("&nbsp;", " ").isBlank();
+        Element body = parseBody(value.content());
+        if (body.selectFirst("img[src]") != null) return true;
+        if (hasMathNode(body, false)) return true;
+        return !body.text().isBlank();
     }
 
     public void validateLatex(String html) {
-        hasMathNode(html == null ? "" : html, true);
+        hasMathNode(parseBody(html), true);
     }
 
     /**
@@ -57,13 +56,11 @@ public class RichContentPolicyService {
      * server owns the durable safety boundary: only genuine Tiptap math nodes,
      * bounded source and structurally balanced groups may be persisted.
      */
-    private boolean hasMathNode(String html, boolean validate) {
+    private boolean hasMathNode(Element body, boolean validate) {
         boolean found = false;
-        var tagMatcher = MATH_TAG_PATTERN.matcher(html);
-        while (tagMatcher.find()) {
-            String type = attribute(tagMatcher.group(1), "data-type");
-            String latex = attribute(tagMatcher.group(1), "data-latex");
-            if (type == null && latex == null) continue;
+        for (Element node : body.select(MATH_NODE_SELECTOR)) {
+            String type = node.hasAttr("data-type") ? node.attr("data-type") : null;
+            String latex = node.hasAttr("data-latex") ? node.attr("data-latex") : null;
             if (!"inline-math".equals(type) && !"block-math".equals(type)) {
                 throw new RichContentValidationException("LaTeX node type is invalid");
             }
@@ -80,10 +77,8 @@ public class RichContentPolicyService {
         return found;
     }
 
-    private String attribute(String attributes, String name) {
-        var matcher = ATTRIBUTE_PATTERN.matcher(attributes);
-        while (matcher.find()) if (name.equalsIgnoreCase(matcher.group(1))) return matcher.group(3);
-        return null;
+    private Element parseBody(String html) {
+        return Jsoup.parseBodyFragment(html == null ? "" : html).body();
     }
 
     private boolean hasBalancedGroups(String latex) {
