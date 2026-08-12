@@ -4,10 +4,14 @@ import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.nio.charset.StandardCharsets;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -22,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService;
+import edu.ai.lms.core.quiz.app.service.assessment.VariantPdfService;
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.AssessmentConfiguration;
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.ContextSelection;
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.DraftVersion;
@@ -35,6 +40,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AssessmentController {
     private final AssessmentService service;
+    private final VariantPdfService variantPdfs;
     private final AssessmentRichContentService richContent;
     private final ObjectMapper objectMapper;
 
@@ -175,6 +181,20 @@ public class AssessmentController {
     @GetMapping("/{assessmentId}/variants")
     public List<VariantView> variants(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
         return service.variants(courseId, assessmentId);
+    }
+
+    @GetMapping(value = "/{assessmentId}/variants/{variantId}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> downloadVariantPdf(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId) {
+        var pdf = variantPdfs.generate(courseId, assessmentId, variantId);
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename(pdf.filename(), StandardCharsets.UTF_8).build();
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(MediaType.APPLICATION_PDF)
+                .contentLength(pdf.bytes().length)
+                .body(pdf.bytes());
     }
 
     @PostMapping("/{assessmentId}/variants/{variantId}/coverage/recalculate")

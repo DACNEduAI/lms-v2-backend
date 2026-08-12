@@ -5,5 +5,7 @@ public interface RichContentAssetStoragePort {
 
     String publicUrl(String storageKey);
 
+    byte[] read(String storageKey);
+
     void delete(String storageKey);
 }

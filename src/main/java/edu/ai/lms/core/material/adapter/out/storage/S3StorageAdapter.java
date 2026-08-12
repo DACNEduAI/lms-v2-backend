@@ -206,6 +206,18 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
     }
 
     /**
+     * Reads an object directly from storage. Callers must already own and
+     * authorize the referenced key; this method never accepts a public URL.
+     */
+    public byte[] readFile(String bucketName, String key) {
+        GetObjectRequest request = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build();
+        return s3Client.getObjectAsBytes(request).asByteArray();
+    }
+
+    /**
      * Builds a public URL for object access. This URL is only usable for publicly
      * readable objects.
      */
@@ -223,7 +235,15 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
         }
 
         String normalizedEndpoint = removeTrailingSlash(storageEndpoint);
+        String host = endpointUri.getHost();
         String encodedKey = encodePathSegments(key);
+
+        if (host != null && host.endsWith(".storage.supabase.co")) {
+            String publicHost = host.substring(0, host.length() - ".storage.supabase.co".length())
+                    + ".supabase.co";
+            return scheme + "://" + publicHost + "/storage/v1/object/public/"
+                    + encodePathSegment(bucketName) + "/" + encodedKey;
+        }
 
         if (authority.startsWith(bucketName + ".")) {
             return normalizedEndpoint + "/" + encodedKey;
@@ -245,8 +265,12 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
         }
 
         return Arrays.stream(key.split("/"))
-                .map(segment -> URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20"))
+                .map(this::encodePathSegment)
                 .collect(Collectors.joining("/"));
+    }
+
+    private String encodePathSegment(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
     // ── Port implementations ────────────────────────────────────────────

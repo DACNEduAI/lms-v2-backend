@@ -15,9 +15,13 @@ STORAGE_S3_ACCESS_KEY_ID=<access-key>
 STORAGE_S3_SECRET_ACCESS_KEY=<secret-key>
 STORAGE_S3_FORCE_PATH_STYLE=true
 STORAGE_PRIVATE_BUCKET=<private-bucket>
+STORAGE_PUBLIC_BUCKET=<public-bucket>
 AI_SERVICE_URL=http://localhost:8000
 AI_SERVICE_TOKEN=<same-value-as-AI_Pipeline/.env>
 ```
+
+`STORAGE_PRIVATE_BUCKET` remains private for course materials. `STORAGE_PUBLIC_BUCKET`
+must be an existing public bucket and is used only for rich-content question images.
 
 `AI_SERVICE_TOKEN` là secret dùng riêng cho giao tiếp BE → AI. FE không được nhận
 hoặc gửi token này. Giá trị phải trùng với `AI_Pipeline/.env`.
