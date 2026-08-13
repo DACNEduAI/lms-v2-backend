@@ -301,11 +301,19 @@ public final class AssessmentModels {
             String type,
             VariantQuestionMetadata metadata,
             List<AnswerView> answers,
-            int orderIndex) {
+            int orderIndex,
+            long version) {
+        public VariantQuestionView(UUID id, UUID sourceBankQuestionId, String content,
+                RichContentFormat contentFormat, String explanation, RichContentFormat explanationFormat,
+                String type, VariantQuestionMetadata metadata, List<AnswerView> answers, int orderIndex) {
+            this(id, sourceBankQuestionId, content, contentFormat, explanation, explanationFormat,
+                    type, metadata, answers, orderIndex, 0);
+        }
+
         public VariantQuestionView(UUID id, UUID sourceBankQuestionId, String content, String type,
                 VariantQuestionMetadata metadata, List<AnswerView> answers, int orderIndex) {
             this(id, sourceBankQuestionId, content, RichContentFormat.PLAIN_TEXT, null,
-                    RichContentFormat.PLAIN_TEXT, type, metadata, answers, orderIndex);
+                    RichContentFormat.PLAIN_TEXT, type, metadata, answers, orderIndex, 0);
         }
 
 
@@ -313,7 +321,7 @@ public final class AssessmentModels {
                 RichContentFormat contentFormat, String type, VariantQuestionMetadata metadata,
                 List<AnswerView> answers, int orderIndex) {
             this(id, sourceBankQuestionId, content, contentFormat, null,
-                    RichContentFormat.PLAIN_TEXT, type, metadata, answers, orderIndex);
+                    RichContentFormat.PLAIN_TEXT, type, metadata, answers, orderIndex, 0);
         }
     }
 

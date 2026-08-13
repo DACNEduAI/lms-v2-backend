@@ -80,6 +80,16 @@ public class RichContentUploadService {
         });
     }
 
+    public UploadedAsset uploadAiSvg(String source) {
+        byte[] bytes = source == null ? new byte[0] : source.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length == 0 || bytes.length > MAX_IMAGE_BYTES || detect(bytes) != ImageType.SVG) {
+            throw new RichContentValidationException("AI SVG is empty, too large, or invalid");
+        }
+        String key = "quiz2/rich-content/" + UUID.randomUUID() + ".svg";
+        storage.upload(key, bytes, ImageType.SVG.mediaType());
+        return new UploadedAsset(key, storage.publicUrl(key), ImageType.SVG.mediaType(), bytes.length, sha256(bytes));
+    }
+
     /**
      * File storage is outside the database transaction. Register compensation
      * before the aggregate is saved, so a commit-time database failure cannot

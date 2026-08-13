@@ -22,8 +22,8 @@ public class RichContentAssetRepository {
         jdbc.update("""
                 INSERT INTO edu.rich_content_assets
                     (id, question_draft_id, question_bank_question_id, question_id,
-                     storage_key, media_type, byte_size, sha256)
-                VALUES (:id, :draftId, :bankId, :questionId, :storageKey, :mediaType, :byteSize, :sha256)
+                     storage_key, media_type, byte_size, sha256, ai_artifact_id)
+                VALUES (:id, :draftId, :bankId, :questionId, :storageKey, :mediaType, :byteSize, :sha256, :aiArtifactId)
                 """, new MapSqlParameterSource()
                 .addValue("id", asset.id() == null ? UUID.randomUUID() : asset.id())
                 .addValue("draftId", asset.questionDraftId())
@@ -32,7 +32,8 @@ public class RichContentAssetRepository {
                 .addValue("storageKey", asset.storageKey())
                 .addValue("mediaType", asset.mediaType())
                 .addValue("byteSize", asset.byteSize())
-                .addValue("sha256", asset.sha256()));
+                .addValue("sha256", asset.sha256())
+                .addValue("aiArtifactId", asset.aiArtifactId()));
     }
 
     public void saveAll(List<RichContentAsset> assets) {
@@ -81,7 +82,8 @@ public class RichContentAssetRepository {
                         rs.getObject("id", UUID.class), rs.getObject("question_draft_id", UUID.class),
                         rs.getObject("question_bank_question_id", UUID.class), rs.getObject("question_id", UUID.class),
                         rs.getString("storage_key"), rs.getString("media_type"), rs.getLong("byte_size"),
-                        rs.getString("sha256"), rs.getObject("created_at", LocalDateTime.class),
+                        rs.getString("sha256"), rs.getObject("ai_artifact_id", UUID.class),
+                        rs.getObject("created_at", LocalDateTime.class),
                         rs.getObject("updated_at", LocalDateTime.class)));
     }
 

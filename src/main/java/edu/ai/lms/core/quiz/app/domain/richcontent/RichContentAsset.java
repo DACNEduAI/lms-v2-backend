@@ -12,8 +12,16 @@ public record RichContentAsset(
         String mediaType,
         long byteSize,
         String sha256,
+        UUID aiArtifactId,
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {
+
+    public RichContentAsset(UUID id, UUID questionDraftId, UUID questionBankQuestionId, UUID questionId,
+            String storageKey, String mediaType, long byteSize, String sha256,
+            LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this(id, questionDraftId, questionBankQuestionId, questionId, storageKey, mediaType,
+                byteSize, sha256, null, createdAt, updatedAt);
+    }
 
     public RichContentAsset {
         int owners = (questionDraftId == null ? 0 : 1)

@@ -839,16 +839,25 @@ public class AssessmentWorkflowRepository {
     public void updateVariantQuestion(UUID assessmentId, UUID variantId, UUID questionId,
             String content, RichContentFormat contentFormat, String explanation,
             RichContentFormat explanationFormat, List<AnswerInput> answers) {
+        updateVariantQuestion(assessmentId, variantId, questionId, null, content, contentFormat,
+                explanation, explanationFormat, answers);
+    }
+
+    public void updateVariantQuestion(UUID assessmentId, UUID variantId, UUID questionId, Long expectedVersion,
+            String content, RichContentFormat contentFormat, String explanation,
+            RichContentFormat explanationFormat, List<AnswerInput> answers) {
         UUID quizId = variantQuiz(assessmentId, variantId);
         int updated = jdbc.update("""
                 UPDATE edu.questions SET content = :content, content_format = :contentFormat,
                     explanation = :explanation, explanation_format = :explanationFormat,
                     version = version + 1, updated_at = CURRENT_TIMESTAMP
                 WHERE id = :questionId AND quiz_id = :quizId
+                  AND (:expectedVersion IS NULL OR version = :expectedVersion)
                 """, new MapSqlParameterSource().addValue("content", content).addValue("questionId", questionId)
                 .addValue("quizId", quizId).addValue("contentFormat", contentFormat.name())
+                .addValue("expectedVersion", expectedVersion)
                 .addValue("explanation", explanation).addValue("explanationFormat", explanationFormat.name()));
-        if (updated != 1) throw new IllegalArgumentException("Variant question was not found");
+        if (updated != 1) throw new IllegalStateException("Question version changed before Save; reload and review the AI draft");
         jdbc.update("DELETE FROM edu.answers WHERE question_id = :id", Map.of("id", questionId));
         for (AnswerInput answer : answers) {
             jdbc.update("""
@@ -933,7 +942,7 @@ public class AssessmentWorkflowRepository {
 
     private List<VariantQuestionView> variantQuestions(UUID quizId) {
         return jdbc.query("""
-                SELECT q.id, q.source_bank_question_id, q.content, q.content_format,
+                SELECT q.id, q.source_bank_question_id, q.content, q.content_format, q.version,
                        q.explanation, q.explanation_format, q.type, q.order_index, q.matrix_row_id,
                        mr.order_index AS matrix_row_order, ch.title AS chapter, mr.topic,
                        cll.code AS custom_learning_level_code, cll.name AS custom_learning_level_name,
@@ -956,7 +965,7 @@ public class AssessmentWorkflowRepository {
                             labelOrUnrecorded(rs.getString("custom_learning_level_name")),
                             variantLearningOutcomes(questionId), labelOrUnrecorded(rs.getString("cognitive_level_code")),
                             labelOrUnrecorded(rs.getString("cognitive_level_name"))),
-                    quizAnswers(questionId), rs.getInt("order_index"));
+                    quizAnswers(questionId), rs.getInt("order_index"), rs.getLong("version"));
         });
     }
 

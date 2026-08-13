@@ -36,6 +36,19 @@ Với database có `material_index_jobs` cũ, dừng backend và chạy một l�
 `src/main/resources/db/manual/V20260811_01__material_index_jobs_utc.sql` trước
 khi khởi động lại.
 
+Các database đã có dữ liệu không tự chạy migration trong `db/manual`. Khi đổi
+checkout, áp các migration chưa chạy theo thứ tự tên file trong
+`src/main/resources/db/manual`, mỗi file trong một transaction, rồi mới khởi
+động backend. Riêng Quiz2 Question AI yêu cầu:
+
+```text
+src/main/resources/db/manual/V20260813_02__quiz2_question_ai_jobs.sql
+```
+
+Backend kiểm tra các bảng, cột và unique index của Question AI khi startup. Nếu
+migration trên còn thiếu hoặc chỉ chạy một phần, backend sẽ dừng với thông báo
+liệt kê object thiếu thay vì tiếp tục chạy scheduler và lặp lỗi SQL.
+
 ## Chạy backend
 
 ```powershell

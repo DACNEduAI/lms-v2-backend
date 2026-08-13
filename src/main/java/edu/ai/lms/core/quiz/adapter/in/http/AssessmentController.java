@@ -7,6 +7,7 @@ import java.util.UUID;
 import java.nio.charset.StandardCharsets;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.CacheControl;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -34,19 +36,28 @@ import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.VariantQues
 import edu.ai.lms.core.quiz.app.service.assessment.QuestionRefinementService;
 import edu.ai.lms.core.quiz.app.service.assessment.QuestionRefinementService.RefinementRequest;
 import edu.ai.lms.core.quiz.app.service.assessment.QuestionRefinementService.RefinementResponse;
+import edu.ai.lms.core.quiz.app.service.assessment.QuestionAiService;
+import edu.ai.lms.core.quiz.app.domain.assessment.QuestionAiModels.*;
 import edu.ai.lms.core.quiz.app.service.richcontent.AssessmentRichContentService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/courses/{courseId}/assessments")
 @PreAuthorize("hasRole('TEACHER')")
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class AssessmentController {
     private final AssessmentService service;
     private final VariantPdfService variantPdfs;
     private final AssessmentRichContentService richContent;
     private final QuestionRefinementService refinements;
+    private final QuestionAiService questionAi;
     private final ObjectMapper objectMapper;
+
+    public AssessmentController(AssessmentService service, VariantPdfService variantPdfs,
+            AssessmentRichContentService richContent, QuestionRefinementService refinements,
+            ObjectMapper objectMapper) {
+        this(service, variantPdfs, richContent, refinements, null, objectMapper);
+    }
 
     @GetMapping
     public List<AssessmentView> list(@PathVariable UUID courseId) {
@@ -237,6 +248,101 @@ public class AssessmentController {
         return refinements.refine(courseId, assessmentId, variantId, questionId, request);
     }
 
+    @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-jobs")
+    public ResponseEntity<JobView> startQuestionAiJob(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId, @RequestBody StartJobRequest request) {
+        return ResponseEntity.accepted().body(questionAi.start(courseId, assessmentId, variantId, questionId, request));
+    }
+
+    @GetMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-jobs/{jobId}")
+    public JobView questionAiJob(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId, @PathVariable UUID jobId) {
+        return questionAi.job(courseId, assessmentId, variantId, questionId, jobId);
+    }
+
+    @GetMapping(value = "/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-jobs/{jobId}/events",
+            produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamQuestionAiJob(
+            @PathVariable UUID courseId, @PathVariable UUID assessmentId, @PathVariable UUID variantId,
+            @PathVariable UUID questionId, @PathVariable UUID jobId) {
+        return questionAi.stream(courseId, assessmentId, variantId, questionId, jobId);
+    }
+
+    @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-jobs/{jobId}/clarification")
+    public JobView clarifyQuestionAiJob(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId, @PathVariable UUID jobId,
+            @RequestBody ClarificationRequest request) {
+        return questionAi.clarify(courseId, assessmentId, variantId, questionId, jobId, request);
+    }
+
+    @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-jobs/{jobId}/cancel")
+    public JobView cancelQuestionAiJob(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId, @PathVariable UUID jobId) {
+        return questionAi.cancel(courseId, assessmentId, variantId, questionId, jobId);
+    }
+
+    @GetMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-draft")
+    public WorkingDraftView questionAiDraft(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId) {
+        return questionAi.draft(courseId, assessmentId, variantId, questionId);
+    }
+
+    @GetMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-timeline")
+    public TimelineView questionAiTimeline(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId) {
+        return questionAi.timeline(courseId, assessmentId, variantId, questionId);
+    }
+
+    @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-draft/undo")
+    public WorkingDraftView undoQuestionAiDraft(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId) {
+        return questionAi.undo(courseId, assessmentId, variantId, questionId);
+    }
+
+    @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-draft/redo")
+    public WorkingDraftView redoQuestionAiDraft(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId) {
+        return questionAi.redo(courseId, assessmentId, variantId, questionId);
+    }
+
+    @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-draft/render-svg")
+    public ResponseEntity<JobView> renderQuestionAiSvg(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId,
+            @RequestBody StructuredRenderRequest request) {
+        return ResponseEntity.accepted().body(questionAi.render(courseId, assessmentId, variantId, questionId, request));
+    }
+
+    @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-draft/save")
+    public List<VariantView> saveQuestionAiDraft(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId,
+            @RequestBody SaveAiDraftRequest request) {
+        return questionAi.save(courseId, assessmentId, variantId, questionId,
+                request.expectedQuestionVersion(), request.draft());
+    }
+
+    @DeleteMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-draft")
+    public ResponseEntity<Void> discardQuestionAiDraft(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId) {
+        questionAi.discard(courseId, assessmentId, variantId, questionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping(value = "/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-artifacts/{artifactId}/content",
+            produces = "image/svg+xml")
+    public ResponseEntity<String> questionAiArtifactContent(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId, @PathVariable UUID artifactId) {
+        ArtifactView artifact = questionAi.artifact(courseId, assessmentId, variantId, questionId, artifactId);
+        if (artifact.type() != ArtifactType.SVG) throw new IllegalArgumentException("Artifact is not an SVG");
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .contentType(MediaType.valueOf("image/svg+xml")).body(artifact.sourceCode());
+    }
+
+    @GetMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-artifacts")
+    public List<ArtifactView> questionAiArtifacts(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId) {
+        return questionAi.artifacts(courseId, assessmentId, variantId, questionId);
+    }
+
     @PostMapping("/{assessmentId}/publish")
     public PublishResult publish(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
         return service.publish(courseId, assessmentId);
@@ -257,6 +363,8 @@ public class AssessmentController {
     public record SourceVersion(long version) {
     }
     public record RejectDraft(long version, String reason) {
+    }
+    public record SaveAiDraftRequest(long expectedQuestionVersion, VariantQuestionInput draft) {
     }
     public record BatchValidate(List<DraftVersion> drafts) {
     }

@@ -11,6 +11,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.ai.lms.common.api.Roles;
 import edu.ai.lms.core.quiz.adapter.out.persistence.AssessmentRepository;
 import edu.ai.lms.core.quiz.adapter.out.persistence.AssessmentWorkflowRepository;
+import edu.ai.lms.core.quiz.adapter.out.persistence.QuestionAiRepository;
 import edu.ai.lms.core.quiz.adapter.out.persistence.AssessmentWorkflowRepository.AnswerInput;
 import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion;
@@ -34,7 +36,7 @@ import edu.ai.lms.core.quiz.app.service.richcontent.RichContentPolicyService;
 import lombok.RequiredArgsConstructor;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class AssessmentService {
     private final AssessmentRepository assessments;
     private final AssessmentWorkflowRepository workflow;
@@ -45,6 +47,16 @@ public class AssessmentService {
     private final AssessmentDraftValidationService draftValidator;
     private final ObjectMapper objectMapper;
     private final RichContentPolicyService richContentPolicy;
+    private final QuestionAiRepository questionAi;
+
+    public AssessmentService(AssessmentRepository assessments, AssessmentWorkflowRepository workflow,
+            QuestionBankUseCase questionBank, LoadSignedInUserPort signedInUserPort,
+            LoadCourseMembershipPort membershipPort, AssessmentGenerationDispatcher dispatcher,
+            AssessmentDraftValidationService draftValidator, ObjectMapper objectMapper,
+            RichContentPolicyService richContentPolicy) {
+        this(assessments, workflow, questionBank, signedInUserPort, membershipPort, dispatcher,
+                draftValidator, objectMapper, richContentPolicy, null);
+    }
 
     public List<AssessmentView> list(UUID courseId) {
         requireTeacher(courseId);
@@ -338,6 +350,17 @@ public class AssessmentService {
         return workflow.variants(assessmentId);
     }
 
+    public List<VariantView> updateVariantQuestion(UUID courseId, UUID assessmentId, UUID variantId,
+            UUID questionId, long expectedQuestionVersion, VariantQuestionInput input) {
+        VariantEditingContext editing = requireVariantEditingContext(courseId, assessmentId, variantId, questionId);
+        VariantQuestionInput sanitized = sanitizeVariantQuestionInput(input, editing.assessment().optionCount());
+        workflow.updateVariantQuestion(assessmentId, variantId, questionId, expectedQuestionVersion,
+                sanitized.content(), sanitized.contentFormat(), sanitized.explanation(),
+                sanitized.explanationFormat(), sanitized.answers());
+        workflow.recalculateCoverage(required(courseId, assessmentId), variantId);
+        return workflow.variants(assessmentId);
+    }
+
     public VariantEditingContext requireVariantEditingContext(UUID courseId, UUID assessmentId, UUID variantId,
             UUID questionId) {
         requireTeacher(courseId);
@@ -377,6 +400,11 @@ public class AssessmentService {
 
     public PublishResult publish(UUID courseId, UUID assessmentId) {
         CurrentActor actor = requireTeacher(courseId);
+        if (questionAi != null && questionAi.hasBlockingDraftOrJob(assessmentId)) {
+            throw new IllegalStateException("Publish is blocked by AI work on questions: "
+                    + questionAi.blockingQuestionIds(assessmentId)
+                    + ". Save/discard their working drafts and finish or cancel active jobs.");
+        }
         return workflow.publish(required(courseId, assessmentId), actor.id());
     }
 
