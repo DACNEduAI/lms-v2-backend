@@ -31,6 +31,7 @@ import edu.ai.lms.core.quiz.app.port.out.ManageQuizReleasePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
+import edu.ai.lms.core.quiz.api.CodeRunnerContractSnapshotApi;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -46,6 +47,7 @@ public class QuizWorkflowService implements QuizWorkflowUseCase {
     private final SaveQuestionPort saveQuestionPort;
     private final SaveAnswerPort saveAnswerPort;
     private final SaveQuestionLearningOutcomePort saveQuestionLearningOutcomePort;
+    private final CodeRunnerContractSnapshotApi codeRunnerContracts;
 
     @Override
     @Transactional
@@ -117,6 +119,9 @@ public class QuizWorkflowService implements QuizWorkflowUseCase {
         if (!item.getLearningOutcomeIds().isEmpty()) {
             saveQuestionLearningOutcomePort.addLearningOutcomes(
                     question.getId(), List.copyOf(item.getLearningOutcomeIds()));
+        }
+        if (item.getQuestionType() == Question.QuestionType.CODE_RUNNER) {
+            codeRunnerContracts.createQuestionRevision(question.getId(), item.getCodeRunnerContractJson());
         }
         return loadQuestionPort.getById(question.getId())
                 .orElseThrow(() -> new QuizLifecycleConflictException(

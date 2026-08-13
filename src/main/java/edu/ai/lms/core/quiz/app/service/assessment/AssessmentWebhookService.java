@@ -6,7 +6,10 @@ import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.Genera
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import edu.ai.lms.core.quiz.adapter.out.persistence.AssessmentWorkflowRepository;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
@@ -19,8 +22,15 @@ import lombok.extern.slf4j.Slf4j;
 public class AssessmentWebhookService {
     private final AssessmentWorkflowRepository workflow;
 
+    @Transactional
     public void handle(AssessmentWebhookPayload payload) {
-        if (payload == null || payload.batchId() == null) throw new IllegalArgumentException("batchId is required");
+        if (payload == null || payload.eventId() == null) throw new IllegalArgumentException("eventId is required");
+        if (payload.batchId() == null) throw new IllegalArgumentException("batchId is required");
+        if (!workflow.claimWebhookEvent(payload.eventId(), payload.batchId())) {
+            log.info("event=assessment.generation.callback_duplicate event_id={} batch_id={}",
+                    payload.eventId(), payload.batchId());
+            return;
+        }
         int draftCount = payload.drafts() == null ? 0 : payload.drafts().size();
         log.info("event=assessment.generation.callback_received event_id={} batch_id={} status={} draft_count={}",
                 payload.eventId(), payload.batchId(), payload.status(), draftCount);
@@ -35,8 +45,11 @@ public class AssessmentWebhookService {
         }
         List<GeneratedDraft> drafts = payload.drafts() == null ? List.of() : payload.drafts().stream()
                 .map(draft -> new GeneratedDraft(draft.content(), format(draft.contentFormat()),
-                        explanation(draft), explanationFormat(draft), draft.type(), draft.matrixRowId(),
-                        draft.customLearningLevelId(), draft.learningOutcomeIds() == null ? List.of() : draft.learningOutcomeIds(),
+                        explanation(draft), explanationFormat(draft), draft.type(),
+                        draft.codeRunnerContract() == null || draft.codeRunnerContract().isNull()
+                                ? null : draft.codeRunnerContract().toString(),
+                        draft.matrixRowId(), draft.customLearningLevelId(),
+                        draft.learningOutcomeIds() == null ? List.of() : draft.learningOutcomeIds(),
                         draft.answers() == null ? List.of() : draft.answers().stream()
                                 .map(answer -> new GeneratedAnswer(answer.content(), format(answer.contentFormat()), answer.correct(),
                                         answer.explanation(), format(answer.explanationFormat())))
@@ -54,11 +67,12 @@ public class AssessmentWebhookService {
     public record DraftPayload(String content, RichContentFormat contentFormat,
             String explanation, RichContentFormat explanationFormat,
             String type, UUID matrixRowId, UUID customLearningLevelId,
-            List<UUID> learningOutcomeIds, List<AnswerPayload> answers) {
+            List<UUID> learningOutcomeIds, List<AnswerPayload> answers,
+            JsonNode codeRunnerContract) {
         public DraftPayload(String content, String type, UUID matrixRowId, UUID customLearningLevelId,
                 List<UUID> learningOutcomeIds, List<AnswerPayload> answers) {
             this(content, RichContentFormat.PLAIN_TEXT, null, RichContentFormat.PLAIN_TEXT,
-                    type, matrixRowId, customLearningLevelId, learningOutcomeIds, answers);
+                    type, matrixRowId, customLearningLevelId, learningOutcomeIds, answers, null);
         }
     }
 

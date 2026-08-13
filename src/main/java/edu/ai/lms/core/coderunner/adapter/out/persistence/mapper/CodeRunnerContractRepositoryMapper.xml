@@ -123,4 +123,16 @@
     )
   </update>
 
+  <insert id="insertVerification">
+    INSERT INTO edu.code_runner_verifications (
+      id, revision_id, verified_by, verified_at,
+      execution_profile, judge0_submission_id, verdict,
+      stdout, stderr, time_ms, memory_kb
+    ) VALUES (
+      #{id}, #{revisionId}, #{verifiedBy}, #{verifiedAt},
+      CAST(#{executionProfile} AS jsonb), #{judge0SubmissionId}, #{verdict},
+      #{stdout}, #{stderr}, #{timeMs}, #{memoryKb}
+    )
+  </insert>
+
 </mapper>

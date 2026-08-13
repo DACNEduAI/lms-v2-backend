@@ -27,8 +27,6 @@ public class AssessmentGenerationDispatcher {
 
     @Value("${quiz.generation.webhook.base-url}")
     private String webhookBaseUrl;
-    @Value("${quiz.generation.webhook.secret}")
-    private String webhookSecret;
     @Value("${quiz.generation.timeout-minutes:20}")
     private long timeoutMinutes;
 
@@ -70,7 +68,6 @@ public class AssessmentGenerationDispatcher {
         request.put("batchId", batchId.toString());
         request.put("idempotencyKey", batchId + ":" + request.path("cells").toString().hashCode());
         request.put("webhookUrl", callbackUrl());
-        request.put("webhookSecret", webhookSecret);
         int cellCount = request.withArray("cells").size();
         log.info("event=assessment.generation.ai_request batch_id={} cell_count={}", batchId, cellCount);
         aiWebClient.post().uri("/quiz-gen/drafts/generate")

@@ -141,7 +141,7 @@ class QuizGenerationProcessingServiceUT {
                                 new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.MultipleChoiceDefaults(
                                         6, true, false)),
                         true, "PRESERVE",
-                        "idempotency-key", "http://lms/callback", "secret");
+                        "idempotency-key", "http://lms/callback");
 
         JsonNode json = objectMapper.valueToTree(request);
 
@@ -149,6 +149,7 @@ class QuizGenerationProcessingServiceUT {
         assertEquals(materialId.toString(), json.path("material_ids").get(0).asText());
         assertEquals(2, json.path("contractVersion").asInt());
         assertEquals("idempotency-key", json.path("idempotencyKey").asText());
+        assertFalse(json.has("webhookSecret"));
         assertFalse(json.has("courseId"));
         assertFalse(json.has("selectedMaterialIds"));
         assertEquals(6, json.path("questionDefaultsConfiguration").path("multipleChoice")

@@ -508,12 +508,17 @@ CREATE TABLE IF NOT EXISTS question_drafts
         CHECK (explanation_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     question_type      VARCHAR(30) NOT NULL
         CHECK (question_type IN ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')),
+    code_runner_contract JSONB,
     source_type        VARCHAR(30) NOT NULL DEFAULT 'MANUAL'
         CHECK (source_type IN ('MANUAL', 'QUIZ_COPY', 'AI_GENERATED', 'IMPORTED')),
     created_by         UUID REFERENCES users (id) ON DELETE SET NULL,
     version            BIGINT      NOT NULL DEFAULT 0 CHECK (version >= 0),
     created_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT question_drafts_code_runner_contract_check CHECK (
+        (question_type = 'CODE_RUNNER' AND code_runner_contract IS NOT NULL)
+        OR (question_type <> 'CODE_RUNNER' AND code_runner_contract IS NULL)
+    )
 );
 
 CREATE INDEX IF NOT EXISTS idx_question_drafts_course_updated
@@ -568,6 +573,7 @@ CREATE TABLE IF NOT EXISTS question_bank_questions
         CHECK (explanation_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     question_type      VARCHAR(30) NOT NULL
         CHECK (question_type IN ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')),
+    code_runner_contract JSONB,
     source_type        VARCHAR(30) NOT NULL DEFAULT 'MANUAL'
         CHECK (source_type IN ('MANUAL', 'QUIZ_COPY', 'AI_GENERATED', 'IMPORTED')),
     created_by         UUID REFERENCES users (id) ON DELETE SET NULL,
@@ -575,7 +581,11 @@ CREATE TABLE IF NOT EXISTS question_bank_questions
     validated_at       TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     version            BIGINT      NOT NULL DEFAULT 0 CHECK (version >= 0),
     created_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT question_bank_questions_code_runner_contract_check CHECK (
+        (question_type = 'CODE_RUNNER' AND code_runner_contract IS NOT NULL)
+        OR (question_type <> 'CODE_RUNNER' AND code_runner_contract IS NULL)
+    )
 );
 
 CREATE INDEX IF NOT EXISTS idx_question_bank_questions_course_updated
@@ -823,12 +833,21 @@ CREATE TABLE IF NOT EXISTS assessment_generation_batches
 CREATE INDEX IF NOT EXISTS idx_assessment_batches_parent
     ON assessment_generation_batches (assessment_id, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS assessment_webhook_events
+(
+    event_id    UUID PRIMARY KEY,
+    batch_id    UUID NOT NULL REFERENCES assessment_generation_batches (id) ON DELETE CASCADE,
+    received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS assessment_generation_batch_items
 (
     id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     batch_id                 UUID        NOT NULL REFERENCES assessment_generation_batches (id) ON DELETE CASCADE,
     matrix_row_id            UUID        NOT NULL REFERENCES exam_matrix_rows (id) ON DELETE RESTRICT,
     custom_learning_level_id UUID        NOT NULL REFERENCES custom_learning_levels (id) ON DELETE RESTRICT,
+    question_type            VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE'
+        CHECK (question_type IN ('MULTIPLE_CHOICE', 'CODE_RUNNER')),
     required_count           INTEGER     NOT NULL CHECK (required_count > 0),
     generated_count          INTEGER     NOT NULL DEFAULT 0 CHECK (generated_count >= 0),
     status                   VARCHAR(20) NOT NULL DEFAULT 'QUEUED'
@@ -1450,3 +1469,4 @@ ALTER TABLE rich_content_assets ADD COLUMN IF NOT EXISTS ai_artifact_id UUID
     REFERENCES question_ai_artifacts(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_rich_content_assets_ai_artifact ON rich_content_assets(ai_artifact_id)
     WHERE ai_artifact_id IS NOT NULL;
+CREATE TABLE IF NOT EXISTS code_runner_verifications ( id UUID PRIMARY KEY, revision_id UUID NOT NULL, verified_by UUID NOT NULL, verified_at TIMESTAMP WITH TIME ZONE NOT NULL, execution_profile JSONB NOT NULL, judge0_submission_id VARCHAR(255) NOT NULL, verdict VARCHAR(50) NOT NULL, stdout TEXT, stderr TEXT, time_ms DOUBLE PRECISION, memory_kb BIGINT );

@@ -40,8 +40,6 @@ public class QuizGenerationProcessingService {
 
     @Value("${quiz.generation.webhook.base-url}")
     private String webhookBaseUrl;
-    @Value("${quiz.generation.webhook.secret}")
-    private String webhookSecret;
     @Value("${quiz.generation.timeout-minutes:20}")
     private long timeoutMinutes;
     @Value("${quiz.generation.max-attempts:3}")
@@ -86,7 +84,7 @@ public class QuizGenerationProcessingService {
                     aiExamMatrix.rows(), aiExamMatrix.learningOutcomeIds(), materialIds, job.getPrompt(),
                     questionDefaultsConfiguration,
                     Boolean.TRUE.equals(job.getStrictMode()), job.getCodeRunnerPolicy(),
-                    job.getIdempotencyKey(), callbackUrl(), webhookSecret);
+                    job.getIdempotencyKey(), callbackUrl());
 
             WebClient.RequestBodySpec call = aiWebClient.post().uri("/quiz-gen/generate")
                     .header(CorrelationIdFilter.HEADER_NAME, job.getId().toString())
@@ -222,7 +220,6 @@ public class QuizGenerationProcessingService {
             boolean strictMode,
             String codeRunnerPolicy,
             String idempotencyKey,
-            String webhookUrl,
-            String webhookSecret) {
+            String webhookUrl) {
     }
 }

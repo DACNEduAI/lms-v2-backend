@@ -71,6 +71,23 @@ public class CodeRunnerContractPersistenceAdapter
         return repository.markVerified(questionId, configId) == 1;
     }
 
+    @Override
+    public void saveVerification(edu.ai.lms.core.coderunner.app.domain.CodeRunnerVerificationRecord record) {
+        repository.insertVerification(
+                record.id(),
+                record.revisionId(),
+                record.verifiedBy(),
+                record.verifiedAt(),
+                record.executionProfileJson(),
+                record.judge0SubmissionId(),
+                record.verdict(),
+                record.stdout(),
+                record.stderr(),
+                record.timeMs(),
+                record.memoryKb()
+        );
+    }
+
     private void insertTestCase(UUID configId, ExecutableAssessmentContract.TestCase testCase, int ordinal) {
         repository.insertTestCase(
                 UUID.randomUUID(),

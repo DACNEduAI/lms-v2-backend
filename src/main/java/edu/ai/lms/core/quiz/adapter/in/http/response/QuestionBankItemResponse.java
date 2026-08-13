@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonRawValue;
+
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankAnswer;
@@ -26,6 +28,7 @@ public record QuestionBankItemResponse(
         String explanation,
         RichContentFormat explanationFormat,
         Question.QuestionType questionType,
+        @JsonRawValue String codeRunnerContract,
         QuestionBankSourceType sourceType,
         UUID createdBy,
         UUID validatedBy,
@@ -41,7 +44,7 @@ public record QuestionBankItemResponse(
                 draft.getId(), null, draft.getCourseId(), draft.getChapterId(),
                 draft.getCognitiveLevelId(), draft.getCognitiveLevelCode(), draft.getCognitiveLevelName(),
                 draft.getContent(), draft.getContentFormat(), draft.getExplanation(), draft.getExplanationFormat(),
-                draft.getQuestionType(), draft.getSourceType(), draft.getCreatedBy(),
+                draft.getQuestionType(), draft.getCodeRunnerContractJson(), draft.getSourceType(), draft.getCreatedBy(),
                 null, null, draft.getVersion(),
                 answers(draft.getAnswers()), outcomes(draft.getLearningOutcomeIds()),
                 draft.getCreatedAt(), draft.getUpdatedAt());
@@ -52,7 +55,7 @@ public record QuestionBankItemResponse(
                 question.getId(), question.getOriginDraftId(), question.getCourseId(), question.getChapterId(),
                 question.getCognitiveLevelId(), question.getCognitiveLevelCode(), question.getCognitiveLevelName(),
                 question.getContent(), question.getContentFormat(), question.getExplanation(), question.getExplanationFormat(),
-                question.getQuestionType(), question.getSourceType(), question.getCreatedBy(),
+                question.getQuestionType(), question.getCodeRunnerContractJson(), question.getSourceType(), question.getCreatedBy(),
                 question.getValidatedBy(), question.getValidatedAt(), question.getVersion(),
                 answers(question.getAnswers()), outcomes(question.getLearningOutcomeIds()),
                 question.getCreatedAt(), question.getUpdatedAt());

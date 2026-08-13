@@ -5,11 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -24,6 +26,12 @@ import edu.ai.lms.core.quiz.app.service.assessment.AssessmentWebhookService.Draf
 @ExtendWith(MockitoExtension.class)
 class AssessmentWebhookServiceUT {
     @Mock private AssessmentWorkflowRepository workflow;
+
+    @BeforeEach
+    void acceptNewWebhookEvents() {
+        when(workflow.claimWebhookEvent(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any())).thenReturn(true);
+    }
 
     @Test
     void completedCallbackPreservesCellMappingAndSingleCorrectAnswer() {

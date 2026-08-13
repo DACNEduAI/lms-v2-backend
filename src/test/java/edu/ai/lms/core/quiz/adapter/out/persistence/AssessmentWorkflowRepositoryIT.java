@@ -57,6 +57,41 @@ class AssessmentWorkflowRepositoryIT extends IntegrationTestConfiguration {
     }
 
     @Test
+    void createsCodeRunnerVariantWithAReviewPendingContractSnapshot() {
+        Fixture fixture = createFixture();
+        jdbc.update("DELETE FROM edu.question_bank_answers WHERE question_bank_question_id = ?",
+                fixture.bankQuestionId());
+        jdbc.update("""
+                UPDATE edu.question_bank_questions
+                SET question_type = 'CODE_RUNNER', code_runner_contract = CAST(? AS jsonb)
+                WHERE id = ?
+                """, verifiedCodeRunnerContract(), fixture.bankQuestionId());
+        BankPlanCell original = fixture.plan().cells().get(0);
+        BankPlanCell codeRunnerCell = new BankPlanCell(
+                original.matrixRowId(), original.customLearningLevelId(), original.chapterId(),
+                original.chapter(), original.topic(), original.levelCode(), original.levelName(),
+                "CODE_RUNNER", original.learningOutcomeIds(), original.required(), original.validated(),
+                original.recentlyUsed(), original.reserved(), original.available(), original.missing());
+        BankPlan codeRunnerPlan = new BankPlan(
+                fixture.plan().assessmentId(), fixture.plan().examMatrixId(), fixture.plan().allowRecentlyUsedQuestions(),
+                fixture.plan().required(), fixture.plan().validated(), fixture.plan().recentlyUsed(),
+                fixture.plan().reserved(), fixture.plan().available(), fixture.plan().missing(), List.of(codeRunnerCell));
+
+        VariantView variant = workflow.createVariants(fixture.assessment(), codeRunnerPlan).get(0);
+
+        assertThat(variant.questions()).singleElement().satisfies(question -> {
+            assertThat(question.type()).isEqualTo("CODE_RUNNER");
+            assertThat(question.answers()).isEmpty();
+        });
+        assertThat(jdbc.queryForObject("""
+                SELECT c.contract_status
+                FROM edu.code_runner_configs c
+                JOIN edu.questions q ON q.id = c.question_id
+                WHERE q.quiz_id = ?
+                """, String.class, variant.quizId())).isEqualTo("READY_FOR_REVIEW");
+    }
+
+    @Test
     void returnsUnfilteredReviewItemsWithoutMergingTheTableAliasAndOrderBy() {
         Fixture fixture = createFixture();
 
@@ -134,6 +169,42 @@ class AssessmentWorkflowRepositoryIT extends IntegrationTestConfiguration {
                 "REMEMBER", "Remember", List.of(learningOutcomeId), 1, 1, 0, 0, 1, 0);
         BankPlan plan = new BankPlan(assessmentId, null, false, 1, 1, 0, 0, 1, 0, List.of(cell));
         return new Fixture(assessment, plan, bankQuestionId, learningOutcomeId);
+    }
+
+    private String verifiedCodeRunnerContract() {
+        return """
+                {
+                  "schema_version":"2.0.0",
+                  "contract_id":"is_even",
+                  "contract_version":"1.0.0",
+                  "status":"VERIFIED_EXECUTION_GOLD",
+                  "title":"Check even number",
+                  "statement":"Return true when value is even.",
+                  "runtime":{
+                    "execution_profile":{"id":"dsa_cpp17","version":"1.0.0"},
+                    "archetype":{"id":"scalar_function","version":"1.0.0"},
+                    "comparator":{"id":"exact_typed","version":"1.0.0"},
+                    "entry_point":"isEven",
+                    "signature":{
+                      "return_fixture":{"id":"boolean","version":"1.0.0"},
+                      "arguments":[{"name":"value","fixture":{"id":"integer","version":"1.0.0"},"constraints":{}}]
+                    },
+                    "starter_code":"bool isEven(int value) { return false; }",
+                    "public_tests":[{
+                      "id":"public_1","category":"example","visibility":"PUBLIC",
+                      "arguments":{"value":2},"expected_output":true,"points":0
+                    }],
+                    "banned_api_patterns":[]
+                  },
+                  "private_grading":{
+                    "reference_solution":"bool isEven(int value) { return value % 2 == 0; }",
+                    "hidden_tests":[{
+                      "id":"hidden_1","category":"hidden","visibility":"HIDDEN",
+                      "arguments":{"value":3},"expected_output":false,"points":1
+                    }]
+                  }
+                }
+                """;
     }
 
     private record Fixture(AssessmentView assessment, BankPlan plan, UUID bankQuestionId, UUID learningOutcomeId) {

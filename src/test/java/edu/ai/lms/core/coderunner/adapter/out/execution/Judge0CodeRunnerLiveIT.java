@@ -41,14 +41,17 @@ class Judge0CodeRunnerLiveIT {
     @Test
     void compilesAndExecutesARealCplusplusReferenceAndRejectsAWrongSolution() {
         ExecutableAssessmentContract contract = contract();
+        var saveContractPort = org.mockito.Mockito.mock(edu.ai.lms.core.coderunner.app.port.out.SaveCodeRunnerContractPort.class);
         var verificationService = new CodeRunnerVerificationService(
                 engine,
                 harnessBuilder,
+                saveContractPort,
+                new ObjectMapper(),
                 JUDGE0_CPP_LANGUAGE_ID,
                 Duration.ofSeconds(60),
                 Duration.ofMillis(350));
 
-        var verified = verificationService.verifyReference(contract);
+        var verified = verificationService.verifyReference(java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), contract);
         assertThat(verified.passed()).as("Judge0 results: %s", verified.results()).isTrue();
         assertThat(verified.passedTests()).isEqualTo(2);
 

@@ -1,10 +1,8 @@
 package edu.ai.lms.core.coderunner.adapter.in.http;
 
 import edu.ai.lms.core.coderunner.app.domain.ExecutableAssessmentContract;
-import edu.ai.lms.core.coderunner.app.domain.StoredCodeRunnerContract;
 import edu.ai.lms.core.coderunner.adapter.in.http.response.CodeRunnerVerificationResponse;
 import edu.ai.lms.core.coderunner.app.service.CodeRunnerContractService;
-import edu.ai.lms.core.coderunner.app.service.CodeRunnerVerificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,7 +22,6 @@ import java.util.UUID;
 public class CodeRunnerContractController {
 
     private final CodeRunnerContractService service;
-    private final CodeRunnerVerificationService verificationService;
 
     @PutMapping
     @PreAuthorize("hasRole('TEACHER')")
@@ -51,11 +48,6 @@ public class CodeRunnerContractController {
             @PathVariable UUID courseId,
             @PathVariable UUID quizId,
             @PathVariable UUID questionId) {
-        StoredCodeRunnerContract stored = service.getStoredForTeacher(courseId, quizId, questionId);
-        CodeRunnerVerificationResponse response = verificationService.verifyReference(stored.contract());
-        if (response.passed()) {
-            service.markVerified(courseId, quizId, questionId, stored.configId());
-        }
-        return response;
+        return service.verify(courseId, quizId, questionId);
     }
 }

@@ -1,0 +1,262 @@
+package edu.ai.lms.core.coderunner.adapter.in.http;
+
+import edu.ai.lms.config.IntegrationTestConfiguration;
+import io.restassured.http.ContentType;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.beans.factory.annotation.Value;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.HexFormat;
+import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
+
+import edu.ai.lms.core.coderunner.app.port.out.CodeExecutionEngine;
+import edu.ai.lms.core.coderunner.app.port.out.CodeExecutionEngine.EngineState;
+import edu.ai.lms.core.coderunner.app.port.out.CodeExecutionEngine.ExecutionResult;
+import edu.ai.lms.core.coderunner.app.port.out.CodeExecutionEngine.ExecutionTicket;
+import edu.ai.lms.core.coderunner.app.port.out.CodeExecutionEngine.Verdict;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@DisplayName("Code Runner E2E Lifecycle IT")
+class CodeRunnerE2EIT extends IntegrationTestConfiguration {
+
+    @MockBean
+    private CodeExecutionEngine codeExecutionEngine;
+
+    @Value("${quiz.generation.webhook.secret}")
+    private String webhookSecret;
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    private static String teacherToken;
+    private static String studentToken;
+    private static UUID courseId;
+    private static UUID chapterId;
+    private static UUID learningOutcomeId;
+    private static UUID questionId;
+    private static UUID quizId;
+    private static UUID attemptId;
+
+    @Test
+    @Order(1)
+    void setupUsersAndCourse() {
+        teacherToken = registerUser("Teacher", "E2E", "teacher.e2e@ai.edu", "TeacherPass123!", "teacher");
+        studentToken = registerUser("Student", "E2E", "student.e2e@ai.edu", "StudentPass123!", "student");
+
+        courseId = UUID.fromString(given().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body("""
+                        {"courseName":"E2E Course","courseCode":"E2E101","active":true,
+                         "startDate":"%s","endDate":"%s","learningOutcomes":[]}
+                        """.formatted(
+                        LocalDate.now().plusDays(1).format(DateTimeFormatter.ofPattern("dd-MM-yyyy")),
+                        LocalDate.now().plusMonths(2).format(DateTimeFormatter.ofPattern("dd-MM-yyyy"))))
+                .post("/api/course")
+                .then().statusCode(201)
+                .extract().path("courseId"));
+
+        // Setup chapter and LO
+        chapterId = UUID.randomUUID();
+        jdbc.update("INSERT INTO edu.chapters (chapter_id,title,course_id) VALUES (?,?,?)",
+                chapterId, "CodeRunner E2E Chapter", courseId);
+                
+        learningOutcomeId = UUID.randomUUID();
+        jdbc.update("INSERT INTO edu.learning_outcomes (id,prefix_number,description,course_id) VALUES (?,1,?,?)",
+                learningOutcomeId, "CodeRunner LO", courseId);
+
+        // Enroll student
+        given().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body("{\"studentEmails\":[\"student.e2e@ai.edu\"]}")
+                .put("/api/course/{courseId}/students/add", courseId)
+                .then().statusCode(200);
+    }
+
+    @Test
+    @Order(2)
+    void createCodeRunnerDraft() {
+        String draftBody = """
+                {
+                  "chapterId": "%s",
+                  "learningOutcomeIds": ["%s"],
+                  "content": "Write a function that returns true if a number is even.",
+                  "questionType": "CODE_RUNNER",
+                  "cognitiveLevelCode": "APPLY",
+                  "answers": [],
+                  "codeRunnerContract": {
+                    "schema_version": "2.0.0",
+                    "contract_id": "is_even",
+                    "contract_version": "1.0.0",
+                    "status": "READY_FOR_REVIEW",
+                    "title": "Is Even",
+                    "statement": "Write a function.",
+                    "runtime": {
+                      "execution_profile": { "id": "dsa_cpp17", "version": "1.0.0" },
+                      "archetype": { "id": "scalar_function", "version": "1.0.0" },
+                      "comparator": { "id": "exact_typed", "version": "1.0.0" },
+                      "entry_point": "isEven",
+                      "signature": {
+                        "return_fixture": { "id": "boolean", "version": "1.0.0" },
+                        "arguments": [
+                          { "name": "value", "fixture": { "id": "integer", "version": "1.0.0" }, "constraints": {} }
+                        ]
+                      },
+                      "starter_code": "bool isEven(int value) { return false; }",
+                      "public_tests": [
+                        {
+                          "id": "pub1", "category": "positive", "visibility": "PUBLIC",
+                          "arguments": { "value": 2 }, "expected_output": true, "points": 0.0
+                        }
+                      ],
+                      "banned_api_patterns": []
+                    },
+                    "private_grading": {
+                      "reference_solution": "bool isEven(int value) { return value %% 2 == 0; }",
+                      "hidden_tests": [
+                        {
+                          "id": "hid1", "category": "negative", "visibility": "HIDDEN",
+                          "arguments": { "value": 3 }, "expected_output": false, "points": 1.0
+                        }
+                      ]
+                    }
+                  }
+                }
+                """.formatted(chapterId, learningOutcomeId);
+
+        questionId = UUID.fromString(given().log().all().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body(draftBody)
+                .post("/api/courses/{courseId}/question-drafts", courseId)
+                .then().log().all().statusCode(201)
+                .extract().path("id"));
+    }
+
+    @Test
+    @Order(3)
+    void approveQuestion() {
+        questionId = UUID.fromString(given().log().all().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body("{\"version\":0}")
+                .post("/api/courses/{courseId}/question-drafts/{draftId}/validate", courseId, questionId)
+                .then().log().all().statusCode(200)
+                .extract().path("id"));
+    }
+
+    private static UUID quizQuestionId;
+
+    @Test
+    @Order(4)
+    void createQuizAndAddQuestion() {
+        quizId = UUID.fromString(given().log().all().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body("""
+                        {"quizTitle":"E2E Quiz","description":"Test",
+                         "unlimited":true,"passScore":50.0,"learningOutcomeIds":["%s"]}
+                        """.formatted(learningOutcomeId))
+                .post("/api/{courseId}/quiz", courseId)
+                .then().log().all().statusCode(201)
+                .extract().path("quizId"));
+
+        // Add question from bank to quiz
+        quizQuestionId = UUID.fromString(given().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body("""
+                        {"version":0,"bankQuestionIds":["%s"]}
+                        """.formatted(questionId))
+                .post("/api/courses/{courseId}/quizzes/{quizId}/questions/from-bank", courseId, quizId)
+                .then().statusCode(200)
+                .extract().path("[0].questionId"));
+    }
+
+    @Test
+    @Order(5)
+    void verifyCodeRunner() {
+        when(codeExecutionEngine.submit(any())).thenReturn(new ExecutionTicket("dummy-token"));
+        when(codeExecutionEngine.getResult(any())).thenReturn(
+                new ExecutionResult(EngineState.FINISHED, Verdict.ACCEPTED, "B:1", "", "", 10.0, 1024L, ""),
+                new ExecutionResult(EngineState.FINISHED, Verdict.ACCEPTED, "B:0", "", "", 10.0, 1024L, ""),
+                new ExecutionResult(EngineState.FINISHED, Verdict.ACCEPTED, "B:1", "", "", 10.0, 1024L, ""),
+                new ExecutionResult(EngineState.FINISHED, Verdict.ACCEPTED, "B:0", "", "", 10.0, 1024L, ""));
+
+        given().log().all().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .post("/api/courses/{courseId}/quizzes/{quizId}/questions/{questionId}/code-runner/verify", courseId, quizId, quizQuestionId)
+                .then().log().all().statusCode(200)
+                .body("passed", equalTo(true));
+    }
+
+    @Test
+    @Order(6)
+    void publishQuiz() {
+        given().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body("{\"version\":1}")
+                .post("/api/courses/{courseId}/quizzes/{quizId}/publish", courseId, quizId)
+                .then().statusCode(200)
+                .body("version", equalTo(2));
+    }
+
+    @Test
+    @Order(7)
+    void attemptAndSubmit() {
+        when(codeExecutionEngine.submit(any())).thenReturn(new ExecutionTicket("dummy-token"));
+        when(codeExecutionEngine.getResult(any())).thenReturn(
+                new ExecutionResult(EngineState.FINISHED, Verdict.ACCEPTED, "B:1", "", "", 10.0, 1024L, ""),
+                new ExecutionResult(EngineState.FINISHED, Verdict.ACCEPTED, "B:0", "", "", 10.0, 1024L, ""));
+
+        attemptId = UUID.fromString(given().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + studentToken)
+                .post("/api/{courseId}/attempt/quiz/{quizId}/start", courseId, quizId)
+                .then().statusCode(200)
+                .extract().path("attemptId"));
+
+        // Submit answer (Code Runner Submission)
+        given().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + studentToken)
+                .header("Idempotency-Key", UUID.randomUUID().toString())
+                .body("""
+                        {"sourceCode":"bool isEven(int value) { return value % 2 == 0; }"}
+                        """)
+                .post("/api/{courseId}/attempt/{attemptId}/questions/{questionId}/code-runner/submissions", courseId, attemptId, quizQuestionId)
+                .then().log().all().statusCode(201);
+
+        // Submit attempt
+        given().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + studentToken)
+                .body("""
+                        {"quizId":"%s"}
+                        """.formatted(quizId))
+                .post("/api/{courseId}/attempt/quiz/{quizId}/submit", courseId, quizId)
+                .then().statusCode(200);
+    }
+
+    private String registerUser(String first, String last, String email, String password, String role) {
+        String type = role.equals("teacher") ? "employeeId" : "studentId";
+        String extra = role.equals("student") ? ",\"enrollmentYear\":2026" : "";
+        return given().contentType(ContentType.JSON).body("""
+                {"firstName":"%s","lastName":"%s","email":"%s",
+                 "password":"%s","%s":"%s"%s}
+                """.formatted(first, last, email, password, type, UUID.randomUUID().toString().substring(0, 8), extra))
+                .post("/api/auth/" + role + "/register")
+                .then().statusCode(201)
+                .extract().path("token");
+    }
+}

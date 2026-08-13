@@ -38,6 +38,7 @@ class UTCodeRunnerContractService {
     @Mock private CheckCodeRunnerCourseAccessPort courseAccessPort;
     @Mock private SaveCodeRunnerContractPort saveContractPort;
     @Mock private LoadCodeRunnerContractPort loadContractPort;
+    @Mock private CodeRunnerVerificationService verificationService;
 
     private CodeRunnerContractService service;
     private UUID teacherId;
@@ -48,7 +49,7 @@ class UTCodeRunnerContractService {
     @BeforeEach
     void setUp() {
         service = new CodeRunnerContractService(
-                actorPort, questionContextPort, courseAccessPort, saveContractPort, loadContractPort);
+                actorPort, questionContextPort, courseAccessPort, saveContractPort, loadContractPort, verificationService);
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
         quizId = UUID.randomUUID();
@@ -76,15 +77,7 @@ class UTCodeRunnerContractService {
         assertThat(response.status()).isEqualTo("READY_FOR_REVIEW");
     }
 
-    @Test
-    void rejectsVerificationWhenTheCheckedRevisionIsNoLongerLatest() {
-        UUID checkedConfigId = UUID.randomUUID();
-        when(saveContractPort.markVerified(questionId, checkedConfigId)).thenReturn(false);
 
-        assertThatThrownBy(() -> service.markVerified(courseId, quizId, questionId, checkedConfigId))
-                .isInstanceOf(CodeRunnerConflictException.class)
-                .hasMessageContaining("changed during verification");
-    }
 
     private ExecutableAssessmentContract contract(String status) {
         ObjectMapper mapper = new ObjectMapper();

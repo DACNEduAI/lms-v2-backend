@@ -56,4 +56,17 @@ interface CodeRunnerContractRepository {
     int markVerified(
             @Param("questionId") UUID questionId,
             @Param("configId") UUID configId);
+
+    void insertVerification(
+            @Param("id") UUID id,
+            @Param("revisionId") UUID revisionId,
+            @Param("verifiedBy") UUID verifiedBy,
+            @Param("verifiedAt") java.time.Instant verifiedAt,
+            @Param("executionProfile") String executionProfile,
+            @Param("judge0SubmissionId") String judge0SubmissionId,
+            @Param("verdict") String verdict,
+            @Param("stdout") String stdout,
+            @Param("stderr") String stderr,
+            @Param("timeMs") Integer timeMs,
+            @Param("memoryKb") Integer memoryKb);
 }

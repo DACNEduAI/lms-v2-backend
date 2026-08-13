@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonRawValue;
+
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
 
 public final class AssessmentModels {
@@ -103,6 +105,7 @@ public final class AssessmentModels {
             String topic,
             String levelCode,
             String levelName,
+            String questionType,
             List<UUID> learningOutcomeIds,
             int required,
             int validated,
@@ -110,6 +113,14 @@ public final class AssessmentModels {
             int reserved,
             int available,
             int missing) {
+        public BankPlanCell(UUID matrixRowId, UUID customLearningLevelId, UUID chapterId,
+                String chapter, String topic, String levelCode, String levelName,
+                List<UUID> learningOutcomeIds, int required, int validated, int recentlyUsed,
+                int reserved, int available, int missing) {
+            this(matrixRowId, customLearningLevelId, chapterId, chapter, topic, levelCode, levelName,
+                    "MULTIPLE_CHOICE", learningOutcomeIds, required, validated, recentlyUsed, reserved,
+                    available, missing);
+        }
     }
 
     public record BatchView(
@@ -135,6 +146,7 @@ public final class AssessmentModels {
             String topic,
             String levelCode,
             String levelName,
+            String questionType,
             List<UUID> learningOutcomeIds,
             int requiredCount,
             int generatedCount,
@@ -149,6 +161,7 @@ public final class AssessmentModels {
             String explanation,
             RichContentFormat explanationFormat,
             String type,
+            String codeRunnerContractJson,
             UUID matrixRowId,
             UUID customLearningLevelId,
             List<UUID> learningOutcomeIds,
@@ -156,7 +169,7 @@ public final class AssessmentModels {
         public GeneratedDraft(String content, String type, UUID matrixRowId, UUID customLearningLevelId,
                 List<UUID> learningOutcomeIds, List<GeneratedAnswer> answers) {
             this(content, RichContentFormat.PLAIN_TEXT, null, RichContentFormat.PLAIN_TEXT,
-                    type, matrixRowId, customLearningLevelId, learningOutcomeIds, answers);
+                    type, null, matrixRowId, customLearningLevelId, learningOutcomeIds, answers);
         }
     }
 
@@ -178,6 +191,7 @@ public final class AssessmentModels {
             String explanation,
             RichContentFormat explanationFormat,
             String questionType,
+            @JsonRawValue String codeRunnerContract,
             String cognitiveLevelCode,
             String cognitiveLevelName,
             UUID chapterId,

@@ -57,6 +57,7 @@ import edu.ai.lms.core.quiz.app.exception.RichContentValidationException;
 import edu.ai.lms.core.quiz.app.port.out.ManageQuizReleasePort;
 import edu.ai.lms.core.quiz.app.service.richcontent.RichContentPolicyService;
 import edu.ai.lms.core.quiz.app.service.richcontent.RichContentUploadService;
+import edu.ai.lms.core.quiz.api.CodeRunnerContractSnapshotApi;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -68,18 +69,28 @@ public class AssessmentWorkflowRepository {
     private final RichContentPolicyService richContentPolicy;
     private final RichContentUploadService richContentUploads;
     private final ManageQuizReleasePort quizReleases;
+    private final CodeRunnerContractSnapshotApi codeRunnerContracts;
+
+    public boolean claimWebhookEvent(UUID eventId, UUID batchId) {
+        return jdbc.update("""
+                INSERT INTO edu.assessment_webhook_events (event_id, batch_id)
+                VALUES (:eventId, :batchId)
+                ON CONFLICT (event_id) DO NOTHING
+                """, Map.of("eventId", eventId, "batchId", batchId)) == 1;
+    }
 
     public BankPlan bankPlan(AssessmentView assessment) {
         if (assessment.examMatrixId() == null) throw new IllegalStateException("Select an Exam Matrix first");
         List<BankPlanCell> cells = jdbc.query("""
                 SELECT r.id AS matrix_row_id, c.custom_learning_level_id, r.chapter_id,
                        ch.title AS chapter, r.topic, l.code AS level_code, l.name AS level_name,
-                       c.question_count
+                       c.question_count, COALESCE(c.question_type, 'MULTIPLE_CHOICE') AS question_type
                 FROM edu.exam_matrix_row_learning_level_counts c
                 JOIN edu.exam_matrix_rows r ON r.id = c.exam_matrix_row_id
                 JOIN edu.custom_learning_levels l ON l.id = c.custom_learning_level_id
                 LEFT JOIN edu.chapters ch ON ch.chapter_id = r.chapter_id
-                WHERE r.matrix_id = :matrixId AND c.question_type = 'MULTIPLE_CHOICE'
+                WHERE r.matrix_id = :matrixId
+                  AND COALESCE(c.question_type, 'MULTIPLE_CHOICE') IN ('MULTIPLE_CHOICE', 'CODE_RUNNER')
                   AND c.question_count > 0
                 ORDER BY r.order_index, l.sort_order, r.id, l.id
                 """, Map.of("matrixId", assessment.examMatrixId()), (rs, rowNum) -> buildCell(assessment, rs));
@@ -98,10 +109,12 @@ public class AssessmentWorkflowRepository {
         UUID levelId = rs.getObject("custom_learning_level_id", UUID.class);
         UUID chapterId = rs.getObject("chapter_id", UUID.class);
         String levelCode = rs.getString("level_code");
+        String questionType = rs.getString("question_type");
         List<UUID> outcomeIds = cellOutcomeIds(rowId, levelId);
         MapSqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("courseId", assessment.courseId()).addValue("chapterId", chapterId)
                 .addValue("levelId", levelId).addValue("levelCode", levelCode)
+                .addValue("questionType", questionType)
                 .addValue("outcomeIds", outcomeIds.isEmpty() ? List.of(UUID.randomUUID()) : outcomeIds)
                 .addValue("outcomeCount", outcomeIds.size());
         List<Map<String, Object>> candidates = jdbc.queryForList("""
@@ -110,8 +123,8 @@ public class AssessmentWorkflowRepository {
                                WHERE a.question_bank_question_id = q.id AND a.status = 'RESERVED') AS reserved
                 FROM edu.question_bank_questions q
                 JOIN edu.cognitive_levels cl ON cl.id = q.cognitive_level_id
-                WHERE q.course_id = :courseId AND q.question_type = 'MULTIPLE_CHOICE'
-                  AND (:chapterId IS NULL OR q.chapter_id = :chapterId)
+                WHERE q.course_id = :courseId AND q.question_type = :questionType
+                  AND (CAST(:chapterId AS uuid) IS NULL OR q.chapter_id = :chapterId)
                   AND (q.custom_learning_level_id = :levelId OR lower(cl.code) = lower(:levelCode)
                        OR cl.sort_order = (SELECT sort_order FROM edu.custom_learning_levels WHERE id = :levelId))
                   AND (:outcomeCount = 0 OR (SELECT COUNT(DISTINCT qlo.learning_outcome_id)
@@ -127,7 +140,7 @@ public class AssessmentWorkflowRepository {
                 .count();
         int required = rs.getInt("question_count");
         return new BankPlanCell(rowId, levelId, chapterId, rs.getString("chapter"), rs.getString("topic"),
-                levelCode, rs.getString("level_name"), outcomeIds, required, validated, recent, reserved,
+                levelCode, rs.getString("level_name"), questionType, outcomeIds, required, validated, recent, reserved,
                 available, Math.max(0, required - available));
     }
 
@@ -162,11 +175,11 @@ public class AssessmentWorkflowRepository {
         for (BankPlanCell cell : missingCells) {
             jdbc.update("""
                     INSERT INTO edu.assessment_generation_batch_items
-                        (id, batch_id, matrix_row_id, custom_learning_level_id, required_count)
-                    VALUES (:id, :batchId, :matrixRowId, :levelId, :requiredCount)
+                        (id, batch_id, matrix_row_id, custom_learning_level_id, question_type, required_count)
+                    VALUES (:id, :batchId, :matrixRowId, :levelId, :questionType, :requiredCount)
                     """, Map.of("id", UUID.randomUUID(), "batchId", batchId,
                     "matrixRowId", cell.matrixRowId(), "levelId", cell.customLearningLevelId(),
-                    "requiredCount", cell.missing()));
+                    "questionType", cell.questionType(), "requiredCount", cell.missing()));
         }
         if (missingCells.isEmpty()) {
             jdbc.update("""
@@ -312,6 +325,10 @@ public class AssessmentWorkflowRepository {
             String cellKey = draft.matrixRowId() + "|" + draft.customLearningLevelId();
             BatchCellView cell = expectedByKey.get(cellKey);
             if (cell == null) throw new IllegalStateException("AI returned a Matrix cell outside the batch request");
+            if (!cell.questionType().equals(draft.type())) {
+                throw new IllegalStateException("AI returned " + draft.type() + " for a "
+                        + cell.questionType() + " Matrix cell");
+            }
             if ("COMPLETED".equals(cell.status())) continue;
             actual.merge(cellKey, 1, Integer::sum);
             acceptedDrafts.add(draft);
@@ -327,6 +344,8 @@ public class AssessmentWorkflowRepository {
         if (acceptedDrafts.isEmpty()) return;
         for (GeneratedDraft draft : acceptedDrafts) {
             UUID draftId = UUID.randomUUID();
+            String codeRunnerContract = "CODE_RUNNER".equals(draft.type())
+                    ? codeRunnerContracts.normalizeForReview(draft.codeRunnerContractJson()) : null;
             UUID chapterId = jdbc.queryForObject("SELECT chapter_id FROM edu.exam_matrix_rows WHERE id = :rowId",
                     Map.of("rowId", draft.matrixRowId()), UUID.class);
             UUID cognitiveLevelId = jdbc.queryForObject("""
@@ -340,10 +359,12 @@ public class AssessmentWorkflowRepository {
                     INSERT INTO edu.question_drafts
                         (id, course_id, chapter_id, cognitive_level_id, content, content_format,
                          explanation, explanation_format, question_type,
+                         code_runner_contract,
                          source_type, created_by, assessment_id, generation_batch_id,
                          matrix_row_id, custom_learning_level_id, review_status)
                     VALUES (:id, :courseId, :chapterId, :cognitiveLevelId, :content, :contentFormat,
-                            :explanation, :explanationFormat, 'MULTIPLE_CHOICE',
+                            :explanation, :explanationFormat, :questionType,
+                            CAST(:codeRunnerContract AS jsonb),
                             'AI_GENERATED', :createdBy, :assessmentId, :batchId, :matrixRowId, :levelId,
                             'NOT_VALIDATED')
                     """, new MapSqlParameterSource().addValue("id", draftId).addValue("courseId", courseId)
@@ -351,6 +372,7 @@ public class AssessmentWorkflowRepository {
                     .addValue("content", draft.content()).addValue("contentFormat", format(draft.contentFormat()).name()).addValue("createdBy", createdBy)
                     .addValue("explanation", draft.explanation())
                     .addValue("explanationFormat", format(draft.explanationFormat()).name())
+                    .addValue("questionType", draft.type()).addValue("codeRunnerContract", codeRunnerContract)
                     .addValue("assessmentId", assessmentId).addValue("batchId", batchId)
                     .addValue("matrixRowId", draft.matrixRowId()).addValue("levelId", draft.customLearningLevelId()));
             for (int i = 0; i < draft.answers().size(); i++) {
@@ -432,6 +454,7 @@ public class AssessmentWorkflowRepository {
                 SELECT d.id AS review_id, NULL::uuid AS bank_question_id, d.generation_batch_id,
                        d.matrix_row_id, d.custom_learning_level_id, d.content, d.content_format,
                        d.explanation, d.explanation_format, d.question_type,
+                       d.code_runner_contract::text AS code_runner_contract,
                        cl.code AS cognitive_level_code, cl.name AS cognitive_level_name,
                        d.chapter_id, ch.title AS chapter, d.review_status AS status, false AS recently_used,
                        d.version, d.rejected_by AS reviewed_by, d.rejected_at AS reviewed_at,
@@ -445,6 +468,7 @@ public class AssessmentWorkflowRepository {
                 SELECT q.origin_draft_id AS review_id, q.id AS bank_question_id, q.generation_batch_id,
                        q.matrix_row_id, q.custom_learning_level_id, q.content, q.content_format,
                        q.explanation, q.explanation_format, q.question_type,
+                       q.code_runner_contract::text AS code_runner_contract,
                        cl.code AS cognitive_level_code, cl.name AS cognitive_level_name,
                        q.chapter_id, ch.title AS chapter, 'VALIDATED' AS status, q.recently_used,
                        q.version, q.validated_by AS reviewed_by, q.validated_at AS reviewed_at,
@@ -519,7 +543,7 @@ public class AssessmentWorkflowRepository {
             List<ReviewLearningOutcome> cellOutcomes = cell.learningOutcomeIds().stream()
                     .map(outcomes::get).filter(java.util.Objects::nonNull).toList();
             return new ReviewCriteriaCell(cell.matrixRowId(), cell.customLearningLevelId(), cell.chapterId(),
-                    cell.chapter(), cell.topic(), cellOutcomes, "MULTIPLE_CHOICE", cell.levelCode(),
+                    cell.chapter(), cell.topic(), cellOutcomes, cell.questionType(), cell.levelCode(),
                     cell.levelName(), cell.required(), cell.available(), processing.getOrDefault(key, 0),
                     pending.getOrDefault(key, 0), validated.getOrDefault(key, 0), cell.missing());
         }).toList();
@@ -554,7 +578,10 @@ public class AssessmentWorkflowRepository {
                 chapters, outcomes.values().stream()
                         .map(outcome -> new FilterOption(outcome.id().toString(), outcome.label())).toList(),
                 levels, batches,
-                List.of(new FilterOption("MULTIPLE_CHOICE", "Multiple choice")));
+                plan.cells().stream().map(BankPlanCell::questionType).distinct()
+                        .map(type -> new FilterOption(type,
+                                "CODE_RUNNER".equals(type) ? "Code Runner" : "Multiple choice"))
+                        .toList());
     }
 
     private Map<String, Integer> groupedCounts(String sql, UUID assessmentId) {
@@ -698,13 +725,14 @@ public class AssessmentWorkflowRepository {
             MapSqlParameterSource params = new MapSqlParameterSource()
                     .addValue("quizId", quizId).addValue("chapterId", cell.chapterId())
                     .addValue("levelId", cell.customLearningLevelId()).addValue("levelCode", cell.levelCode())
+                    .addValue("questionType", cell.questionType())
                     .addValue("outcomeIds", cell.learningOutcomeIds().isEmpty() ? List.of(UUID.randomUUID()) : cell.learningOutcomeIds())
                     .addValue("outcomeCount", cell.learningOutcomeIds().size());
             Integer actual = jdbc.queryForObject("""
                     SELECT COUNT(*) FROM edu.questions q
                     LEFT JOIN edu.cognitive_levels cl ON cl.id = q.cognitive_level_id
-                    WHERE q.quiz_id = :quizId AND q.type = 'MULTIPLE_CHOICE'
-                      AND (:chapterId IS NULL OR q.chapter_id = :chapterId)
+                    WHERE q.quiz_id = :quizId AND q.type = :questionType
+                      AND (CAST(:chapterId AS uuid) IS NULL OR q.chapter_id = :chapterId)
                       AND (cl.code IS NULL OR lower(cl.code) = lower(:levelCode)
                            OR cl.sort_order = (SELECT sort_order FROM edu.custom_learning_levels WHERE id = :levelId))
                       AND (:outcomeCount = 0 OR (SELECT COUNT(DISTINCT qlo.learning_outcome_id)
@@ -802,7 +830,8 @@ public class AssessmentWorkflowRepository {
                 SELECT COALESCE(SUM(c.question_count), 0)
                 FROM edu.exam_matrix_row_learning_level_counts c
                 JOIN edu.exam_matrix_rows r ON r.id = c.exam_matrix_row_id
-                WHERE r.matrix_id = :matrixId AND c.question_type = 'MULTIPLE_CHOICE'
+                WHERE r.matrix_id = :matrixId
+                  AND COALESCE(c.question_type, 'MULTIPLE_CHOICE') IN ('MULTIPLE_CHOICE', 'CODE_RUNNER')
                 """, Map.of("matrixId", assessment.examMatrixId()), Integer.class);
         List<Integer> counts = jdbc.query("""
                 SELECT COUNT(q.id)
@@ -884,14 +913,15 @@ public class AssessmentWorkflowRepository {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("courseId", assessment.courseId()).addValue("chapterId", cell.chapterId())
                 .addValue("levelId", cell.customLearningLevelId()).addValue("levelCode", cell.levelCode())
+                .addValue("questionType", cell.questionType())
                 .addValue("outcomeIds", cell.learningOutcomeIds().isEmpty() ? List.of(UUID.randomUUID()) : cell.learningOutcomeIds())
                 .addValue("outcomeCount", cell.learningOutcomeIds().size()).addValue("allowRecent", assessment.allowRecentlyUsedQuestions())
                 .addValue("excluded", excluded).addValue("limit", limit);
         return jdbc.query("""
                 SELECT q.id FROM edu.question_bank_questions q
                 JOIN edu.cognitive_levels cl ON cl.id = q.cognitive_level_id
-                WHERE q.course_id = :courseId AND q.question_type = 'MULTIPLE_CHOICE'
-                  AND (:chapterId IS NULL OR q.chapter_id = :chapterId)
+                WHERE q.course_id = :courseId AND q.question_type = :questionType
+                  AND (CAST(:chapterId AS uuid) IS NULL OR q.chapter_id = :chapterId)
                   AND (q.custom_learning_level_id = :levelId OR lower(cl.code) = lower(:levelCode)
                        OR cl.sort_order = (SELECT sort_order FROM edu.custom_learning_levels WHERE id = :levelId))
                   AND (:outcomeCount = 0 OR (SELECT COUNT(DISTINCT qlo.learning_outcome_id)
@@ -908,7 +938,8 @@ public class AssessmentWorkflowRepository {
         UUID bankId = selected.bankId();
         Map<String, Object> bank = jdbc.queryForMap("""
                 SELECT content, content_format, explanation, explanation_format,
-                       question_type AS type, chapter_id, cognitive_level_id
+                       question_type AS type, code_runner_contract::text AS code_runner_contract,
+                       chapter_id, cognitive_level_id
                 FROM edu.question_bank_questions WHERE id = :id
                 """, Map.of("id", bankId));
         UUID questionId = UUID.randomUUID();
@@ -944,6 +975,9 @@ public class AssessmentWorkflowRepository {
                 WHERE question_bank_question_id = :bankId
                 """, Map.of("questionId", questionId, "bankId", bankId));
         richContentAssets.copyBankAssetsToQuestion(bankId, questionId);
+        if ("CODE_RUNNER".equals(bank.get("type"))) {
+            codeRunnerContracts.createQuestionRevision(questionId, (String) bank.get("code_runner_contract"));
+        }
     }
 
     private List<VariantQuestionView> variantQuestions(UUID quizId) {
@@ -985,11 +1019,19 @@ public class AssessmentWorkflowRepository {
     private void validateVariantStructure(VariantView variant, int optionCount) {
         for (int questionIndex = 0; questionIndex < variant.questions().size(); questionIndex++) {
             VariantQuestionView question = variant.questions().get(questionIndex);
+            if ("CODE_RUNNER".equals(question.type())) {
+                if (!question.answers().isEmpty()) {
+                    throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED",
+                            "questions[" + questionIndex + "].answers", variant.id(), question.id(),
+                            "Code Runner questions cannot contain answer choices");
+                }
+                continue;
+            }
             if (!"MULTIPLE_CHOICE".equals(question.type()) || question.answers().size() != optionCount
                     || question.answers().stream().filter(AnswerView::correct).count() != 1) {
                 throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED",
                         "questions[" + questionIndex + "]", variant.id(), question.id(),
-                        "Every variant question must be a multiple-choice question with exactly " + optionCount
+                        "Every multiple-choice question must contain exactly " + optionCount
                                 + " answers and one correct answer");
             }
         }
@@ -1046,7 +1088,7 @@ public class AssessmentWorkflowRepository {
         return jdbc.query("""
                 SELECT i.id, i.matrix_row_id, i.custom_learning_level_id, r.chapter_id,
                        ch.title AS chapter, r.topic, l.code AS level_code, l.name AS level_name,
-                       i.required_count, i.generated_count, i.status, i.error_message, i.retry_count
+                       i.question_type, i.required_count, i.generated_count, i.status, i.error_message, i.retry_count
                 FROM edu.assessment_generation_batch_items i
                 JOIN edu.exam_matrix_rows r ON r.id = i.matrix_row_id
                 JOIN edu.custom_learning_levels l ON l.id = i.custom_learning_level_id
@@ -1058,7 +1100,8 @@ public class AssessmentWorkflowRepository {
             UUID levelId = rs.getObject("custom_learning_level_id", UUID.class);
             return new BatchCellView(rs.getObject("id", UUID.class), rowId, levelId,
                     rs.getObject("chapter_id", UUID.class), rs.getString("chapter"), rs.getString("topic"),
-                    rs.getString("level_code"), rs.getString("level_name"), cellOutcomeIds(rowId, levelId),
+                    rs.getString("level_code"), rs.getString("level_name"), rs.getString("question_type"),
+                    cellOutcomeIds(rowId, levelId),
                     rs.getInt("required_count"), rs.getInt("generated_count"), rs.getString("status"),
                     rs.getString("error_message"), rs.getInt("retry_count"));
         });
@@ -1066,12 +1109,24 @@ public class AssessmentWorkflowRepository {
 
     private void validateGeneratedDraft(GeneratedDraft draft) {
         if (draft.content() == null || draft.content().isBlank()) throw new IllegalStateException("Generated Draft content is required");
-        if (!"MULTIPLE_CHOICE".equals(draft.type())) throw new IllegalStateException("Quiz2 AI may only generate MULTIPLE_CHOICE");
+        if ("CODE_RUNNER".equals(draft.type())) {
+            if (draft.answers() != null && !draft.answers().isEmpty()) {
+                throw new IllegalStateException("Generated Code Runner Draft cannot contain answer choices");
+            }
+            codeRunnerContracts.normalizeForReview(draft.codeRunnerContractJson());
+            return;
+        }
+        if (!"MULTIPLE_CHOICE".equals(draft.type())) {
+            throw new IllegalStateException("Quiz2 AI may only generate MULTIPLE_CHOICE or CODE_RUNNER");
+        }
+        if (draft.codeRunnerContractJson() != null) {
+            throw new IllegalStateException("Multiple-choice Draft cannot contain a Code Runner contract");
+        }
         if (draft.answers() == null || !List.of(4, 5).contains(draft.answers().size())) {
-            throw new IllegalStateException("Generated Draft must contain four or five answers");
+            throw new IllegalStateException("Generated multiple-choice Draft must contain four or five answers");
         }
         if (draft.answers().stream().filter(answer -> answer.correct()).count() != 1) {
-            throw new IllegalStateException("Generated Draft must contain exactly one correct answer");
+            throw new IllegalStateException("Generated multiple-choice Draft must contain exactly one correct answer");
         }
         if (draft.answers().stream().anyMatch(answer -> answer.content() == null || answer.content().isBlank())) {
             throw new IllegalStateException("Every generated answer requires content");
@@ -1086,7 +1141,8 @@ public class AssessmentWorkflowRepository {
         return jdbc.query("""
                 SELECT d.id, d.generation_batch_id, d.matrix_row_id, d.custom_learning_level_id,
                        d.content, d.content_format, d.explanation, d.explanation_format,
-                       d.question_type, cl.code AS cognitive_level_code,
+                       d.question_type, d.code_runner_contract::text AS code_runner_contract,
+                       cl.code AS cognitive_level_code,
                        cl.name AS cognitive_level_name, d.chapter_id, ch.title AS chapter,
                        d.review_status, d.version, d.rejected_by, d.rejected_at,
                        d.created_at, d.updated_at
@@ -1102,7 +1158,8 @@ public class AssessmentWorkflowRepository {
                     rs.getObject("matrix_row_id", UUID.class), rs.getObject("custom_learning_level_id", UUID.class),
                     rs.getString("content"), RichContentFormat.fromNullable(rs.getString("content_format")),
                     rs.getString("explanation"), RichContentFormat.fromNullable(rs.getString("explanation_format")),
-                    rs.getString("question_type"), rs.getString("cognitive_level_code"),
+                    rs.getString("question_type"), rs.getString("code_runner_contract"),
+                    rs.getString("cognitive_level_code"),
                     rs.getString("cognitive_level_name"), rs.getObject("chapter_id", UUID.class),
                     rs.getString("chapter"), outcomes.stream().map(ReviewLearningOutcome::id).toList(), outcomes,
                     draftAnswers(id), rs.getString("review_status"), false, rs.getLong("version"),
@@ -1116,6 +1173,7 @@ public class AssessmentWorkflowRepository {
                 SELECT q.id, q.origin_draft_id, q.generation_batch_id, q.matrix_row_id,
                        q.custom_learning_level_id, q.content, q.content_format,
                        q.explanation, q.explanation_format, q.question_type,
+                       q.code_runner_contract::text AS code_runner_contract,
                        cl.code AS cognitive_level_code, cl.name AS cognitive_level_name,
                        q.chapter_id, ch.title AS chapter, q.version,
                        q.validated_by, q.validated_at, q.recently_used, q.created_at, q.updated_at
@@ -1131,7 +1189,8 @@ public class AssessmentWorkflowRepository {
                     rs.getObject("custom_learning_level_id", UUID.class), rs.getString("content"),
                     RichContentFormat.fromNullable(rs.getString("content_format")),
                     rs.getString("explanation"), RichContentFormat.fromNullable(rs.getString("explanation_format")),
-                    rs.getString("question_type"), rs.getString("cognitive_level_code"),
+                    rs.getString("question_type"), rs.getString("code_runner_contract"),
+                    rs.getString("cognitive_level_code"),
                     rs.getString("cognitive_level_name"), rs.getObject("chapter_id", UUID.class),
                     rs.getString("chapter"), outcomes.stream().map(ReviewLearningOutcome::id).toList(), outcomes,
                     bankAnswers(id), "VALIDATED", rs.getBoolean("recently_used"), rs.getLong("version"),
@@ -1146,7 +1205,8 @@ public class AssessmentWorkflowRepository {
                 rs.getObject("custom_learning_level_id", UUID.class), rs.getString("content"),
                 RichContentFormat.fromNullable(rs.getString("content_format")), rs.getString("explanation"),
                 RichContentFormat.fromNullable(rs.getString("explanation_format")),
-                rs.getString("question_type"), rs.getString("cognitive_level_code"),
+                rs.getString("question_type"), rs.getString("code_runner_contract"),
+                rs.getString("cognitive_level_code"),
                 rs.getString("cognitive_level_name"), rs.getObject("chapter_id", UUID.class),
                 rs.getString("chapter"), rs.getString("status"), rs.getBoolean("recently_used"),
                 rs.getLong("version"), rs.getObject("reviewed_by", UUID.class),
@@ -1170,7 +1230,7 @@ public class AssessmentWorkflowRepository {
                     ? draftOutcomes.getOrDefault(ownerId, List.of()) : bankOutcomes.getOrDefault(ownerId, List.of());
             return new DraftReviewItem(row.id(), row.bankQuestionId(), row.generationBatchId(), row.matrixRowId(),
                     row.customLearningLevelId(), row.content(), row.contentFormat(), row.explanation(),
-                    row.explanationFormat(), row.questionType(), row.cognitiveLevelCode(),
+                    row.explanationFormat(), row.questionType(), row.codeRunnerContract(), row.cognitiveLevelCode(),
                     row.cognitiveLevelName(), row.chapterId(), row.chapter(),
                     outcomes.stream().map(ReviewLearningOutcome::id).toList(), outcomes, answers, row.status(),
                     row.recentlyUsed(), row.version(), row.reviewedBy(), row.reviewedAt(), row.createdAt(),
@@ -1318,6 +1378,7 @@ public class AssessmentWorkflowRepository {
             String explanation,
             RichContentFormat explanationFormat,
             String questionType,
+            String codeRunnerContract,
             String cognitiveLevelCode,
             String cognitiveLevelName,
             UUID chapterId,

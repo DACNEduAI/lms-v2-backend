@@ -1,6 +1,7 @@
 package edu.ai.lms.core.coderunner.app.service;
 
 import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.coderunner.adapter.in.http.response.CodeRunnerVerificationResponse;
 import edu.ai.lms.core.coderunner.app.domain.CodeRunnerActor;
 import edu.ai.lms.core.coderunner.app.domain.CodeRunnerQuestionContext;
 import edu.ai.lms.core.coderunner.app.domain.ExecutableAssessmentContract;
@@ -30,6 +31,7 @@ public class CodeRunnerContractService {
     private final CheckCodeRunnerCourseAccessPort courseAccessPort;
     private final SaveCodeRunnerContractPort saveContractPort;
     private final LoadCodeRunnerContractPort loadContractPort;
+    private final CodeRunnerVerificationService verificationService;
 
     public ExecutableAssessmentContract save(
             UUID courseId,
@@ -62,14 +64,15 @@ public class CodeRunnerContractService {
                 .orElseThrow(() -> new CodeRunnerNotFoundException("Code Runner contract not found"));
     }
 
-    public void markVerified(UUID courseId, UUID quizId, UUID questionId, UUID configId) {
+    public CodeRunnerVerificationResponse verify(UUID courseId, UUID quizId, UUID questionId) {
         CodeRunnerActor actor = requireTeacher();
         CodeRunnerQuestionContext context = requireContext(courseId, quizId, questionId);
         requireCourseAccess(actor, context);
-        if (!saveContractPort.markVerified(questionId, configId)) {
-            throw new CodeRunnerConflictException(
-                    "Code Runner contract changed during verification; verify the latest revision again");
-        }
+        
+        StoredCodeRunnerContract stored = loadContractPort.findLatestStoredByQuestionId(questionId)
+                .orElseThrow(() -> new CodeRunnerNotFoundException("Code Runner contract not found"));
+                
+        return verificationService.verifyReference(stored.configId(), questionId, actor.userId(), stored.contract());
     }
 
     private CodeRunnerActor requireTeacher() {

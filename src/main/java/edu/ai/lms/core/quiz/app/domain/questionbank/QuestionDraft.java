@@ -34,6 +34,7 @@ public class QuestionDraft {
     @Builder.Default
     private RichContentFormat explanationFormat = RichContentFormat.PLAIN_TEXT;
     private Question.QuestionType questionType;
+    private String codeRunnerContractJson;
     @Builder.Default
     private QuestionBankSourceType sourceType = QuestionBankSourceType.MANUAL;
     private UUID createdBy;
