@@ -14,12 +14,14 @@ import edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus;
 import edu.ai.lms.core.quiz.app.domain.QuizSourceType;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationJob;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
+import edu.ai.lms.core.quiz.app.domain.QuestionGenerationProvenance;
 import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.QuestionVisualJobPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
+import edu.ai.lms.core.quiz.app.port.out.SaveQuestionGenerationProvenancePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizGenerationJobPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuizPort;
@@ -28,6 +30,7 @@ import edu.ai.lms.core.quiz.app.port.out.ValidateLearningOutcomesPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -41,13 +44,14 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Slf4j
 public class QuizWebhookProcessingService {
     private final LoadQuizGenerationJobPort loadJobPort;
     private final SaveQuizGenerationJobPort saveJobPort;
     private final SaveQuizPort saveQuizPort;
     private final SaveQuestionPort saveQuestionPort;
+    private final SaveQuestionGenerationProvenancePort saveQuestionGenerationProvenancePort;
     private final SaveAnswerPort saveAnswerPort;
     private final SaveQuizLearningOutcomePort saveQuizLearningOutcomePort;
     private final SaveQuestionLearningOutcomePort saveQuestionLearningOutcomePort;
@@ -58,6 +62,19 @@ public class QuizWebhookProcessingService {
     private final QuestionVisualJobPort visualJobs;
     private final QuestionVisualGenerationService visualGenerationService;
     private final QuizGenerationTimingLogger timingLogger;
+
+    public QuizWebhookProcessingService(LoadQuizGenerationJobPort loadJobPort,
+            SaveQuizGenerationJobPort saveJobPort, SaveQuizPort saveQuizPort,
+            SaveQuestionPort saveQuestionPort, SaveAnswerPort saveAnswerPort,
+            SaveQuizLearningOutcomePort saveQuizLearningOutcomePort,
+            SaveQuestionLearningOutcomePort saveQuestionLearningOutcomePort,
+            ValidateLearningOutcomesPort learningOutcomesPort, ScheduleQuizGenerationJobPort schedulerPort,
+            SseQuizGenerationService sseService, ObjectMapper objectMapper, QuestionVisualJobPort visualJobs,
+            QuestionVisualGenerationService visualGenerationService, QuizGenerationTimingLogger timingLogger) {
+        this(loadJobPort, saveJobPort, saveQuizPort, saveQuestionPort, null, saveAnswerPort,
+                saveQuizLearningOutcomePort, saveQuestionLearningOutcomePort, learningOutcomesPort, schedulerPort,
+                sseService, objectMapper, visualJobs, visualGenerationService, timingLogger);
+    }
 
     @Transactional
     public QuizGenerationStatusResponse handleWebhook(QuizWebhookRequest request) {
@@ -78,8 +95,10 @@ public class QuizWebhookProcessingService {
                     request.getErrorCode(), request.getErrorMessage());
             job.setCallbackEventId(request.getEventId());
             job.setStatus(QuizGenerationStatus.FAILED);
-            job.setErrorCode(request.getErrorCode() == null ? "GENERATION_FAILED" : request.getErrorCode());
-            job.setErrorMessage("Quiz generation could not be completed.");
+            String errorCode = firstUsable(request.getErrorCode(), "GENERATION_FAILED");
+            job.setErrorCode(errorCode);
+            job.setErrorMessage(firstUsable(request.getErrorMessage(), errorCode,
+                    "AI generation failed without a technical message"));
             job.setLeaseUntil(null);
             LocalDateTime completedAt = LocalDateTime.now();
             job.setCompletedAt(completedAt);
@@ -484,6 +503,16 @@ public class QuizWebhookProcessingService {
                     .reviewStatus(QuestionReviewStatus.PENDING_REVIEW)
                     .sourceType(QuestionSourceType.AI_GENERATED)
                     .quizId(savedQuiz.getId()).build());
+            if (saveQuestionGenerationProvenancePort != null) saveQuestionGenerationProvenancePort.save(QuestionGenerationProvenance.builder()
+                    .questionId(savedQuestion.getId())
+                    .generationJobId(job.getId())
+                    .matrixRowId(item.getMatrixRowId())
+                    .ccctItemId(item.getCcctItemId())
+                    .customLearningLevelId(item.getCustomLearningLevelId())
+                    .questionType(savedQuestion.getType())
+                    .allocationSnapshot(allocationSnapshot(item))
+                    .createdAt(LocalDateTime.now())
+                    .build());
             if (generatedImageId != null) {
                 visualJobs.create(job.getId(), generatedImageId, generatedVisualType);
             }
@@ -504,6 +533,34 @@ public class QuizWebhookProcessingService {
             saveQuizLearningOutcomePort.addLearningOutcomes(savedQuiz.getId(), List.copyOf(quizOutcomeIds));
         }
         return savedQuiz;
+    }
+
+    private String allocationSnapshot(QuizWebhookRequest.QuestionPayload item) {
+        try {
+            Map<String, Object> snapshot = new HashMap<>();
+            snapshot.put("matrixRowId", item.getMatrixRowId());
+            snapshot.put("customLearningLevelId", item.getCustomLearningLevelId());
+            snapshot.put("questionType", item.getType());
+            return objectMapper.writeValueAsString(snapshot);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Could not persist generated question allocation", ex);
+        }
+    }
+
+    private String firstUsable(String... candidates) {
+        for (String candidate : candidates) {
+            if (candidate != null && !candidate.isBlank()
+                    && !"no message available".equalsIgnoreCase(candidate.trim())) {
+                return redact(candidate.trim());
+            }
+        }
+        return "GENERATION_FAILED";
+    }
+
+    private String redact(String message) {
+        String value = message.replaceAll("(?i)(authorization\\s*[:=]\\s*)([^\\s,;]+)", "$1[REDACTED]");
+        value = value.replaceAll("(?i)(bearer\\s+)([^\\s,;]+)", "$1[REDACTED]");
+        return value.replaceAll("(?i)((?:token|secret|password|api[_-]?key)\\s*[:=]\\s*)([^\\s,;]+)", "$1[REDACTED]");
     }
 
     private void deferTerminalNotification(QuizGenerationJob job) {

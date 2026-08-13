@@ -765,12 +765,12 @@ CREATE TABLE IF NOT EXISTS assessments
     start_time                      TIMESTAMP,
     due_time                        TIMESTAMP,
     attempt_limited                 INTEGER CHECK (attempt_limited IS NULL OR attempt_limited > 0),
-    variant_count                   INTEGER      NOT NULL DEFAULT 1 CHECK (variant_count BETWEEN 1 AND 20),
-    option_count                    INTEGER      NOT NULL DEFAULT 4 CHECK (option_count IN (4, 5)),
+    variant_count                   INTEGER CHECK (variant_count BETWEEN 1 AND 20),
+    option_count                    INTEGER CHECK (option_count IN (4, 5)),
     allow_recently_used_questions   BOOLEAN      NOT NULL DEFAULT false,
     lifecycle_status                VARCHAR(30)  NOT NULL DEFAULT 'DRAFT'
         CHECK (lifecycle_status IN ('DRAFT', 'GENERATING', 'REVIEW_PENDING', 'READY_TO_PUBLISH', 'PUBLISHED', 'ARCHIVED')),
-    current_step                    INTEGER      NOT NULL DEFAULT 1 CHECK (current_step BETWEEN 1 AND 10),
+    current_step                    INTEGER      NOT NULL DEFAULT 1 CHECK (current_step BETWEEN 1 AND 9),
     ccct_profile_id                 UUID REFERENCES ccct_profiles (id) ON DELETE RESTRICT,
     ccct_profile_version            BIGINT,
     exam_matrix_id                  UUID REFERENCES exam_matrices (id) ON DELETE RESTRICT,
@@ -779,6 +779,9 @@ CREATE TABLE IF NOT EXISTS assessments
     ccct_published_by_assessment    BOOLEAN      NOT NULL DEFAULT false,
     matrix_published_by_assessment  BOOLEAN      NOT NULL DEFAULT false,
     ai_generation_started           BOOLEAN      NOT NULL DEFAULT false,
+    base_generation_job_id          UUID REFERENCES quiz_generation_jobs (id) ON DELETE SET NULL,
+    base_confirmed_by               UUID REFERENCES users (id) ON DELETE SET NULL,
+    base_confirmed_at               TIMESTAMP,
     recent_use_override_by          UUID REFERENCES users (id) ON DELETE SET NULL,
     recent_use_override_at          TIMESTAMP,
     created_by                      UUID REFERENCES users (id) ON DELETE SET NULL,
@@ -918,6 +921,8 @@ CREATE TABLE IF NOT EXISTS assessment_variants
     variant_code        VARCHAR(20)  NOT NULL,
     order_index         INTEGER      NOT NULL CHECK (order_index >= 0),
     shuffle_seed        BIGINT       NOT NULL,
+    variant_kind        VARCHAR(20)  NOT NULL DEFAULT 'SHUFFLED'
+        CHECK (variant_kind IN ('BASE', 'SHUFFLED')),
     coverage_status     VARCHAR(20)  NOT NULL DEFAULT 'COMPLIANT'
         CHECK (coverage_status IN ('COMPLIANT', 'DRIFTED')),
     coverage_snapshot   JSONB        NOT NULL DEFAULT '{}'::jsonb,
@@ -932,6 +937,8 @@ CREATE TABLE IF NOT EXISTS assessment_variants
 
 CREATE INDEX IF NOT EXISTS idx_assessment_variants_parent
     ON assessment_variants (assessment_id, order_index);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_assessment_base_variant
+    ON assessment_variants (assessment_id) WHERE variant_kind = 'BASE';
 
 CREATE TABLE IF NOT EXISTS question_images
 (

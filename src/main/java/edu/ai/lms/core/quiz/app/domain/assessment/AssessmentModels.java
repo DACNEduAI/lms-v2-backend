@@ -29,8 +29,8 @@ public final class AssessmentModels {
             LocalDateTime startTime,
             LocalDateTime dueTime,
             Integer attemptLimited,
-            int variantCount,
-            int optionCount,
+            Integer variantCount,
+            Integer optionCount,
             boolean allowRecentlyUsedQuestions,
             LifecycleStatus lifecycleStatus,
             int currentStep,
@@ -48,7 +48,7 @@ public final class AssessmentModels {
             AssessmentQuestionProgress questionProgress) {
         public AssessmentView(UUID id, UUID courseId, String title, String description, boolean unlimited,
                 Integer timeLimitMinutes, Double passScore, LocalDateTime startTime, LocalDateTime dueTime,
-                Integer attemptLimited, int variantCount, int optionCount, boolean allowRecentlyUsedQuestions,
+                Integer attemptLimited, Integer variantCount, Integer optionCount, boolean allowRecentlyUsedQuestions,
                 LifecycleStatus lifecycleStatus, int currentStep, UUID ccctProfileId, Long ccctProfileVersion,
                 UUID examMatrixId, Long examMatrixVersion, boolean aiGenerationStarted, long version, UUID createdBy,
                 UUID publishedBy, LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
@@ -278,10 +278,21 @@ public final class AssessmentModels {
     public record BatchValidationResult(List<DraftValidationResult> results, int validatedCount, int failedCount) {
     }
 
+    public record BaseGenerationView(
+            UUID jobId,
+            String status,
+            String phase,
+            Integer attemptCount,
+            UUID quizId,
+            String errorCode,
+            String errorMessage) {
+    }
+
     public record VariantView(
             UUID id,
             UUID quizId,
             String code,
+            String kind,
             int orderIndex,
             long shuffleSeed,
             String coverageStatus,
@@ -289,6 +300,12 @@ public final class AssessmentModels {
             UUID overrideBy,
             LocalDateTime overrideAt,
             List<VariantQuestionView> questions) {
+        public VariantView(UUID id, UUID quizId, String code, int orderIndex, long shuffleSeed,
+                String coverageStatus, String overrideReason, UUID overrideBy, LocalDateTime overrideAt,
+                List<VariantQuestionView> questions) {
+            this(id, quizId, code, orderIndex == 0 ? "BASE" : "SHUFFLED", orderIndex, shuffleSeed,
+                    coverageStatus, overrideReason, overrideBy, overrideAt, questions);
+        }
     }
 
     public record VariantQuestionView(

@@ -114,7 +114,7 @@ class AssessmentServiceReviewUT {
                         null, null, null, 1, 4, false)));
 
         assertEquals("ASSESSMENT_READ_ONLY", error.getCode());
-        verify(assessments, never()).update(any(), any(), anyLong(), any(), any(), anyBoolean(), any(), any(),
-                any(), any(), any(), anyInt(), anyInt(), anyBoolean(), any());
+        verify(assessments, never()).update(any(), any(), anyLong(), any(), any(), any(), any(), any(), any(),
+                any());
     }
 }

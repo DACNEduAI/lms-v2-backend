@@ -109,6 +109,23 @@ public class AssessmentController {
         return service.rollbackSources(courseId, assessmentId);
     }
 
+    @PostMapping("/{assessmentId}/base-quiz/generation")
+    public ResponseEntity<BaseGenerationView> startBaseGeneration(@PathVariable UUID courseId,
+            @PathVariable UUID assessmentId, @RequestBody BaseGenerationRequest request) {
+        return ResponseEntity.accepted()
+                .body(service.startBaseGeneration(courseId, assessmentId, request.optionCount()));
+    }
+
+    @GetMapping("/{assessmentId}/base-quiz/generation")
+    public BaseGenerationView baseGeneration(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+        return service.reconcileBaseGeneration(courseId, assessmentId);
+    }
+
+    @PostMapping("/{assessmentId}/base-quiz/confirm")
+    public List<VariantView> confirmBaseQuiz(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+        return service.confirmBaseQuiz(courseId, assessmentId);
+    }
+
     @GetMapping("/{assessmentId}/bank-plan")
     public BankPlan bankPlan(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
         return service.bankPlan(courseId, assessmentId);
@@ -189,8 +206,13 @@ public class AssessmentController {
 
     @PostMapping("/{assessmentId}/variants")
     public ResponseEntity<List<VariantView>> createVariants(@PathVariable UUID courseId,
-            @PathVariable UUID assessmentId) {
-        return ResponseEntity.status(201).body(service.createVariants(courseId, assessmentId));
+            @PathVariable UUID assessmentId, @RequestBody CreateVariantsRequest request) {
+        return ResponseEntity.status(201).body(service.createVariants(courseId, assessmentId, request.variantCount()));
+    }
+
+    @PostMapping("/{assessmentId}/variants/reopen-base")
+    public List<VariantView> reopenBaseQuiz(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+        return service.reopenBaseQuiz(courseId, assessmentId);
     }
 
     @GetMapping("/{assessmentId}/variants")
@@ -361,6 +383,10 @@ public class AssessmentController {
     public record VersionedConfiguration(long version, AssessmentConfiguration configuration) {
     }
     public record SourceVersion(long version) {
+    }
+    public record BaseGenerationRequest(int optionCount) {
+    }
+    public record CreateVariantsRequest(int variantCount) {
     }
     public record RejectDraft(long version, String reason) {
     }

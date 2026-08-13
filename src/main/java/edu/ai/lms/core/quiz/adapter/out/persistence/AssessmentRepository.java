@@ -31,15 +31,11 @@ public class AssessmentRepository {
             UUID actorId,
             String title,
             String description,
-            boolean unlimited,
             Integer timeLimitMinutes,
             Double passScore,
             LocalDateTime startTime,
             LocalDateTime dueTime,
-            Integer attemptLimited,
-            int variantCount,
-            int optionCount,
-            boolean allowRecentlyUsedQuestions) {
+            Integer attemptLimited) {
         UUID id = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO edu.assessments
@@ -47,23 +43,18 @@ public class AssessmentRepository {
                      start_time, due_time, attempt_limited, variant_count, option_count,
                      allow_recently_used_questions, created_by)
                 VALUES
-                    (:id, :courseId, :title, :description, :unlimited, :timeLimitMinutes, :passScore,
-                     :startTime, :dueTime, :attemptLimited, :variantCount, :optionCount,
-                     :allowRecentlyUsedQuestions, :actorId)
+                    (:id, :courseId, :title, :description, false, :timeLimitMinutes, :passScore,
+                     :startTime, :dueTime, :attemptLimited, NULL, NULL, false, :actorId)
                 """, new MapSqlParameterSource()
                 .addValue("id", id)
                 .addValue("courseId", courseId)
                 .addValue("title", title)
                 .addValue("description", description)
-                .addValue("unlimited", unlimited)
                 .addValue("timeLimitMinutes", timeLimitMinutes)
                 .addValue("passScore", passScore)
                 .addValue("startTime", startTime)
                 .addValue("dueTime", dueTime)
                 .addValue("attemptLimited", attemptLimited)
-                .addValue("variantCount", variantCount)
-                .addValue("optionCount", optionCount)
-                .addValue("allowRecentlyUsedQuestions", allowRecentlyUsedQuestions)
                 .addValue("actorId", actorId));
         return get(courseId, id).orElseThrow();
     }
@@ -91,31 +82,24 @@ public class AssessmentRepository {
             long expectedVersion,
             String title,
             String description,
-            boolean unlimited,
             Integer timeLimitMinutes,
             Double passScore,
             LocalDateTime startTime,
             LocalDateTime dueTime,
-            Integer attemptLimited,
-            int variantCount,
-            int optionCount,
-            boolean allowRecentlyUsedQuestions,
-            UUID actorId) {
+            Integer attemptLimited) {
         int updated = jdbc.update("""
                 UPDATE edu.assessments
                 SET title = :title,
                     description = :description,
-                    unlimited = :unlimited,
+                    unlimited = false,
                     time_limit_minutes = :timeLimitMinutes,
                     pass_score = :passScore,
                     start_time = :startTime,
                     due_time = :dueTime,
                     attempt_limited = :attemptLimited,
-                    variant_count = :variantCount,
-                    option_count = :optionCount,
-                    allow_recently_used_questions = :allowRecentlyUsedQuestions,
-                    recent_use_override_by = CASE WHEN :allowRecentlyUsedQuestions THEN :actorId ELSE NULL END,
-                    recent_use_override_at = CASE WHEN :allowRecentlyUsedQuestions THEN CURRENT_TIMESTAMP ELSE NULL END,
+                    allow_recently_used_questions = false,
+                    recent_use_override_by = NULL,
+                    recent_use_override_at = NULL,
                     version = version + 1,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = :assessmentId AND course_id = :courseId AND version = :expectedVersion
@@ -126,17 +110,56 @@ public class AssessmentRepository {
                 .addValue("expectedVersion", expectedVersion)
                 .addValue("title", title)
                 .addValue("description", description)
-                .addValue("unlimited", unlimited)
                 .addValue("timeLimitMinutes", timeLimitMinutes)
                 .addValue("passScore", passScore)
                 .addValue("startTime", startTime)
                 .addValue("dueTime", dueTime)
-                .addValue("attemptLimited", attemptLimited)
-                .addValue("variantCount", variantCount)
-                .addValue("optionCount", optionCount)
-                .addValue("allowRecentlyUsedQuestions", allowRecentlyUsedQuestions)
-                .addValue("actorId", actorId));
+                .addValue("attemptLimited", attemptLimited));
         return updated == 1;
+    }
+
+    public UUID baseGenerationJobId(UUID courseId, UUID assessmentId) {
+        List<UUID> jobIds = jdbc.query("""
+                SELECT base_generation_job_id FROM edu.assessments
+                WHERE id = :assessmentId AND course_id = :courseId
+                """, Map.of("assessmentId", assessmentId, "courseId", courseId),
+                (rs, rowNum) -> rs.getObject(1, UUID.class));
+        return jobIds.isEmpty() ? null : jobIds.get(0);
+    }
+
+    public List<MatrixCellRef> matrixCells(UUID matrixId) {
+        return jdbc.query("""
+                SELECT DISTINCT exam_matrix_row_id, custom_learning_level_id
+                FROM edu.exam_matrix_row_learning_level_counts
+                WHERE question_count > 0 AND exam_matrix_row_id IN
+                    (SELECT id FROM edu.exam_matrix_rows WHERE matrix_id = :matrixId)
+                ORDER BY exam_matrix_row_id, custom_learning_level_id
+                """, Map.of("matrixId", matrixId), (rs, rowNum) -> new MatrixCellRef(
+                rs.getObject("exam_matrix_row_id", UUID.class),
+                rs.getObject("custom_learning_level_id", UUID.class)));
+    }
+
+    public void startBaseGeneration(UUID courseId, UUID assessmentId, UUID jobId, int optionCount) {
+        int updated = jdbc.update("""
+                UPDATE edu.assessments
+                SET option_count = :optionCount, base_generation_job_id = :jobId,
+                    ai_generation_started = true, lifecycle_status = 'GENERATING', current_step = 5,
+                    version = version + 1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = :assessmentId AND course_id = :courseId
+                  AND current_step = 5 AND base_generation_job_id IS NULL
+                """, Map.of("optionCount", optionCount, "jobId", jobId,
+                "assessmentId", assessmentId, "courseId", courseId));
+        if (updated != 1) throw new IllegalStateException("Base Quiz generation already started or Assessment changed");
+    }
+
+    public void resetFailedBaseGeneration(UUID courseId, UUID assessmentId, UUID jobId) {
+        jdbc.update("""
+                UPDATE edu.assessments
+                SET base_generation_job_id = NULL, option_count = NULL, ai_generation_started = false,
+                    lifecycle_status = 'DRAFT', current_step = 5,
+                    version = version + 1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = :assessmentId AND course_id = :courseId AND base_generation_job_id = :jobId
+                """, Map.of("assessmentId", assessmentId, "courseId", courseId, "jobId", jobId));
     }
 
     public List<SourceOption> listCcctProfiles(UUID courseId) {
@@ -462,10 +485,10 @@ public class AssessmentRepository {
                 SELECT COALESCE(SUM(c.question_count), 0)
                 FROM edu.exam_matrix_row_learning_level_counts c
                 JOIN edu.exam_matrix_rows r ON r.id = c.exam_matrix_row_id
-                WHERE r.matrix_id = :matrixId AND c.question_type = 'MULTIPLE_CHOICE'
+                WHERE r.matrix_id = :matrixId
                 """, Map.of("matrixId", matrixId), Integer.class);
         if (total == null || total <= 0) {
-            throw new IllegalStateException("Exam Matrix must require at least one MULTIPLE_CHOICE question");
+            throw new IllegalStateException("Exam Matrix must require at least one question");
         }
         String status = jdbc.queryForObject("""
                 SELECT lifecycle_status FROM edu.exam_matrices
@@ -618,7 +641,8 @@ public class AssessmentRepository {
                 rs.getString("title"), rs.getString("description"), rs.getBoolean("unlimited"),
                 (Integer) rs.getObject("time_limit_minutes"), (Double) rs.getObject("pass_score"),
                 rs.getObject("start_time", LocalDateTime.class), rs.getObject("due_time", LocalDateTime.class),
-                (Integer) rs.getObject("attempt_limited"), rs.getInt("variant_count"), rs.getInt("option_count"),
+                (Integer) rs.getObject("attempt_limited"), (Integer) rs.getObject("variant_count"),
+                (Integer) rs.getObject("option_count"),
                 rs.getBoolean("allow_recently_used_questions"), LifecycleStatus.valueOf(rs.getString("lifecycle_status")),
                 rs.getInt("current_step"), rs.getObject("ccct_profile_id", UUID.class),
                 (Long) rs.getObject("ccct_profile_version"), rs.getObject("exam_matrix_id", UUID.class),
@@ -626,5 +650,8 @@ public class AssessmentRepository {
                 rs.getLong("version"), rs.getObject("created_by", UUID.class),
                 rs.getObject("published_by", UUID.class), rs.getObject("published_at", LocalDateTime.class),
                 rs.getObject("created_at", LocalDateTime.class), rs.getObject("updated_at", LocalDateTime.class), null);
+    }
+
+    public record MatrixCellRef(UUID matrixRowId, UUID customLearningLevelId) {
     }
 }

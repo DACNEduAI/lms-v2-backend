@@ -112,7 +112,7 @@ public class QuizGenerationProcessingService {
         job.setLeaseUntil(null);
         job.setErrorCode(code);
         boolean willRetry = job.getAttemptCount() != null && job.getAttemptCount() < maxAttempts;
-        job.setErrorMessage(publicErrorMessage(code, willRetry));
+        job.setErrorMessage(technicalErrorMessage(message, code));
         if (willRetry) {
             long delaySeconds = Math.min(60, 1L << Math.max(1, job.getAttemptCount()));
             job.setStatus(QuizGenerationStatus.PENDING);
@@ -153,15 +153,16 @@ public class QuizGenerationProcessingService {
     }
 
     private String safeMessage(Exception ex) {
-        String message = ex.getMessage();
-        return message == null ? ex.getClass().getSimpleName() : message.substring(0, Math.min(1000, message.length()));
+        return technicalErrorMessage(ex.getMessage(), ex.getClass().getSimpleName());
     }
 
-    private String publicErrorMessage(String code, boolean willRetry) {
-        String message = "CALLBACK_MISSING".equals(code)
-                ? "The quiz service did not confirm delivery."
-                : "The quiz generation service is temporarily unavailable.";
-        return willRetry ? message + " The request will be retried." : message + " Retry the request later.";
+    private String technicalErrorMessage(String value, String fallback) {
+        String message = value == null ? "" : value.trim();
+        if (message.isEmpty() || "no message available".equalsIgnoreCase(message)) message = fallback;
+        message = message.replaceAll("(?i)(authorization\\s*[:=]\\s*)([^\\s,;]+)", "$1[REDACTED]");
+        message = message.replaceAll("(?i)(bearer\\s+)([^\\s,;]+)", "$1[REDACTED]");
+        message = message.replaceAll("(?i)((?:token|secret|password|api[_-]?key)\\s*[:=]\\s*)([^\\s,;]+)", "$1[REDACTED]");
+        return message.substring(0, Math.min(1000, message.length()));
     }
 
     AiExamMatrix toAiExamMatrix(JsonNode snapshotRows) {
