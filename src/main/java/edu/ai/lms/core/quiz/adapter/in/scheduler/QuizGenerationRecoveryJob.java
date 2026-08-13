@@ -12,6 +12,7 @@ import org.springframework.scheduling.quartz.QuartzJobBean;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.time.Clock;
 
 @Slf4j
 @Component
@@ -29,12 +30,12 @@ public class QuizGenerationRecoveryJob extends QuartzJobBean {
     protected void executeInternal(JobExecutionContext context) {
         for (var jobId : loadJobPort.findRecoverableIds(25)) {
             try {
-                schedulerPort.schedule(jobId, LocalDateTime.now());
+                schedulerPort.schedule(jobId, LocalDateTime.now(Clock.systemUTC()));
             } catch (RuntimeException ex) {
                 log.warn("Could not recover quiz generation job {}", jobId, ex);
             }
         }
-        int deleted = saveJobPort.deleteTerminalBefore(LocalDateTime.now().minusDays(retentionDays));
+        int deleted = saveJobPort.deleteTerminalBefore(LocalDateTime.now(Clock.systemUTC()).minusDays(retentionDays));
         if (deleted > 0) {
             log.info("Removed {} expired quiz generation job records", deleted);
         }

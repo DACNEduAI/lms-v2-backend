@@ -98,7 +98,7 @@ public class CreateQuizService implements CreateQuizUseCase {
             quiz.setDisplay(true);
             quiz.setLifecycleStatus(QuizLifecycleStatus.PUBLISHED);
             quiz.setPublishedBy(user.getId());
-            quiz.setPublishedAt(LocalDateTime.now());
+            quiz.setPublishedAt(LocalDateTime.now(java.time.Clock.systemUTC()));
             quiz.setUnlimited(true);
             quiz.setStartTime(null);
             quiz.setDueTime(null);
@@ -122,7 +122,7 @@ public class CreateQuizService implements CreateQuizUseCase {
                 .entityName(savedQuiz.getQuizTitle())
                 .description(user.getRole() == Roles.TEACHER ? "Giảng viên tạo bài kiểm tra mới"
                         : "Học viên tạo bài kiểm tra mới")
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(java.time.Clock.systemUTC()))
                 .build());
 
         // Publish notification event — chỉ khi giảng viên tạo quiz hiển thị công khai

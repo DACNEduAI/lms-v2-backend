@@ -58,7 +58,7 @@ public class NotificationService implements NotificationUseCase {
                 .type(type)
                 .linkUrl(linkUrl)
                 .isRead(false)
-                .createdAt(java.time.LocalDateTime.now())
+                .createdAt(java.time.LocalDateTime.now(java.time.Clock.systemUTC()))
                 .build();
         return notificationPort.save(notification);
     }

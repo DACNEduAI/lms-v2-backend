@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,18 +54,18 @@ public class QuizGenerationProcessingService {
             return;
         }
         if (beforeClaim.getCreatedAt() != null
-                && beforeClaim.getCreatedAt().plusMinutes(timeoutMinutes).isBefore(LocalDateTime.now())) {
+                && beforeClaim.getCreatedAt().plusMinutes(timeoutMinutes).isBefore(LocalDateTime.now(Clock.systemUTC()))) {
             markTimedOut(beforeClaim);
             return;
         }
         if (beforeClaim.getStatus() == QuizGenerationStatus.PROCESSING
                 && beforeClaim.getLeaseUntil() != null
-                && beforeClaim.getLeaseUntil().isBefore(LocalDateTime.now())) {
+                && beforeClaim.getLeaseUntil().isBefore(LocalDateTime.now(Clock.systemUTC()))) {
             beforeClaim.setStatus(QuizGenerationStatus.PENDING);
-            beforeClaim.setNextAttemptAt(LocalDateTime.now());
+            beforeClaim.setNextAttemptAt(LocalDateTime.now(Clock.systemUTC()));
             saveJobPort.save(beforeClaim);
         }
-        if (!saveJobPort.claim(jobId, LocalDateTime.now().plusMinutes(timeoutMinutes))) {
+        if (!saveJobPort.claim(jobId, LocalDateTime.now(Clock.systemUTC()).plusMinutes(timeoutMinutes))) {
             return;
         }
 
@@ -116,12 +117,12 @@ public class QuizGenerationProcessingService {
         if (willRetry) {
             long delaySeconds = Math.min(60, 1L << Math.max(1, job.getAttemptCount()));
             job.setStatus(QuizGenerationStatus.PENDING);
-            job.setNextAttemptAt(LocalDateTime.now().plusSeconds(delaySeconds));
+            job.setNextAttemptAt(LocalDateTime.now(Clock.systemUTC()).plusSeconds(delaySeconds));
             QuizGenerationJob saved = saveJobPort.save(job);
             schedulerPort.schedule(saved.getId(), saved.getNextAttemptAt());
         } else {
             job.setStatus(QuizGenerationStatus.FAILED);
-            LocalDateTime completedAt = LocalDateTime.now();
+            LocalDateTime completedAt = LocalDateTime.now(Clock.systemUTC());
             job.setCompletedAt(completedAt);
             QuizGenerationJob saved = saveJobPort.save(job);
             timingLogger.textTerminal(saved, "failed", code, completedAt);
@@ -135,7 +136,7 @@ public class QuizGenerationProcessingService {
         job.setLeaseUntil(null);
         job.setErrorCode("GENERATION_TIMEOUT");
         job.setErrorMessage("Quiz generation exceeded its deadline");
-        LocalDateTime completedAt = LocalDateTime.now();
+        LocalDateTime completedAt = LocalDateTime.now(Clock.systemUTC());
         job.setCompletedAt(completedAt);
         QuizGenerationJob saved = saveJobPort.save(job);
         timingLogger.textTerminal(saved, "timed_out", job.getErrorCode(), completedAt);

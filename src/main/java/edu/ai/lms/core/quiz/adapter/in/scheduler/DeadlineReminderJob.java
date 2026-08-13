@@ -25,8 +25,8 @@ public class DeadlineReminderJob extends QuartzJobBean {
     @Override
     protected void executeInternal(JobExecutionContext context) throws JobExecutionException {
         log.info("Executing DeadlineReminderJob...");
-        LocalDateTime fromTime = LocalDateTime.now().plusHours(23);
-        LocalDateTime toTime = LocalDateTime.now().plusHours(24);
+        LocalDateTime fromTime = LocalDateTime.now(java.time.Clock.systemUTC()).plusHours(23);
+        LocalDateTime toTime = LocalDateTime.now(java.time.Clock.systemUTC()).plusHours(24);
 
         List<PendingQuizTarget> targets = loadPendingQuizDeadlinePort.findStudentsWithApproachingDeadlines(fromTime, toTime);
         

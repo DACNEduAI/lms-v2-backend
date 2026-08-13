@@ -69,8 +69,8 @@ CREATE TABLE IF NOT EXISTS users
     last_name  VARCHAR(255),
     avatar_url VARCHAR(255),
     role       VARCHAR(50),
-    created_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS students
@@ -101,10 +101,10 @@ CREATE TABLE IF NOT EXISTS courses
     course_code VARCHAR(255) NOT NULL UNIQUE,
     active      BOOLEAN      NOT NULL DEFAULT true,
     cover_image VARCHAR(255),
-    start_date  TIMESTAMP    NOT NULL,
-    end_date    TIMESTAMP    NOT NULL,
-    created_at  TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP             DEFAULT CURRENT_TIMESTAMP
+    start_date  TIMESTAMPTZ    NOT NULL,
+    end_date    TIMESTAMPTZ    NOT NULL,
+    created_at  TIMESTAMPTZ             DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMPTZ             DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Chapters table
@@ -114,8 +114,8 @@ CREATE TABLE IF NOT EXISTS chapters
     title       VARCHAR(255),
     description TEXT,
     course_id   UUID NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (chapter_id)
 );
 
@@ -131,10 +131,10 @@ CREATE TABLE IF NOT EXISTS materials
     ingestion_status VARCHAR(50)     NOT NULL DEFAULT 'NOT_STARTED' CHECK (ingestion_status IN ('NOT_STARTED', 'PENDING', 'PROCESSING', 'READY', 'FAILED', 'NOT_APPLICABLE')),
     ingestion_error TEXT,
     ingestion_revision UUID,
-    ingested_at     TIMESTAMP,
+    ingested_at     TIMESTAMPTZ,
     course_id       UUID,
-    created_at      TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
+    created_at      TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE
 );
 
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS materials
 ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingestion_status VARCHAR(50) NOT NULL DEFAULT 'NOT_STARTED';
 ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingestion_error TEXT;
 ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingestion_revision UUID;
-ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingested_at TIMESTAMP;
+ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingested_at TIMESTAMPTZ;
 UPDATE materials
 SET ingestion_status = CASE
     WHEN type = 'PDF' AND status = 'UPLOADED' THEN 'PENDING'
@@ -215,8 +215,8 @@ CREATE TABLE IF NOT EXISTS group_learning_outcomes
     description TEXT,
     sort_order  INTEGER      NOT NULL DEFAULT 1,
     course_id   UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
-    created_at  TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
+    created_at  TIMESTAMPTZ   DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMPTZ   DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id, course_id)
 );
 
@@ -229,8 +229,8 @@ CREATE TABLE IF NOT EXISTS learning_outcomes
     sort_order                INTEGER      NOT NULL DEFAULT 1,
     course_id                 UUID NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
     group_learning_outcome_id UUID,
-    created_at                TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
-    updated_at                TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
+    created_at                TIMESTAMPTZ   DEFAULT CURRENT_TIMESTAMP,
+    updated_at                TIMESTAMPTZ   DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id, course_id),
     FOREIGN KEY (group_learning_outcome_id, course_id) REFERENCES group_learning_outcomes (id, course_id) ON DELETE SET NULL (group_learning_outcome_id)
 );
@@ -259,9 +259,9 @@ CREATE TABLE IF NOT EXISTS ccct_profiles
         CHECK (last_mode IN ('PDF', 'CUSTOM', 'STRUCTURED', 'MARKDOWN')),
     markdown_content TEXT         NOT NULL DEFAULT '',
     created_by       UUID REFERENCES users (id) ON DELETE SET NULL,
-    published_at     TIMESTAMP,
-    created_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    published_at     TIMESTAMPTZ,
+    created_at       TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE UNIQUE INDEX uq_ccct_profile_name_per_course
@@ -310,9 +310,9 @@ CREATE TABLE IF NOT EXISTS ccct_ai_jobs
     file_key         VARCHAR(512),
     warnings_json    TEXT         NOT NULL DEFAULT '[]',
     error_message    TEXT,
-    created_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    completed_at     TIMESTAMP
+    created_at       TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at     TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_ccct_ai_jobs_profile_created
@@ -354,8 +354,8 @@ CREATE TABLE IF NOT EXISTS exam_matrices
     course_id       uuid                        not null,
     title           character varying           not null,
     description     text                        null,
-    created_at      timestamp without time zone null     default CURRENT_TIMESTAMP,
-    updated_at      timestamp without time zone null     default CURRENT_TIMESTAMP,
+    created_at      TIMESTAMPTZ null     default CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMPTZ null     default CURRENT_TIMESTAMP,
     constraint exam_matrices_pkey primary key (id),
     constraint exam_matrices_course_id_fkey foreign KEY (course_id) references courses (id) on delete CASCADE
 ) TABLESPACE pg_default;
@@ -397,8 +397,8 @@ CREATE TABLE IF NOT EXISTS custom_learning_levels
     name                VARCHAR(255) NOT NULL,
     description         TEXT,
     sort_order          INTEGER      NOT NULL DEFAULT 1,
-    created_at          TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
+    created_at          TIMESTAMPTZ             DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMPTZ             DEFAULT CURRENT_TIMESTAMP,
     constraint custom_learning_levels_matrix_id_fkey
         foreign key (matrix_id) references exam_matrices (id) on delete CASCADE,
     constraint custom_learning_levels_matrix_name_key unique (matrix_id, name),
@@ -460,9 +460,9 @@ CREATE TABLE IF NOT EXISTS enrollments
 (
     course_id     UUID NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
     user_id       UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    enrolled_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    enrolled_date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (course_id, user_id)
 );
 
@@ -506,8 +506,8 @@ CREATE TABLE IF NOT EXISTS question_drafts
         CHECK (source_type IN ('MANUAL', 'QUIZ_COPY', 'AI_GENERATED', 'IMPORTED')),
     created_by         UUID REFERENCES users (id) ON DELETE SET NULL,
     version            BIGINT      NOT NULL DEFAULT 0 CHECK (version >= 0),
-    created_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at         TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_question_drafts_course_updated
@@ -527,8 +527,8 @@ CREATE TABLE IF NOT EXISTS question_draft_answers
     explanation_format VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
         CHECK (explanation_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     order_index       INTEGER   NOT NULL CHECK (order_index >= 0),
-    created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_question_draft_answer_order UNIQUE (question_draft_id, order_index)
 );
 
@@ -566,10 +566,10 @@ CREATE TABLE IF NOT EXISTS question_bank_questions
         CHECK (source_type IN ('MANUAL', 'QUIZ_COPY', 'AI_GENERATED', 'IMPORTED')),
     created_by         UUID REFERENCES users (id) ON DELETE SET NULL,
     validated_by       UUID REFERENCES users (id) ON DELETE SET NULL,
-    validated_at       TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    validated_at       TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     version            BIGINT      NOT NULL DEFAULT 0 CHECK (version >= 0),
-    created_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at         TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at         TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_question_bank_questions_course_updated
@@ -589,8 +589,8 @@ CREATE TABLE IF NOT EXISTS question_bank_answers
     explanation_format        VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
         CHECK (explanation_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     order_index               INTEGER   NOT NULL CHECK (order_index >= 0),
-    created_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at                TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_question_bank_answer_order UNIQUE (question_bank_question_id, order_index)
 );
 
@@ -616,8 +616,8 @@ CREATE TABLE IF NOT EXISTS quizzes
     unlimited          BOOLEAN      NOT NULL DEFAULT false,
     time_limit_minutes INTEGER,
     pass_score         DOUBLE PRECISION,
-    start_time         TIMESTAMP,
-    due_time           TIMESTAMP,
+    start_time         TIMESTAMPTZ,
+    due_time           TIMESTAMPTZ,
     attempt_limited    INTEGER,
     course_id          UUID         NOT NULL REFERENCES courses (id),
     student_id         UUID REFERENCES students (user_id),
@@ -630,9 +630,9 @@ CREATE TABLE IF NOT EXISTS quizzes
     original_quiz_id   UUID REFERENCES quizzes (id) ON DELETE SET NULL,
     version            BIGINT       NOT NULL DEFAULT 0 CHECK (version >= 0),
     published_by       UUID REFERENCES users (id) ON DELETE SET NULL,
-    published_at       TIMESTAMP,
-    created_at         TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
-    updated_at         TIMESTAMP             DEFAULT CURRENT_TIMESTAMP
+    published_at       TIMESTAMPTZ,
+    created_at         TIMESTAMPTZ             DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMPTZ             DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_quizzes_course_lifecycle_updated
@@ -661,23 +661,23 @@ CREATE TABLE IF NOT EXISTS quiz_generation_jobs
     unlimited           BOOLEAN,
     time_limit_minutes  INTEGER,
     pass_score          DOUBLE PRECISION,
-    start_time          TIMESTAMP,
-    due_time            TIMESTAMP,
+    start_time          TIMESTAMPTZ,
+    due_time            TIMESTAMPTZ,
     attempt_limited     INTEGER,
     display             BOOLEAN      NOT NULL DEFAULT false,
     phase               VARCHAR(30)  NOT NULL DEFAULT 'TEXT_GENERATION'
         CHECK (phase IN ('TEXT_GENERATION', 'VISUAL_GENERATION', 'FINALIZING', 'DONE')),
     status              VARCHAR(30)  NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'TIMED_OUT')),
     attempt_count       INTEGER      NOT NULL DEFAULT 0,
-    next_attempt_at     TIMESTAMP,
-    lease_until         TIMESTAMP,
+    next_attempt_at     TIMESTAMPTZ,
+    lease_until         TIMESTAMPTZ,
     error_code          VARCHAR(100),
     error_message       TEXT,
     callback_event_id   UUID UNIQUE,
-    processing_at       TIMESTAMP,
-    completed_at        TIMESTAMP,
-    created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    processing_at       TIMESTAMPTZ,
+    completed_at        TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_quiz_generation_request UNIQUE (requested_by, idempotency_key)
 );
 
@@ -711,9 +711,9 @@ CREATE TABLE IF NOT EXISTS questions
     source_question_id  UUID REFERENCES questions (id) ON DELETE SET NULL,
     version             BIGINT      NOT NULL DEFAULT 0 CHECK (version >= 0),
     reviewed_by         UUID REFERENCES users (id) ON DELETE SET NULL,
-    reviewed_at         TIMESTAMP,
-    created_at          TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    reviewed_at         TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_questions_quiz_review
@@ -735,7 +735,7 @@ CREATE TABLE IF NOT EXISTS question_generation_provenance
     question_type            VARCHAR(30) NOT NULL
         CHECK (question_type IN ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')),
     allocation_snapshot      JSONB       NOT NULL,
-    created_at               TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at               TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_question_provenance_job
@@ -751,7 +751,7 @@ ALTER TABLE exam_matrices
         CHECK (lifecycle_status IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')),
     ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0 CHECK (version >= 0),
     ADD COLUMN IF NOT EXISTS published_by UUID REFERENCES users (id) ON DELETE SET NULL,
-    ADD COLUMN IF NOT EXISTS published_at TIMESTAMP;
+    ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS assessments
 (
@@ -762,8 +762,8 @@ CREATE TABLE IF NOT EXISTS assessments
     unlimited                       BOOLEAN      NOT NULL DEFAULT false,
     time_limit_minutes              INTEGER CHECK (time_limit_minutes IS NULL OR time_limit_minutes > 0),
     pass_score                      DOUBLE PRECISION CHECK (pass_score IS NULL OR (pass_score >= 0 AND pass_score <= 100)),
-    start_time                      TIMESTAMP,
-    due_time                        TIMESTAMP,
+    start_time                      TIMESTAMPTZ,
+    due_time                        TIMESTAMPTZ,
     attempt_limited                 INTEGER CHECK (attempt_limited IS NULL OR attempt_limited > 0),
     variant_count                   INTEGER CHECK (variant_count BETWEEN 1 AND 20),
     option_count                    INTEGER CHECK (option_count IN (4, 5)),
@@ -781,17 +781,17 @@ CREATE TABLE IF NOT EXISTS assessments
     ai_generation_started           BOOLEAN      NOT NULL DEFAULT false,
     base_generation_job_id          UUID REFERENCES quiz_generation_jobs (id) ON DELETE SET NULL,
     base_confirmed_by               UUID REFERENCES users (id) ON DELETE SET NULL,
-    base_confirmed_at               TIMESTAMP,
+    base_confirmed_at               TIMESTAMPTZ,
     recent_use_override_by          UUID REFERENCES users (id) ON DELETE SET NULL,
-    recent_use_override_at          TIMESTAMP,
+    recent_use_override_at          TIMESTAMPTZ,
     created_by                      UUID REFERENCES users (id) ON DELETE SET NULL,
     version                         BIGINT       NOT NULL DEFAULT 0 CHECK (version >= 0),
     published_by                    UUID REFERENCES users (id) ON DELETE SET NULL,
-    published_at                    TIMESTAMP,
+    published_at                    TIMESTAMPTZ,
     last_unpublished_by             UUID REFERENCES users (id) ON DELETE SET NULL,
-    last_unpublished_at             TIMESTAMP,
-    created_at                      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at                      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_unpublished_at             TIMESTAMPTZ,
+    created_at                      TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                      TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (due_time IS NULL OR start_time IS NULL OR due_time > start_time)
 );
 
@@ -812,9 +812,9 @@ CREATE TABLE IF NOT EXISTS assessment_generation_batches
     idempotency_key    VARCHAR(255) NOT NULL UNIQUE,
     error_message      TEXT,
     created_by         UUID REFERENCES users (id) ON DELETE SET NULL,
-    created_at         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    completed_at       TIMESTAMP
+    created_at         TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at       TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_assessment_batches_parent
@@ -832,7 +832,7 @@ CREATE TABLE IF NOT EXISTS assessment_generation_batch_items
         CHECK (status IN ('QUEUED', 'PROCESSING', 'COMPLETED', 'FAILED')),
     error_message            TEXT,
     retry_count              INTEGER     NOT NULL DEFAULT 0 CHECK (retry_count >= 0),
-    updated_at               TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at               TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_assessment_batch_cell UNIQUE (batch_id, matrix_row_id, custom_learning_level_id)
 );
 
@@ -844,7 +844,7 @@ ALTER TABLE question_drafts
     ADD COLUMN IF NOT EXISTS review_status VARCHAR(20) NOT NULL DEFAULT 'NOT_VALIDATED'
         CHECK (review_status IN ('NOT_VALIDATED', 'REJECTED')),
     ADD COLUMN IF NOT EXISTS rejected_by UUID REFERENCES users (id) ON DELETE SET NULL,
-    ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
     ADD COLUMN IF NOT EXISTS supersedes_bank_question_id UUID REFERENCES question_bank_questions (id) ON DELETE SET NULL;
 
@@ -854,7 +854,7 @@ ALTER TABLE question_bank_questions
     ADD COLUMN IF NOT EXISTS matrix_row_id UUID REFERENCES exam_matrix_rows (id) ON DELETE SET NULL,
     ADD COLUMN IF NOT EXISTS custom_learning_level_id UUID REFERENCES custom_learning_levels (id) ON DELETE SET NULL,
     ADD COLUMN IF NOT EXISTS recently_used BOOLEAN NOT NULL DEFAULT false,
-    ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS supersedes_bank_question_id UUID REFERENCES question_bank_questions (id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_question_drafts_assessment_review
@@ -873,9 +873,9 @@ CREATE TABLE IF NOT EXISTS question_bank_allocations
     custom_learning_level_id  UUID REFERENCES custom_learning_levels (id) ON DELETE SET NULL,
     status                    VARCHAR(20) NOT NULL
         CHECK (status IN ('RESERVED', 'USED', 'RELEASED')),
-    reserved_at               TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    used_at                   TIMESTAMP,
-    released_at               TIMESTAMP
+    reserved_at               TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    used_at                   TIMESTAMPTZ,
+    released_at               TIMESTAMPTZ
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_question_bank_active_allocation
@@ -928,9 +928,9 @@ CREATE TABLE IF NOT EXISTS assessment_variants
     coverage_snapshot   JSONB        NOT NULL DEFAULT '{}'::jsonb,
     override_reason     TEXT,
     override_by         UUID REFERENCES users (id) ON DELETE SET NULL,
-    override_at         TIMESTAMP,
-    created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    override_at         TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMPTZ    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_assessment_variant_code UNIQUE (assessment_id, variant_code),
     CONSTRAINT uq_assessment_variant_order UNIQUE (assessment_id, order_index)
 );
@@ -959,8 +959,8 @@ CREATE TABLE IF NOT EXISTS question_images
     byte_size        BIGINT,
     error_code       VARCHAR(100),
     error_message    TEXT,
-    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at       TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     CHECK ((source_type = 'AUTO' AND status IN ('PENDING', 'PROCESSING', 'FAILED'))
         OR (source_type = 'LATEX' AND (status IN ('PENDING', 'PROCESSING', 'FAILED') OR source_text IS NOT NULL))
         OR (source_type = 'SVG' AND (status IN ('PENDING', 'PROCESSING', 'FAILED') OR source_text IS NOT NULL))
@@ -981,8 +981,8 @@ CREATE TABLE IF NOT EXISTS rich_content_assets
     media_type                VARCHAR(255)  NOT NULL,
     byte_size                 BIGINT        NOT NULL CHECK (byte_size >= 0 AND byte_size <= 10485760),
     sha256                    CHAR(64)      NOT NULL,
-    created_at                TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at                TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at                TIMESTAMPTZ     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                TIMESTAMPTZ     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_rich_content_asset_exactly_one_owner CHECK (
         ((question_draft_id IS NOT NULL)::int + (question_bank_question_id IS NOT NULL)::int
             + (question_id IS NOT NULL)::int) = 1
@@ -1003,14 +1003,14 @@ CREATE TABLE IF NOT EXISTS question_image_generation_jobs
     visual_type            VARCHAR(20) NOT NULL CHECK (visual_type IN ('AUTO', 'LATEX', 'SVG')),
     status                 VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')),
     attempt_count          INTEGER     NOT NULL DEFAULT 0,
-    next_attempt_at        TIMESTAMP,
-    lease_until            TIMESTAMP,
+    next_attempt_at        TIMESTAMPTZ,
+    lease_until            TIMESTAMPTZ,
     error_code             VARCHAR(100),
     error_message          TEXT,
-    processing_at          TIMESTAMP,
-    completed_at           TIMESTAMP,
-    created_at             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+    processing_at          TIMESTAMPTZ,
+    completed_at           TIMESTAMPTZ,
+    created_at             TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at             TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_question_image_generation_queue
     ON question_image_generation_jobs (status, next_attempt_at);
@@ -1045,8 +1045,8 @@ CREATE TABLE IF NOT EXISTS answers
     explanation_format VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
         CHECK (explanation_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     question_id   UUID NOT NULL REFERENCES questions (id),
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (answer_number, question_id)
 );
 
@@ -1057,14 +1057,14 @@ CREATE TABLE IF NOT EXISTS attempts
     student_id         UUID        NOT NULL REFERENCES students (user_id),
     quiz_id            UUID        NOT NULL REFERENCES quizzes (id),
     score              DOUBLE PRECISION,
-    start_time         TIMESTAMP,
-    due_time           TIMESTAMP,
-    submitted_time     TIMESTAMP,
+    start_time         TIMESTAMPTZ,
+    due_time           TIMESTAMPTZ,
+    submitted_time     TIMESTAMPTZ,
     time_spent_seconds INTEGER,
     status             VARCHAR(50) NOT NULL CHECK (status IN ('STARTED', 'FINISHED', 'ERROR')),
     error_reason       VARCHAR(255),
-    created_at         TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
-    updated_at         TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    created_at         TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_attempts_student_quiz_status ON attempts (student_id, quiz_id, status);
@@ -1103,7 +1103,7 @@ CREATE TABLE IF NOT EXISTS activity_logs
     entity_id   UUID        NOT NULL,
     entity_name VARCHAR(255),
     description TEXT,
-    created_at  TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    created_at  TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_activity_logs_user_time ON activity_logs (user_id, created_at DESC);
@@ -1120,7 +1120,7 @@ CREATE TABLE IF NOT EXISTS notifications
     type       VARCHAR(50), -- 'SYSTEM', 'COURSE_UPDATE', 'DEADLINE_REMINDER'
     link_url   VARCHAR(255),
     is_read    BOOLEAN          DEFAULT false,
-    created_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_notif_user_read ON notifications (user_id, is_read);
@@ -1137,7 +1137,7 @@ CREATE TABLE IF NOT EXISTS user_chat_messages
     content        TEXT NOT NULL,
     status         VARCHAR(50)      DEFAULT 'SENT' CHECK (status IN ('SENT', 'DELIVERED', 'READ')),
     client_temp_id VARCHAR(255),
-    created_at     TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    created_at     TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_chat_messages_participants ON user_chat_messages (sender_id, recipient_id, created_at DESC);
@@ -1153,7 +1153,7 @@ CREATE TABLE IF NOT EXISTS course_announcements
     content    TEXT         NOT NULL,
     teacher_id UUID         NOT NULL REFERENCES users (id),
     type       VARCHAR(50)      DEFAULT 'INFO',
-    created_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_course_announcements_course_id ON course_announcements (course_id);
@@ -1164,10 +1164,10 @@ CREATE INDEX IF NOT EXISTS idx_course_announcements_course_id ON course_announce
 CREATE TABLE IF NOT EXISTS event_publication
 (
     id               UUID                     NOT NULL,
-    completion_date  TIMESTAMP WITH TIME ZONE,
+    completion_date  TIMESTAMPTZ,
     event_type       VARCHAR(512)             NOT NULL,
     listener_id      VARCHAR(512)             NOT NULL,
-    publication_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    publication_date TIMESTAMPTZ NOT NULL,
     serialized_event VARCHAR(4000)            NOT NULL,
     PRIMARY KEY (id)
 );
@@ -1182,8 +1182,8 @@ CREATE TABLE IF NOT EXISTS ai_chat_sessions
     course_id  UUID NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
     title      VARCHAR(255)     DEFAULT 'Đoạn chat mới',
     is_pinned  BOOLEAN          DEFAULT FALSE,
-    created_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_ai_chat_sessions_user_course ON ai_chat_sessions (user_id, course_id, updated_at DESC);
@@ -1199,7 +1199,7 @@ CREATE TABLE IF NOT EXISTS ai_course_chat_messages
     course_id  UUID        NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
     role       VARCHAR(20) NOT NULL, -- 'user' or 'assistant'
     content    TEXT        NOT NULL,
-    created_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ        DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_session ON ai_course_chat_messages (session_id, created_at ASC);
@@ -1214,8 +1214,8 @@ CREATE TABLE IF NOT EXISTS question_ai_working_drafts (
     content TEXT NOT NULL,
     content_format VARCHAR(30) NOT NULL CHECK (content_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     applied_change_index INTEGER NOT NULL DEFAULT 0 CHECK (applied_change_index >= 0),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS question_ai_jobs (
@@ -1240,12 +1240,12 @@ CREATE TABLE IF NOT EXISTS question_ai_jobs (
     warning_message TEXT,
     attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count BETWEEN 0 AND 2),
     action_count INTEGER NOT NULL DEFAULT 0 CHECK (action_count BETWEEN 0 AND 12),
-    lease_until TIMESTAMP,
-    clarification_expires_at TIMESTAMP,
-    started_at TIMESTAMP,
-    completed_at TIMESTAMP,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    lease_until TIMESTAMPTZ,
+    clarification_expires_at TIMESTAMPTZ,
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_question_ai_active_job ON question_ai_jobs(question_id)
     WHERE status IN ('QUEUED', 'RUNNING', 'NEEDS_CLARIFICATION');
@@ -1263,8 +1263,8 @@ CREATE TABLE IF NOT EXISTS question_ai_job_steps (
     input_payload JSONB,
     output_payload JSONB,
     error_message TEXT,
-    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMP
+    started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS idx_question_ai_steps_job ON question_ai_job_steps(job_id, step_order, started_at);
 
@@ -1275,8 +1275,8 @@ CREATE TABLE IF NOT EXISTS question_ai_artifacts (
     artifact_type VARCHAR(10) NOT NULL CHECK (artifact_type IN ('SVG', 'LATEX')),
     current_revision INTEGER NOT NULL DEFAULT 0 CHECK (current_revision >= 0),
     created_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_question_ai_artifact_owner ON question_ai_artifacts(question_id, created_at);
 
@@ -1295,7 +1295,7 @@ CREATE TABLE IF NOT EXISTS question_ai_artifact_revisions (
     critic_result JSONB,
     fallback_metadata JSONB,
     storage_key VARCHAR(1024),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (artifact_id, revision)
 );
 
@@ -1309,7 +1309,7 @@ CREATE TABLE IF NOT EXISTS question_ai_change_sets (
     after_content TEXT NOT NULL,
     after_content_format VARCHAR(30) NOT NULL,
     artifact_revisions JSONB NOT NULL DEFAULT '[]'::jsonb,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(question_id, change_index)
 );
 

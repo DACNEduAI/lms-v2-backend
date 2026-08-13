@@ -124,7 +124,7 @@ public class CreateQuestionService implements CreateQuestionUseCase {
                 .entityId(savedQuestion.getId())
                 .entityName("Câu hỏi trong " + quiz.getQuizTitle())
                 .description("Giảng viên vừa thêm câu hỏi mới vào bài kiểm tra: " + quiz.getQuizTitle())
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(java.time.Clock.systemUTC()))
                 .build());
 
         return CreateQuestionResponse.builder()

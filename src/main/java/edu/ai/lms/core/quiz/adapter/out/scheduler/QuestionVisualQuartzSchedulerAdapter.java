@@ -18,7 +18,7 @@ import org.quartz.TriggerKey;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.Clock;
 import java.util.Date;
 import java.util.UUID;
 
@@ -136,8 +136,8 @@ class QuestionVisualQuartzSchedulerAdapter implements ScheduleQuestionVisualJobP
     }
 
     private Date toDate(LocalDateTime fireAt) {
-        LocalDateTime value = fireAt == null ? LocalDateTime.now() : fireAt;
-        return Date.from(value.atZone(ZoneId.systemDefault()).toInstant());
+        LocalDateTime value = fireAt == null ? LocalDateTime.now(Clock.systemUTC()) : fireAt;
+        return Date.from(value.toInstant(java.time.ZoneOffset.UTC));
     }
 
     private void cancelTrigger(TriggerKey key) {

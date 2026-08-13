@@ -11,6 +11,7 @@ import org.springframework.scheduling.quartz.QuartzJobBean;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.UUID;
 
 @Slf4j
@@ -36,7 +37,7 @@ public class AttemptAutoCloseQuartzJob extends QuartzJobBean {
 
         try {
             UUID attemptId = UUID.fromString(attemptIdRaw);
-            attemptAutoCloseService.closeAttemptIfStillStarted(attemptId, LocalDateTime.now());
+            attemptAutoCloseService.closeAttemptIfStillStarted(attemptId, LocalDateTime.now(Clock.systemUTC()));
             log.info("Executed attempt auto-close job for attemptId={} in the AttemptAutoCloseQuartzJob", attemptId);
         } catch (Exception ex) {
             throw new JobExecutionException("Failed to execute attempt auto-close job", ex);

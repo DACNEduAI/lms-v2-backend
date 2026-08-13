@@ -46,7 +46,7 @@ public class PublishCcctProfileService implements PublishCcctProfileUseCase {
                 command.courseId(),
                 command.profileId(),
                 command.version(),
-                LocalDateTime.now())) {
+                LocalDateTime.now(java.time.Clock.systemUTC()))) {
             throw new CcctConflictException(
                     "CCCT draft changed before publish; reload and try again");
         }

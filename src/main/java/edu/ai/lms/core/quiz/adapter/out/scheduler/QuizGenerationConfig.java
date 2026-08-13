@@ -2,7 +2,7 @@ package edu.ai.lms.core.quiz.adapter.out.scheduler;
 
 import java.util.UUID;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.Clock;
 import java.util.Date;
 
 import org.quartz.JobBuilder;
@@ -71,8 +71,8 @@ class QuizGenerationConfig implements ScheduleQuizGenerationJobPort {
                 .newTrigger()
                 .withIdentity(triggerKey)
                 .forJob(jobDetail)
-                .startAt(Date.from((fireAt == null ? LocalDateTime.now() : fireAt)
-                        .atZone(ZoneId.systemDefault()).toInstant()))
+                .startAt(Date.from((fireAt == null ? LocalDateTime.now(Clock.systemUTC()) : fireAt)
+                        .toInstant(java.time.ZoneOffset.UTC)))
                 .withSchedule(SimpleScheduleBuilder.simpleSchedule().withMisfireHandlingInstructionFireNow())
                 .build();
 

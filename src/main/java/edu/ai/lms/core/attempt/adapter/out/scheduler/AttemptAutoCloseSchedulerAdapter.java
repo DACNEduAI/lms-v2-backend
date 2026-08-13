@@ -17,7 +17,6 @@ import org.quartz.TriggerKey;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Date;
 import java.util.UUID;
 
@@ -52,7 +51,7 @@ class AttemptAutoCloseSchedulerAdapter implements ScheduleAttemptAutoClosePort, 
                 .newTrigger()
                 .withIdentity(triggerKey)
                 .forJob(jobDetail)
-                .startAt(Date.from(fireAt.atZone(ZoneId.systemDefault()).toInstant()))
+                .startAt(Date.from(fireAt.toInstant(java.time.ZoneOffset.UTC)))
                 .withSchedule(SimpleScheduleBuilder.simpleSchedule().withMisfireHandlingInstructionFireNow())
                 .build();
 

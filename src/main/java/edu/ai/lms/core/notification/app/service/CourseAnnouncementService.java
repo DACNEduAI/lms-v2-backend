@@ -46,7 +46,7 @@ public class CourseAnnouncementService implements SendCourseAnnouncementUseCase,
                 .content(request.getMessage())
                 .teacherId(teacherId)
                 .type(request.getType() != null ? request.getType() : "INFO")
-                .createdAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now(java.time.Clock.systemUTC()))
                 .build();
         courseAnnouncementPort.save(announcement);
 

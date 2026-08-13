@@ -362,7 +362,7 @@ class QuizWebhookProcessingServiceUT {
         when(learningOutcomesPort.allBelongToCourse(courseId, List.of(outcomeId))).thenReturn(true);
         when(saveJobPort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(visualJobs.summarize(jobId)).thenReturn(
-                new QuestionVisualJobPort.Summary(1, 0, 0, 1, java.time.LocalDateTime.now()));
+                new QuestionVisualJobPort.Summary(1, 0, 0, 1, java.time.LocalDateTime.now(java.time.Clock.systemUTC())));
 
         QuizWebhookRequest.QuestionPayload question = dynamicQuestion(rowId, levelId, outcomeId)
                 .type(Question.QuestionType.MULTIPLE_CHOICE)

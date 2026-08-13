@@ -23,7 +23,7 @@ class CcctActivity {
                 .entityId(profile.getId())
                 .entityName(profile.getName())
                 .description(action + " CCCT profile: " + profile.getName())
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(java.time.Clock.systemUTC()))
                 .build());
     }
 }
