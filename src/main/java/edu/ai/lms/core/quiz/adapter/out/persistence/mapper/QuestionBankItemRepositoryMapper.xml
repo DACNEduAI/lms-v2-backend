@@ -12,9 +12,13 @@
     <result property="cognitiveLevelCode" column="cognitive_level_code" javaType="edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="cognitiveLevelName" column="cognitive_level_name" />
     <result property="content" column="content" />
+    <result property="contentFormat" column="content_format" javaType="edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="explanation" column="question_explanation" />
+    <result property="explanationFormat" column="question_explanation_format" javaType="edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="questionType" column="question_type" javaType="edu.ai.lms.core.quiz.app.domain.Question$QuestionType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="sourceType" column="source_type" javaType="edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="createdBy" column="created_by" />
+    <result property="supersedesBankQuestionId" column="supersedes_bank_question_id" />
     <result property="version" column="version" />
     <result property="createdAt" column="created_at" />
     <result property="updatedAt" column="updated_at" />
@@ -33,6 +37,8 @@
     <result property="content" column="content" />
     <result property="correct" column="is_correct" />
     <result property="explanation" column="explanation" />
+    <result property="contentFormat" column="content_format" javaType="edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="explanationFormat" column="explanation_format" javaType="edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="orderIndex" column="order_index" />
     <result property="createdAt" column="created_at" />
     <result property="updatedAt" column="updated_at" />
@@ -50,7 +56,9 @@
   <sql id="QuestionColumns">
     item.id, item.course_id, item.chapter_id, item.cognitive_level_id,
     level.code AS cognitive_level_code, level.name AS cognitive_level_name,
-    item.content, item.question_type, item.source_type, item.created_by,
+    item.content, item.content_format, item.explanation AS question_explanation,
+    item.explanation_format AS question_explanation_format,
+    item.question_type, item.source_type, item.created_by, item.supersedes_bank_question_id,
     item.version, item.created_at, item.updated_at
   </sql>
 
@@ -78,7 +86,7 @@
   </select>
 
   <select id="findDraftAnswers" resultMap="QuestionBankAnswerResultMap">
-    SELECT id, question_draft_id AS question_id, content, is_correct, explanation,
+    SELECT id, question_draft_id AS question_id, content, content_format, is_correct, explanation, explanation_format,
            order_index, created_at, updated_at
     FROM edu.question_draft_answers
     WHERE question_draft_id = #{itemId}
@@ -86,7 +94,7 @@
   </select>
 
   <select id="findBankAnswers" resultMap="QuestionBankAnswerResultMap">
-    SELECT id, question_bank_question_id AS question_id, content, is_correct, explanation,
+    SELECT id, question_bank_question_id AS question_id, content, content_format, is_correct, explanation, explanation_format,
            order_index, created_at, updated_at
     FROM edu.question_bank_answers
     WHERE question_bank_question_id = #{itemId}
@@ -218,13 +226,14 @@
 
   <insert id="insertDraft">
     INSERT INTO edu.question_drafts
-      (id, course_id, chapter_id, cognitive_level_id, content, question_type,
-       source_type, created_by, version, created_at, updated_at)
+      (id, course_id, chapter_id, cognitive_level_id, content, content_format, explanation, explanation_format, question_type,
+       source_type, created_by, supersedes_bank_question_id, version, created_at, updated_at)
     VALUES
-      (#{id}, #{courseId}, #{chapterId}, #{cognitiveLevelId}, #{content},
+      (#{id}, #{courseId}, #{chapterId}, #{cognitiveLevelId}, #{content}, #{contentFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+       #{explanation}, #{explanationFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{sourceType, javaType=edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-       #{createdBy}, 0, NOW(), NOW())
+       #{createdBy}, #{supersedesBankQuestionId}, 0, NOW(), NOW())
   </insert>
 
   <update id="updateDraft">
@@ -232,6 +241,9 @@
     SET chapter_id = #{item.chapterId},
         cognitive_level_id = #{item.cognitiveLevelId},
         content = #{item.content},
+        content_format = #{item.contentFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        explanation = #{item.explanation},
+        explanation_format = #{item.explanationFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         question_type = #{item.questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         version = version + 1,
         updated_at = NOW()
@@ -242,14 +254,15 @@
 
   <insert id="insertBankQuestion">
     INSERT INTO edu.question_bank_questions
-      (id, origin_draft_id, course_id, chapter_id, cognitive_level_id, content,
-       question_type, source_type, created_by, validated_by, validated_at,
+      (id, origin_draft_id, course_id, chapter_id, cognitive_level_id, content, content_format, explanation, explanation_format,
+       question_type, source_type, created_by, validated_by, validated_at, supersedes_bank_question_id,
        version, created_at, updated_at)
     VALUES
-      (#{id}, #{originDraftId}, #{courseId}, #{chapterId}, #{cognitiveLevelId}, #{content},
+      (#{id}, #{originDraftId}, #{courseId}, #{chapterId}, #{cognitiveLevelId}, #{content}, #{contentFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+       #{explanation}, #{explanationFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{sourceType, javaType=edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-       #{createdBy}, #{validatedBy}, #{validatedAt}, 0, #{createdAt}, NOW())
+       #{createdBy}, #{validatedBy}, #{validatedAt}, #{supersedesBankQuestionId}, 0, #{createdAt}, NOW())
   </insert>
 
   <delete id="deleteDraft">
@@ -269,21 +282,21 @@
 
   <insert id="insertDraftAnswers">
     INSERT INTO edu.question_draft_answers
-      (id, question_draft_id, content, is_correct, explanation, order_index, created_at, updated_at)
+      (id, question_draft_id, content, content_format, is_correct, explanation, explanation_format, order_index, created_at, updated_at)
     VALUES
     <foreach collection="answers" item="answer" separator=",">
-      (#{answer.id}, #{answer.questionId}, #{answer.content}, #{answer.correct},
-       #{answer.explanation}, #{answer.orderIndex}, NOW(), NOW())
+      (#{answer.id}, #{answer.questionId}, #{answer.content}, #{answer.contentFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, #{answer.correct},
+       #{answer.explanation}, #{answer.explanationFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, #{answer.orderIndex}, NOW(), NOW())
     </foreach>
   </insert>
 
   <insert id="insertBankAnswers">
     INSERT INTO edu.question_bank_answers
-      (id, question_bank_question_id, content, is_correct, explanation, order_index, created_at, updated_at)
+      (id, question_bank_question_id, content, content_format, is_correct, explanation, explanation_format, order_index, created_at, updated_at)
     VALUES
     <foreach collection="answers" item="answer" separator=",">
-      (#{answer.id}, #{answer.questionId}, #{answer.content}, #{answer.correct},
-       #{answer.explanation}, #{answer.orderIndex}, NOW(), NOW())
+      (#{answer.id}, #{answer.questionId}, #{answer.content}, #{answer.contentFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, #{answer.correct},
+       #{answer.explanation}, #{answer.explanationFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, #{answer.orderIndex}, NOW(), NOW())
     </foreach>
   </insert>
 

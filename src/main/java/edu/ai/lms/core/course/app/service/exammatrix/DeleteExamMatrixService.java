@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.adapter.in.response.DeleteExamMatrixResponse;
@@ -26,6 +27,12 @@ public class DeleteExamMatrixService implements TeacherDeleteExamMatrixUseCase {
     private final LoadExamMatrixPort loadExamMatrixPort;
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInUserPort loadSignedInUserPort;
+    private ExamMatrixLifecycleGuard lifecycleGuard;
+
+    @Autowired
+    void setLifecycleGuard(ExamMatrixLifecycleGuard lifecycleGuard) {
+        this.lifecycleGuard = lifecycleGuard;
+    }
 
     @Override
     @Transactional
@@ -49,6 +56,8 @@ public class DeleteExamMatrixService implements TeacherDeleteExamMatrixUseCase {
         if (!existing.getCourseId().equals(courseId)) {
             throw new IllegalArgumentException("Exam matrix does not belong to this course");
         }
+
+        if (lifecycleGuard != null) lifecycleGuard.requireDraft(courseId, matrixId);
 
         deleteExamMatrixPort.deleteById(matrixId);
 

@@ -49,7 +49,8 @@ public class SecurityConfig {
                         // Public endpoints - Authentication
                         .requestMatchers("/api/auth/**").permitAll()
                         // Service-to-service callback; authenticated by HMAC in the controller.
-                        .requestMatchers("/api/internal/webhooks/quiz-generation").permitAll()
+                        .requestMatchers("/api/internal/webhooks/quiz-generation",
+                                "/api/internal/webhooks/assessment-question-generation").permitAll()
                         // Swagger UI endpoints
                         .requestMatchers(
                                 "/v3/api-docs/**",
@@ -81,6 +82,7 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.addAllowedMethod("*");
         configuration.addAllowedHeader("*");
+        configuration.addExposedHeader("Content-Disposition");
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

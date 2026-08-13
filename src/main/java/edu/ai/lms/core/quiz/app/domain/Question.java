@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -48,6 +50,14 @@ public class Question {
     private UUID id;
 
     private String content;
+
+    @Builder.Default
+    private RichContentFormat contentFormat = RichContentFormat.PLAIN_TEXT;
+
+    private String explanation;
+
+    @Builder.Default
+    private RichContentFormat explanationFormat = RichContentFormat.PLAIN_TEXT;
 
     private QuestionType type;
 

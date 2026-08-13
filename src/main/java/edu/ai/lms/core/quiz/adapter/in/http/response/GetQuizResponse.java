@@ -13,6 +13,7 @@ import java.util.UUID;
 import edu.ai.lms.core.quiz.app.domain.QuestionSourceType;
 import edu.ai.lms.core.quiz.app.domain.QuizLifecycleStatus;
 import edu.ai.lms.core.quiz.app.domain.QuizSourceType;
+import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
 
 @Getter
 @Setter
@@ -61,6 +62,7 @@ public class GetQuizResponse {
     public static class QuestionSummary {
         private UUID questionId;
         private String content;
+        private RichContentFormat contentFormat;
         private String type;
         private QuestionSourceType sourceType;
         private UUID sourceBankQuestionId;
@@ -99,8 +101,10 @@ public class GetQuizResponse {
     public static class AnswerSummary {
         private Long answerNumber;
         private String content;
+        private RichContentFormat contentFormat;
         private boolean correct;
         private String explanation;
+        private RichContentFormat explanationFormat;
     }
 
     @Getter

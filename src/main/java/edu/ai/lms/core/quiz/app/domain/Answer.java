@@ -5,6 +5,8 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,9 +19,15 @@ public class Answer {
 
     private String content;
 
+    @Builder.Default
+    private RichContentFormat contentFormat = RichContentFormat.PLAIN_TEXT;
+
     private boolean isCorrect;
 
     private String explanation;
+
+    @Builder.Default
+    private RichContentFormat explanationFormat = RichContentFormat.PLAIN_TEXT;
 
     private UUID questionId; // Part of composite primary key
 

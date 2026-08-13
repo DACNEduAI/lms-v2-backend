@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import edu.ai.lms.core.course.adapter.in.response.*;
 import edu.ai.lms.core.course.app.domain.Course;
@@ -18,6 +19,7 @@ import edu.ai.lms.core.course.app.port.in.usecase.CustomLearningLevelUseCase;
 import edu.ai.lms.core.course.app.port.out.CustomLearningLevelPort;
 import edu.ai.lms.core.course.app.port.out.LoadExamMatrixPort;
 import edu.ai.lms.core.course.app.service.exammatrix.ExamMatrixAccess;
+import edu.ai.lms.core.course.app.service.exammatrix.ExamMatrixLifecycleGuard;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -26,18 +28,26 @@ public class CustomLearningLevelService implements CustomLearningLevelUseCase {
     private final ExamMatrixAccess access;
     private final CustomLearningLevelPort levelPort;
     private final LoadExamMatrixPort matrixPort;
+    private ExamMatrixLifecycleGuard lifecycleGuard;
+
+    @Autowired
+    void setLifecycleGuard(ExamMatrixLifecycleGuard lifecycleGuard) {
+        this.lifecycleGuard = lifecycleGuard;
+    }
 
     @Override
     @Transactional
     public CustomLearningLevelResponse create(UUID courseId, UUID matrixId, CustomLearningLevelValue value) {
         Course course = access.requireCourseTeacher(courseId);
         requireMatrix(courseId, matrixId);
+        requireDraft(courseId, matrixId);
         requireOutcomesInCourse(course, value.learningOutcomeIds());
         CustomLearningLevel level = toDomain(value, UUID.randomUUID(), matrixId);
         List<CustomLearningLevel> finalLevels = new ArrayList<>(levelPort.lockAllByMatrixId(matrixId));
         finalLevels.add(level);
         validateUniqueFinalValues(finalLevels);
         levelPort.insert(level);
+        markChanged(courseId, matrixId);
         return toResponse(levelPort.findByMatrixIdAndId(matrixId, level.getId())
                 .orElseThrow(() -> notFound(level.getId())));
     }
@@ -62,6 +72,7 @@ public class CustomLearningLevelService implements CustomLearningLevelUseCase {
     public BatchEditCustomLearningLevelsResponse batchEdit(BatchEditCustomLearningLevelsCommand command) {
         Course course = access.requireCourseTeacher(command.courseId());
         requireMatrix(command.courseId(), command.matrixId());
+        requireDraft(command.courseId(), command.matrixId());
         List<CustomLearningLevelValue> creates = safe(command.create());
         List<CustomLearningLevelValue> updates = safe(command.update());
         List<UUID> deletes = safe(command.delete());
@@ -108,6 +119,7 @@ public class CustomLearningLevelService implements CustomLearningLevelUseCase {
                 levelPort.stageUpdate(level.getId(), "__tmp__" + level.getId()));
         updatedLevels.forEach(levelPort::update);
         createdLevels.forEach(levelPort::insert);
+        markChanged(command.courseId(), command.matrixId());
 
         List<CreatedCustomLearningLevelMappingResponse> mappings = new ArrayList<>();
         for (int index = 0; index < creates.size(); index++) {
@@ -126,11 +138,13 @@ public class CustomLearningLevelService implements CustomLearningLevelUseCase {
     public DeleteCustomLearningLevelResponse delete(UUID courseId, UUID matrixId, UUID levelId) {
         Course course = access.requireCourseTeacher(courseId);
         requireMatrix(courseId, matrixId);
+        requireDraft(courseId, matrixId);
         levelPort.findByMatrixIdAndId(matrixId, levelId).orElseThrow(() -> notFound(levelId));
         List<CustomLearningLevel> finalLevels = levelPort.lockAllByMatrixId(matrixId).stream()
                 .filter(level -> !levelId.equals(level.getId())).toList();
         validateCompleteCoverage(course, finalLevels);
         levelPort.delete(levelId);
+        markChanged(courseId, matrixId);
         return new DeleteCustomLearningLevelResponse(
                 courseId, matrixId, levelId, "Custom learning level deleted successfully", true);
     }
@@ -223,6 +237,14 @@ public class CustomLearningLevelService implements CustomLearningLevelUseCase {
         matrixPort.findByCourseIdAndId(courseId, matrixId)
                 .orElseThrow(() -> new CustomLearningLevelNotFoundException(
                         "Exam matrix not found: " + matrixId));
+    }
+
+    private void requireDraft(UUID courseId, UUID matrixId) {
+        if (lifecycleGuard != null) lifecycleGuard.requireDraft(courseId, matrixId);
+    }
+
+    private void markChanged(UUID courseId, UUID matrixId) {
+        if (lifecycleGuard != null) lifecycleGuard.markDraftChanged(courseId, matrixId);
     }
 
     private CustomLearningLevelListResponse toListResponse(

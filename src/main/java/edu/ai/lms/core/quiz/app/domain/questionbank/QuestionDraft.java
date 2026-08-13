@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import edu.ai.lms.core.quiz.app.domain.Question;
+import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,10 +28,16 @@ public class QuestionDraft {
     private CognitiveLevelCode cognitiveLevelCode;
     private String cognitiveLevelName;
     private String content;
+    @Builder.Default
+    private RichContentFormat contentFormat = RichContentFormat.PLAIN_TEXT;
+    private String explanation;
+    @Builder.Default
+    private RichContentFormat explanationFormat = RichContentFormat.PLAIN_TEXT;
     private Question.QuestionType questionType;
     @Builder.Default
     private QuestionBankSourceType sourceType = QuestionBankSourceType.MANUAL;
     private UUID createdBy;
+    private UUID supersedesBankQuestionId;
     @Builder.Default
     private long version = 0;
     @Builder.Default

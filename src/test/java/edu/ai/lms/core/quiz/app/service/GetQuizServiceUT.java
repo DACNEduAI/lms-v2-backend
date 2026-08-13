@@ -32,6 +32,7 @@ import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.Quiz;
 import edu.ai.lms.core.quiz.app.domain.QuizLearningOutcomeView;
+import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotVisible;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
@@ -90,14 +91,17 @@ class GetQuizServiceUT {
         Answer answer = Answer.builder()
                 .answerNumber(1L)
                 .content("Sample Answer")
+                .contentFormat(RichContentFormat.TIPTAP_HTML)
                 .isCorrect(true)
                 .explanation("Sample Explanation")
+                .explanationFormat(RichContentFormat.TIPTAP_HTML)
                 .questionId(UUID.randomUUID())
                 .build();
 
         Question question = Question.builder()
                 .id(UUID.randomUUID())
                 .content("Sample Question")
+                .contentFormat(RichContentFormat.TIPTAP_HTML)
                 .type(Question.QuestionType.MULTIPLE_CHOICE)
                 .quizId(quizId)
                 .answers(new ArrayList<>(List.of(answer)))
@@ -153,10 +157,13 @@ class GetQuizServiceUT {
         assertNotNull(response.getQuestions());
         assertEquals(1, response.getQuestions().size());
         assertEquals("Sample Question", response.getQuestions().get(0).getContent());
+        assertEquals(RichContentFormat.TIPTAP_HTML, response.getQuestions().get(0).getContentFormat());
         assertEquals(1, response.getQuestions().get(0).getAnswers().size());
         assertEquals("Sample Answer", response.getQuestions().get(0).getAnswers().get(0).getContent());
+        assertEquals(RichContentFormat.TIPTAP_HTML, response.getQuestions().get(0).getAnswers().get(0).getContentFormat());
         assertEquals(true, response.getQuestions().get(0).getAnswers().get(0).isCorrect());
         assertEquals("Sample Explanation", response.getQuestions().get(0).getAnswers().get(0).getExplanation());
+        assertEquals(RichContentFormat.TIPTAP_HTML, response.getQuestions().get(0).getAnswers().get(0).getExplanationFormat());
         assertEquals(1, response.getGroupedLearningOutcomes().size());
         assertEquals(1, response.getUngroupedLearningOutcomes().size());
 
@@ -181,6 +188,7 @@ class GetQuizServiceUT {
                 assertEquals("Midterm Quiz", response.getQuizTitle());
                 assertEquals(false, response.getQuestions().get(0).getAnswers().get(0).isCorrect());
                 assertNull(response.getQuestions().get(0).getAnswers().get(0).getExplanation());
+                assertNull(response.getQuestions().get(0).getAnswers().get(0).getExplanationFormat());
                 verify(loadQuizPort, times(1)).getByIdWithQuestionsAndAnswers(courseId, quizId);
         }
 
