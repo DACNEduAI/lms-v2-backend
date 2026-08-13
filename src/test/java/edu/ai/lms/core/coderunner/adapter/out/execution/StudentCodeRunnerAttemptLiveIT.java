@@ -59,16 +59,19 @@ class StudentCodeRunnerAttemptLiveIT extends IntegrationTestConfiguration {
                 "live-" + UUID.randomUUID(), CodeSubmission.Mode.SUBMIT);
 
         assertThat(result.status()).isEqualTo("COMPLETED");
-        assertThat(result.verdict()).isEqualTo("ACCEPTED");
-        assertThat(result.score()).isEqualTo(1);
-        assertThat(result.maxScore()).isEqualTo(1);
-        assertThat(result.passedTests()).isEqualTo(2);
+        assertThat(result.verdict()).isNull();
+        assertThat(result.score()).isNull();
+        assertThat(result.maxScore()).isNull();
+        assertThat(result.passedTests()).isNull();
+        assertThat(result.totalTests()).isNull();
         assertThat(result.visibleResults()).extracting(item -> item.testId())
                 .containsExactly("public_001");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM edu.code_submissions WHERE id=?",
                 Integer.class, result.submissionId())).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM edu.code_submission_test_results WHERE submission_id=?",
                 Integer.class, result.submissionId())).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT score FROM edu.code_submissions WHERE id=?",
+                Double.class, result.submissionId())).isEqualTo(1.0);
 
         double quizScore = scoringService.calculateScore(
                 List.of(QuestionAnswerKey.builder().questionId(questionId)

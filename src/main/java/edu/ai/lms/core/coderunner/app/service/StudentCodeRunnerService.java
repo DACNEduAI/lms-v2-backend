@@ -213,10 +213,17 @@ public class StudentCodeRunnerService {
                 .filter(result -> "PUBLIC".equals(result.visibility()))
                 .map(result -> new CodeRunnerSubmissionView.VisibleTestResult(result.externalTestId(),
                         result.verdict(), result.timeMs(), result.memoryKb(), result.diagnostic())).toList();
-        int passed = (int) results.stream().filter(result -> "ACCEPTED".equals(result.verdict())).count();
+        boolean hidesPrivateGrading = submission.mode() == CodeSubmission.Mode.SUBMIT;
+        int visiblePassed = (int) results.stream()
+                .filter(result -> "PUBLIC".equals(result.visibility()))
+                .filter(result -> "ACCEPTED".equals(result.verdict()))
+                .count();
         return new CodeRunnerSubmissionView(submission.id(), submission.questionId(), submission.mode().name(),
-                submission.status().name(), submission.verdict(), submission.score(), submission.maxScore(),
-                passed, results.size(), visible);
+                submission.status().name(), hidesPrivateGrading ? null : submission.verdict(),
+                hidesPrivateGrading ? null : submission.score(),
+                hidesPrivateGrading ? null : submission.maxScore(),
+                hidesPrivateGrading ? null : visiblePassed,
+                hidesPrivateGrading ? null : visible.size(), visible);
     }
 
     private String diagnostic(CodeExecutionEngine.ExecutionResult result) {

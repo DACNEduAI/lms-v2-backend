@@ -9,10 +9,10 @@ public record CodeRunnerSubmissionView(
         String mode,
         String status,
         String verdict,
-        double score,
-        double maxScore,
-        int passedTests,
-        int totalTests,
+        Double score,
+        Double maxScore,
+        Integer passedTests,
+        Integer totalTests,
         List<VisibleTestResult> visibleResults) {
 
     public record VisibleTestResult(
