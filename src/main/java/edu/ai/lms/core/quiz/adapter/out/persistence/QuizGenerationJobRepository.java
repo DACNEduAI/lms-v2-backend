@@ -2,7 +2,7 @@ package edu.ai.lms.core.quiz.adapter.out.persistence;
 
 import java.util.Optional;
 import java.util.List;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.apache.ibatis.annotations.Mapper;
@@ -41,14 +41,14 @@ interface QuizGenerationJobRepository {
             @Param("requestedBy") UUID requestedBy,
             @Param("idempotencyKey") String idempotencyKey);
 
-    int claim(@Param("jobId") UUID jobId, @Param("leaseUntil") LocalDateTime leaseUntil);
+    int claim(@Param("jobId") UUID jobId, @Param("leaseUntil") Instant leaseUntil);
 
     int completeVisualPhase(@Param("jobId") UUID jobId,
                             @Param("errorCode") String errorCode,
                             @Param("errorMessage") String errorMessage,
-                            @Param("completedAt") LocalDateTime completedAt);
+                             @Param("completedAt") Instant completedAt);
 
     List<UUID> findRecoverableIds(@Param("limit") int limit);
 
-    int deleteTerminalBefore(@Param("cutoff") LocalDateTime cutoff);
+    int deleteTerminalBefore(@Param("cutoff") Instant cutoff);
 }

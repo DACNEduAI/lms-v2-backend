@@ -1,6 +1,7 @@
 package edu.ai.lms.core.quiz.adapter.in.http.response;
 
-import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import java.time.Instant;
 import java.util.UUID;
 
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
@@ -34,9 +35,11 @@ public class QuizGenerationStatusResponse {
 
     private Integer attemptCount;
 
-    private LocalDateTime createdAt;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private Instant createdAt;
 
-    private LocalDateTime updatedAt;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private Instant updatedAt;
 
     public record VisualSummary(int requested, int ready, int failed) {}
 }

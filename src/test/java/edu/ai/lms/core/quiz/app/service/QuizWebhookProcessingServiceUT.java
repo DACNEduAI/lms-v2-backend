@@ -26,6 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -63,7 +64,7 @@ class QuizWebhookProcessingServiceUT {
         service = new QuizWebhookProcessingService(loadJobPort, saveJobPort, saveQuizPort,
                 saveQuestionPort, saveAnswerPort, saveQuizLearningOutcomePort,
                 saveQuestionLearningOutcomePort, learningOutcomesPort, schedulerPort,
-                sseService, new ObjectMapper(), visualJobs, visualGenerationService, timingLogger);
+                sseService, new ObjectMapper(), visualJobs, visualGenerationService, timingLogger, Clock.systemUTC());
         lenient().when(visualJobs.summarize(any())).thenReturn(
                 new QuestionVisualJobPort.Summary(0, 0, 0, 0, null));
     }
@@ -362,7 +363,7 @@ class QuizWebhookProcessingServiceUT {
         when(learningOutcomesPort.allBelongToCourse(courseId, List.of(outcomeId))).thenReturn(true);
         when(saveJobPort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(visualJobs.summarize(jobId)).thenReturn(
-                new QuestionVisualJobPort.Summary(1, 0, 0, 1, java.time.LocalDateTime.now()));
+                new QuestionVisualJobPort.Summary(1, 0, 0, 1, java.time.Instant.now()));
 
         QuizWebhookRequest.QuestionPayload question = dynamicQuestion(rowId, levelId, outcomeId)
                 .type(Question.QuestionType.MULTIPLE_CHOICE)

@@ -3,7 +3,7 @@ package edu.ai.lms.core.quiz.adapter.out.persistence;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.List;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import org.springframework.stereotype.Component;
 
@@ -44,19 +44,19 @@ class QuizGenerationJobPersistenceAdapter implements SaveQuizGenerationJobPort, 
     }
 
     @Override
-    public boolean claim(UUID jobId, LocalDateTime leaseUntil) {
+    public boolean claim(UUID jobId, Instant leaseUntil) {
         return quizGenerationJobRepository.claim(jobId, leaseUntil) == 1;
     }
 
     @Override
     public boolean completeVisualPhase(UUID jobId, String errorCode, String errorMessage,
-                                       LocalDateTime completedAt) {
+                                        Instant completedAt) {
         return quizGenerationJobRepository.completeVisualPhase(
                 jobId, errorCode, errorMessage, completedAt) == 1;
     }
 
     @Override
-    public int deleteTerminalBefore(LocalDateTime cutoff) {
+    public int deleteTerminalBefore(Instant cutoff) {
         return quizGenerationJobRepository.deleteTerminalBefore(cutoff);
     }
 }

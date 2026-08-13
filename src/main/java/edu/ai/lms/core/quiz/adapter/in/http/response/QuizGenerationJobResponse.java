@@ -1,6 +1,7 @@
 package edu.ai.lms.core.quiz.adapter.in.http.response;
 
-import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import java.time.Instant;
 import java.util.UUID;
 
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
@@ -21,7 +22,8 @@ public class QuizGenerationJobResponse {
 
     private QuizGenerationStatus status;
 
-    private LocalDateTime createdAt;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private Instant createdAt;
 
     private String statusUrl;
 

@@ -13,7 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,8 +39,8 @@ class QuizGenerationTimingLoggerUT {
 
     @Test
     void logsTextAndWholeQuizDurationsWithoutPayloadContent() {
-        LocalDateTime startedAt = LocalDateTime.now().minusSeconds(2);
-        LocalDateTime endedAt = startedAt.plusSeconds(2);
+        Instant startedAt = Instant.now().minusSeconds(2);
+        Instant endedAt = startedAt.plusSeconds(2);
         QuizGenerationJob job = QuizGenerationJob.builder()
                 .id(UUID.randomUUID()).quizId(UUID.randomUUID())
                 .status(QuizGenerationStatus.COMPLETED).phase(QuizGenerationJob.Phase.DONE)
@@ -72,7 +72,7 @@ class QuizGenerationTimingLoggerUT {
     @Test
     void logsVisualFailureWithQuestionIdentityAndNonNegativeDuration() {
         UUID questionId = UUID.randomUUID();
-        LocalDateTime startedAt = LocalDateTime.now();
+        Instant startedAt = Instant.now();
         QuestionVisualJobPort.WorkItem work = new QuestionVisualJobPort.WorkItem(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), questionId,
                 "AUTO", "secret question", "secret brief", "secret alt", 2,

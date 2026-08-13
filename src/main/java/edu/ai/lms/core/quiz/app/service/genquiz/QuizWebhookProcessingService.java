@@ -35,6 +35,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -62,6 +64,7 @@ public class QuizWebhookProcessingService {
     private final QuestionVisualJobPort visualJobs;
     private final QuestionVisualGenerationService visualGenerationService;
     private final QuizGenerationTimingLogger timingLogger;
+    private final Clock quizGenerationClock;
 
     public QuizWebhookProcessingService(LoadQuizGenerationJobPort loadJobPort,
             SaveQuizGenerationJobPort saveJobPort, SaveQuizPort saveQuizPort,
@@ -70,10 +73,11 @@ public class QuizWebhookProcessingService {
             SaveQuestionLearningOutcomePort saveQuestionLearningOutcomePort,
             ValidateLearningOutcomesPort learningOutcomesPort, ScheduleQuizGenerationJobPort schedulerPort,
             SseQuizGenerationService sseService, ObjectMapper objectMapper, QuestionVisualJobPort visualJobs,
-            QuestionVisualGenerationService visualGenerationService, QuizGenerationTimingLogger timingLogger) {
+            QuestionVisualGenerationService visualGenerationService, QuizGenerationTimingLogger timingLogger,
+            Clock quizGenerationClock) {
         this(loadJobPort, saveJobPort, saveQuizPort, saveQuestionPort, null, saveAnswerPort,
                 saveQuizLearningOutcomePort, saveQuestionLearningOutcomePort, learningOutcomesPort, schedulerPort,
-                sseService, objectMapper, visualJobs, visualGenerationService, timingLogger);
+                sseService, objectMapper, visualJobs, visualGenerationService, timingLogger, quizGenerationClock);
     }
 
     @Transactional
@@ -100,7 +104,7 @@ public class QuizWebhookProcessingService {
             job.setErrorMessage(firstUsable(request.getErrorMessage(), errorCode,
                     "AI generation failed without a technical message"));
             job.setLeaseUntil(null);
-            LocalDateTime completedAt = LocalDateTime.now();
+            Instant completedAt = Instant.now(quizGenerationClock);
             job.setCompletedAt(completedAt);
             QuizGenerationJob saved = saveJobPort.save(job);
             timingLogger.textTerminal(saved, "failed", saved.getErrorCode(), completedAt);
@@ -124,7 +128,7 @@ public class QuizWebhookProcessingService {
             job.setErrorCode(null);
             job.setErrorMessage(null);
             QuizGenerationJob processing = saveJobPort.save(job);
-            timingLogger.textTerminal(processing, "completed", null, LocalDateTime.now());
+            timingLogger.textTerminal(processing, "completed", null, Instant.now(quizGenerationClock));
             visualGenerationService.requestDispatchAfterCommit(job.getId(), job.getCreatedAt());
             return QuizGenerationService.toStatusResponse(processing);
         }
@@ -132,7 +136,7 @@ public class QuizWebhookProcessingService {
         job.setPhase(QuizGenerationJob.Phase.DONE);
         job.setErrorCode(null);
         job.setErrorMessage(null);
-        LocalDateTime completedAt = LocalDateTime.now();
+        Instant completedAt = Instant.now(quizGenerationClock);
         job.setCompletedAt(completedAt);
         QuizGenerationJob completed = saveJobPort.save(job);
         timingLogger.textTerminal(completed, "completed", null, completedAt);

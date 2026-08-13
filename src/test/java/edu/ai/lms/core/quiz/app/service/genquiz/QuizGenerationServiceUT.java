@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.Clock;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,7 +43,7 @@ class QuizGenerationServiceUT {
         QuestionVisualJobPort visualJobs = mock(QuestionVisualJobPort.class);
         QuizGenerationService service = new QuizGenerationService(
                 savePort, loadPort, scheduler, userPort, membershipPort,
-                contextPort, materialPort, objectMapper, visualJobs);
+                contextPort, materialPort, objectMapper, visualJobs, Clock.systemUTC());
 
         UUID teacherId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();

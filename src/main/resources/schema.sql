@@ -669,15 +669,15 @@ CREATE TABLE IF NOT EXISTS quiz_generation_jobs
         CHECK (phase IN ('TEXT_GENERATION', 'VISUAL_GENERATION', 'FINALIZING', 'DONE')),
     status              VARCHAR(30)  NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'TIMED_OUT')),
     attempt_count       INTEGER      NOT NULL DEFAULT 0,
-    next_attempt_at     TIMESTAMP,
-    lease_until         TIMESTAMP,
+    next_attempt_at     TIMESTAMPTZ,
+    lease_until         TIMESTAMPTZ,
     error_code          VARCHAR(100),
     error_message       TEXT,
     callback_event_id   UUID UNIQUE,
-    processing_at       TIMESTAMP,
-    completed_at        TIMESTAMP,
-    created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    processing_at       TIMESTAMPTZ,
+    completed_at        TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_quiz_generation_request UNIQUE (requested_by, idempotency_key)
 );
 
@@ -1003,14 +1003,14 @@ CREATE TABLE IF NOT EXISTS question_image_generation_jobs
     visual_type            VARCHAR(20) NOT NULL CHECK (visual_type IN ('AUTO', 'LATEX', 'SVG')),
     status                 VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')),
     attempt_count          INTEGER     NOT NULL DEFAULT 0,
-    next_attempt_at        TIMESTAMP,
-    lease_until            TIMESTAMP,
+    next_attempt_at        TIMESTAMPTZ,
+    lease_until            TIMESTAMPTZ,
     error_code             VARCHAR(100),
     error_message          TEXT,
-    processing_at          TIMESTAMP,
-    completed_at           TIMESTAMP,
-    created_at             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+    processing_at          TIMESTAMPTZ,
+    completed_at           TIMESTAMPTZ,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at             TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_question_image_generation_queue
     ON question_image_generation_jobs (status, next_attempt_at);

@@ -13,7 +13,8 @@ import org.quartz.SimpleTrigger;
 import org.quartz.Trigger;
 import org.quartz.TriggerKey;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.util.TimeZone;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,7 +39,7 @@ class QuestionVisualQuartzSchedulerAdapterUT {
         UUID parentId = UUID.randomUUID();
         when(scheduler.checkExists(any(TriggerKey.class))).thenReturn(false);
 
-        adapter.scheduleImmediate(parentId, LocalDateTime.now());
+        adapter.scheduleImmediate(parentId, Instant.now());
 
         ArgumentCaptor<Trigger> trigger = ArgumentCaptor.forClass(Trigger.class);
         verify(scheduler).scheduleJob(trigger.capture());
@@ -52,7 +53,7 @@ class QuestionVisualQuartzSchedulerAdapterUT {
         UUID jobId = UUID.randomUUID();
         when(scheduler.checkExists(any(TriggerKey.class))).thenReturn(false);
 
-        adapter.scheduleRetry(jobId, LocalDateTime.now().plusSeconds(2));
+        adapter.scheduleRetry(jobId, Instant.now().plusSeconds(2));
 
         ArgumentCaptor<Trigger> trigger = ArgumentCaptor.forClass(Trigger.class);
         verify(scheduler).scheduleJob(trigger.capture());
@@ -65,7 +66,7 @@ class QuestionVisualQuartzSchedulerAdapterUT {
     void deadlineUsesStableParentJobAndTrigger() throws Exception {
         UUID parentId = UUID.randomUUID();
 
-        adapter.scheduleDeadline(parentId, LocalDateTime.now().plusMinutes(20));
+        adapter.scheduleDeadline(parentId, Instant.now().plusSeconds(1_200));
 
         ArgumentCaptor<JobDetail> detail = ArgumentCaptor.forClass(JobDetail.class);
         ArgumentCaptor<Trigger> trigger = ArgumentCaptor.forClass(Trigger.class);
@@ -74,5 +75,21 @@ class QuestionVisualQuartzSchedulerAdapterUT {
         assertEquals("question-visual-deadline", detail.getValue().getKey().getGroup());
         assertEquals("question-visual-deadline-trigger", trigger.getValue().getKey().getGroup());
         assertEquals(0, ((SimpleTrigger) trigger.getValue()).getRepeatCount());
+    }
+
+    @Test
+    void triggerPreservesInstantWhenTheJvmUsesAsiaHoChiMinh() throws Exception {
+        Instant fireAt = Instant.parse("2026-08-13T19:36:58Z");
+        TimeZone original = TimeZone.getDefault();
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+            adapter.scheduleImmediate(UUID.randomUUID(), fireAt);
+        } finally {
+            TimeZone.setDefault(original);
+        }
+
+        ArgumentCaptor<Trigger> trigger = ArgumentCaptor.forClass(Trigger.class);
+        verify(scheduler).scheduleJob(trigger.capture());
+        assertEquals(java.util.Date.from(fireAt), trigger.getValue().getStartTime());
     }
 }

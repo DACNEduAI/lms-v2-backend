@@ -33,6 +33,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
@@ -53,6 +55,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
     private final ValidateMaterialSelectionPort materialSelectionPort;
     private final ObjectMapper objectMapper;
     private final QuestionVisualJobPort visualJobs;
+    private final Clock quizGenerationClock;
 
     @Override
     @Transactional
@@ -150,7 +153,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
                 .status(QuizGenerationStatus.PENDING)
                 .phase(QuizGenerationJob.Phase.TEXT_GENERATION)
                 .attemptCount(0)
-                .nextAttemptAt(LocalDateTime.now())
+                .nextAttemptAt(Instant.now(quizGenerationClock))
                 .build();
 
         QuizGenerationJob saved = saveJobPort.save(job);
