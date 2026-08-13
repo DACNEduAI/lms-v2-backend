@@ -329,6 +329,17 @@ public class AssessmentService {
 
     public List<VariantView> updateVariantQuestion(UUID courseId, UUID assessmentId, UUID variantId,
             UUID questionId, VariantQuestionInput input) {
+        VariantEditingContext editing = requireVariantEditingContext(courseId, assessmentId, variantId, questionId);
+        AssessmentView assessment = editing.assessment();
+        VariantQuestionInput sanitized = sanitizeVariantQuestionInput(input, assessment.optionCount());
+        workflow.updateVariantQuestion(assessmentId, variantId, questionId, sanitized.content(), sanitized.contentFormat(),
+                sanitized.explanation(), sanitized.explanationFormat(), sanitized.answers());
+        workflow.recalculateCoverage(required(courseId, assessmentId), variantId);
+        return workflow.variants(assessmentId);
+    }
+
+    public VariantEditingContext requireVariantEditingContext(UUID courseId, UUID assessmentId, UUID variantId,
+            UUID questionId) {
         requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
         if (assessment.lifecycleStatus() == LifecycleStatus.PUBLISHED) {
@@ -337,19 +348,31 @@ public class AssessmentService {
         if (assessment.lifecycleStatus() != LifecycleStatus.READY_TO_PUBLISH) {
             throw new IllegalStateException("Variant content can only be edited at the review step");
         }
+        VariantView variant = workflow.variants(assessmentId).stream()
+                .filter(value -> value.id().equals(variantId)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Assessment variant was not found"));
+        VariantQuestionView question = variant.questions().stream()
+                .filter(value -> value.id().equals(questionId)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Variant question was not found"));
+        return new VariantEditingContext(assessment, variant, question);
+    }
+
+    public VariantQuestionInput sanitizeVariantQuestionInput(VariantQuestionInput input, int optionCount) {
+        if (input == null) throw new IllegalArgumentException("Question draft is required");
         RichTextValue question = sanitizeRequired(input.content(), input.contentFormat(),
                 RichContentPolicyService.MAX_PROMPT_HTML_LENGTH, "Question content is required");
+        RichTextValue explanation = sanitizeOptional(input.explanation(), input.explanationFormat(),
+                RichContentPolicyService.MAX_ANSWER_HTML_LENGTH);
         List<AnswerInput> answers = input.answers() == null ? List.of() : input.answers();
-        if (answers.size() != assessment.optionCount()) {
-            throw new IllegalArgumentException("This Assessment requires exactly " + assessment.optionCount() + " answers");
+        if (answers.size() != optionCount) {
+            throw new IllegalArgumentException("This Assessment requires exactly " + optionCount + " answers");
         }
         if (answers.stream().filter(AnswerInput::correct).count() != 1) {
             throw new IllegalArgumentException("MCQ requires exactly one correct answer");
         }
         List<AnswerInput> sanitizedAnswers = answers.stream().map(this::sanitizeAnswer).toList();
-        workflow.updateVariantQuestion(assessmentId, variantId, questionId, question.content(), question.contentFormat(), sanitizedAnswers);
-        workflow.recalculateCoverage(required(courseId, assessmentId), variantId);
-        return workflow.variants(assessmentId);
+        return new VariantQuestionInput(question.content(), question.contentFormat(),
+                explanation.content().isBlank() ? null : explanation.content(), explanation.contentFormat(), sanitizedAnswers);
     }
 
     public PublishResult publish(UUID courseId, UUID assessmentId) {
@@ -465,10 +488,14 @@ public class AssessmentService {
     public record DraftVersion(UUID id, long version) {
     }
 
-    public record VariantQuestionInput(String content, RichContentFormat contentFormat, List<AnswerInput> answers) {
+    public record VariantQuestionInput(String content, RichContentFormat contentFormat,
+            String explanation, RichContentFormat explanationFormat, List<AnswerInput> answers) {
         public VariantQuestionInput(String content, List<AnswerInput> answers) {
-            this(content, RichContentFormat.PLAIN_TEXT, answers);
+            this(content, RichContentFormat.PLAIN_TEXT, null, RichContentFormat.PLAIN_TEXT, answers);
         }
+    }
+
+    public record VariantEditingContext(AssessmentView assessment, VariantView variant, VariantQuestionView question) {
     }
 
     private RichTextValue sanitizeRequired(String content, RichContentFormat format, int maxLength, String message) {
@@ -479,12 +506,17 @@ public class AssessmentService {
                 ? new RichTextValue(value.content().trim(), RichContentFormat.PLAIN_TEXT) : value;
     }
 
+    private RichTextValue sanitizeOptional(String content, RichContentFormat format, int maxLength) {
+        RichTextValue value = richContentPolicy.sanitize(new RichTextValue(content,
+                format == null ? RichContentFormat.PLAIN_TEXT : format), maxLength);
+        if (!richContentPolicy.hasMeaningfulContent(value)) return RichTextValue.plainText("");
+        return value.contentFormat() == RichContentFormat.PLAIN_TEXT
+                ? new RichTextValue(value.content().trim(), RichContentFormat.PLAIN_TEXT) : value;
+    }
+
     private AnswerInput sanitizeAnswer(AnswerInput answer) {
         RichTextValue content = sanitizeRequired(answer.content(), answer.contentFormat(),
                 RichContentPolicyService.MAX_ANSWER_HTML_LENGTH, "Every MCQ answer requires content");
-        RichTextValue explanation = sanitizeRequired(answer.explanation(), answer.explanationFormat(),
-                RichContentPolicyService.MAX_ANSWER_HTML_LENGTH, "Every MCQ answer requires explanation");
-        return new AnswerInput(content.content(), content.contentFormat(), answer.correct(),
-                explanation.content(), explanation.contentFormat());
+        return new AnswerInput(content.content(), content.contentFormat(), answer.correct());
     }
 }

@@ -41,9 +41,9 @@ public class AssessmentRichContentService {
     private List<RichTextValue> values(AssessmentService.VariantQuestionInput request) {
         List<RichTextValue> values = new ArrayList<>();
         values.add(value(request.content(), request.contentFormat()));
+        values.add(value(request.explanation(), request.explanationFormat()));
         for (AnswerInput answer : request.answers() == null ? List.<AnswerInput>of() : request.answers()) {
             values.add(value(answer.content(), answer.contentFormat()));
-            values.add(value(answer.explanation(), answer.explanationFormat()));
         }
         return values;
     }
@@ -51,14 +51,14 @@ public class AssessmentRichContentService {
     private AssessmentService.VariantQuestionInput rewrite(AssessmentService.VariantQuestionInput request, List<RichTextValue> values) {
         int[] index = {0};
         RichTextValue content = values.get(index[0]++);
+        RichTextValue explanation = values.get(index[0]++);
         List<AnswerInput> answers = (request.answers() == null ? List.<AnswerInput>of() : request.answers()).stream()
                 .map(answer -> {
                     RichTextValue answerContent = values.get(index[0]++);
-                    RichTextValue explanation = values.get(index[0]++);
-                    return new AnswerInput(answerContent.content(), answerContent.contentFormat(), answer.correct(),
-                            explanation.content(), explanation.contentFormat());
+                    return new AnswerInput(answerContent.content(), answerContent.contentFormat(), answer.correct());
                 }).toList();
-        return new AssessmentService.VariantQuestionInput(content.content(), content.contentFormat(), answers);
+        return new AssessmentService.VariantQuestionInput(content.content(), content.contentFormat(),
+                explanation.content(), explanation.contentFormat(), answers);
     }
 
     private RichTextValue value(String content, RichContentFormat format) {

@@ -54,6 +54,11 @@ public class Question {
     @Builder.Default
     private RichContentFormat contentFormat = RichContentFormat.PLAIN_TEXT;
 
+    private String explanation;
+
+    @Builder.Default
+    private RichContentFormat explanationFormat = RichContentFormat.PLAIN_TEXT;
+
     private QuestionType type;
 
     private UUID quizId;

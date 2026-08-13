@@ -31,6 +31,9 @@ public class QuestionBankQuestion {
     private String content;
     @Builder.Default
     private RichContentFormat contentFormat = RichContentFormat.PLAIN_TEXT;
+    private String explanation;
+    @Builder.Default
+    private RichContentFormat explanationFormat = RichContentFormat.PLAIN_TEXT;
     private Question.QuestionType questionType;
     @Builder.Default
     private QuestionBankSourceType sourceType = QuestionBankSourceType.MANUAL;

@@ -17,6 +17,8 @@ public record QuestionBankItemRequest(
         UUID chapterId,
         @NotBlank @Size(max = 262144) String content,
         RichContentFormat contentFormat,
+        @Size(max = 131072) String explanation,
+        RichContentFormat explanationFormat,
         @NotNull Question.QuestionType questionType,
         CognitiveLevelCode cognitiveLevelCode,
         @Size(max = 10) List<@Valid AnswerRequest> answers,
@@ -24,7 +26,8 @@ public record QuestionBankItemRequest(
 
     public QuestionBankItemRequest(UUID chapterId, String content, Question.QuestionType questionType,
             CognitiveLevelCode cognitiveLevelCode, List<AnswerRequest> answers, Set<UUID> learningOutcomeIds) {
-        this(chapterId, content, RichContentFormat.PLAIN_TEXT, questionType, cognitiveLevelCode, answers, learningOutcomeIds);
+        this(chapterId, content, RichContentFormat.PLAIN_TEXT, null, RichContentFormat.PLAIN_TEXT,
+                questionType, cognitiveLevelCode, answers, learningOutcomeIds);
     }
 
     public QuestionBankItemCommand toCommand() {
@@ -32,6 +35,8 @@ public record QuestionBankItemRequest(
                 chapterId,
                 content,
                 contentFormat == null ? RichContentFormat.PLAIN_TEXT : contentFormat,
+                explanation,
+                explanationFormat == null ? RichContentFormat.PLAIN_TEXT : explanationFormat,
                 questionType,
                 cognitiveLevelCode,
                 answers == null ? List.of() : answers.stream().map(AnswerRequest::toCommand).toList(),
@@ -41,18 +46,20 @@ public record QuestionBankItemRequest(
     public record AnswerRequest(
             @NotBlank @Size(max = 131072) String content,
             RichContentFormat contentFormat,
-            boolean correct,
-            @Size(max = 131072) String explanation,
-            RichContentFormat explanationFormat) {
-        public AnswerRequest(String content, boolean correct, String explanation) {
-            this(content, RichContentFormat.PLAIN_TEXT, correct, explanation, RichContentFormat.PLAIN_TEXT);
+            boolean correct) {
+        public AnswerRequest(String content, boolean correct, String ignoredExplanation) {
+            this(content, RichContentFormat.PLAIN_TEXT, correct);
+        }
+
+        public AnswerRequest(String content, RichContentFormat contentFormat, boolean correct,
+                String ignoredExplanation, RichContentFormat ignoredExplanationFormat) {
+            this(content, contentFormat, correct);
         }
 
         QuestionBankItemCommand.Answer toCommand() {
             return new QuestionBankItemCommand.Answer(content,
                     contentFormat == null ? RichContentFormat.PLAIN_TEXT : contentFormat,
-                    correct, explanation,
-                    explanationFormat == null ? RichContentFormat.PLAIN_TEXT : explanationFormat);
+                    correct);
         }
     }
 }

@@ -404,6 +404,10 @@ public class QuestionVisualGenerationService {
         }
     }
 
+    public static String sanitizeInteractiveSvg(String source) {
+        return sanitizeSvg(source);
+    }
+
     private static void validateSvgNode(Element element, int[] count) {
         if (++count[0] > 1000) throw new UnsafeSourceException("SVG contains too many nodes");
         String tag = element.getLocalName() == null ? element.getTagName() : element.getLocalName();

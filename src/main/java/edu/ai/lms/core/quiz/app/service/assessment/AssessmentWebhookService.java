@@ -34,7 +34,8 @@ public class AssessmentWebhookService {
             throw new IllegalArgumentException("Webhook status must be COMPLETED or FAILED");
         }
         List<GeneratedDraft> drafts = payload.drafts() == null ? List.of() : payload.drafts().stream()
-                .map(draft -> new GeneratedDraft(draft.content(), format(draft.contentFormat()), draft.type(), draft.matrixRowId(),
+                .map(draft -> new GeneratedDraft(draft.content(), format(draft.contentFormat()),
+                        explanation(draft), explanationFormat(draft), draft.type(), draft.matrixRowId(),
                         draft.customLearningLevelId(), draft.learningOutcomeIds() == null ? List.of() : draft.learningOutcomeIds(),
                         draft.answers() == null ? List.of() : draft.answers().stream()
                                 .map(answer -> new GeneratedAnswer(answer.content(), format(answer.contentFormat()), answer.correct(),
@@ -50,11 +51,14 @@ public class AssessmentWebhookService {
             List<DraftPayload> drafts, String errorCode, String errorMessage) {
     }
 
-    public record DraftPayload(String content, RichContentFormat contentFormat, String type, UUID matrixRowId, UUID customLearningLevelId,
+    public record DraftPayload(String content, RichContentFormat contentFormat,
+            String explanation, RichContentFormat explanationFormat,
+            String type, UUID matrixRowId, UUID customLearningLevelId,
             List<UUID> learningOutcomeIds, List<AnswerPayload> answers) {
         public DraftPayload(String content, String type, UUID matrixRowId, UUID customLearningLevelId,
                 List<UUID> learningOutcomeIds, List<AnswerPayload> answers) {
-            this(content, RichContentFormat.PLAIN_TEXT, type, matrixRowId, customLearningLevelId, learningOutcomeIds, answers);
+            this(content, RichContentFormat.PLAIN_TEXT, null, RichContentFormat.PLAIN_TEXT,
+                    type, matrixRowId, customLearningLevelId, learningOutcomeIds, answers);
         }
     }
 
@@ -67,5 +71,24 @@ public class AssessmentWebhookService {
 
     private static RichContentFormat format(RichContentFormat value) {
         return value == null ? RichContentFormat.PLAIN_TEXT : value;
+    }
+
+    private static String explanation(DraftPayload draft) {
+        if (draft.explanation() != null && !draft.explanation().isBlank()) return draft.explanation();
+        return draft.answers() == null ? null : draft.answers().stream()
+                .filter(AnswerPayload::correct)
+                .map(AnswerPayload::explanation)
+                .filter(value -> value != null && !value.isBlank())
+                .findFirst().orElse(null);
+    }
+
+    private static RichContentFormat explanationFormat(DraftPayload draft) {
+        if (draft.explanation() != null && !draft.explanation().isBlank()) return format(draft.explanationFormat());
+        return draft.answers() == null ? RichContentFormat.PLAIN_TEXT : draft.answers().stream()
+                .filter(AnswerPayload::correct)
+                .filter(answer -> answer.explanation() != null && !answer.explanation().isBlank())
+                .map(AnswerPayload::explanationFormat)
+                .map(AssessmentWebhookService::format)
+                .findFirst().orElse(RichContentFormat.PLAIN_TEXT);
     }
 }

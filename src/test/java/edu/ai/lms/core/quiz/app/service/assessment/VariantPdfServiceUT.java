@@ -70,7 +70,8 @@ class VariantPdfServiceUT {
         when(pdfs.generate(courseId, assessmentId, variantId))
                 .thenReturn(new VariantPdfService.GeneratedVariantPdf(bytes, "de-thi-quiz-001.pdf"));
         AssessmentController controller = new AssessmentController(assessments, pdfs,
-                mock(AssessmentRichContentService.class), new ObjectMapper());
+                mock(AssessmentRichContentService.class), mock(QuestionRefinementService.class),
+                new ObjectMapper());
 
         var response = controller.downloadVariantPdf(courseId, assessmentId, variantId);
 

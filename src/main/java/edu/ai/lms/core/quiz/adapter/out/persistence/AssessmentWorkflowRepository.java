@@ -336,15 +336,19 @@ public class AssessmentWorkflowRepository {
                     """, Map.of("levelId", draft.customLearningLevelId()), UUID.class);
             jdbc.update("""
                     INSERT INTO edu.question_drafts
-                        (id, course_id, chapter_id, cognitive_level_id, content, content_format, question_type,
+                        (id, course_id, chapter_id, cognitive_level_id, content, content_format,
+                         explanation, explanation_format, question_type,
                          source_type, created_by, assessment_id, generation_batch_id,
                          matrix_row_id, custom_learning_level_id, review_status)
-                    VALUES (:id, :courseId, :chapterId, :cognitiveLevelId, :content, :contentFormat, 'MULTIPLE_CHOICE',
+                    VALUES (:id, :courseId, :chapterId, :cognitiveLevelId, :content, :contentFormat,
+                            :explanation, :explanationFormat, 'MULTIPLE_CHOICE',
                             'AI_GENERATED', :createdBy, :assessmentId, :batchId, :matrixRowId, :levelId,
                             'NOT_VALIDATED')
                     """, new MapSqlParameterSource().addValue("id", draftId).addValue("courseId", courseId)
                     .addValue("chapterId", chapterId).addValue("cognitiveLevelId", cognitiveLevelId)
                     .addValue("content", draft.content()).addValue("contentFormat", format(draft.contentFormat()).name()).addValue("createdBy", createdBy)
+                    .addValue("explanation", draft.explanation())
+                    .addValue("explanationFormat", format(draft.explanationFormat()).name())
                     .addValue("assessmentId", assessmentId).addValue("batchId", batchId)
                     .addValue("matrixRowId", draft.matrixRowId()).addValue("levelId", draft.customLearningLevelId()));
             for (int i = 0; i < draft.answers().size(); i++) {
@@ -355,8 +359,8 @@ public class AssessmentWorkflowRepository {
                         VALUES (:id, :draftId, :content, :contentFormat, :correct, :explanation, :explanationFormat, :orderIndex)
                         """, new MapSqlParameterSource().addValue("id", UUID.randomUUID()).addValue("draftId", draftId)
                         .addValue("content", answer.content()).addValue("contentFormat", format(answer.contentFormat()).name())
-                        .addValue("correct", answer.correct()).addValue("explanation", answer.explanation())
-                        .addValue("explanationFormat", format(answer.explanationFormat()).name()).addValue("orderIndex", i));
+                        .addValue("correct", answer.correct()).addValue("explanation", null)
+                        .addValue("explanationFormat", RichContentFormat.PLAIN_TEXT.name()).addValue("orderIndex", i));
             }
             for (UUID outcomeId : draft.learningOutcomeIds()) {
                 jdbc.update("""
@@ -424,7 +428,8 @@ public class AssessmentWorkflowRepository {
         }
         String union = """
                 SELECT d.id AS review_id, NULL::uuid AS bank_question_id, d.generation_batch_id,
-                       d.matrix_row_id, d.custom_learning_level_id, d.content, d.content_format, d.question_type,
+                       d.matrix_row_id, d.custom_learning_level_id, d.content, d.content_format,
+                       d.explanation, d.explanation_format, d.question_type,
                        cl.code AS cognitive_level_code, cl.name AS cognitive_level_name,
                        d.chapter_id, ch.title AS chapter, d.review_status AS status, false AS recently_used,
                        d.version, d.rejected_by AS reviewed_by, d.rejected_at AS reviewed_at,
@@ -436,7 +441,8 @@ public class AssessmentWorkflowRepository {
                 """ + outcomeDraft + """
                 UNION ALL
                 SELECT q.origin_draft_id AS review_id, q.id AS bank_question_id, q.generation_batch_id,
-                       q.matrix_row_id, q.custom_learning_level_id, q.content, q.content_format, q.question_type,
+                       q.matrix_row_id, q.custom_learning_level_id, q.content, q.content_format,
+                       q.explanation, q.explanation_format, q.question_type,
                        cl.code AS cognitive_level_code, cl.name AS cognitive_level_name,
                        q.chapter_id, ch.title AS chapter, 'VALIDATED' AS status, q.recently_used,
                        q.version, q.validated_by AS reviewed_by, q.validated_at AS reviewed_at,
@@ -831,14 +837,17 @@ public class AssessmentWorkflowRepository {
     }
 
     public void updateVariantQuestion(UUID assessmentId, UUID variantId, UUID questionId,
-            String content, RichContentFormat contentFormat, List<AnswerInput> answers) {
+            String content, RichContentFormat contentFormat, String explanation,
+            RichContentFormat explanationFormat, List<AnswerInput> answers) {
         UUID quizId = variantQuiz(assessmentId, variantId);
         int updated = jdbc.update("""
                 UPDATE edu.questions SET content = :content, content_format = :contentFormat,
+                    explanation = :explanation, explanation_format = :explanationFormat,
                     version = version + 1, updated_at = CURRENT_TIMESTAMP
                 WHERE id = :questionId AND quiz_id = :quizId
                 """, new MapSqlParameterSource().addValue("content", content).addValue("questionId", questionId)
-                .addValue("quizId", quizId).addValue("contentFormat", contentFormat.name()));
+                .addValue("quizId", quizId).addValue("contentFormat", contentFormat.name())
+                .addValue("explanation", explanation).addValue("explanationFormat", explanationFormat.name()));
         if (updated != 1) throw new IllegalArgumentException("Variant question was not found");
         jdbc.update("DELETE FROM edu.answers WHERE question_id = :id", Map.of("id", questionId));
         for (AnswerInput answer : answers) {
@@ -849,8 +858,8 @@ public class AssessmentWorkflowRepository {
                             CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     """, new MapSqlParameterSource().addValue("questionId", questionId)
                     .addValue("content", answer.content()).addValue("contentFormat", answer.contentFormat().name())
-                    .addValue("correct", answer.correct()).addValue("explanation", answer.explanation())
-                    .addValue("explanationFormat", answer.explanationFormat().name()));
+                    .addValue("correct", answer.correct()).addValue("explanation", null)
+                    .addValue("explanationFormat", RichContentFormat.PLAIN_TEXT.name()));
         }
     }
 
@@ -883,15 +892,18 @@ public class AssessmentWorkflowRepository {
     private void copyBankQuestionToQuiz(SelectedQuestion selected, UUID quizId, int orderIndex, long seed) {
         UUID bankId = selected.bankId();
         Map<String, Object> bank = jdbc.queryForMap("""
-                SELECT content, content_format, question_type AS type, chapter_id, cognitive_level_id
+                SELECT content, content_format, explanation, explanation_format,
+                       question_type AS type, chapter_id, cognitive_level_id
                 FROM edu.question_bank_questions WHERE id = :id
                 """, Map.of("id", bankId));
         UUID questionId = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO edu.questions
-                    (id, content, content_format, type, quiz_id, review_status, source_type, source_bank_question_id,
+                    (id, content, content_format, explanation, explanation_format, type, quiz_id,
+                     review_status, source_type, source_bank_question_id,
                      chapter_id, cognitive_level_id, matrix_row_id, custom_learning_level_id, order_index)
-                VALUES (:id, :content, :content_format, :type, :quizId, 'APPROVED', 'BANK_COPY', :bankId,
+                VALUES (:id, :content, :content_format, :explanation, :explanation_format, :type,
+                        :quizId, 'APPROVED', 'BANK_COPY', :bankId,
                         :chapterId, :cognitiveLevelId, :matrixRowId, :levelId, :orderIndex)
                 """, new MapSqlParameterSource(bank).addValue("id", questionId).addValue("quizId", quizId)
                 .addValue("bankId", bankId).addValue("chapterId", bank.get("chapter_id"))
@@ -899,7 +911,7 @@ public class AssessmentWorkflowRepository {
                 .addValue("matrixRowId", selected.matrixRowId()).addValue("levelId", selected.customLearningLevelId())
                 .addValue("orderIndex", orderIndex));
         List<Map<String, Object>> answers = new ArrayList<>(jdbc.queryForList("""
-                SELECT content, content_format, is_correct, explanation, explanation_format FROM edu.question_bank_answers
+                SELECT content, content_format, is_correct FROM edu.question_bank_answers
                 WHERE question_bank_question_id = :id ORDER BY order_index
                 """, Map.of("id", bankId)));
         Collections.shuffle(answers, new Random(seed ^ bankId.getLeastSignificantBits()));
@@ -907,7 +919,7 @@ public class AssessmentWorkflowRepository {
             jdbc.update("""
                     INSERT INTO edu.answers
                         (question_id, content, content_format, is_correct, explanation, explanation_format, created_at, updated_at)
-                    VALUES (:questionId, :content, :content_format, :is_correct, :explanation, :explanation_format,
+                    VALUES (:questionId, :content, :content_format, :is_correct, NULL, 'PLAIN_TEXT',
                             CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     """, new MapSqlParameterSource(answer).addValue("questionId", questionId));
         }
@@ -921,7 +933,8 @@ public class AssessmentWorkflowRepository {
 
     private List<VariantQuestionView> variantQuestions(UUID quizId) {
         return jdbc.query("""
-                SELECT q.id, q.source_bank_question_id, q.content, q.content_format, q.type, q.order_index, q.matrix_row_id,
+                SELECT q.id, q.source_bank_question_id, q.content, q.content_format,
+                       q.explanation, q.explanation_format, q.type, q.order_index, q.matrix_row_id,
                        mr.order_index AS matrix_row_order, ch.title AS chapter, mr.topic,
                        cll.code AS custom_learning_level_code, cll.name AS custom_learning_level_name,
                        cognitive.code AS cognitive_level_code, cognitive.name AS cognitive_level_name
@@ -935,6 +948,7 @@ public class AssessmentWorkflowRepository {
             UUID questionId = rs.getObject("id", UUID.class);
             return new VariantQuestionView(questionId, rs.getObject("source_bank_question_id", UUID.class),
                     rs.getString("content"), RichContentFormat.fromNullable(rs.getString("content_format")),
+                    rs.getString("explanation"), RichContentFormat.fromNullable(rs.getString("explanation_format")),
                     rs.getString("type"), new VariantQuestionMetadata(
                             matrixRowLabel(rs), labelOrUnrecorded(rs.getString("chapter")),
                             labelOrUnrecorded(rs.getString("topic")),
@@ -974,15 +988,16 @@ public class AssessmentWorkflowRepository {
                     RichContentPolicyService.MAX_PROMPT_HTML_LENGTH, true,
                     "questions[" + questionIndex + "].content", variant.id(), question.id());
             values.add(new RichTextValue(question.content(), question.contentFormat()));
+            validatePublishValue(new RichTextValue(question.explanation(), question.explanationFormat()),
+                    RichContentPolicyService.MAX_ANSWER_HTML_LENGTH, false,
+                    "questions[" + questionIndex + "].explanation", variant.id(), question.id());
+            values.add(new RichTextValue(question.explanation(), question.explanationFormat()));
             for (int answerIndex = 0; answerIndex < question.answers().size(); answerIndex++) {
                 AnswerView answer = question.answers().get(answerIndex);
                 String prefix = "questions[" + questionIndex + "].answers[" + answerIndex + "]";
                 validatePublishValue(new RichTextValue(answer.content(), answer.contentFormat()),
                         RichContentPolicyService.MAX_ANSWER_HTML_LENGTH, true, prefix + ".content", variant.id(), question.id());
-                validatePublishValue(new RichTextValue(answer.explanation(), answer.explanationFormat()),
-                        RichContentPolicyService.MAX_ANSWER_HTML_LENGTH, true, prefix + ".explanation", variant.id(), question.id());
                 values.add(new RichTextValue(answer.content(), answer.contentFormat()));
-                values.add(new RichTextValue(answer.explanation(), answer.explanationFormat()));
             }
             try {
                 richContentUploads.referencedStorageKeys(values, richContentAssets.findByQuestionId(question.id()), List.of());
@@ -1043,9 +1058,8 @@ public class AssessmentWorkflowRepository {
         if (draft.answers().stream().filter(answer -> answer.correct()).count() != 1) {
             throw new IllegalStateException("Generated Draft must contain exactly one correct answer");
         }
-        if (draft.answers().stream().anyMatch(answer -> answer.content() == null || answer.content().isBlank()
-                || answer.explanation() == null || answer.explanation().isBlank())) {
-            throw new IllegalStateException("Every generated answer requires content and explanation");
+        if (draft.answers().stream().anyMatch(answer -> answer.content() == null || answer.content().isBlank())) {
+            throw new IllegalStateException("Every generated answer requires content");
         }
     }
 
@@ -1056,7 +1070,8 @@ public class AssessmentWorkflowRepository {
     private List<DraftReviewItem> draftItems(UUID assessmentId, String status) {
         return jdbc.query("""
                 SELECT d.id, d.generation_batch_id, d.matrix_row_id, d.custom_learning_level_id,
-                       d.content, d.content_format, d.question_type, cl.code AS cognitive_level_code,
+                       d.content, d.content_format, d.explanation, d.explanation_format,
+                       d.question_type, cl.code AS cognitive_level_code,
                        cl.name AS cognitive_level_name, d.chapter_id, ch.title AS chapter,
                        d.review_status, d.version, d.rejected_by, d.rejected_at,
                        d.created_at, d.updated_at
@@ -1071,6 +1086,7 @@ public class AssessmentWorkflowRepository {
             return new DraftReviewItem(id, null, rs.getObject("generation_batch_id", UUID.class),
                     rs.getObject("matrix_row_id", UUID.class), rs.getObject("custom_learning_level_id", UUID.class),
                     rs.getString("content"), RichContentFormat.fromNullable(rs.getString("content_format")),
+                    rs.getString("explanation"), RichContentFormat.fromNullable(rs.getString("explanation_format")),
                     rs.getString("question_type"), rs.getString("cognitive_level_code"),
                     rs.getString("cognitive_level_name"), rs.getObject("chapter_id", UUID.class),
                     rs.getString("chapter"), outcomes.stream().map(ReviewLearningOutcome::id).toList(), outcomes,
@@ -1083,7 +1099,8 @@ public class AssessmentWorkflowRepository {
     private List<DraftReviewItem> bankItems(UUID assessmentId) {
         return jdbc.query("""
                 SELECT q.id, q.origin_draft_id, q.generation_batch_id, q.matrix_row_id,
-                       q.custom_learning_level_id, q.content, q.content_format, q.question_type,
+                       q.custom_learning_level_id, q.content, q.content_format,
+                       q.explanation, q.explanation_format, q.question_type,
                        cl.code AS cognitive_level_code, cl.name AS cognitive_level_name,
                        q.chapter_id, ch.title AS chapter, q.version,
                        q.validated_by, q.validated_at, q.recently_used, q.created_at, q.updated_at
@@ -1098,6 +1115,7 @@ public class AssessmentWorkflowRepository {
                     rs.getObject("generation_batch_id", UUID.class), rs.getObject("matrix_row_id", UUID.class),
                     rs.getObject("custom_learning_level_id", UUID.class), rs.getString("content"),
                     RichContentFormat.fromNullable(rs.getString("content_format")),
+                    rs.getString("explanation"), RichContentFormat.fromNullable(rs.getString("explanation_format")),
                     rs.getString("question_type"), rs.getString("cognitive_level_code"),
                     rs.getString("cognitive_level_name"), rs.getObject("chapter_id", UUID.class),
                     rs.getString("chapter"), outcomes.stream().map(ReviewLearningOutcome::id).toList(), outcomes,
@@ -1111,7 +1129,9 @@ public class AssessmentWorkflowRepository {
         return new ReviewRow(rs.getObject("review_id", UUID.class), rs.getObject("bank_question_id", UUID.class),
                 rs.getObject("generation_batch_id", UUID.class), rs.getObject("matrix_row_id", UUID.class),
                 rs.getObject("custom_learning_level_id", UUID.class), rs.getString("content"),
-                RichContentFormat.fromNullable(rs.getString("content_format")), rs.getString("question_type"), rs.getString("cognitive_level_code"),
+                RichContentFormat.fromNullable(rs.getString("content_format")), rs.getString("explanation"),
+                RichContentFormat.fromNullable(rs.getString("explanation_format")),
+                rs.getString("question_type"), rs.getString("cognitive_level_code"),
                 rs.getString("cognitive_level_name"), rs.getObject("chapter_id", UUID.class),
                 rs.getString("chapter"), rs.getString("status"), rs.getBoolean("recently_used"),
                 rs.getLong("version"), rs.getObject("reviewed_by", UUID.class),
@@ -1134,7 +1154,8 @@ public class AssessmentWorkflowRepository {
             List<ReviewLearningOutcome> outcomes = row.bankQuestionId() == null
                     ? draftOutcomes.getOrDefault(ownerId, List.of()) : bankOutcomes.getOrDefault(ownerId, List.of());
             return new DraftReviewItem(row.id(), row.bankQuestionId(), row.generationBatchId(), row.matrixRowId(),
-                    row.customLearningLevelId(), row.content(), row.contentFormat(), row.questionType(), row.cognitiveLevelCode(),
+                    row.customLearningLevelId(), row.content(), row.contentFormat(), row.explanation(),
+                    row.explanationFormat(), row.questionType(), row.cognitiveLevelCode(),
                     row.cognitiveLevelName(), row.chapterId(), row.chapter(),
                     outcomes.stream().map(ReviewLearningOutcome::id).toList(), outcomes, answers, row.status(),
                     row.recentlyUsed(), row.version(), row.reviewedBy(), row.reviewedAt(), row.createdAt(),
@@ -1147,14 +1168,13 @@ public class AssessmentWorkflowRepository {
         if (ids.isEmpty()) return result;
         String owner = draft ? "question_draft_id" : "question_bank_question_id";
         String table = draft ? "question_draft_answers" : "question_bank_answers";
-        jdbc.query("SELECT " + owner + " AS owner_id, id, content, content_format, is_correct, explanation, explanation_format, order_index"
+        jdbc.query("SELECT " + owner + " AS owner_id, id, content, content_format, is_correct, order_index"
                         + " FROM edu." + table + " WHERE " + owner + " IN (:ids) ORDER BY " + owner + ", order_index",
                 new MapSqlParameterSource("ids", ids), rs -> {
             UUID ownerId = rs.getObject("owner_id", UUID.class);
             result.computeIfAbsent(ownerId, ignored -> new ArrayList<>()).add(new AnswerView(
                     rs.getObject("id", UUID.class), rs.getString("content"),
                     RichContentFormat.fromNullable(rs.getString("content_format")), rs.getBoolean("is_correct"),
-                    rs.getString("explanation"), RichContentFormat.fromNullable(rs.getString("explanation_format")),
                     rs.getInt("order_index")));
         });
         return result;
@@ -1235,31 +1255,29 @@ public class AssessmentWorkflowRepository {
 
     private List<AnswerView> draftAnswers(UUID draftId) {
         return jdbc.query("""
-                SELECT id, content, content_format, is_correct, explanation, explanation_format, order_index FROM edu.question_draft_answers
+                SELECT id, content, content_format, is_correct, order_index FROM edu.question_draft_answers
                 WHERE question_draft_id = :id ORDER BY order_index
                 """, Map.of("id", draftId), this::mapUuidAnswer);
     }
 
     private List<AnswerView> bankAnswers(UUID bankId) {
         return jdbc.query("""
-                SELECT id, content, content_format, is_correct, explanation, explanation_format, order_index FROM edu.question_bank_answers
+                SELECT id, content, content_format, is_correct, order_index FROM edu.question_bank_answers
                 WHERE question_bank_question_id = :id ORDER BY order_index
                 """, Map.of("id", bankId), this::mapUuidAnswer);
     }
 
     private List<AnswerView> quizAnswers(UUID questionId) {
         return jdbc.query("""
-                SELECT answer_number, content, content_format, is_correct, explanation, explanation_format FROM edu.answers
+                SELECT answer_number, content, content_format, is_correct FROM edu.answers
                 WHERE question_id = :id ORDER BY answer_number
                 """, Map.of("id", questionId), (rs, rowNum) -> new AnswerView(null, rs.getString("content"),
-                RichContentFormat.fromNullable(rs.getString("content_format")), rs.getBoolean("is_correct"),
-                rs.getString("explanation"), RichContentFormat.fromNullable(rs.getString("explanation_format")), rowNum));
+                RichContentFormat.fromNullable(rs.getString("content_format")), rs.getBoolean("is_correct"), rowNum));
     }
 
     private AnswerView mapUuidAnswer(ResultSet rs, int rowNum) throws SQLException {
         return new AnswerView(rs.getObject("id", UUID.class), rs.getString("content"),
                 RichContentFormat.fromNullable(rs.getString("content_format")), rs.getBoolean("is_correct"),
-                rs.getString("explanation"), RichContentFormat.fromNullable(rs.getString("explanation_format")),
                 rs.getInt("order_index"));
     }
 
@@ -1282,6 +1300,8 @@ public class AssessmentWorkflowRepository {
             UUID customLearningLevelId,
             String content,
             RichContentFormat contentFormat,
+            String explanation,
+            RichContentFormat explanationFormat,
             String questionType,
             String cognitiveLevelCode,
             String cognitiveLevelName,
@@ -1296,10 +1316,9 @@ public class AssessmentWorkflowRepository {
             LocalDateTime updatedAt) {
     }
 
-    public record AnswerInput(String content, RichContentFormat contentFormat, boolean correct,
-            String explanation, RichContentFormat explanationFormat) {
-        public AnswerInput(String content, boolean correct, String explanation) {
-            this(content, RichContentFormat.PLAIN_TEXT, correct, explanation, RichContentFormat.PLAIN_TEXT);
+    public record AnswerInput(String content, RichContentFormat contentFormat, boolean correct) {
+        public AnswerInput(String content, boolean correct) {
+            this(content, RichContentFormat.PLAIN_TEXT, correct);
         }
     }
 

@@ -99,7 +99,8 @@ public class QuestionBankService implements QuestionBankUseCase {
                 .courseId(courseId).chapterId(source.getChapterId())
                 .cognitiveLevelId(source.getCognitiveLevelId()).cognitiveLevelCode(source.getCognitiveLevelCode())
                 .cognitiveLevelName(source.getCognitiveLevelName()).content(source.getContent())
-                .contentFormat(source.getContentFormat()).questionType(source.getQuestionType())
+                .contentFormat(source.getContentFormat()).explanation(source.getExplanation())
+                .explanationFormat(source.getExplanationFormat()).questionType(source.getQuestionType())
                 .sourceType(source.getSourceType()).createdBy(actor.id()).supersedesBankQuestionId(source.getId())
                 .answers(new ArrayList<>(copyAnswers(source.getAnswers())))
                 .learningOutcomeIds(new LinkedHashSet<>(source.getLearningOutcomeIds())).build();
@@ -139,6 +140,8 @@ public class QuestionBankService implements QuestionBankUseCase {
                 .cognitiveLevelName(draft.getCognitiveLevelName())
                 .content(draft.getContent())
                 .contentFormat(draft.getContentFormat())
+                .explanation(draft.getExplanation())
+                .explanationFormat(draft.getExplanationFormat())
                 .questionType(draft.getQuestionType())
                 .sourceType(draft.getSourceType())
                 .createdBy(draft.getCreatedBy())
@@ -249,16 +252,16 @@ public class QuestionBankService implements QuestionBankUseCase {
         CognitiveLevelOption cognitiveLevel = resolveCognitiveLevel(command.cognitiveLevelCode());
         RichTextValue questionContent = sanitizeRequired(command.content(), command.contentFormat(),
                 RichContentPolicyService.MAX_PROMPT_HTML_LENGTH, "Question content is required");
+        RichTextValue questionExplanation = sanitizeOptional(command.explanation(), command.explanationFormat(),
+                RichContentPolicyService.MAX_ANSWER_HTML_LENGTH);
         List<QuestionBankAnswer> answers = safeAnswers(command.answers()).stream()
                 .map(answer -> {
                     RichTextValue answerContent = sanitizeRequired(answer.content(), answer.contentFormat(),
                             RichContentPolicyService.MAX_ANSWER_HTML_LENGTH, "Saved answers cannot be blank");
-                    RichTextValue explanation = sanitizeOptional(answer.explanation(), answer.explanationFormat(),
-                            RichContentPolicyService.MAX_ANSWER_HTML_LENGTH);
                     return QuestionBankAnswer.builder()
                         .content(answerContent.content()).contentFormat(answerContent.contentFormat())
                         .correct(answer.correct())
-                        .explanation(explanation.content()).explanationFormat(explanation.contentFormat())
+                        .explanation(null).explanationFormat(RichContentFormat.PLAIN_TEXT)
                         .build();
                 })
                 .toList();
@@ -269,6 +272,8 @@ public class QuestionBankService implements QuestionBankUseCase {
                 .cognitiveLevelCode(cognitiveLevel == null ? null : cognitiveLevel.code())
                 .cognitiveLevelName(cognitiveLevel == null ? null : cognitiveLevel.name())
                 .content(questionContent.content()).contentFormat(questionContent.contentFormat())
+                .explanation(questionExplanation.content().isBlank() ? null : questionExplanation.content())
+                .explanationFormat(questionExplanation.contentFormat())
                 .questionType(command.questionType())
                 .sourceType(sourceType)
                 .createdBy(creatorId)

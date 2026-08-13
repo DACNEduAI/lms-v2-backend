@@ -497,6 +497,9 @@ CREATE TABLE IF NOT EXISTS question_drafts
     content            TEXT        NOT NULL CHECK (btrim(content) <> ''),
     content_format     VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
         CHECK (content_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
+    explanation       TEXT,
+    explanation_format VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
+        CHECK (explanation_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     question_type      VARCHAR(30) NOT NULL
         CHECK (question_type IN ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')),
     source_type        VARCHAR(30) NOT NULL DEFAULT 'MANUAL'
@@ -554,6 +557,9 @@ CREATE TABLE IF NOT EXISTS question_bank_questions
     content            TEXT        NOT NULL CHECK (btrim(content) <> ''),
     content_format     VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
         CHECK (content_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
+    explanation       TEXT,
+    explanation_format VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
+        CHECK (explanation_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     question_type      VARCHAR(30) NOT NULL
         CHECK (question_type IN ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'CODE_RUNNER')),
     source_type        VARCHAR(30) NOT NULL DEFAULT 'MANUAL'
@@ -692,6 +698,9 @@ CREATE TABLE IF NOT EXISTS questions
     content             TEXT,
     content_format      VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
         CHECK (content_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
+    explanation        TEXT,
+    explanation_format VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
+        CHECK (explanation_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
     type                VARCHAR(50),
     quiz_id             UUID REFERENCES quizzes (id) ON DELETE CASCADE,
     review_status       VARCHAR(30) NOT NULL DEFAULT 'APPROVED'

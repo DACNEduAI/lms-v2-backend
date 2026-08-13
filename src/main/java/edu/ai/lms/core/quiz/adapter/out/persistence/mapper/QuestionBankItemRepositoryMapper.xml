@@ -13,6 +13,8 @@
     <result property="cognitiveLevelName" column="cognitive_level_name" />
     <result property="content" column="content" />
     <result property="contentFormat" column="content_format" javaType="edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="explanation" column="question_explanation" />
+    <result property="explanationFormat" column="question_explanation_format" javaType="edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="questionType" column="question_type" javaType="edu.ai.lms.core.quiz.app.domain.Question$QuestionType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="sourceType" column="source_type" javaType="edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="createdBy" column="created_by" />
@@ -54,7 +56,9 @@
   <sql id="QuestionColumns">
     item.id, item.course_id, item.chapter_id, item.cognitive_level_id,
     level.code AS cognitive_level_code, level.name AS cognitive_level_name,
-    item.content, item.content_format, item.question_type, item.source_type, item.created_by, item.supersedes_bank_question_id,
+    item.content, item.content_format, item.explanation AS question_explanation,
+    item.explanation_format AS question_explanation_format,
+    item.question_type, item.source_type, item.created_by, item.supersedes_bank_question_id,
     item.version, item.created_at, item.updated_at
   </sql>
 
@@ -222,10 +226,11 @@
 
   <insert id="insertDraft">
     INSERT INTO edu.question_drafts
-      (id, course_id, chapter_id, cognitive_level_id, content, content_format, question_type,
+      (id, course_id, chapter_id, cognitive_level_id, content, content_format, explanation, explanation_format, question_type,
        source_type, created_by, supersedes_bank_question_id, version, created_at, updated_at)
     VALUES
       (#{id}, #{courseId}, #{chapterId}, #{cognitiveLevelId}, #{content}, #{contentFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+       #{explanation}, #{explanationFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{sourceType, javaType=edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{createdBy}, #{supersedesBankQuestionId}, 0, NOW(), NOW())
@@ -237,6 +242,8 @@
         cognitive_level_id = #{item.cognitiveLevelId},
         content = #{item.content},
         content_format = #{item.contentFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        explanation = #{item.explanation},
+        explanation_format = #{item.explanationFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         question_type = #{item.questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
         version = version + 1,
         updated_at = NOW()
@@ -247,11 +254,12 @@
 
   <insert id="insertBankQuestion">
     INSERT INTO edu.question_bank_questions
-      (id, origin_draft_id, course_id, chapter_id, cognitive_level_id, content, content_format,
+      (id, origin_draft_id, course_id, chapter_id, cognitive_level_id, content, content_format, explanation, explanation_format,
        question_type, source_type, created_by, validated_by, validated_at, supersedes_bank_question_id,
        version, created_at, updated_at)
     VALUES
       (#{id}, #{originDraftId}, #{courseId}, #{chapterId}, #{cognitiveLevelId}, #{content}, #{contentFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+       #{explanation}, #{explanationFormat, javaType=edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{questionType, javaType=edu.ai.lms.core.quiz.app.domain.Question$QuestionType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{sourceType, javaType=edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankSourceType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
        #{createdBy}, #{validatedBy}, #{validatedAt}, #{supersedesBankQuestionId}, 0, #{createdAt}, NOW())

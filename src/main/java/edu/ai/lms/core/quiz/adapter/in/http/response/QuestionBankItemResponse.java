@@ -23,6 +23,8 @@ public record QuestionBankItemResponse(
         String cognitiveLevelName,
         String content,
         RichContentFormat contentFormat,
+        String explanation,
+        RichContentFormat explanationFormat,
         Question.QuestionType questionType,
         QuestionBankSourceType sourceType,
         UUID createdBy,
@@ -38,7 +40,8 @@ public record QuestionBankItemResponse(
         return new QuestionBankItemResponse(
                 draft.getId(), null, draft.getCourseId(), draft.getChapterId(),
                 draft.getCognitiveLevelId(), draft.getCognitiveLevelCode(), draft.getCognitiveLevelName(),
-                draft.getContent(), draft.getContentFormat(), draft.getQuestionType(), draft.getSourceType(), draft.getCreatedBy(),
+                draft.getContent(), draft.getContentFormat(), draft.getExplanation(), draft.getExplanationFormat(),
+                draft.getQuestionType(), draft.getSourceType(), draft.getCreatedBy(),
                 null, null, draft.getVersion(),
                 answers(draft.getAnswers()), outcomes(draft.getLearningOutcomeIds()),
                 draft.getCreatedAt(), draft.getUpdatedAt());
@@ -48,7 +51,8 @@ public record QuestionBankItemResponse(
         return new QuestionBankItemResponse(
                 question.getId(), question.getOriginDraftId(), question.getCourseId(), question.getChapterId(),
                 question.getCognitiveLevelId(), question.getCognitiveLevelCode(), question.getCognitiveLevelName(),
-                question.getContent(), question.getContentFormat(), question.getQuestionType(), question.getSourceType(), question.getCreatedBy(),
+                question.getContent(), question.getContentFormat(), question.getExplanation(), question.getExplanationFormat(),
+                question.getQuestionType(), question.getSourceType(), question.getCreatedBy(),
                 question.getValidatedBy(), question.getValidatedAt(), question.getVersion(),
                 answers(question.getAnswers()), outcomes(question.getLearningOutcomeIds()),
                 question.getCreatedAt(), question.getUpdatedAt());
@@ -63,10 +67,10 @@ public record QuestionBankItemResponse(
     }
 
     public record AnswerResponse(UUID id, String content, RichContentFormat contentFormat,
-            boolean correct, String explanation, RichContentFormat explanationFormat, int orderIndex) {
+            boolean correct, int orderIndex) {
         static AnswerResponse from(QuestionBankAnswer answer) {
             return new AnswerResponse(answer.getId(), answer.getContent(), answer.getContentFormat(), answer.isCorrect(),
-                    answer.getExplanation(), answer.getExplanationFormat(), answer.getOrderIndex());
+                    answer.getOrderIndex());
         }
     }
 }

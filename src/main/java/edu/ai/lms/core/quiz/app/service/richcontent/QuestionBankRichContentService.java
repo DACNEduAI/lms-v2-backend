@@ -52,9 +52,9 @@ public class QuestionBankRichContentService {
     private List<RichTextValue> values(QuestionBankItemRequest request) {
         List<RichTextValue> values = new ArrayList<>();
         values.add(value(request.content(), request.contentFormat()));
+        values.add(value(request.explanation(), request.explanationFormat()));
         for (QuestionBankItemRequest.AnswerRequest answer : request.answers() == null ? List.<QuestionBankItemRequest.AnswerRequest>of() : request.answers()) {
             values.add(value(answer.content(), answer.contentFormat()));
-            values.add(value(answer.explanation(), answer.explanationFormat()));
         }
         return values;
     }
@@ -62,14 +62,15 @@ public class QuestionBankRichContentService {
     private QuestionBankItemRequest rewrite(QuestionBankItemRequest request, List<RichTextValue> values) {
         int[] index = {0};
         RichTextValue content = values.get(index[0]++);
+        RichTextValue explanation = values.get(index[0]++);
         List<QuestionBankItemRequest.AnswerRequest> answers = (request.answers() == null ? List.<QuestionBankItemRequest.AnswerRequest>of() : request.answers()).stream()
                 .map(answer -> {
                     RichTextValue answerContent = values.get(index[0]++);
-                    RichTextValue explanation = values.get(index[0]++);
                     return new QuestionBankItemRequest.AnswerRequest(answerContent.content(), answerContent.contentFormat(),
-                            answer.correct(), explanation.content(), explanation.contentFormat());
+                            answer.correct());
                 }).toList();
-        return new QuestionBankItemRequest(request.chapterId(), content.content(), content.contentFormat(), request.questionType(),
+        return new QuestionBankItemRequest(request.chapterId(), content.content(), content.contentFormat(),
+                explanation.content(), explanation.contentFormat(), request.questionType(),
                 request.cognitiveLevelCode(), answers, request.learningOutcomeIds());
     }
 

@@ -32,12 +32,5 @@ public class AssessmentDraftValidationService {
         if (draft.getAnswers().stream().filter(answer -> answer.isCorrect()).count() != 1) {
             throw new IllegalStateException("Quiz2 Draft must contain exactly one correct answer");
         }
-        if (draft.getAnswers().stream().anyMatch(answer -> blank(answer.getExplanation()))) {
-            throw new IllegalStateException("Every Quiz2 Draft answer requires an explanation");
-        }
-    }
-
-    private boolean blank(String value) {
-        return value == null || value.isBlank();
     }
 }

@@ -146,6 +146,8 @@ public final class AssessmentModels {
     public record GeneratedDraft(
             String content,
             RichContentFormat contentFormat,
+            String explanation,
+            RichContentFormat explanationFormat,
             String type,
             UUID matrixRowId,
             UUID customLearningLevelId,
@@ -153,7 +155,8 @@ public final class AssessmentModels {
             List<GeneratedAnswer> answers) {
         public GeneratedDraft(String content, String type, UUID matrixRowId, UUID customLearningLevelId,
                 List<UUID> learningOutcomeIds, List<GeneratedAnswer> answers) {
-            this(content, RichContentFormat.PLAIN_TEXT, type, matrixRowId, customLearningLevelId, learningOutcomeIds, answers);
+            this(content, RichContentFormat.PLAIN_TEXT, null, RichContentFormat.PLAIN_TEXT,
+                    type, matrixRowId, customLearningLevelId, learningOutcomeIds, answers);
         }
     }
 
@@ -172,6 +175,8 @@ public final class AssessmentModels {
             UUID customLearningLevelId,
             String content,
             RichContentFormat contentFormat,
+            String explanation,
+            RichContentFormat explanationFormat,
             String questionType,
             String cognitiveLevelCode,
             String cognitiveLevelName,
@@ -193,9 +198,15 @@ public final class AssessmentModels {
     }
 
     public record AnswerView(UUID id, String content, RichContentFormat contentFormat,
-            boolean correct, String explanation, RichContentFormat explanationFormat, int orderIndex) {
-        public AnswerView(UUID id, String content, boolean correct, String explanation, int orderIndex) {
-            this(id, content, RichContentFormat.PLAIN_TEXT, correct, explanation, RichContentFormat.PLAIN_TEXT, orderIndex);
+            boolean correct, int orderIndex) {
+        public AnswerView(UUID id, String content, boolean correct, int orderIndex) {
+            this(id, content, RichContentFormat.PLAIN_TEXT, correct, orderIndex);
+        }
+
+        /** Source-compatible adapter for legacy callers; Quiz2 no longer exposes answer explanations. */
+        public AnswerView(UUID id, String content, RichContentFormat contentFormat, boolean correct,
+                String ignoredExplanation, RichContentFormat ignoredExplanationFormat, int orderIndex) {
+            this(id, content, contentFormat, correct, orderIndex);
         }
     }
 
@@ -285,13 +296,24 @@ public final class AssessmentModels {
             UUID sourceBankQuestionId,
             String content,
             RichContentFormat contentFormat,
+            String explanation,
+            RichContentFormat explanationFormat,
             String type,
             VariantQuestionMetadata metadata,
             List<AnswerView> answers,
             int orderIndex) {
         public VariantQuestionView(UUID id, UUID sourceBankQuestionId, String content, String type,
                 VariantQuestionMetadata metadata, List<AnswerView> answers, int orderIndex) {
-            this(id, sourceBankQuestionId, content, RichContentFormat.PLAIN_TEXT, type, metadata, answers, orderIndex);
+            this(id, sourceBankQuestionId, content, RichContentFormat.PLAIN_TEXT, null,
+                    RichContentFormat.PLAIN_TEXT, type, metadata, answers, orderIndex);
+        }
+
+
+        public VariantQuestionView(UUID id, UUID sourceBankQuestionId, String content,
+                RichContentFormat contentFormat, String type, VariantQuestionMetadata metadata,
+                List<AnswerView> answers, int orderIndex) {
+            this(id, sourceBankQuestionId, content, contentFormat, null,
+                    RichContentFormat.PLAIN_TEXT, type, metadata, answers, orderIndex);
         }
     }
 

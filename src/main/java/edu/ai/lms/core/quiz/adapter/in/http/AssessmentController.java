@@ -31,6 +31,9 @@ import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.AssessmentC
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.ContextSelection;
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.DraftVersion;
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.VariantQuestionInput;
+import edu.ai.lms.core.quiz.app.service.assessment.QuestionRefinementService;
+import edu.ai.lms.core.quiz.app.service.assessment.QuestionRefinementService.RefinementRequest;
+import edu.ai.lms.core.quiz.app.service.assessment.QuestionRefinementService.RefinementResponse;
 import edu.ai.lms.core.quiz.app.service.richcontent.AssessmentRichContentService;
 import lombok.RequiredArgsConstructor;
 
@@ -42,6 +45,7 @@ public class AssessmentController {
     private final AssessmentService service;
     private final VariantPdfService variantPdfs;
     private final AssessmentRichContentService richContent;
+    private final QuestionRefinementService refinements;
     private final ObjectMapper objectMapper;
 
     @GetMapping
@@ -224,6 +228,13 @@ public class AssessmentController {
         VariantQuestionInput request = objectMapper.readValue(payload, VariantQuestionInput.class);
         return richContent.updateVariantQuestion(courseId, assessmentId, variantId, questionId, request,
                 images == null ? List.of() : images);
+    }
+
+    @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-refine")
+    public RefinementResponse refineQuestion(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
+            @PathVariable UUID variantId, @PathVariable UUID questionId,
+            @RequestBody RefinementRequest request) {
+        return refinements.refine(courseId, assessmentId, variantId, questionId, request);
     }
 
     @PostMapping("/{assessmentId}/publish")
