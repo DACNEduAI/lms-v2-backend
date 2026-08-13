@@ -119,12 +119,11 @@ public class AssessmentRepository {
     }
 
     public UUID baseGenerationJobId(UUID courseId, UUID assessmentId) {
-        List<UUID> jobIds = jdbc.query("""
+        return jdbc.query("""
                 SELECT base_generation_job_id FROM edu.assessments
                 WHERE id = :assessmentId AND course_id = :courseId
                 """, Map.of("assessmentId", assessmentId, "courseId", courseId),
-                (rs, rowNum) -> rs.getObject(1, UUID.class));
-        return jobIds.isEmpty() ? null : jobIds.get(0);
+                rs -> rs.next() ? rs.getObject(1, UUID.class) : null);
     }
 
     public List<MatrixCellRef> matrixCells(UUID matrixId) {

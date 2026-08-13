@@ -26,6 +26,7 @@ import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichTextValue;
+import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
 import edu.ai.lms.core.quiz.app.exception.AssessmentValidationException;
@@ -185,13 +186,22 @@ public class AssessmentService {
         }
         UUID existingJobId = assessments.baseGenerationJobId(courseId, assessmentId);
         if (existingJobId != null) {
-            QuizGenerationStatusResponse existing = getQuizGenerationJobUseCase.getStatus(existingJobId);
-            if (existing.getStatus() != QuizGenerationStatus.FAILED
-                    && existing.getStatus() != QuizGenerationStatus.TIMED_OUT) {
-                return reconcileBaseGeneration(courseId, assessmentId);
+            QuizGenerationStatusResponse existing;
+            try {
+                existing = getQuizGenerationJobUseCase.getStatus(existingJobId);
+            } catch (QuizGenerationJobNotFoundException ex) {
+                assessments.resetFailedBaseGeneration(courseId, assessmentId, existingJobId);
+                assessment = required(courseId, assessmentId);
+                existing = null;
             }
-            assessments.resetFailedBaseGeneration(courseId, assessmentId, existingJobId);
-            assessment = required(courseId, assessmentId);
+            if (existing != null) {
+                if (existing.getStatus() != QuizGenerationStatus.FAILED
+                        && existing.getStatus() != QuizGenerationStatus.TIMED_OUT) {
+                    return reconcileBaseGeneration(courseId, assessmentId);
+                }
+                assessments.resetFailedBaseGeneration(courseId, assessmentId, existingJobId);
+                assessment = required(courseId, assessmentId);
+            }
         }
         List<String> unavailable = assessments.unreadyMaterialNames(courseId);
         if (!unavailable.isEmpty()) {
@@ -237,7 +247,14 @@ public class AssessmentService {
         if (jobId == null) return new BaseGenerationView(null, "NOT_STARTED", null, null,
                 null, null, null);
         if (getQuizGenerationJobUseCase == null) throw new IllegalStateException("Quiz generation status is unavailable");
-        QuizGenerationStatusResponse status = getQuizGenerationJobUseCase.getStatus(jobId);
+        QuizGenerationStatusResponse status;
+        try {
+            status = getQuizGenerationJobUseCase.getStatus(jobId);
+        } catch (QuizGenerationJobNotFoundException ex) {
+            assessments.resetFailedBaseGeneration(courseId, assessmentId, jobId);
+            return new BaseGenerationView(null, "NOT_STARTED", null, null,
+                    null, null, null);
+        }
         if (status.getStatus() == QuizGenerationStatus.COMPLETED && status.getQuizId() != null) {
             AssessmentView assessment = required(courseId, assessmentId);
             workflow.attachBaseQuiz(assessment, status.getQuizId());

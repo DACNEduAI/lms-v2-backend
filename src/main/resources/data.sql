@@ -418,3 +418,36 @@ VALUES
     ('e4000001-0000-4000-8000-000000000004', 'e3000001-0000-4000-8000-000000000002', 'Min-Heap', 'LEARN_AND_EXAM', '', 1),
     ('e4000001-0000-4000-8000-000000000005', 'e3000001-0000-4000-8000-000000000003', 'BFS (Duyệt theo chiều rộng)', 'LEARN_AND_EXAM', '', 0),
     ('e4000001-0000-4000-8000-000000000006', 'e3000001-0000-4000-8000-000000000003', 'DFS (Duyệt theo chiều sâu)', 'LEARN_AND_EXAM', '', 1);
+
+-- Reset fixtures: the original PDFs remain in the private Supabase bucket.
+-- Each boot recreates their LMS metadata and queues fresh AI ingestion instead
+-- of storing an expiring signed URL in the seed data.
+INSERT INTO materials
+    (id, title, type, file_key, is_downloadable, status, ingestion_status, ingestion_revision, course_id)
+VALUES
+    ('f1000001-0000-4000-8000-000000000001',
+     'DCMH.CO2003_Data_Structures_and_AlgoriThms.pdf',
+     'PDF',
+     'courses/c1111111-1111-1111-1111-111111111111/DCMH.CO2003_Data_Structures_and_AlgoriThms.pdf',
+     true, 'UPLOADED', 'PENDING', 'f2000001-0000-4000-8000-000000000001',
+     'c1111111-1111-1111-1111-111111111111'),
+    ('f1000001-0000-4000-8000-000000000002',
+     'DSABook_1.pdf',
+     'PDF',
+     'courses/c1111111-1111-1111-1111-111111111111/DSABook_1.pdf',
+     true, 'UPLOADED', 'PENDING', 'f2000001-0000-4000-8000-000000000002',
+     'c1111111-1111-1111-1111-111111111111');
+
+INSERT INTO material_index_jobs
+    (id, course_id, material_id, operation, revision, file_key, status, attempt_count, next_attempt_at)
+VALUES
+    ('f3000001-0000-4000-8000-000000000001',
+     'c1111111-1111-1111-1111-111111111111', 'f1000001-0000-4000-8000-000000000001',
+     'INGEST', 'f2000001-0000-4000-8000-000000000001',
+     'courses/c1111111-1111-1111-1111-111111111111/DCMH.CO2003_Data_Structures_and_AlgoriThms.pdf',
+     'PENDING', 0, NOW()),
+    ('f3000001-0000-4000-8000-000000000002',
+     'c1111111-1111-1111-1111-111111111111', 'f1000001-0000-4000-8000-000000000002',
+     'INGEST', 'f2000001-0000-4000-8000-000000000002',
+     'courses/c1111111-1111-1111-1111-111111111111/DSABook_1.pdf',
+     'PENDING', 0, NOW());
