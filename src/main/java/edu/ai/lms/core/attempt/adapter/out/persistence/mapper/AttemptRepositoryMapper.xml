@@ -8,6 +8,7 @@
     <id property="id" column="id" />
     <result property="studentId" column="student_id" />
     <result property="quizId" column="quiz_id" />
+    <result property="quizReleaseId" column="quiz_release_id" />
     <result property="score" column="score" />
     <result property="startTime" column="start_time" />
     <result property="dueTime" column="due_time" />
@@ -21,11 +22,11 @@
 
   <insert id="insert" parameterType="edu.ai.lms.core.attempt.app.domain.Attempt">
     INSERT INTO edu.attempts (
-      id, student_id, quiz_id, score, start_time, due_time, submitted_time,
+      id, student_id, quiz_id, quiz_release_id, score, start_time, due_time, submitted_time,
       time_spent_seconds, status, error_reason, created_at, updated_at
     )
     VALUES (
-      #{id}, #{studentId}, #{quizId}, #{score}, #{startTime}, #{dueTime}, #{submittedTime},
+      #{id}, #{studentId}, #{quizId}, #{quizReleaseId}, #{score}, #{startTime}, #{dueTime}, #{submittedTime},
       #{timeSpentSeconds}, #{status, javaType=edu.ai.lms.core.attempt.app.domain.Attempt$AttemptStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, #{errorReason}, NOW(), NOW()
     )
   </insert>
@@ -34,6 +35,7 @@
     UPDATE edu.attempts
     SET student_id = #{studentId},
         quiz_id = #{quizId},
+        quiz_release_id = #{quizReleaseId},
         score = #{score},
         start_time = #{startTime},
         due_time = #{dueTime},
@@ -46,7 +48,7 @@
   </update>
 
   <select id="getById" resultMap="AttemptResultMap">
-    SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
+    SELECT id, student_id, quiz_id, quiz_release_id, score, start_time, due_time, submitted_time,
            time_spent_seconds, status, error_reason, created_at, updated_at
     FROM edu.attempts
     WHERE id = #{attemptId}
@@ -64,7 +66,7 @@
   </update>
 
   <select id="getByIdAndStudentId" resultMap="AttemptResultMap">
-    SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
+    SELECT id, student_id, quiz_id, quiz_release_id, score, start_time, due_time, submitted_time,
            time_spent_seconds, status, error_reason, created_at, updated_at
     FROM edu.attempts
     WHERE id = #{attemptId}
@@ -72,7 +74,7 @@
   </select>
 
   <select id="getLatestStartedAttempt" resultMap="AttemptResultMap">
-    SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
+    SELECT id, student_id, quiz_id, quiz_release_id, score, start_time, due_time, submitted_time,
            time_spent_seconds, status, error_reason, created_at, updated_at
     FROM edu.attempts
     WHERE student_id = #{studentId}
@@ -91,7 +93,7 @@
   </select>
 
   <select id="getByStudentAndQuiz" resultMap="AttemptResultMap">
-    SELECT id, student_id, quiz_id, score, start_time, due_time, submitted_time,
+    SELECT id, student_id, quiz_id, quiz_release_id, score, start_time, due_time, submitted_time,
            time_spent_seconds, status, error_reason, created_at, updated_at
     FROM edu.attempts
     WHERE student_id = #{studentId}

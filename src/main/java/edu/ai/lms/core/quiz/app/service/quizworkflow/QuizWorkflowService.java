@@ -27,6 +27,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.ManageQuizLifecyclePort;
+import edu.ai.lms.core.quiz.app.port.out.ManageQuizReleasePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
@@ -38,6 +39,7 @@ public class QuizWorkflowService implements QuizWorkflowUseCase {
     private final LoadSignedInUserPort signedInUserPort;
     private final LoadQuizPort loadQuizPort;
     private final ManageQuizLifecyclePort lifecyclePort;
+    private final ManageQuizReleasePort releasePort;
     private final QuizAccessPolicy accessPolicy;
     private final LoadQuestionBankItemPort loadBankItemPort;
     private final LoadQuestionPort loadQuestionPort;
@@ -87,10 +89,12 @@ public class QuizWorkflowService implements QuizWorkflowUseCase {
         }
 
         validateQuestions(quiz.getQuestions());
+        LocalDateTime publishedAt = LocalDateTime.now();
         if (!lifecyclePort.transition(courseId, quizId, version, expectedStatus,
-                QuizLifecycleStatus.PUBLISHED, true, actor.id(), LocalDateTime.now())) {
+                QuizLifecycleStatus.PUBLISHED, true, actor.id(), publishedAt)) {
             throw staleConflict();
         }
+        releasePort.publishRelease(quizId, version + 1, actor.id(), publishedAt);
         return loadRequired(courseId, quizId);
     }
 

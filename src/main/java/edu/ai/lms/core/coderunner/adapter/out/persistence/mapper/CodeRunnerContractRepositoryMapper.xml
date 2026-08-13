@@ -83,6 +83,22 @@
     LIMIT 1
   </select>
 
+  <select id="findReleasedConfigForAttempt" resultMap="ConfigRowMap">
+    SELECT c.id, c.schema_version, c.contract_id, c.contract_version, c.contract_status,
+           c.title, c.statement, c.execution_profile_id, c.execution_profile_version,
+           c.archetype_id, c.archetype_version, c.comparator_id, c.comparator_version,
+           c.entry_point, c.signature_json::text AS signature_json, c.starter_code,
+           c.banned_api_patterns_json::text AS banned_api_patterns_json,
+           c.reference_solution, c.revision
+    FROM edu.attempts a
+    JOIN edu.quiz_release_code_runner_bindings binding
+      ON binding.quiz_release_id = a.quiz_release_id
+     AND binding.question_id = #{questionId}
+    JOIN edu.code_runner_configs c ON c.id = binding.code_runner_config_id
+    WHERE a.id = #{attemptId}
+      AND c.question_id = #{questionId}
+  </select>
+
   <select id="findTestCases" resultMap="TestCaseRowMap">
     SELECT id, external_test_id, category, visibility,
            arguments_json::text AS arguments_json,

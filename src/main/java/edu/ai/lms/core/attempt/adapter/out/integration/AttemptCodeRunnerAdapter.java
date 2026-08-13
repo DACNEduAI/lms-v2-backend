@@ -16,8 +16,8 @@ import java.util.UUID;
 class AttemptCodeRunnerAdapter implements AttemptCodeRunnerPort {
     private final AttemptCodeRunnerApi api;
 
-    @Override public AttemptCodeRunnerQuestion getQuestion(UUID quizId, UUID questionId) {
-        var view = api.getQuestion(quizId, questionId);
+    @Override public AttemptCodeRunnerQuestion getQuestion(UUID attemptId, UUID quizId, UUID questionId) {
+        var view = api.getQuestion(attemptId, quizId, questionId);
         return new AttemptCodeRunnerQuestion(view.questionId(), view.title(), view.statement(), view.starterCode(),
                 view.entryPoint(), view.executionProfile(), view.publicTests().stream()
                 .map(test -> new AttemptCodeRunnerQuestion.PublicTest(test.id(), test.category(),

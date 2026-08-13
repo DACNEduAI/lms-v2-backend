@@ -44,6 +44,15 @@ class StudentCodeRunnerAttemptLiveIT extends IntegrationTestConfiguration {
         seed(studentId, teacherId, courseId, quizId, questionId, attemptId);
         UUID configId = contracts.saveRevision(questionId, contract());
         assertThat(contracts.markVerified(questionId, configId)).isTrue();
+        UUID releaseId = UUID.randomUUID();
+        jdbc.update("INSERT INTO edu.quiz_releases (id,quiz_id,release_number,quiz_version,active,published_by) "
+                + "VALUES (?,?,1,1,true,?)", releaseId, quizId, teacherId);
+        jdbc.update("INSERT INTO edu.quiz_release_code_runner_bindings "
+                + "(quiz_release_id,question_id,code_runner_config_id) VALUES (?,?,?)",
+                releaseId, questionId, configId);
+        jdbc.update("INSERT INTO edu.attempts (id,student_id,quiz_id,quiz_release_id,status,start_time,due_time) "
+                + "VALUES (?,?,?,?,'STARTED',NOW(),NOW()+INTERVAL '30 minutes')",
+                attemptId, studentId, quizId, releaseId);
 
         var result = service.execute(attemptId, studentId, quizId, questionId,
                 "bool isEven(int value) { return value % 2 == 0; }",
@@ -85,8 +94,6 @@ class StudentCodeRunnerAttemptLiveIT extends IntegrationTestConfiguration {
                 + "VALUES (?,'Runner',?,?,'PUBLISHED')", quizId, courseId, teacherId);
         jdbc.update("INSERT INTO edu.questions (id,content,type,quiz_id,review_status,source_type) "
                 + "VALUES (?,'isEven','CODE_RUNNER',?,'APPROVED','MANUAL')", questionId, quizId);
-        jdbc.update("INSERT INTO edu.attempts (id,student_id,quiz_id,status,start_time,due_time) "
-                + "VALUES (?,?,?,'STARTED',NOW(),NOW()+INTERVAL '30 minutes')", attemptId, studentId, quizId);
     }
 
     private ExecutableAssessmentContract contract() {

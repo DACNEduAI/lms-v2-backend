@@ -28,6 +28,8 @@ public class Attempt {
 
     private UUID quizId;
 
+    private UUID quizReleaseId;
+
     private Double score;
 
     private LocalDateTime startTime;

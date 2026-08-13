@@ -47,6 +47,10 @@ interface CodeRunnerContractRepository {
 
     Optional<CodeRunnerConfigRow> findLatestConfig(@Param("questionId") UUID questionId);
 
+    Optional<CodeRunnerConfigRow> findReleasedConfigForAttempt(
+            @Param("attemptId") UUID attemptId,
+            @Param("questionId") UUID questionId);
+
     List<CodeRunnerTestCaseRow> findTestCases(@Param("configId") UUID configId);
 
     int markVerified(

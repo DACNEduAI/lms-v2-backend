@@ -57,10 +57,12 @@ class StartAttemptServiceUT {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
+        UUID releaseId = UUID.randomUUID();
 
         CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
+                .quizReleaseId(releaseId)
                 .courseId(courseId)
             .unlimited(false)
                 .timeLimitMinutes(30)
@@ -92,6 +94,7 @@ class StartAttemptServiceUT {
         ArgumentCaptor<Attempt> captor = ArgumentCaptor.forClass(Attempt.class);
         verify(saveAttemptPort).save(captor.capture());
         assertEquals(Attempt.AttemptStatus.STARTED, captor.getValue().getStatus());
+        assertEquals(releaseId, captor.getValue().getQuizReleaseId());
         verify(scheduleAttemptAutoClosePort).schedule(any(UUID.class), any(LocalDateTime.class));
     }
 
@@ -101,10 +104,12 @@ class StartAttemptServiceUT {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
+        UUID releaseId = UUID.randomUUID();
 
         CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
+                .quizReleaseId(releaseId)
                 .courseId(courseId)
             .unlimited(false)
                 .timeLimitMinutes(30)
@@ -130,11 +135,13 @@ class StartAttemptServiceUT {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
+        UUID releaseId = UUID.randomUUID();
         LocalDateTime quizDueTime = LocalDateTime.now().plusHours(2);
 
         CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
+                .quizReleaseId(releaseId)
                 .courseId(courseId)
             .unlimited(false)
                 .timeLimitMinutes(null)
@@ -167,10 +174,12 @@ class StartAttemptServiceUT {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
+        UUID releaseId = UUID.randomUUID();
 
         CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
+                .quizReleaseId(releaseId)
                 .courseId(courseId)
             .unlimited(true)
                 .timeLimitMinutes(0)
@@ -204,10 +213,12 @@ class StartAttemptServiceUT {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
+        UUID releaseId = UUID.randomUUID();
 
         CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
+                .quizReleaseId(releaseId)
                 .courseId(courseId)
                 .unlimited(false)
                 .quizStartTime(LocalDateTime.now().plusMinutes(5))

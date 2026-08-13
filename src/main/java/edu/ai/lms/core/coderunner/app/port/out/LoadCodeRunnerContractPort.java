@@ -11,4 +11,6 @@ public interface LoadCodeRunnerContractPort {
     Optional<ExecutableAssessmentContract> findLatestByQuestionId(UUID questionId);
 
     Optional<StoredCodeRunnerContract> findLatestStoredByQuestionId(UUID questionId);
+
+    Optional<StoredCodeRunnerContract> findReleasedForAttempt(UUID attemptId, UUID questionId);
 }

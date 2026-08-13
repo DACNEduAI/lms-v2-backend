@@ -43,9 +43,9 @@ public class StudentCodeRunnerService {
     @Value("${code-runner.verification.polling-timeout:45s}") private Duration pollingTimeout;
     @Value("${code-runner.verification.polling-interval:300ms}") private Duration pollingInterval;
 
-    public CodeRunnerStudentQuestionView getQuestion(UUID quizId, UUID questionId) {
+    public CodeRunnerStudentQuestionView getQuestion(UUID attemptId, UUID quizId, UUID questionId) {
         requireQuestion(quizId, questionId);
-        StoredCodeRunnerContract stored = requireExecutableContract(questionId);
+        StoredCodeRunnerContract stored = requireExecutableContract(attemptId, questionId);
         var contract = stored.contract();
         List<CodeRunnerStudentQuestionView.PublicTestView> tests = contract.runtime().publicTests().stream()
                 .map(test -> new CodeRunnerStudentQuestionView.PublicTestView(
@@ -62,7 +62,7 @@ public class StudentCodeRunnerService {
             String sourceCode, String idempotencyKey, CodeSubmission.Mode mode) {
         requireInput(sourceCode, idempotencyKey);
         requireQuestion(quizId, questionId);
-        StoredCodeRunnerContract stored = requireExecutableContract(questionId);
+        StoredCodeRunnerContract stored = requireExecutableContract(attemptId, questionId);
         rejectBannedApis(sourceCode, stored.contract());
 
         Optional<CodeSubmission> prior = submissionPort.findByStudentAndIdempotencyKey(studentId, idempotencyKey);
@@ -148,9 +148,10 @@ public class StudentCodeRunnerService {
         }
     }
 
-    private StoredCodeRunnerContract requireExecutableContract(UUID questionId) {
-        StoredCodeRunnerContract stored = contractPort.findLatestStoredByQuestionId(questionId)
-                .orElseThrow(() -> new CodeRunnerNotFoundException("Code Runner contract not found"));
+    private StoredCodeRunnerContract requireExecutableContract(UUID attemptId, UUID questionId) {
+        StoredCodeRunnerContract stored = contractPort.findReleasedForAttempt(attemptId, questionId)
+                .orElseThrow(() -> new CodeRunnerNotFoundException(
+                        "Code Runner contract is not bound to this attempt release"));
         if (!"VERIFIED_EXECUTION_GOLD".equals(stored.contract().status())) {
             throw new CodeRunnerConflictException("Code Runner contract has not passed executable verification");
         }

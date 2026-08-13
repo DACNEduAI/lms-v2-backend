@@ -54,6 +54,7 @@ import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichTextValue;
 import edu.ai.lms.core.quiz.app.exception.AssessmentValidationException;
 import edu.ai.lms.core.quiz.app.exception.RichContentValidationException;
+import edu.ai.lms.core.quiz.app.port.out.ManageQuizReleasePort;
 import edu.ai.lms.core.quiz.app.service.richcontent.RichContentPolicyService;
 import edu.ai.lms.core.quiz.app.service.richcontent.RichContentUploadService;
 import lombok.RequiredArgsConstructor;
@@ -66,6 +67,7 @@ public class AssessmentWorkflowRepository {
     private final RichContentAssetRepository richContentAssets;
     private final RichContentPolicyService richContentPolicy;
     private final RichContentUploadService richContentUploads;
+    private final ManageQuizReleasePort quizReleases;
 
     public BankPlan bankPlan(AssessmentView assessment) {
         if (assessment.examMatrixId() == null) throw new IllegalStateException("Select an Exam Matrix first");
@@ -765,6 +767,9 @@ public class AssessmentWorkflowRepository {
                   AND q.lifecycle_status = 'DRAFT'
                 """, Map.of("actorId", actorId, "publishedAt", publishedAt, "assessmentId", assessment.id()));
         if (publishedVariants != variants.size()) throw new IllegalStateException("One or more variants changed before publish");
+        for (VariantView variant : variants) {
+            quizReleases.publishRelease(variant.quizId(), 1, actorId, publishedAt);
+        }
         List<UUID> bankIds = jdbc.query("""
                 SELECT DISTINCT question_bank_question_id FROM edu.question_bank_allocations
                 WHERE assessment_id = :assessmentId AND status = 'RESERVED'
@@ -817,6 +822,7 @@ public class AssessmentWorkflowRepository {
 
     @Transactional
     public void unpublish(AssessmentView assessment, UUID actorId) {
+        variants(assessment.id()).forEach(variant -> quizReleases.deactivate(variant.quizId()));
         int variants = jdbc.update("""
                 UPDATE edu.quizzes q
                 SET lifecycle_status = 'DRAFT', display = false, version = version + 1, updated_at = CURRENT_TIMESTAMP

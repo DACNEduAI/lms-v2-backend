@@ -91,13 +91,20 @@ public class CodeRunnerContractPersistenceAdapter
 
     @Override
     public Optional<StoredCodeRunnerContract> findLatestStoredByQuestionId(UUID questionId) {
-        return repository.findLatestConfig(questionId).map(row -> {
+        return repository.findLatestConfig(questionId).map(this::storedContract);
+    }
+
+    @Override
+    public Optional<StoredCodeRunnerContract> findReleasedForAttempt(UUID attemptId, UUID questionId) {
+        return repository.findReleasedConfigForAttempt(attemptId, questionId).map(this::storedContract);
+    }
+
+    private StoredCodeRunnerContract storedContract(CodeRunnerConfigRow row) {
             Map<String, UUID> testCaseIds = new LinkedHashMap<>();
             repository.findTestCases(row.getId())
                     .forEach(test -> testCaseIds.put(test.getExternalTestId(), test.getId()));
             return new StoredCodeRunnerContract(
                     row.getId(), toContract(row), Map.copyOf(testCaseIds));
-        });
     }
 
     private ExecutableAssessmentContract toContract(CodeRunnerConfigRow row) {

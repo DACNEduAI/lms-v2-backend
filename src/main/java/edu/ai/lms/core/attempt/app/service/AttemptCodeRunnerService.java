@@ -30,7 +30,7 @@ public class AttemptCodeRunnerService {
 
     public AttemptCodeRunnerQuestion getQuestion(UUID courseId, UUID attemptId, UUID questionId) {
         Context context = requireActiveAttempt(courseId, attemptId);
-        return codeRunnerPort.getQuestion(context.attempt().getQuizId(), questionId);
+        return codeRunnerPort.getQuestion(attemptId, context.attempt().getQuizId(), questionId);
     }
 
     public AttemptCodeSubmission run(UUID courseId, UUID attemptId, UUID questionId,

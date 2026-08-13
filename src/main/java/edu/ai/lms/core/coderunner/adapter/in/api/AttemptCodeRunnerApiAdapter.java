@@ -21,9 +21,9 @@ import java.util.UUID;
 class AttemptCodeRunnerApiAdapter implements AttemptCodeRunnerApi {
     private final StudentCodeRunnerService service;
 
-    @Override public CodeRunnerStudentQuestionView getQuestion(UUID quizId, UUID questionId) {
+    @Override public CodeRunnerStudentQuestionView getQuestion(UUID attemptId, UUID quizId, UUID questionId) {
         try {
-            return service.getQuestion(quizId, questionId);
+            return service.getQuestion(attemptId, quizId, questionId);
         } catch (RuntimeException exception) {
             throw apiException(exception);
         }

@@ -20,6 +20,8 @@ DROP TABLE IF EXISTS
     quizzes,
     code_submission_test_results,
     code_submissions,
+    quiz_release_code_runner_bindings,
+    quiz_releases,
     code_runner_test_cases,
     code_runner_configs,
     questions,
@@ -1103,12 +1105,45 @@ CREATE TABLE IF NOT EXISTS code_runner_test_cases
 CREATE INDEX IF NOT EXISTS idx_code_runner_tests_config_visibility
     ON code_runner_test_cases (code_runner_config_id, visibility, ordinal);
 
+-- A publish creates an immutable release. Attempts point at a release instead
+-- of resolving whichever Code Runner revision happens to be newest later.
+CREATE TABLE IF NOT EXISTS quiz_releases
+(
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    quiz_id        UUID      NOT NULL REFERENCES quizzes (id) ON DELETE CASCADE,
+    release_number INTEGER   NOT NULL CHECK (release_number > 0),
+    quiz_version   BIGINT    NOT NULL CHECK (quiz_version >= 0),
+    active         BOOLEAN   NOT NULL DEFAULT true,
+    published_by   UUID REFERENCES users (id) ON DELETE SET NULL,
+    published_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_quiz_release_number UNIQUE (quiz_id, release_number),
+    CONSTRAINT uq_quiz_release_identity UNIQUE (id, quiz_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz_release_active
+    ON quiz_releases (quiz_id) WHERE active = true;
+
+CREATE TABLE IF NOT EXISTS quiz_release_code_runner_bindings
+(
+    quiz_release_id      UUID NOT NULL REFERENCES quiz_releases (id) ON DELETE CASCADE,
+    question_id          UUID NOT NULL REFERENCES questions (id) ON DELETE RESTRICT,
+    code_runner_config_id UUID NOT NULL REFERENCES code_runner_configs (id) ON DELETE RESTRICT,
+    created_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (quiz_release_id, question_id),
+    CONSTRAINT uq_quiz_release_config UNIQUE (quiz_release_id, code_runner_config_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_release_code_runner_question
+    ON quiz_release_code_runner_bindings (question_id, quiz_release_id);
+
 -- Attempts table
 CREATE TABLE IF NOT EXISTS attempts
 (
     id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     student_id         UUID        NOT NULL REFERENCES students (user_id),
     quiz_id            UUID        NOT NULL REFERENCES quizzes (id),
+    quiz_release_id    UUID        NOT NULL,
     score              DOUBLE PRECISION,
     start_time         TIMESTAMP,
     due_time           TIMESTAMP,
@@ -1117,10 +1152,14 @@ CREATE TABLE IF NOT EXISTS attempts
     status             VARCHAR(50) NOT NULL CHECK (status IN ('STARTED', 'FINISHED', 'ERROR')),
     error_reason       VARCHAR(255),
     created_at         TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
-    updated_at         TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    updated_at         TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_attempt_quiz_release
+        FOREIGN KEY (quiz_release_id, quiz_id)
+        REFERENCES quiz_releases (id, quiz_id) ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS idx_attempts_student_quiz_status ON attempts (student_id, quiz_id, status);
+CREATE INDEX IF NOT EXISTS idx_attempts_release ON attempts (quiz_release_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_due_time ON attempts (due_time);
 
 CREATE TABLE IF NOT EXISTS code_submissions

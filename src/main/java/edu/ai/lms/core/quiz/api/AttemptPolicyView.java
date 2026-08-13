@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record AttemptPolicyView(
         UUID quizId,
+        UUID quizReleaseId,
         UUID courseId,
         boolean unlimited,
         Integer timeLimitMinutes,

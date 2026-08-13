@@ -68,9 +68,14 @@ public class StartAttemptService implements StartAttemptUseCase {
 
         LocalDateTime dueTime = resolveDueTime(policy, now);
 
+        if (policy.getQuizReleaseId() == null) {
+            throw new InvalidAttemptSubmissionException("Quiz does not have an active published release");
+        }
+
         Attempt attempt = Attempt.builder()
                 .studentId(user.getId())
                 .quizId(command.quizId())
+                .quizReleaseId(policy.getQuizReleaseId())
                 .startTime(now)
                 .dueTime(dueTime)
                 .status(Attempt.AttemptStatus.STARTED)

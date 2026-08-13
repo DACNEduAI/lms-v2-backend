@@ -6,7 +6,7 @@ import java.util.UUID;
 /** Public boundary used by the Attempt module; hidden tests never cross it. */
 public interface AttemptCodeRunnerApi {
 
-    CodeRunnerStudentQuestionView getQuestion(UUID quizId, UUID questionId);
+    CodeRunnerStudentQuestionView getQuestion(UUID attemptId, UUID quizId, UUID questionId);
 
     CodeRunnerSubmissionView execute(CodeRunnerExecutionRequest request);
 
