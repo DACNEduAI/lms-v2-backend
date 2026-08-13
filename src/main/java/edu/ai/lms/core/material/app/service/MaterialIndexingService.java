@@ -180,7 +180,7 @@ public class MaterialIndexingService {
         }
         current.setIngestionStatus(Material.IngestionStatus.READY);
         current.setIngestionError(null);
-        current.setIngestedAt(LocalDateTime.now(java.time.Clock.systemUTC()));
+        current.setIngestedAt(LocalDateTime.now());
         modifyMaterialPort.update(current);
     }
 

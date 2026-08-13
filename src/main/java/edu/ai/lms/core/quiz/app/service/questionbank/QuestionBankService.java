@@ -147,7 +147,7 @@ public class QuestionBankService implements QuestionBankUseCase {
                 .createdBy(draft.getCreatedBy())
                 .supersedesBankQuestionId(draft.getSupersedesBankQuestionId())
                 .validatedBy(actor.id())
-                .validatedAt(LocalDateTime.now(java.time.Clock.systemUTC()))
+                .validatedAt(LocalDateTime.now())
                 .createdAt(draft.getCreatedAt())
                 .answers(copyAnswers(draft.getAnswers()))
                 .learningOutcomeIds(new LinkedHashSet<>(draft.getLearningOutcomeIds()))

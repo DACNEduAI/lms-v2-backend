@@ -88,7 +88,7 @@ public class QuizWorkflowService implements QuizWorkflowUseCase {
 
         validateQuestions(quiz.getQuestions());
         if (!lifecyclePort.transition(courseId, quizId, version, expectedStatus,
-                QuizLifecycleStatus.PUBLISHED, true, actor.id(), LocalDateTime.now(java.time.Clock.systemUTC()))) {
+                QuizLifecycleStatus.PUBLISHED, true, actor.id(), LocalDateTime.now())) {
             throw staleConflict();
         }
         return loadRequired(courseId, quizId);

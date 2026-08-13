@@ -76,7 +76,7 @@ public class ModifyCourseService implements TeacherModifyCourseUseCase {
                 .coverImage(savedCourse.getCoverImage())
                 .startDate(savedCourse.getStartDate())
                 .endDate(savedCourse.getEndDate())
-                .updatedAt(java.time.LocalDateTime.now(java.time.Clock.systemUTC()))
+                .updatedAt(java.time.LocalDateTime.now())
                 .build();
 
         // Broadcast notification to all students in the course

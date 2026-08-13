@@ -78,7 +78,7 @@ class QuestionVisualGenerationServiceUT {
     void defersDispatchUntilTransactionCommit() {
         TransactionSynchronizationManager.initSynchronization();
         UUID parentId = UUID.randomUUID();
-        LocalDateTime createdAt = LocalDateTime.now(java.time.Clock.systemUTC());
+        LocalDateTime createdAt = LocalDateTime.now();
 
         service.requestDispatchAfterCommit(parentId, createdAt);
 
@@ -159,7 +159,7 @@ class QuestionVisualGenerationServiceUT {
                 CurrentActor.builder().id(teacherId).role(Roles.TEACHER).build()));
         UUID jobId = UUID.randomUUID();
         UUID parentId = UUID.randomUUID();
-        LocalDateTime parentCreatedAt = LocalDateTime.now(java.time.Clock.systemUTC());
+        LocalDateTime parentCreatedAt = LocalDateTime.now();
         when(visualJobs.retryFailed(quizId, questionId, teacherId)).thenReturn(Optional.of(
                 new QuestionVisualJobPort.RetryItem(jobId, parentId, parentCreatedAt)));
 
@@ -174,12 +174,12 @@ class QuestionVisualGenerationServiceUT {
         UUID parentId = UUID.randomUUID();
         UUID pendingId = UUID.randomUUID();
         UUID processingId = UUID.randomUUID();
-        LocalDateTime parentCreatedAt = LocalDateTime.now(java.time.Clock.systemUTC()).minusMinutes(2);
+        LocalDateTime parentCreatedAt = LocalDateTime.now().minusMinutes(2);
         when(visualJobs.findActiveForScheduling()).thenReturn(List.of(
                 new QuestionVisualJobPort.RecoveryItem(pendingId, parentId, "PENDING",
-                        LocalDateTime.now(java.time.Clock.systemUTC()).plusSeconds(3), null, parentCreatedAt),
+                        LocalDateTime.now().plusSeconds(3), null, parentCreatedAt),
                 new QuestionVisualJobPort.RecoveryItem(processingId, parentId, "PROCESSING",
-                        null, LocalDateTime.now(java.time.Clock.systemUTC()).plusSeconds(30), parentCreatedAt)));
+                        null, LocalDateTime.now().plusSeconds(30), parentCreatedAt)));
 
         service.reconcileSchedules();
 
@@ -192,7 +192,7 @@ class QuestionVisualGenerationServiceUT {
     void deadlineFailsActiveChildrenAndCompletesParentWithWarning() {
         UUID parentId = UUID.randomUUID();
         UUID childId = UUID.randomUUID();
-        LocalDateTime startedAt = LocalDateTime.now(java.time.Clock.systemUTC()).minusMinutes(1);
+        LocalDateTime startedAt = LocalDateTime.now().minusMinutes(1);
         QuestionVisualJobPort.Summary summary = new QuestionVisualJobPort.Summary(2, 1, 1, 0, startedAt);
         QuestionVisualJobPort.ExpiredItem expired = new QuestionVisualJobPort.ExpiredItem(
                 childId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "AUTO", 1, startedAt);
@@ -266,6 +266,6 @@ class QuestionVisualGenerationServiceUT {
         return new QuestionVisualJobPort.WorkItem(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 "AUTO", "Question", "Draw it", "Description", 0,
-                LocalDateTime.now(java.time.Clock.systemUTC()), LocalDateTime.now(java.time.Clock.systemUTC()));
+                LocalDateTime.now(), LocalDateTime.now());
     }
 }

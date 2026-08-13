@@ -47,7 +47,7 @@ public class CleanupStaleMaterialsService implements CleanupStaleMaterialsUseCas
         List<Material> staleCandidates = getMaterialPort.findByStatuses(
                 List.of(MaterialStatus.PENDING, MaterialStatus.FAILED));
 
-        LocalDateTime now = LocalDateTime.now(java.time.Clock.systemUTC());
+        LocalDateTime now = LocalDateTime.now();
         int deletedCount = 0;
 
         for (Material material : staleCandidates) {

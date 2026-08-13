@@ -36,7 +36,6 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
-import java.time.Clock;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -101,7 +100,7 @@ public class QuizWebhookProcessingService {
             job.setErrorMessage(firstUsable(request.getErrorMessage(), errorCode,
                     "AI generation failed without a technical message"));
             job.setLeaseUntil(null);
-            LocalDateTime completedAt = LocalDateTime.now(Clock.systemUTC());
+            LocalDateTime completedAt = LocalDateTime.now();
             job.setCompletedAt(completedAt);
             QuizGenerationJob saved = saveJobPort.save(job);
             timingLogger.textTerminal(saved, "failed", saved.getErrorCode(), completedAt);
@@ -125,7 +124,7 @@ public class QuizWebhookProcessingService {
             job.setErrorCode(null);
             job.setErrorMessage(null);
             QuizGenerationJob processing = saveJobPort.save(job);
-            timingLogger.textTerminal(processing, "completed", null, LocalDateTime.now(Clock.systemUTC()));
+            timingLogger.textTerminal(processing, "completed", null, LocalDateTime.now());
             visualGenerationService.requestDispatchAfterCommit(job.getId(), job.getCreatedAt());
             return QuizGenerationService.toStatusResponse(processing);
         }
@@ -133,7 +132,7 @@ public class QuizWebhookProcessingService {
         job.setPhase(QuizGenerationJob.Phase.DONE);
         job.setErrorCode(null);
         job.setErrorMessage(null);
-        LocalDateTime completedAt = LocalDateTime.now(Clock.systemUTC());
+        LocalDateTime completedAt = LocalDateTime.now();
         job.setCompletedAt(completedAt);
         QuizGenerationJob completed = saveJobPort.save(job);
         timingLogger.textTerminal(completed, "completed", null, completedAt);
@@ -512,7 +511,7 @@ public class QuizWebhookProcessingService {
                     .customLearningLevelId(item.getCustomLearningLevelId())
                     .questionType(savedQuestion.getType())
                     .allocationSnapshot(allocationSnapshot(item))
-                    .createdAt(LocalDateTime.now(Clock.systemUTC()))
+                    .createdAt(LocalDateTime.now())
                     .build());
             if (generatedImageId != null) {
                 visualJobs.create(job.getId(), generatedImageId, generatedVisualType);

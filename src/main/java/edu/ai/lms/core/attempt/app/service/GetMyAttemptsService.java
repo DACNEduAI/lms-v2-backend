@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,7 +44,7 @@ public class GetMyAttemptsService implements GetMyAttemptsUseCase {
         loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)
                 .orElseThrow(() -> new QuizNotFoundForAttemptException("Quiz not found in course"));
 
-        attemptAutoCloseService.isAlreadyStartedAttemptExpiredValidation(user.getId(), courseId, quizId, LocalDateTime.now(Clock.systemUTC()));
+        attemptAutoCloseService.isAlreadyStartedAttemptExpiredValidation(user.getId(), courseId, quizId, LocalDateTime.now());
 
         List<GetMyAttemptsResponse.AttemptItem> attempts = loadAttemptPort.getByStudentAndQuiz(user.getId(), quizId)
                 .stream()

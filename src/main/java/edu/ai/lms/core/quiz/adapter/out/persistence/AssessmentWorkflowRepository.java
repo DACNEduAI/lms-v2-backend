@@ -996,7 +996,7 @@ public class AssessmentWorkflowRepository {
                         "Every variant must satisfy the Assessment Matrix before publishing; coverage overrides cannot bypass this rule");
             }
         }
-        LocalDateTime publishedAt = LocalDateTime.now(java.time.Clock.systemUTC());
+        LocalDateTime publishedAt = LocalDateTime.now();
         int publishedVariants = jdbc.update("""
                 UPDATE edu.quizzes q SET lifecycle_status = 'PUBLISHED', display = false,
                     published_by = :actorId, published_at = :publishedAt,

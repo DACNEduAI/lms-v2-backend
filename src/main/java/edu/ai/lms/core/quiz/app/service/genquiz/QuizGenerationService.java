@@ -34,7 +34,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
-import java.time.Clock;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -151,7 +150,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
                 .status(QuizGenerationStatus.PENDING)
                 .phase(QuizGenerationJob.Phase.TEXT_GENERATION)
                 .attemptCount(0)
-                .nextAttemptAt(LocalDateTime.now(Clock.systemUTC()))
+                .nextAttemptAt(LocalDateTime.now())
                 .build();
 
         QuizGenerationJob saved = saveJobPort.save(job);

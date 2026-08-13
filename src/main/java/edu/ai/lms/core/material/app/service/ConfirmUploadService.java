@@ -83,7 +83,7 @@ public class ConfirmUploadService implements ConfirmUploadUseCase {
                     .entityId(updated.getId())
                     .entityName(updated.getTitle())
                     .description("Tài liệu mới đã được tải lên thành công")
-                    .timestamp(LocalDateTime.now(java.time.Clock.systemUTC()))
+                    .timestamp(LocalDateTime.now())
                     .build());
 
             eventPublisher.publishEvent(new MaterialUploadConfirmedEvent(

@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.Clock;
 
 @Service
 @RequiredArgsConstructor
@@ -53,7 +52,7 @@ public class StartAttemptService implements StartAttemptUseCase {
         QuizAttemptPolicy policy = loadQuizAttemptPolicyPort.getQuizAttemptPolicy(command.courseId(), command.quizId())
                 .orElseThrow(() -> new QuizNotFoundForAttemptException("Quiz not found in course"));
 
-        LocalDateTime now = LocalDateTime.now(Clock.systemUTC());
+        LocalDateTime now = LocalDateTime.now();
         attemptAutoCloseService.isAlreadyStartedAttemptExpiredValidation(user.getId(), command.courseId(), command.quizId(), now);
 
         if (loadAttemptPort.getLatestStartedAttempt(user.getId(), command.quizId()).isPresent()) {

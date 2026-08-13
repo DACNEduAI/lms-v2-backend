@@ -57,7 +57,7 @@ public class CreateCourseService implements TeacherCreateCourseUseCase {
                 .entityId(savedCourse.getId())
                 .entityName(savedCourse.getCourseName())
                 .description("Giảng viên vừa tạo khóa học mới: " + savedCourse.getCourseName())
-                .timestamp(LocalDateTime.now(java.time.Clock.systemUTC()))
+                .timestamp(LocalDateTime.now())
                 .build());
 
         // Return response

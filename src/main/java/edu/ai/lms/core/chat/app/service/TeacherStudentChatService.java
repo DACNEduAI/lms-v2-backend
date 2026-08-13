@@ -33,7 +33,7 @@ public class TeacherStudentChatService implements SendChatMessageUseCase, GetCha
                 .content(content)
                 .status("SENT")
                 .clientTempId(clientTempId)
-                .createdAt(LocalDateTime.now(java.time.Clock.systemUTC()))
+                .createdAt(LocalDateTime.now())
                 .build();
         ChatMessage saved = chatPersistencePort.save(message);
         log.debug("Chat message saved successfully. ID: {}, clientTempId: {}", saved.getId(), saved.getClientTempId());

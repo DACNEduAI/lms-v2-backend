@@ -67,7 +67,7 @@ public class ModifyChapterService implements TeacherModifyChapterUseCase {
                 .title(savedChapter.getTitle())
                 .description(savedChapter.getDescription())
                 .courseId(savedChapter.getCourseId())
-                .updatedAt(LocalDateTime.now(java.time.Clock.systemUTC()))
+                .updatedAt(LocalDateTime.now())
                 .build();
     }
 }
