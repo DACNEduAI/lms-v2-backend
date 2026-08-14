@@ -227,6 +227,70 @@ FROM (
                   AND custom_level.name = level_count.level_name
 WHERE level_count.question_count > 0;
 
+-- 11d. Published quick Exam Matrix: one MCQ for each learning level so the
+-- Quiz2 flow can be exercised without waiting for a large generation job.
+INSERT INTO exam_matrices
+    (id, course_id, title, description, lifecycle_status, version, published_by, published_at, created_at, updated_at)
+VALUES
+    ('b2000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
+     'Exam Matrix – Kiểm tra nhanh (3 câu)',
+     'Matrix seed đã published để tạo nhanh Quiz2: mỗi mức học có đúng một câu trắc nghiệm.',
+     'PUBLISHED', 1, '11111111-1111-1111-1111-111111111111',
+     '2026-08-14 00:00:00', '2026-08-14 00:00:00', '2026-08-14 00:00:00');
+
+INSERT INTO exam_matrix_rows (id, matrix_id, chapter_id, topic, order_index)
+VALUES
+    ('b2000021-0000-4000-8000-000000000001', 'b2000001-0000-4000-8000-000000000001',
+     '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp thuật toán', 0),
+    ('b2000022-0000-4000-8000-000000000001', 'b2000001-0000-4000-8000-000000000001',
+     '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'Heap', 1),
+    ('b2000023-0000-4000-8000-000000000001', 'b2000001-0000-4000-8000-000000000001',
+     'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', 2);
+
+INSERT INTO custom_learning_levels (id, matrix_id, code, name, description, sort_order)
+VALUES
+    ('b2000011-0000-4000-8000-000000000001', 'b2000001-0000-4000-8000-000000000001',
+     'CLL1', 'Hiểu', 'Nắm bắt và giải thích khái niệm đã học.', 1),
+    ('b2000012-0000-4000-8000-000000000001', 'b2000001-0000-4000-8000-000000000001',
+     'CLL2', 'Áp dụng', 'Vận dụng kiến thức để giải quyết bài toán.', 2),
+    ('b2000013-0000-4000-8000-000000000001', 'b2000001-0000-4000-8000-000000000001',
+     'CLL3', 'Áp dụng nâng cao', 'Phân tích và giải quyết bài toán nhiều bước.', 3);
+
+INSERT INTO exam_matrix_row_learning_outcomes (exam_matrix_row_id, learning_outcome_id, is_selected)
+VALUES
+    ('b2000021-0000-4000-8000-000000000001', '81111111-1111-1111-1111-111111111111', TRUE),
+    ('b2000022-0000-4000-8000-000000000001', '85555555-5555-5555-5555-555555555555', TRUE),
+    ('b2000023-0000-4000-8000-000000000001', '8854781e-efc8-4130-9451-3b0391a32419', TRUE);
+
+INSERT INTO custom_learning_level_learning_outcomes
+    (custom_learning_level_id, learning_outcome_id, is_selected)
+VALUES
+    ('b2000011-0000-4000-8000-000000000001', '81111111-1111-1111-1111-111111111111', TRUE),
+    ('b2000011-0000-4000-8000-000000000001', '82222222-2222-2222-2222-222222222222', TRUE),
+    ('b2000012-0000-4000-8000-000000000001', '84444444-4444-4444-4444-444444444444', TRUE),
+    ('b2000012-0000-4000-8000-000000000001', '85555555-5555-5555-5555-555555555555', TRUE),
+    ('b2000013-0000-4000-8000-000000000001', '86666666-6666-6666-6666-666666666666', TRUE),
+    ('b2000013-0000-4000-8000-000000000001', '87777777-7777-7777-7777-777777777777', TRUE),
+    ('b2000013-0000-4000-8000-000000000001', '8854781e-efc8-4130-9451-3b0391a32419', TRUE);
+
+INSERT INTO custom_learning_level_learning_outcomes
+    (custom_learning_level_id, learning_outcome_id, is_selected)
+SELECT level.id, outcome.id, FALSE
+FROM custom_learning_levels level
+         JOIN learning_outcomes outcome ON outcome.course_id = 'c1111111-1111-1111-1111-111111111111'
+WHERE level.matrix_id = 'b2000001-0000-4000-8000-000000000001'
+ON CONFLICT (custom_learning_level_id, learning_outcome_id) DO NOTHING;
+
+INSERT INTO exam_matrix_row_learning_level_counts
+    (exam_matrix_row_id, custom_learning_level_id, matrix_id, question_type, question_count)
+VALUES
+    ('b2000021-0000-4000-8000-000000000001', 'b2000011-0000-4000-8000-000000000001',
+     'b2000001-0000-4000-8000-000000000001', 'MULTIPLE_CHOICE', 1),
+    ('b2000022-0000-4000-8000-000000000001', 'b2000012-0000-4000-8000-000000000001',
+     'b2000001-0000-4000-8000-000000000001', 'MULTIPLE_CHOICE', 1),
+    ('b2000023-0000-4000-8000-000000000001', 'b2000013-0000-4000-8000-000000000001',
+     'b2000001-0000-4000-8000-000000000001', 'MULTIPLE_CHOICE', 1);
+
 -- 12. Insert Quizzes
 INSERT INTO quizzes (id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, teacher_id, display)
 VALUES

@@ -33,6 +33,7 @@ import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.AssessmentC
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.ContextSelection;
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.DraftVersion;
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.VariantQuestionInput;
+import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.VariantQuestionUpdate;
 import edu.ai.lms.core.quiz.app.service.assessment.QuestionRefinementService;
 import edu.ai.lms.core.quiz.app.service.assessment.QuestionRefinementService.RefinementRequest;
 import edu.ai.lms.core.quiz.app.service.assessment.QuestionRefinementService.RefinementResponse;
@@ -261,8 +262,9 @@ public class AssessmentController {
     @PutMapping(value = "/{assessmentId}/variants/{variantId}/questions/{questionId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public List<VariantView> updateQuestion(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
             @PathVariable UUID variantId, @PathVariable UUID questionId,
-            @RequestBody VariantQuestionInput request) {
-        return richContent.updateVariantQuestion(courseId, assessmentId, variantId, questionId, request, List.of());
+            @RequestBody VariantQuestionUpdate request) {
+        return richContent.updateVariantQuestion(courseId, assessmentId, variantId, questionId,
+                request.expectedQuestionVersion(), request.draft(), List.of());
     }
 
     @PutMapping(value = "/{assessmentId}/variants/{variantId}/questions/{questionId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -270,9 +272,9 @@ public class AssessmentController {
             @PathVariable UUID variantId, @PathVariable UUID questionId,
             @RequestPart("payload") String payload,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) throws Exception {
-        VariantQuestionInput request = objectMapper.readValue(payload, VariantQuestionInput.class);
-        return richContent.updateVariantQuestion(courseId, assessmentId, variantId, questionId, request,
-                images == null ? List.of() : images);
+        VariantQuestionUpdate request = objectMapper.readValue(payload, VariantQuestionUpdate.class);
+        return richContent.updateVariantQuestion(courseId, assessmentId, variantId, questionId,
+                request.expectedQuestionVersion(), request.draft(), images == null ? List.of() : images);
     }
 
     @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-refine")

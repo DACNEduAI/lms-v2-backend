@@ -25,13 +25,13 @@ public class AssessmentRichContentService {
 
     @Transactional
     public List<VariantView> updateVariantQuestion(UUID courseId, UUID assessmentId, UUID variantId, UUID questionId,
-            AssessmentService.VariantQuestionInput request, List<MultipartFile> images) {
+            long expectedQuestionVersion, AssessmentService.VariantQuestionInput request, List<MultipartFile> images) {
         List<edu.ai.lms.core.quiz.app.domain.richcontent.RichContentAsset> existing = assets.findByQuestionId(questionId);
         RichContentUploadService.PreparedRichContent prepared = uploads.prepare(values(request), images,
                 existing);
         uploads.cleanupAfterRollback(prepared.uploadedAssets());
         List<VariantView> result = assessments.updateVariantQuestion(courseId, assessmentId, variantId, questionId,
-                rewrite(request, prepared.values()));
+                expectedQuestionVersion, rewrite(request, prepared.values()));
         assets.saveAll(uploads.assetsForQuestion(questionId, prepared.uploadedAssets()));
         assets.retainForQuestion(questionId, uploads.referencedStorageKeys(prepared.values(), existing,
                 prepared.uploadedAssets()));

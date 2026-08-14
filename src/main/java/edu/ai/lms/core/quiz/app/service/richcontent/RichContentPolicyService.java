@@ -19,6 +19,8 @@ public class RichContentPolicyService {
     public static final int MAX_PROMPT_HTML_LENGTH = 256 * 1024;
     public static final int MAX_ANSWER_HTML_LENGTH = 128 * 1024;
     public static final int MAX_LATEX_LENGTH = 8 * 1024;
+    public static final int MIN_IMAGE_WIDTH_PERCENT = 10;
+    public static final int MAX_IMAGE_WIDTH_PERCENT = 100;
 
     private static final String MATH_NODE_SELECTOR =
             "span[data-type], span[data-latex], div[data-type], div[data-latex]";
@@ -34,8 +36,10 @@ public class RichContentPolicyService {
         }
         if (normalized.contentFormat() == RichContentFormat.PLAIN_TEXT) return normalized;
         String sanitized = sanitizer.sanitize(normalized.content());
-        validateLatex(sanitized);
-        return new RichTextValue(sanitized, RichContentFormat.TIPTAP_HTML);
+        Element body = parseBody(sanitized);
+        hasMathNode(body, true);
+        normalizeImageWidths(body);
+        return new RichTextValue(body.html(), RichContentFormat.TIPTAP_HTML);
     }
 
     public boolean hasMeaningfulContent(RichTextValue value) {
@@ -49,6 +53,22 @@ public class RichContentPolicyService {
 
     public void validateLatex(String html) {
         hasMathNode(parseBody(html), true);
+    }
+
+    private void normalizeImageWidths(Element body) {
+        for (Element image : body.select("img")) {
+            String raw = image.attr("data-image-width");
+            if (raw.isBlank()) continue;
+            try {
+                int width = Integer.parseInt(raw);
+                width = Math.max(MIN_IMAGE_WIDTH_PERCENT, Math.min(MAX_IMAGE_WIDTH_PERCENT, width));
+                image.attr("data-image-width", String.valueOf(width));
+                image.attr("style", "width: " + width + "% ; height: auto;");
+            } catch (NumberFormatException ex) {
+                image.removeAttr("data-image-width");
+                image.removeAttr("style");
+            }
+        }
     }
 
     /**

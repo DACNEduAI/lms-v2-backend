@@ -27,9 +27,9 @@ public class OwaspRichContentSanitizer implements SanitizeRichContentPort {
                     "tbody", "tr", "th", "td", "a", "img", "span", "div", "mark")
             .allowAttributes("class").onElements("span", "div", "p", "table", "thead", "tbody", "tr", "th", "td",
                     "ul", "ol", "li", "blockquote", "pre", "code")
-            .allowAttributes("style").onElements("span", "p", "h1", "h2", "h3", "h4", "h5", "h6")
+            .allowAttributes("style").onElements("span", "p", "h1", "h2", "h3", "h4", "h5", "h6", "img")
             .allowAttributes("href", "target", "rel").onElements("a")
-            .allowAttributes("src", "alt", "title").onElements("img")
+            .allowAttributes("src", "alt", "title", "data-image-width").onElements("img")
             .allowAttributes("colspan", "rowspan", "colwidth").onElements("th", "td")
             .allowAttributes("type", "checked", "data-checked").onElements("input", "li")
             .allowAttributes("data-type", "data-latex", "data-ai-artifact-id", "data-ai-artifact-type")
@@ -38,7 +38,7 @@ public class OwaspRichContentSanitizer implements SanitizeRichContentPort {
             .allowAttributes("data-color").onElements("mark")
             .allowUrlProtocols("http", "https", "mailto")
             .allowStyling(CssSchema.withProperties(List.of(
-                    "color", "background-color", "font-family", "font-size", "line-height", "text-align")))
+                    "color", "background-color", "font-family", "font-size", "line-height", "text-align", "width", "height")))
             .toFactory();
 
     @Override

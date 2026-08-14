@@ -19,6 +19,7 @@ import edu.ai.lms.core.quiz.app.exception.MissingLearningOutcomeException;
 import edu.ai.lms.core.quiz.app.exception.QuestionBankConflictException;
 import edu.ai.lms.core.quiz.app.exception.QuestionBankItemNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuestionBankValidationException;
+import edu.ai.lms.core.quiz.app.exception.QuestionVersionConflictException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.QuizLifecycleConflictException;
 import edu.ai.lms.core.quiz.app.exception.QuizNotVisible;
@@ -27,7 +28,9 @@ import edu.ai.lms.core.quiz.app.exception.TimeValidationException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
 import edu.ai.lms.core.quiz.app.exception.VariantPdfImageException;
+import edu.ai.lms.core.quiz.app.exception.VariantPdfFormulaException;
 import edu.ai.lms.core.quiz.app.exception.VariantPdfNotFoundException;
+import edu.ai.lms.core.quiz.app.exception.VariantPdfRenderUnavailableException;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -45,6 +48,21 @@ public class QuizExceptionHandler {
                 .status(HttpStatus.UNPROCESSABLE_ENTITY.value()).error("Variant PDF Image Failed")
                 .message(ex.getMessage()).details(ex.getDetails()).code("VARIANT_PDF_IMAGE_FAILED")
                 .fieldPath(ex.getFieldPath()).variantId(ex.getVariantId()).questionId(ex.getQuestionId()).build());
+    }
+
+    @ExceptionHandler(VariantPdfFormulaException.class)
+    public ResponseEntity<ErrorResponse> handleVariantPdfFormula(VariantPdfFormulaException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ErrorResponse.builder()
+                .status(HttpStatus.UNPROCESSABLE_ENTITY.value()).error("Variant PDF Formula Failed")
+                .message(ex.getMessage()).details(ex.getDetails()).code("VARIANT_PDF_FORMULA_FAILED")
+                .fieldPath(ex.getFieldPath()).variantId(ex.getVariantId()).questionId(ex.getQuestionId()).build());
+    }
+
+    @ExceptionHandler(VariantPdfRenderUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleVariantPdfUnavailable(VariantPdfRenderUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(ErrorResponse.builder()
+                .status(HttpStatus.SERVICE_UNAVAILABLE.value()).error("Variant PDF Renderer Unavailable")
+                .message(ex.getMessage()).code("VARIANT_PDF_RENDER_UNAVAILABLE").build());
     }
 
     @ExceptionHandler(VariantPdfNotFoundException.class)
@@ -81,6 +99,13 @@ public class QuizExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.builder()
                 .status(HttpStatus.CONFLICT.value()).error("Question Bank Conflict")
                 .message(ex.getMessage()).build());
+    }
+
+    @ExceptionHandler(QuestionVersionConflictException.class)
+    public ResponseEntity<ErrorResponse> handleQuestionVersionConflict(QuestionVersionConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.builder()
+                .status(HttpStatus.CONFLICT.value()).error("Question Version Conflict")
+                .message(ex.getMessage()).code("QUESTION_VERSION_CONFLICT").build());
     }
 
     @ExceptionHandler(QuestionBankValidationException.class)

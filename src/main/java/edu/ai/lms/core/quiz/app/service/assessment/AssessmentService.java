@@ -501,17 +501,6 @@ public class AssessmentService {
     }
 
     public List<VariantView> updateVariantQuestion(UUID courseId, UUID assessmentId, UUID variantId,
-            UUID questionId, VariantQuestionInput input) {
-        VariantEditingContext editing = requireVariantEditingContext(courseId, assessmentId, variantId, questionId);
-        AssessmentView assessment = editing.assessment();
-        VariantQuestionInput sanitized = sanitizeVariantQuestionInput(input, assessment.optionCount());
-        workflow.updateVariantQuestion(assessmentId, variantId, questionId, sanitized.content(), sanitized.contentFormat(),
-                sanitized.explanation(), sanitized.explanationFormat(), sanitized.answers());
-        workflow.recalculateCoverage(required(courseId, assessmentId), variantId);
-        return workflow.variants(assessmentId);
-    }
-
-    public List<VariantView> updateVariantQuestion(UUID courseId, UUID assessmentId, UUID variantId,
             UUID questionId, long expectedQuestionVersion, VariantQuestionInput input) {
         VariantEditingContext editing = requireVariantEditingContext(courseId, assessmentId, variantId, questionId);
         VariantQuestionInput sanitized = sanitizeVariantQuestionInput(input, editing.assessment().optionCount());
@@ -691,6 +680,9 @@ public class AssessmentService {
         public VariantQuestionInput(String content, List<AnswerInput> answers) {
             this(content, RichContentFormat.PLAIN_TEXT, null, RichContentFormat.PLAIN_TEXT, answers);
         }
+    }
+
+    public record VariantQuestionUpdate(long expectedQuestionVersion, VariantQuestionInput draft) {
     }
 
     public record VariantEditingContext(AssessmentView assessment, VariantView variant, VariantQuestionView question) {

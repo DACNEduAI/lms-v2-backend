@@ -53,6 +53,7 @@ import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.LifecycleStat
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichTextValue;
 import edu.ai.lms.core.quiz.app.exception.AssessmentValidationException;
+import edu.ai.lms.core.quiz.app.exception.QuestionVersionConflictException;
 import edu.ai.lms.core.quiz.app.exception.RichContentValidationException;
 import edu.ai.lms.core.quiz.app.service.richcontent.RichContentPolicyService;
 import edu.ai.lms.core.quiz.app.service.richcontent.RichContentUploadService;
@@ -1064,14 +1065,7 @@ public class AssessmentWorkflowRepository {
         if (updated != 1) throw new IllegalStateException("Assessment changed before unpublish");
     }
 
-    public void updateVariantQuestion(UUID assessmentId, UUID variantId, UUID questionId,
-            String content, RichContentFormat contentFormat, String explanation,
-            RichContentFormat explanationFormat, List<AnswerInput> answers) {
-        updateVariantQuestion(assessmentId, variantId, questionId, null, content, contentFormat,
-                explanation, explanationFormat, answers);
-    }
-
-    public void updateVariantQuestion(UUID assessmentId, UUID variantId, UUID questionId, Long expectedVersion,
+    public void updateVariantQuestion(UUID assessmentId, UUID variantId, UUID questionId, long expectedVersion,
             String content, RichContentFormat contentFormat, String explanation,
             RichContentFormat explanationFormat, List<AnswerInput> answers) {
         UUID quizId = variantQuiz(assessmentId, variantId);
@@ -1080,12 +1074,13 @@ public class AssessmentWorkflowRepository {
                     explanation = :explanation, explanation_format = :explanationFormat,
                     version = version + 1, updated_at = CURRENT_TIMESTAMP
                 WHERE id = :questionId AND quiz_id = :quizId
-                  AND (:expectedVersion IS NULL OR version = :expectedVersion)
+                  AND version = :expectedVersion
                 """, new MapSqlParameterSource().addValue("content", content).addValue("questionId", questionId)
                 .addValue("quizId", quizId).addValue("contentFormat", contentFormat.name())
                 .addValue("expectedVersion", expectedVersion)
                 .addValue("explanation", explanation).addValue("explanationFormat", explanationFormat.name()));
-        if (updated != 1) throw new IllegalStateException("Question version changed before Save; reload and review the AI draft");
+        if (updated != 1) throw new QuestionVersionConflictException(
+                "Question changed before this save; reload the Quiz 001 and try again");
         jdbc.update("DELETE FROM edu.answers WHERE question_id = :id", Map.of("id", questionId));
         for (AnswerInput answer : answers) {
             jdbc.update("""
