@@ -181,10 +181,6 @@ public class QuizWebhookProcessingService {
             if (request.getQuiz().getQuestions().size() != expected) {
                 throw new IllegalArgumentException("Generated question count does not match the accepted request");
             }
-            if ("QUICK_TEST".equals(snapshot.path("generationMode").asText())) {
-                validateQuickTestQuestions(snapshot, request.getQuiz().getQuestions());
-                return;
-            }
             int snapshotVersion = snapshot.path("snapshotVersion").asInt(1);
             if (snapshotVersion >= 4) {
                 validateMatrixDistribution(snapshot, request.getQuiz().getQuestions());
@@ -199,24 +195,6 @@ public class QuizWebhookProcessingService {
             throw ex;
         } catch (Exception ex) {
             throw new IllegalStateException("Could not validate the request snapshot", ex);
-        }
-    }
-
-    private void validateQuickTestQuestions(JsonNode snapshot, List<QuizWebhookRequest.QuestionPayload> questions) {
-        int optionCount = snapshot.path("questionDefaultsConfiguration").path("multipleChoice")
-                .path("answerOptionCount").asInt();
-        for (QuizWebhookRequest.QuestionPayload question : questions) {
-            if (question.getContent() == null || question.getContent().isBlank()
-                    || question.getType() != Question.QuestionType.MULTIPLE_CHOICE
-                    || question.getOriginalType() == null
-                    || !"MULTIPLE_CHOICE".equalsIgnoreCase(question.getOriginalType())) {
-                throw new IllegalArgumentException("Quick Test questions must be multiple-choice questions with content");
-            }
-            if (question.getAnswers() == null || question.getAnswers().size() != optionCount
-                    || question.getAnswers().stream().filter(answer -> Boolean.TRUE.equals(answer.getIsCorrect())).count() != 1) {
-                throw new IllegalArgumentException("Quick Test questions must match the configured answer count with one correct answer");
-            }
-            visualType(question);
         }
     }
 

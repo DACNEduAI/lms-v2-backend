@@ -88,8 +88,6 @@ public class QuizGenerationProcessingService {
                     snapshot.path("courseTitle").asText(), job.getQuizTitle(),
                     aiExamMatrix.rows(), aiExamMatrix.learningOutcomeIds(), materialIds, job.getPrompt(),
                     questionDefaultsConfiguration,
-                    snapshot.path("generationMode").asText("STANDARD"),
-                    snapshot.hasNonNull("quickQuestionCount") ? snapshot.path("quickQuestionCount").asInt() : null,
                     Boolean.TRUE.equals(job.getStrictMode()), job.getCodeRunnerPolicy(),
                     job.getIdempotencyKey(), callbackUrl(), progressCallbackUrl(), webhookSecret,
                     job.getAttemptCount());
@@ -230,8 +228,6 @@ public class QuizGenerationProcessingService {
             @JsonProperty("material_ids") List<UUID> selectedMaterialIds,
             String teacherInstruction,
             GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfiguration,
-            String generationMode,
-            Integer quickQuestionCount,
             boolean strictMode,
             String codeRunnerPolicy,
             String idempotencyKey,

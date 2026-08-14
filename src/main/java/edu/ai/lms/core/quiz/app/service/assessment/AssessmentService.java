@@ -82,9 +82,8 @@ public class AssessmentService {
     public AssessmentView create(UUID courseId, AssessmentConfiguration input) {
         CurrentActor actor = requireTeacher(courseId);
         validateConfiguration(input);
-        GenerationMode generationMode = input.generationMode() == null ? GenerationMode.STANDARD : input.generationMode();
         return assessments.create(courseId, actor.id(), input.title().trim(), trimToNull(input.description()),
-                input.timeLimitMinutes(), input.passScore(), input.startTime(), input.dueTime(), input.attemptLimited(), generationMode);
+                input.timeLimitMinutes(), input.passScore(), input.startTime(), input.dueTime(), input.attemptLimited());
     }
 
     public AssessmentView update(UUID courseId, UUID assessmentId, long version, AssessmentConfiguration input) {
@@ -241,42 +240,6 @@ public class AssessmentService {
                 null, null, null, 0, null);
     }
 
-    public BaseGenerationView startQuickTestGeneration(UUID courseId, UUID assessmentId, int questionCount, int optionCount) {
-        requireTeacher(courseId);
-        if (!List.of(4, 5).contains(optionCount)) throw new IllegalArgumentException("Option count must be four or five");
-        if (questionCount < 1 || questionCount > 10) throw new IllegalArgumentException("Quick Test question count must be between one and ten");
-        AssessmentView assessment = required(courseId, assessmentId);
-        if (assessment.generationMode() != GenerationMode.QUICK_TEST || assessment.currentStep() != 5) {
-            throw new IllegalStateException("Quick Test must be selected before generating Quiz 001");
-        }
-        if (generateQuizUseCase == null) throw new IllegalStateException("Quiz generation is unavailable");
-        List<UUID> materialIds = assessments.readyMaterialIds(courseId);
-        if (materialIds.isEmpty()) throw new IllegalStateException("The course has no READY source materials");
-        GenerateQuizCommand command = GenerateQuizCommand.builder()
-                .courseId(courseId).selectedMaterialIds(materialIds).visualRequirements(List.of()).questionTypeOverrides(List.of())
-                .questionDefaultsConfiguration(new GenerateQuizCommand.QuestionDefaultsConfiguration(
-                        new GenerateQuizCommand.MultipleChoiceDefaults(optionCount, false, true)))
-                .quickTestConfiguration(new GenerateQuizCommand.QuickTestConfiguration(questionCount))
-                .strictMode(true).codeRunnerPolicy("PRESERVE")
-                .idempotencyKey("quiz2-quick-" + assessment.id() + "-" + assessment.version())
-                .quizTitle(assessment.title() + " - Quick Test 001").description(assessment.description())
-                .unlimited(false).timeLimitMinutes(assessment.timeLimitMinutes()).passScore(assessment.passScore())
-                .startTime(assessment.startTime()).dueTime(assessment.dueTime()).attemptLimited(assessment.attemptLimited()).display(false).build();
-        QuizGenerationJobResponse job = generateQuizUseCase.generateQuiz(command);
-        assessments.startQuickTestGeneration(courseId, assessmentId, job.getJobId(), optionCount);
-        return new BaseGenerationView(job.getJobId(), job.getStatus().name(), "TEXT_GENERATION", 0, null, null, null, 0, questionCount);
-    }
-
-    public AssessmentView discardQuickTest(UUID courseId, UUID assessmentId) {
-        requireTeacher(courseId);
-        AssessmentView assessment = required(courseId, assessmentId);
-        if (assessment.generationMode() != GenerationMode.QUICK_TEST || assessment.currentStep() != 6) {
-            throw new IllegalStateException("Only a generated Quick Test Quiz 001 can be discarded");
-        }
-        assessments.discardQuickTest(courseId, assessmentId);
-        return required(courseId, assessmentId);
-    }
-
     @Transactional
     public BaseGenerationView reconcileBaseGeneration(UUID courseId, UUID assessmentId) {
         requireTeacher(courseId);
@@ -305,9 +268,6 @@ public class AssessmentService {
     public List<VariantView> confirmBaseQuiz(UUID courseId, UUID assessmentId) {
         CurrentActor actor = requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
-        if (assessment.generationMode() == GenerationMode.QUICK_TEST) {
-            throw new IllegalStateException("Quick Test is review-only and cannot be confirmed for variants or publishing");
-        }
         workflow.confirmBaseQuiz(assessment, actor.id());
         return workflow.variants(assessmentId);
     }
@@ -456,9 +416,6 @@ public class AssessmentService {
     public List<VariantView> createVariants(UUID courseId, UUID assessmentId, int variantCount) {
         requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
-        if (assessment.generationMode() == GenerationMode.QUICK_TEST) {
-            throw new IllegalStateException("Quick Test cannot create variants");
-        }
         if (variantCount < 1 || variantCount > 20) {
             throw new IllegalArgumentException("Variant count must be between 1 and 20");
         }
@@ -470,12 +427,17 @@ public class AssessmentService {
         return createVariants(courseId, assessmentId, assessment.variantCount() == null ? 1 : assessment.variantCount());
     }
 
+    @Transactional
+    public AssessmentView confirmVariantPreview(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        workflow.confirmVariantPreview(assessment);
+        return required(courseId, assessmentId);
+    }
+
     public List<VariantView> reopenBaseQuiz(UUID courseId, UUID assessmentId) {
         requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
-        if (assessment.generationMode() == GenerationMode.QUICK_TEST) {
-            throw new IllegalStateException("Quick Test cannot create variants");
-        }
         workflow.reopenBaseQuiz(assessment);
         return workflow.variants(assessmentId);
     }
@@ -552,9 +514,6 @@ public class AssessmentService {
     public PublishResult publish(UUID courseId, UUID assessmentId) {
         CurrentActor actor = requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
-        if (assessment.generationMode() == GenerationMode.QUICK_TEST) {
-            throw new IllegalStateException("Quick Test is review-only and cannot be published");
-        }
         if (questionAi != null && questionAi.hasBlockingDraftOrJob(assessmentId)) {
             throw new IllegalStateException("Publish is blocked by AI work on questions: "
                     + questionAi.blockingQuestionIds(assessmentId)
@@ -582,7 +541,7 @@ public class AssessmentService {
     private AssessmentView withQuestionProgress(AssessmentView assessment, AssessmentQuestionProgress progress) {
         return new AssessmentView(assessment.id(), assessment.courseId(), assessment.title(), assessment.description(),
                 assessment.unlimited(), assessment.timeLimitMinutes(), assessment.passScore(), assessment.startTime(),
-                assessment.dueTime(), assessment.attemptLimited(), assessment.variantCount(), assessment.optionCount(), assessment.generationMode(),
+                assessment.dueTime(), assessment.attemptLimited(), assessment.variantCount(), assessment.optionCount(),
                 assessment.allowRecentlyUsedQuestions(), assessment.lifecycleStatus(), assessment.currentStep(),
                 assessment.ccctProfileId(), assessment.ccctProfileVersion(), assessment.examMatrixId(),
                 assessment.examMatrixVersion(), assessment.aiGenerationStarted(), assessment.version(), assessment.createdBy(),
@@ -648,12 +607,12 @@ public class AssessmentService {
 
     public record AssessmentConfiguration(String title, String description,
             Integer timeLimitMinutes, Double passScore, LocalDateTime startTime, LocalDateTime dueTime,
-            Integer attemptLimited, GenerationMode generationMode) {
+            Integer attemptLimited) {
         public AssessmentConfiguration(String title, String description, boolean ignoredUnlimited,
                 Integer timeLimitMinutes, Double passScore, LocalDateTime startTime, LocalDateTime dueTime,
                 Integer attemptLimited, int ignoredVariantCount, int ignoredOptionCount,
                 boolean ignoredAllowRecentlyUsedQuestions) {
-            this(title, description, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited, GenerationMode.STANDARD);
+            this(title, description, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited);
         }
     }
 

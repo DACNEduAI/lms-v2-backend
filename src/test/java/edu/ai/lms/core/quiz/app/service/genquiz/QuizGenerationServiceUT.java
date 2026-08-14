@@ -91,6 +91,8 @@ class QuizGenerationServiceUT {
 
         JsonNode saved = objectMapper.readTree(snapshot.get());
         assertEquals(4, saved.path("snapshotVersion").asInt());
+        assertFalse(saved.has("generationMode"));
+        assertFalse(saved.has("quickQuestionCount"));
         assertFalse(saved.has("ccctProfileId"));
         assertEquals(4, saved.path("questionCount").asInt());
         assertEquals(1, saved.path("examMatrix").size());

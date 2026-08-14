@@ -646,9 +646,7 @@ CREATE TABLE IF NOT EXISTS quiz_generation_jobs
 (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     course_id           UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
-    exam_matrix_id      UUID         REFERENCES exam_matrices (id) ON DELETE RESTRICT,
-    generation_mode     VARCHAR(20)  NOT NULL DEFAULT 'STANDARD'
-        CHECK (generation_mode IN ('STANDARD', 'QUICK_TEST')),
+    exam_matrix_id      UUID         NOT NULL REFERENCES exam_matrices (id) ON DELETE RESTRICT,
     quiz_id             UUID REFERENCES quizzes (id) ON DELETE SET NULL,
     requested_by        UUID         NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     requested_role      VARCHAR(50)  NOT NULL,
@@ -682,8 +680,6 @@ CREATE TABLE IF NOT EXISTS quiz_generation_jobs
     completed_at        TIMESTAMPTZ,
     created_at          TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT quiz_generation_jobs_matrix_for_standard_check
-        CHECK (generation_mode = 'QUICK_TEST' OR exam_matrix_id IS NOT NULL),
     CONSTRAINT uq_quiz_generation_request UNIQUE (requested_by, idempotency_key)
 );
 
@@ -698,18 +694,6 @@ CREATE INDEX IF NOT EXISTS idx_quiz_generation_lease
     ON quiz_generation_jobs (status, lease_until);
 CREATE INDEX IF NOT EXISTS idx_quiz_generation_requester
     ON quiz_generation_jobs (requested_by, created_at DESC);
-
--- Keep an existing development database compatible when this bootstrap script
--- is configured with `always`: CREATE TABLE IF NOT EXISTS does not add fields.
-ALTER TABLE quiz_generation_jobs
-    ALTER COLUMN exam_matrix_id DROP NOT NULL,
-    ADD COLUMN IF NOT EXISTS generation_mode VARCHAR(20) NOT NULL DEFAULT 'STANDARD';
-ALTER TABLE quiz_generation_jobs DROP CONSTRAINT IF EXISTS quiz_generation_jobs_generation_mode_check;
-ALTER TABLE quiz_generation_jobs ADD CONSTRAINT quiz_generation_jobs_generation_mode_check
-    CHECK (generation_mode IN ('STANDARD', 'QUICK_TEST'));
-ALTER TABLE quiz_generation_jobs DROP CONSTRAINT IF EXISTS quiz_generation_jobs_matrix_for_standard_check;
-ALTER TABLE quiz_generation_jobs ADD CONSTRAINT quiz_generation_jobs_matrix_for_standard_check
-    CHECK (generation_mode = 'QUICK_TEST' OR exam_matrix_id IS NOT NULL);
 
 -- Questions table
 CREATE TABLE IF NOT EXISTS questions
@@ -787,8 +771,6 @@ CREATE TABLE IF NOT EXISTS assessments
     attempt_limited                 INTEGER CHECK (attempt_limited IS NULL OR attempt_limited > 0),
     variant_count                   INTEGER CHECK (variant_count BETWEEN 1 AND 20),
     option_count                    INTEGER CHECK (option_count IN (4, 5)),
-    generation_mode                 VARCHAR(20)  NOT NULL DEFAULT 'STANDARD'
-        CHECK (generation_mode IN ('STANDARD', 'QUICK_TEST')),
     allow_recently_used_questions   BOOLEAN      NOT NULL DEFAULT false,
     lifecycle_status                VARCHAR(30)  NOT NULL DEFAULT 'DRAFT'
         CHECK (lifecycle_status IN ('DRAFT', 'GENERATING', 'REVIEW_PENDING', 'READY_TO_PUBLISH', 'PUBLISHED', 'ARCHIVED')),
@@ -819,12 +801,6 @@ CREATE TABLE IF NOT EXISTS assessments
 
 CREATE INDEX IF NOT EXISTS idx_assessments_course_updated
     ON assessments (course_id, updated_at DESC, id);
-
-ALTER TABLE assessments
-    ADD COLUMN IF NOT EXISTS generation_mode VARCHAR(20) NOT NULL DEFAULT 'STANDARD';
-ALTER TABLE assessments DROP CONSTRAINT IF EXISTS assessments_generation_mode_check;
-ALTER TABLE assessments ADD CONSTRAINT assessments_generation_mode_check
-    CHECK (generation_mode IN ('STANDARD', 'QUICK_TEST'));
 
 CREATE TABLE IF NOT EXISTS assessment_generation_batches
 (

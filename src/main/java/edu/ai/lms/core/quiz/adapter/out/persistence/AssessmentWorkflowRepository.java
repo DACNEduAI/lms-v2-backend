@@ -707,6 +707,9 @@ public class AssessmentWorkflowRepository {
 
     @Transactional
     public List<VariantView> createShuffledVariants(AssessmentView assessment, int variantCount) {
+        if (assessment.currentStep() == 8) {
+            throw new IllegalStateException("Variants have already been created; open Preview Variants to continue");
+        }
         if (assessment.currentStep() != 7) throw new IllegalStateException("Confirm Quiz 001 before creating variants");
         VariantView base = variants(assessment.id()).stream().filter(value -> "BASE".equals(value.kind())).findFirst()
                 .orElseThrow(() -> new IllegalStateException("Quiz 001 was not found"));
@@ -726,6 +729,26 @@ public class AssessmentWorkflowRepository {
                 WHERE id = :assessmentId
                 """, Map.of("variantCount", variantCount, "assessmentId", assessment.id()));
         return variants(assessment.id());
+    }
+
+    @Transactional
+    public void confirmVariantPreview(AssessmentView assessment) {
+        if (assessment.currentStep() != 8 || assessment.lifecycleStatus() != LifecycleStatus.READY_TO_PUBLISH) {
+            throw new IllegalStateException("Create and review shuffled variants before continuing to Publish");
+        }
+        Integer expected = assessment.variantCount();
+        Integer actual = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM edu.assessment_variants WHERE assessment_id = :assessmentId
+                """, Map.of("assessmentId", assessment.id()), Integer.class);
+        if (expected == null || actual == null || !actual.equals(expected)) {
+            throw new IllegalStateException("Assessment variants are incomplete; reload Preview Variants before continuing to Publish");
+        }
+        int updated = jdbc.update("""
+                UPDATE edu.assessments
+                SET current_step = 9, version = version + 1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = :assessmentId AND current_step = 8 AND lifecycle_status = 'READY_TO_PUBLISH'
+                """, Map.of("assessmentId", assessment.id()));
+        if (updated != 1) throw new IllegalStateException("Assessment changed before Preview Variants was confirmed");
     }
 
     @Transactional

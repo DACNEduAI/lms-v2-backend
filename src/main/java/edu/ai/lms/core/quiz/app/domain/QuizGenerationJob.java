@@ -27,8 +27,6 @@ public class QuizGenerationJob {
 
     private UUID examMatrixId;
 
-    private String generationMode;
-
     private UUID chapterId;
 
     private UUID quizId;

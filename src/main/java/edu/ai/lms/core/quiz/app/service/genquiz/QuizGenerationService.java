@@ -71,15 +71,11 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         if (idempotencyKey != null && idempotencyKey.length() > 255) {
             throw new InvalidQuizGenerationRequestException("Idempotency-Key must not exceed 255 characters");
         }
-        boolean quickTest = command.quickTestConfiguration() != null;
-        QuizGenerationContextView context = quickTest ? null : generationContextPort.load(command.courseId(), command.examMatrixId())
+        QuizGenerationContextView context = generationContextPort.load(command.courseId(), command.examMatrixId())
                 .orElseThrow(() -> new InvalidQuizGenerationRequestException("Exam matrix not found"));
-        int questionCount = quickTest ? command.quickTestConfiguration().questionCount()
-                : context.rows().stream().mapToInt(QuizGenerationContextView.Row::questionCount).sum();
-        if (questionCount <= 0 || (quickTest && questionCount > 10)) {
-            throw new InvalidQuizGenerationRequestException(quickTest
-                    ? "Quick Test question count must be between one and ten"
-                    : "Exam matrix must request at least one question");
+        int questionCount = context.rows().stream().mapToInt(QuizGenerationContextView.Row::questionCount).sum();
+        if (questionCount <= 0) {
+            throw new InvalidQuizGenerationRequestException("Exam matrix must request at least one question");
         }
 
         List<UUID> materialIds = command.selectedMaterialIds() == null ? List.of() : command.selectedMaterialIds();
@@ -94,22 +90,20 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         validateTiming(command);
         GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfiguration =
                 normalizeQuestionDefaultsConfiguration(command.questionDefaultsConfiguration());
-        Map<String, Integer> visualCounts = quickTest ? Map.of() : validateVisualRequirements(context, command.visualRequirements());
-        Map<String, String> questionTypes = quickTest ? Map.of() : validateQuestionTypeOverrides(
+        Map<String, Integer> visualCounts = validateVisualRequirements(context, command.visualRequirements());
+        Map<String, String> questionTypes = validateQuestionTypeOverrides(
                 context, command.questionTypeOverrides());
-        List<Map<String, Object>> rows = quickTest ? List.of() : context.rows().stream()
+        List<Map<String, Object>> rows = context.rows().stream()
                 .map(row -> toRowSnapshot(row, visualCounts, questionTypes)).toList();
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("snapshotVersion", 4);
         snapshot.put("courseId", command.courseId());
-        snapshot.put("courseTitle", quickTest ? command.quizTitle() : context.courseTitle());
-        snapshot.put("generationMode", quickTest ? "QUICK_TEST" : "STANDARD");
-        snapshot.put("examMatrixId", quickTest ? null : context.examMatrixId());
-        snapshot.put("matrixTitle", quickTest ? null : context.matrixTitle());
+        snapshot.put("courseTitle", context.courseTitle());
+        snapshot.put("examMatrixId", context.examMatrixId());
+        snapshot.put("matrixTitle", context.matrixTitle());
         snapshot.put("examMatrix", rows);
         snapshot.put("selectedMaterials", materialSnapshot);
         snapshot.put("questionCount", questionCount);
-        snapshot.put("quickQuestionCount", quickTest ? questionCount : null);
         snapshot.put("quizTitle", command.quizTitle());
         snapshot.put("description", command.description());
         snapshot.put("teacherInstruction", command.prompt());
@@ -138,8 +132,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
 
         QuizGenerationJob job = QuizGenerationJob.builder()
                 .courseId(command.courseId())
-                .examMatrixId(quickTest ? null : context.examMatrixId())
-                .generationMode(quickTest ? "QUICK_TEST" : "STANDARD")
+                .examMatrixId(context.examMatrixId())
                 .requestedBy(user.getId())
                 .requestedRole(user.getRole())
                 .quizTitle(command.quizTitle())

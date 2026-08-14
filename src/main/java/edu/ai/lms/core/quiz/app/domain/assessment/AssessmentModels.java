@@ -14,10 +14,6 @@ public final class AssessmentModels {
         DRAFT, GENERATING, REVIEW_PENDING, READY_TO_PUBLISH, PUBLISHED, ARCHIVED
     }
 
-    public enum GenerationMode {
-        STANDARD, QUICK_TEST
-    }
-
     public enum SourceLifecycleStatus {
         DRAFT, PUBLISHED, ARCHIVED
     }
@@ -35,7 +31,6 @@ public final class AssessmentModels {
             Integer attemptLimited,
             Integer variantCount,
             Integer optionCount,
-            GenerationMode generationMode,
             boolean allowRecentlyUsedQuestions,
             LifecycleStatus lifecycleStatus,
             int currentStep,
@@ -53,12 +48,12 @@ public final class AssessmentModels {
             AssessmentQuestionProgress questionProgress) {
         public AssessmentView(UUID id, UUID courseId, String title, String description, boolean unlimited,
                 Integer timeLimitMinutes, Double passScore, LocalDateTime startTime, LocalDateTime dueTime,
-                Integer attemptLimited, Integer variantCount, Integer optionCount, GenerationMode generationMode, boolean allowRecentlyUsedQuestions,
+                Integer attemptLimited, Integer variantCount, Integer optionCount, boolean allowRecentlyUsedQuestions,
                 LifecycleStatus lifecycleStatus, int currentStep, UUID ccctProfileId, Long ccctProfileVersion,
                 UUID examMatrixId, Long examMatrixVersion, boolean aiGenerationStarted, long version, UUID createdBy,
                 UUID publishedBy, LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
             this(id, courseId, title, description, unlimited, timeLimitMinutes, passScore, startTime, dueTime,
-                    attemptLimited, variantCount, optionCount, generationMode, allowRecentlyUsedQuestions, lifecycleStatus, currentStep,
+                    attemptLimited, variantCount, optionCount, allowRecentlyUsedQuestions, lifecycleStatus, currentStep,
                     ccctProfileId, ccctProfileVersion, examMatrixId, examMatrixVersion, aiGenerationStarted, version,
                     createdBy, publishedBy, publishedAt, createdAt, updatedAt, null);
         }

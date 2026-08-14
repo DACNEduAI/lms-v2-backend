@@ -157,7 +157,6 @@ class QuizGenerationProcessingServiceUT {
                          new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.QuestionDefaultsConfiguration(
                                  new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.MultipleChoiceDefaults(
                                          6, true, false)),
-                         "STANDARD", null,
                          true, "PRESERVE",
                         "idempotency-key", "http://lms/callback", "http://lms/callback/progress", "secret", 2);
 
@@ -171,6 +170,8 @@ class QuizGenerationProcessingServiceUT {
         assertEquals(2, json.path("attempt").asInt());
         assertFalse(json.has("courseId"));
         assertFalse(json.has("selectedMaterialIds"));
+        assertFalse(json.has("generationMode"));
+        assertFalse(json.has("quickQuestionCount"));
         assertEquals(6, json.path("questionDefaultsConfiguration").path("multipleChoice")
                 .path("answerOptionCount").asInt());
         assertTrue(json.path("questionDefaultsConfiguration").path("multipleChoice")
