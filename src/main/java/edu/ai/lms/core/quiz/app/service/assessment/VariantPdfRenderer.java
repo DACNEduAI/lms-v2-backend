@@ -22,6 +22,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.DataNode;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Entities;
@@ -142,7 +143,8 @@ public class VariantPdfRenderer {
                 .escapeMode(Entities.EscapeMode.xhtml).prettyPrint(false).charset(StandardCharsets.UTF_8);
         document.selectFirst("html").attr("xmlns", "http://www.w3.org/1999/xhtml");
         document.head().appendElement("meta").attr("charset", "UTF-8");
-        document.head().appendElement("style").attr("type", "text/css").appendText(CSS + "\n" + katexStylesheet());
+        document.head().appendElement("style").attr("type", "text/css")
+                .appendChild(new DataNode(CSS + "\n" + katexStylesheet()));
 
         Map<String, PreparedImage> imageCache = new HashMap<>();
         for (int questionIndex = 0; questionIndex < variant.questions().size(); questionIndex++) {
