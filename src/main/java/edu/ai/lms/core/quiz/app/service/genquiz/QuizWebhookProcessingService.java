@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.ai.lms.common.api.Roles;
 import edu.ai.lms.core.quiz.adapter.in.http.request.QuizWebhookRequest;
+import edu.ai.lms.core.quiz.adapter.in.http.request.QuizGenerationProgressWebhookRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusResponse;
 import edu.ai.lms.core.quiz.app.domain.Answer;
 import edu.ai.lms.core.quiz.app.domain.Question;
@@ -117,6 +118,7 @@ public class QuizWebhookProcessingService {
         }
 
         validatePayload(job, request);
+        job.setGeneratedQuestionCount(job.getTotalQuestionCount());
         Quiz savedQuiz = persistQuiz(job, request.getQuiz());
         job.setQuizId(savedQuiz.getId());
         job.setCallbackEventId(request.getEventId());
@@ -143,6 +145,30 @@ public class QuizWebhookProcessingService {
         timingLogger.quizTerminal(completed, visualSummary, completedAt);
         deferTerminalNotification(completed);
         return QuizGenerationService.toStatusResponse(completed);
+    }
+
+    @Transactional
+    public void handleProgress(QuizGenerationProgressWebhookRequest request) {
+        if (request.getJobId() == null || request.getAttempt() == null
+                || request.getGeneratedQuestionCount() == null) {
+            return;
+        }
+        QuizGenerationJob job = loadJobPort.getByIdForUpdate(request.getJobId()).orElse(null);
+        if (job == null || job.getStatus() != QuizGenerationStatus.PROCESSING
+                || job.getPhase() != QuizGenerationJob.Phase.TEXT_GENERATION
+                || !request.getAttempt().equals(job.getAttemptCount())) {
+            return;
+        }
+        int generated = request.getGeneratedQuestionCount();
+        int current = job.getGeneratedQuestionCount() == null ? 0 : job.getGeneratedQuestionCount();
+        int total = job.getTotalQuestionCount() == null ? 0 : job.getTotalQuestionCount();
+        if (generated < current || generated > total) {
+            return;
+        }
+        if (generated > current) {
+            job.setGeneratedQuestionCount(generated);
+            saveJobPort.save(job);
+        }
     }
 
     private void validatePayload(QuizGenerationJob job, QuizWebhookRequest request) {

@@ -237,7 +237,7 @@ public class AssessmentService {
         QuizGenerationJobResponse job = generateQuizUseCase.generateQuiz(command);
         assessments.startBaseGeneration(courseId, assessmentId, job.getJobId(), optionCount);
         return new BaseGenerationView(job.getJobId(), job.getStatus().name(), "TEXT_GENERATION", 0,
-                null, null, null);
+                null, null, null, 0, null);
     }
 
     @Transactional
@@ -245,7 +245,7 @@ public class AssessmentService {
         requireTeacher(courseId);
         UUID jobId = assessments.baseGenerationJobId(courseId, assessmentId);
         if (jobId == null) return new BaseGenerationView(null, "NOT_STARTED", null, null,
-                null, null, null);
+                null, null, null, null, null);
         if (getQuizGenerationJobUseCase == null) throw new IllegalStateException("Quiz generation status is unavailable");
         QuizGenerationStatusResponse status;
         try {
@@ -253,7 +253,7 @@ public class AssessmentService {
         } catch (QuizGenerationJobNotFoundException ex) {
             assessments.resetFailedBaseGeneration(courseId, assessmentId, jobId);
             return new BaseGenerationView(null, "NOT_STARTED", null, null,
-                    null, null, null);
+                    null, null, null, null, null);
         }
         if (status.getStatus() == QuizGenerationStatus.COMPLETED && status.getQuizId() != null) {
             AssessmentView assessment = required(courseId, assessmentId);
@@ -261,7 +261,8 @@ public class AssessmentService {
         }
         return new BaseGenerationView(jobId, status.getStatus().name(),
                 status.getPhase() == null ? null : status.getPhase().name(), status.getAttemptCount(),
-                status.getQuizId(), status.getErrorCode(), status.getErrorMessage());
+                status.getQuizId(), status.getErrorCode(), status.getErrorMessage(),
+                status.getGeneratedQuestionCount(), status.getTotalQuestionCount());
     }
 
     public List<VariantView> confirmBaseQuiz(UUID courseId, UUID assessmentId) {

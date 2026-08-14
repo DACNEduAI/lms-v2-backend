@@ -26,6 +26,8 @@
     <result property="status" column="status" javaType="edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
     <result property="phase" column="phase" javaType="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob$Phase" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
     <result property="attemptCount" column="attempt_count"/>
+    <result property="generatedQuestionCount" column="generated_question_count"/>
+    <result property="totalQuestionCount" column="total_question_count"/>
     <result property="nextAttemptAt" column="next_attempt_at"/>
     <result property="leaseUntil" column="lease_until"/>
     <result property="errorCode" column="error_code"/>
@@ -40,7 +42,7 @@
   <sql id="columns">id, course_id, exam_matrix_id, quiz_id, requested_by, requested_role,
     quiz_title, description, prompt, request_snapshot, payload_hash, idempotency_key, strict_mode,
     code_runner_policy, unlimited, time_limit_minutes, pass_score, start_time, due_time,
-    attempt_limited, display, status, phase, attempt_count, next_attempt_at, lease_until,
+    attempt_limited, display, status, phase, attempt_count, generated_question_count, total_question_count, next_attempt_at, lease_until,
     error_code, error_message, callback_event_id, processing_at, completed_at, created_at, updated_at</sql>
 
   <insert id="insert" parameterType="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob">
@@ -48,7 +50,7 @@
       id, course_id, exam_matrix_id, quiz_id, requested_by, requested_role, quiz_title, description,
       prompt, request_snapshot, payload_hash, idempotency_key, strict_mode, code_runner_policy,
       unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited,
-      display, status, phase, attempt_count, next_attempt_at, lease_until, error_code,
+      display, status, phase, attempt_count, generated_question_count, total_question_count, next_attempt_at, lease_until, error_code,
       error_message, callback_event_id, processing_at, completed_at, created_at, updated_at)
     VALUES (#{id}, #{courseId}, #{examMatrixId}, #{quizId}, #{requestedBy},
       #{requestedRole, javaType=edu.ai.lms.common.api.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
@@ -57,7 +59,7 @@
       #{startTime}, #{dueTime}, #{attemptLimited}, #{display},
       #{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
       COALESCE(#{phase, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationJob$Phase, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, 'TEXT_GENERATION'),
-      COALESCE(#{attemptCount}, 0), #{nextAttemptAt}, #{leaseUntil}, #{errorCode},
+      COALESCE(#{attemptCount}, 0), COALESCE(#{generatedQuestionCount}, 0), COALESCE(#{totalQuestionCount}, 0), #{nextAttemptAt}, #{leaseUntil}, #{errorCode},
       #{errorMessage}, #{callbackEventId}, #{processingAt}, #{completedAt}, NOW(), NOW())
     ON CONFLICT (requested_by, idempotency_key) DO NOTHING
   </insert>
@@ -70,7 +72,7 @@
       due_time=#{dueTime}, attempt_limited=#{attemptLimited}, display=#{display},
       status=#{status, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
       phase=#{phase, javaType=edu.ai.lms.core.quiz.app.domain.QuizGenerationJob$Phase, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-      attempt_count=#{attemptCount}, next_attempt_at=#{nextAttemptAt}, lease_until=#{leaseUntil},
+      attempt_count=#{attemptCount}, generated_question_count=#{generatedQuestionCount}, total_question_count=#{totalQuestionCount}, next_attempt_at=#{nextAttemptAt}, lease_until=#{leaseUntil},
       error_code=#{errorCode}, error_message=#{errorMessage}, processing_at=#{processingAt},
       callback_event_id=#{callbackEventId}, completed_at=#{completedAt}, updated_at=NOW()
     WHERE id=#{id}
@@ -90,7 +92,7 @@
   </select>
 
   <update id="claim">
-    UPDATE edu.quiz_generation_jobs SET status='PROCESSING', attempt_count=attempt_count+1,
+    UPDATE edu.quiz_generation_jobs SET status='PROCESSING', attempt_count=attempt_count+1, generated_question_count=0,
       processing_at=COALESCE(processing_at, NOW()), lease_until=#{leaseUntil},
       error_code=NULL, error_message=NULL, updated_at=NOW()
     WHERE id=#{jobId} AND status='PENDING' AND (next_attempt_at IS NULL OR next_attempt_at &lt;= NOW())

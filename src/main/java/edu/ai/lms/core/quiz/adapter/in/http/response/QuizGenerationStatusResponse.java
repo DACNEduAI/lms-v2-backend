@@ -35,6 +35,10 @@ public class QuizGenerationStatusResponse {
 
     private Integer attemptCount;
 
+    private Integer generatedQuestionCount;
+
+    private Integer totalQuestionCount;
+
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Instant createdAt;
 

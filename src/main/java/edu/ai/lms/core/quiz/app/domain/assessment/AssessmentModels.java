@@ -285,7 +285,9 @@ public final class AssessmentModels {
             Integer attemptCount,
             UUID quizId,
             String errorCode,
-            String errorMessage) {
+            String errorMessage,
+            Integer generatedQuestionCount,
+            Integer totalQuestionCount) {
     }
 
     public record VariantView(

@@ -50,6 +50,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         // Service-to-service callback; authenticated by HMAC in the controller.
                         .requestMatchers("/api/internal/webhooks/quiz-generation",
+                                "/api/internal/webhooks/quiz-generation/progress",
                                 "/api/internal/webhooks/assessment-question-generation").permitAll()
                         // Swagger UI endpoints
                         .requestMatchers(

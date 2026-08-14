@@ -77,6 +77,10 @@ public class QuizGenerationJob {
 
     private Integer attemptCount;
 
+    private Integer generatedQuestionCount;
+
+    private Integer totalQuestionCount;
+
     private Instant nextAttemptAt;
 
     private Instant leaseUntil;

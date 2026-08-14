@@ -669,6 +669,8 @@ CREATE TABLE IF NOT EXISTS quiz_generation_jobs
         CHECK (phase IN ('TEXT_GENERATION', 'VISUAL_GENERATION', 'FINALIZING', 'DONE')),
     status              VARCHAR(30)  NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'TIMED_OUT')),
     attempt_count       INTEGER      NOT NULL DEFAULT 0,
+    generated_question_count INTEGER NOT NULL DEFAULT 0 CHECK (generated_question_count >= 0),
+    total_question_count INTEGER NOT NULL DEFAULT 0 CHECK (total_question_count >= 0),
     next_attempt_at     TIMESTAMPTZ,
     lease_until         TIMESTAMPTZ,
     error_code          VARCHAR(100),
@@ -683,6 +685,8 @@ CREATE TABLE IF NOT EXISTS quiz_generation_jobs
 
 ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE quiz_generation_jobs ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE quiz_generation_jobs ADD COLUMN IF NOT EXISTS generated_question_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE quiz_generation_jobs ADD COLUMN IF NOT EXISTS total_question_count INTEGER NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_quiz_generation_queue
     ON quiz_generation_jobs (status, next_attempt_at);

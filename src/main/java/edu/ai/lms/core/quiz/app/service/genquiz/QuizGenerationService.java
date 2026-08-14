@@ -153,6 +153,8 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
                 .status(QuizGenerationStatus.PENDING)
                 .phase(QuizGenerationJob.Phase.TEXT_GENERATION)
                 .attemptCount(0)
+                .generatedQuestionCount(0)
+                .totalQuestionCount(questionCount)
                 .nextAttemptAt(Instant.now(quizGenerationClock))
                 .build();
 
@@ -391,7 +393,9 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
                 .jobId(job.getId()).status(job.getStatus()).quizId(job.getQuizId())
                 .phase(job.getPhase())
                 .errorCode(job.getErrorCode()).errorMessage(job.getErrorMessage())
-                .attemptCount(job.getAttemptCount()).createdAt(job.getCreatedAt())
+                .attemptCount(job.getAttemptCount())
+                .generatedQuestionCount(job.getGeneratedQuestionCount())
+                .totalQuestionCount(job.getTotalQuestionCount()).createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt()).build();
     }
 }

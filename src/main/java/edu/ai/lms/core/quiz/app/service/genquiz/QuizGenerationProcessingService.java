@@ -89,7 +89,8 @@ public class QuizGenerationProcessingService {
                     aiExamMatrix.rows(), aiExamMatrix.learningOutcomeIds(), materialIds, job.getPrompt(),
                     questionDefaultsConfiguration,
                     Boolean.TRUE.equals(job.getStrictMode()), job.getCodeRunnerPolicy(),
-                    job.getIdempotencyKey(), callbackUrl(), webhookSecret);
+                    job.getIdempotencyKey(), callbackUrl(), progressCallbackUrl(), webhookSecret,
+                    job.getAttemptCount());
 
             WebClient.RequestBodySpec call = aiWebClient.post().uri("/quiz-gen/generate")
                     .header(CorrelationIdFilter.HEADER_NAME, job.getId().toString())
@@ -153,6 +154,10 @@ public class QuizGenerationProcessingService {
 
     private String callbackUrl() {
         return webhookBaseUrl.replaceAll("/+$", "") + "/api/internal/webhooks/quiz-generation";
+    }
+
+    private String progressCallbackUrl() {
+        return callbackUrl() + "/progress";
     }
 
     private String safeMessage(Exception ex) {
@@ -227,6 +232,8 @@ public class QuizGenerationProcessingService {
             String codeRunnerPolicy,
             String idempotencyKey,
             String webhookUrl,
-            String webhookSecret) {
+            String progressWebhookUrl,
+            String webhookSecret,
+            Integer attempt) {
     }
 }
