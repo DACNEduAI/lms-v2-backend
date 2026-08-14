@@ -1,6 +1,7 @@
 package edu.ai.lms.core.quiz.adapter.out.persistence;
 
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.AssessmentView;
+import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.GenerationMode;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.LifecycleStatus;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.SourceLifecycleStatus;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.SourceOption;
@@ -35,16 +36,17 @@ public class AssessmentRepository {
             Double passScore,
             LocalDateTime startTime,
             LocalDateTime dueTime,
-            Integer attemptLimited) {
+            Integer attemptLimited,
+            GenerationMode generationMode) {
         UUID id = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO edu.assessments
                     (id, course_id, title, description, unlimited, time_limit_minutes, pass_score,
                      start_time, due_time, attempt_limited, variant_count, option_count,
-                     allow_recently_used_questions, created_by)
+                     generation_mode, allow_recently_used_questions, created_by, current_step)
                 VALUES
                     (:id, :courseId, :title, :description, false, :timeLimitMinutes, :passScore,
-                     :startTime, :dueTime, :attemptLimited, NULL, NULL, false, :actorId)
+                     :startTime, :dueTime, :attemptLimited, NULL, NULL, :generationMode, false, :actorId, :currentStep)
                 """, new MapSqlParameterSource()
                 .addValue("id", id)
                 .addValue("courseId", courseId)
@@ -55,6 +57,8 @@ public class AssessmentRepository {
                 .addValue("startTime", startTime)
                 .addValue("dueTime", dueTime)
                 .addValue("attemptLimited", attemptLimited)
+                .addValue("generationMode", generationMode.name())
+                .addValue("currentStep", generationMode == GenerationMode.QUICK_TEST ? 5 : 1)
                 .addValue("actorId", actorId));
         return get(courseId, id).orElseThrow();
     }
@@ -149,6 +153,41 @@ public class AssessmentRepository {
                 """, Map.of("optionCount", optionCount, "jobId", jobId,
                 "assessmentId", assessmentId, "courseId", courseId));
         if (updated != 1) throw new IllegalStateException("Base Quiz generation already started or Assessment changed");
+    }
+
+    public void startQuickTestGeneration(UUID courseId, UUID assessmentId, UUID jobId, int optionCount) {
+        int updated = jdbc.update("""
+                UPDATE edu.assessments
+                SET option_count = :optionCount, base_generation_job_id = :jobId,
+                    ai_generation_started = true, lifecycle_status = 'GENERATING', current_step = 5,
+                    version = version + 1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = :assessmentId AND course_id = :courseId
+                  AND generation_mode = 'QUICK_TEST' AND current_step = 5 AND base_generation_job_id IS NULL
+                """, Map.of("optionCount", optionCount, "jobId", jobId,
+                "assessmentId", assessmentId, "courseId", courseId));
+        if (updated != 1) throw new IllegalStateException("Quick Test generation already started or Assessment changed");
+    }
+
+    @Transactional
+    public void discardQuickTest(UUID courseId, UUID assessmentId) {
+        UUID quizId = jdbc.query("""
+                SELECT v.quiz_id FROM edu.assessment_variants v
+                JOIN edu.assessments a ON a.id = v.assessment_id
+                WHERE a.id = :assessmentId AND a.course_id = :courseId
+                  AND a.generation_mode = 'QUICK_TEST' AND v.variant_kind = 'BASE'
+                """, Map.of("assessmentId", assessmentId, "courseId", courseId),
+                rs -> rs.next() ? rs.getObject("quiz_id", UUID.class) : null);
+        jdbc.update("DELETE FROM edu.assessment_variants WHERE assessment_id = :assessmentId", Map.of("assessmentId", assessmentId));
+        if (quizId != null) jdbc.update("DELETE FROM edu.quizzes WHERE id = :quizId", Map.of("quizId", quizId));
+        int updated = jdbc.update("""
+                UPDATE edu.assessments
+                SET generation_mode = 'STANDARD', base_generation_job_id = NULL, option_count = NULL,
+                    ai_generation_started = false, lifecycle_status = 'DRAFT', current_step = 2,
+                    version = version + 1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = :assessmentId AND course_id = :courseId
+                  AND generation_mode = 'QUICK_TEST' AND current_step = 6
+                """, Map.of("assessmentId", assessmentId, "courseId", courseId));
+        if (updated != 1) throw new IllegalStateException("Quick Test Assessment was not found");
     }
 
     public void resetFailedBaseGeneration(UUID courseId, UUID assessmentId, UUID jobId) {
@@ -559,6 +598,14 @@ public class AssessmentRepository {
                 Map.of("courseId", courseId), (rs, rowNum) -> rs.getObject("id", UUID.class));
     }
 
+    public List<UUID> readyMaterialIds(UUID courseId) {
+        return jdbc.query("""
+                SELECT id FROM edu.materials
+                WHERE course_id = :courseId AND status = 'UPLOADED' AND ingestion_status = 'READY'
+                ORDER BY created_at, id
+                """, Map.of("courseId", courseId), (rs, rowNum) -> rs.getObject("id", UUID.class));
+    }
+
     public List<String> unreadyMaterialNames(UUID courseId) {
         return jdbc.query("""
                 SELECT title FROM edu.materials
@@ -625,7 +672,7 @@ public class AssessmentRepository {
         return """
                 SELECT a.id, a.course_id, a.title, a.description, a.unlimited,
                        a.time_limit_minutes, a.pass_score, a.start_time, a.due_time,
-                       a.attempt_limited, a.variant_count, a.option_count,
+                       a.attempt_limited, a.variant_count, a.option_count, a.generation_mode,
                        a.allow_recently_used_questions, a.lifecycle_status, a.current_step,
                        a.ccct_profile_id, a.ccct_profile_version, a.exam_matrix_id,
                        a.exam_matrix_version, a.ai_generation_started, a.version,
@@ -641,7 +688,7 @@ public class AssessmentRepository {
                 (Integer) rs.getObject("time_limit_minutes"), (Double) rs.getObject("pass_score"),
                 rs.getObject("start_time", LocalDateTime.class), rs.getObject("due_time", LocalDateTime.class),
                 (Integer) rs.getObject("attempt_limited"), (Integer) rs.getObject("variant_count"),
-                (Integer) rs.getObject("option_count"),
+                (Integer) rs.getObject("option_count"), GenerationMode.valueOf(rs.getString("generation_mode")),
                 rs.getBoolean("allow_recently_used_questions"), LifecycleStatus.valueOf(rs.getString("lifecycle_status")),
                 rs.getInt("current_step"), rs.getObject("ccct_profile_id", UUID.class),
                 (Long) rs.getObject("ccct_profile_version"), rs.getObject("exam_matrix_id", UUID.class),

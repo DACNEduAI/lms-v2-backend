@@ -29,6 +29,7 @@ import edu.ai.lms.core.quiz.app.domain.CurrentActor;
 import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
 import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.AssessmentView;
 import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.BaseGenerationView;
+import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.GenerationMode;
 import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.LifecycleStatus;
 import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
 import edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand;
@@ -66,7 +67,7 @@ class AssessmentServiceBaseGenerationUT {
                 membershipPort, dispatcher, draftValidator, new ObjectMapper(), richContentPolicy,
                 questionAi, generateQuizUseCase, getQuizGenerationJobUseCase);
         assessment = new AssessmentView(assessmentId, courseId, "Quiz", null, false, 60, 50d,
-                null, null, 1, null, null, false, LifecycleStatus.DRAFT, 5,
+                null, null, 1, null, null, GenerationMode.STANDARD, false, LifecycleStatus.DRAFT, 5,
                 UUID.randomUUID(), 1L, matrixId, 1L, false, 1L, actorId, null, null,
                 LocalDateTime.now(), LocalDateTime.now());
         when(signedInUserPort.getAuthenticatedUser())

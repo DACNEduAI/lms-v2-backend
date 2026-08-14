@@ -5,6 +5,7 @@ import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.BankPl
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.BankPlanCell;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.DraftReviewPage;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.DraftReviewSearch;
+import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.GenerationMode;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.LifecycleStatus;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.VariantView;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -128,7 +129,7 @@ class AssessmentWorkflowRepositoryIT extends IntegrationTestConfiguration {
 
         LocalDateTime now = LocalDateTime.now();
         AssessmentView assessment = new AssessmentView(assessmentId, courseId, "Variant assessment", null,
-                true, null, null, null, null, null, 1, 4, false, LifecycleStatus.REVIEW_PENDING, 8,
+                true, null, null, null, null, null, 1, 4, GenerationMode.STANDARD, false, LifecycleStatus.REVIEW_PENDING, 8,
                 null, null, matrixId, null, true, 0, userId, null, null, now, now);
         BankPlanCell cell = new BankPlanCell(matrixRowId, customLearningLevelId, null, null, "Stack operations",
                 "REMEMBER", "Remember", List.of(learningOutcomeId), 1, 1, 0, 0, 1, 0);

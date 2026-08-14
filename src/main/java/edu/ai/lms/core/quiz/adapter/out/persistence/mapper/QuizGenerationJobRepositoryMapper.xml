@@ -4,7 +4,8 @@
   <resultMap id="JobMap" type="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob">
     <id property="id" column="id"/>
     <result property="courseId" column="course_id"/>
-    <result property="examMatrixId" column="exam_matrix_id"/>
+  <result property="examMatrixId" column="exam_matrix_id"/>
+  <result property="generationMode" column="generation_mode"/>
     <result property="quizId" column="quiz_id"/>
     <result property="requestedBy" column="requested_by"/>
     <result property="requestedRole" column="requested_role" javaType="edu.ai.lms.common.api.Roles" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
@@ -39,7 +40,7 @@
     <result property="updatedAt" column="updated_at"/>
   </resultMap>
 
-  <sql id="columns">id, course_id, exam_matrix_id, quiz_id, requested_by, requested_role,
+  <sql id="columns">id, course_id, exam_matrix_id, generation_mode, quiz_id, requested_by, requested_role,
     quiz_title, description, prompt, request_snapshot, payload_hash, idempotency_key, strict_mode,
     code_runner_policy, unlimited, time_limit_minutes, pass_score, start_time, due_time,
     attempt_limited, display, status, phase, attempt_count, generated_question_count, total_question_count, next_attempt_at, lease_until,
@@ -47,12 +48,12 @@
 
   <insert id="insert" parameterType="edu.ai.lms.core.quiz.app.domain.QuizGenerationJob">
     INSERT INTO edu.quiz_generation_jobs (
-      id, course_id, exam_matrix_id, quiz_id, requested_by, requested_role, quiz_title, description,
+      id, course_id, exam_matrix_id, generation_mode, quiz_id, requested_by, requested_role, quiz_title, description,
       prompt, request_snapshot, payload_hash, idempotency_key, strict_mode, code_runner_policy,
       unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited,
       display, status, phase, attempt_count, generated_question_count, total_question_count, next_attempt_at, lease_until, error_code,
       error_message, callback_event_id, processing_at, completed_at, created_at, updated_at)
-    VALUES (#{id}, #{courseId}, #{examMatrixId}, #{quizId}, #{requestedBy},
+    VALUES (#{id}, #{courseId}, #{examMatrixId}, #{generationMode}, #{quizId}, #{requestedBy},
       #{requestedRole, javaType=edu.ai.lms.common.api.Roles, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
       #{quizTitle}, #{description}, #{prompt}, CAST(#{requestSnapshot} AS jsonb), #{payloadHash}, #{idempotencyKey},
       #{strictMode}, #{codeRunnerPolicy}, #{unlimited}, #{timeLimitMinutes}, #{passScore},

@@ -116,6 +116,18 @@ public class AssessmentController {
                 .body(service.startBaseGeneration(courseId, assessmentId, request.optionCount()));
     }
 
+    @PostMapping("/{assessmentId}/quick-test/generation")
+    public ResponseEntity<BaseGenerationView> startQuickTestGeneration(@PathVariable UUID courseId,
+            @PathVariable UUID assessmentId, @RequestBody QuickTestGenerationRequest request) {
+        return ResponseEntity.accepted().body(service.startQuickTestGeneration(courseId, assessmentId,
+                request.questionCount(), request.optionCount()));
+    }
+
+    @PostMapping("/{assessmentId}/quick-test/discard")
+    public AssessmentView discardQuickTest(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+        return service.discardQuickTest(courseId, assessmentId);
+    }
+
     @GetMapping("/{assessmentId}/base-quiz/generation")
     public BaseGenerationView baseGeneration(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
         return service.reconcileBaseGeneration(courseId, assessmentId);
@@ -385,6 +397,8 @@ public class AssessmentController {
     public record SourceVersion(long version) {
     }
     public record BaseGenerationRequest(int optionCount) {
+    }
+    public record QuickTestGenerationRequest(int questionCount, int optionCount) {
     }
     public record CreateVariantsRequest(int variantCount) {
     }

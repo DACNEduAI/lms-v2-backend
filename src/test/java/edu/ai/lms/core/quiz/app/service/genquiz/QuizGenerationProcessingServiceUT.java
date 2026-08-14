@@ -154,10 +154,11 @@ class QuizGenerationProcessingServiceUT {
                 new QuizGenerationProcessingService.AiGenerationRequest(
                         UUID.randomUUID(), 2, courseId, "DSA", "Quiz", objectMapper.createArrayNode(),
                         java.util.List.of(), java.util.List.of(materialId), null,
-                        new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.QuestionDefaultsConfiguration(
-                                new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.MultipleChoiceDefaults(
-                                        6, true, false)),
-                        true, "PRESERVE",
+                         new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.QuestionDefaultsConfiguration(
+                                 new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.MultipleChoiceDefaults(
+                                         6, true, false)),
+                         "STANDARD", null,
+                         true, "PRESERVE",
                         "idempotency-key", "http://lms/callback", "http://lms/callback/progress", "secret", 2);
 
         JsonNode json = objectMapper.valueToTree(request);

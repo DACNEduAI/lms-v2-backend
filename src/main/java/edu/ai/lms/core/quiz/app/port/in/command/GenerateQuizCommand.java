@@ -25,7 +25,8 @@ public record GenerateQuizCommand(
         java.time.LocalDateTime startTime,
         java.time.LocalDateTime dueTime,
         Integer attemptLimited,
-        Boolean display
+        Boolean display,
+        QuickTestConfiguration quickTestConfiguration
 ) {
     public record VisualRequirement(UUID examMatrixRowId, UUID customLearningLevelId, int imageQuestionCount) {}
     public record QuestionTypeOverride(
@@ -33,6 +34,7 @@ public record GenerateQuizCommand(
             UUID customLearningLevelId,
             String questionType) {}
     public record QuestionDefaultsConfiguration(MultipleChoiceDefaults multipleChoice) {}
+    public record QuickTestConfiguration(int questionCount) {}
     public record MultipleChoiceDefaults(
             int answerOptionCount,
             boolean allowMultipleCorrectAnswers,
