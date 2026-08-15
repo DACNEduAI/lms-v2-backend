@@ -26,6 +26,7 @@ class BatchEditExamMatrixServiceUT {
     @Mock ExamMatrixAccess access;
     @Mock ExamMatrixValidator validator;
     @Mock ExamMatrixResponseAssembler assembler;
+    @Mock ExamMatrixLifecycleGuard lifecycleGuard;
     @Mock edu.ai.lms.core.course.app.port.in.usecase.CustomLearningLevelUseCase customLearningLevelUseCase;
     @InjectMocks BatchEditExamMatrixService service;
 
@@ -70,6 +71,7 @@ class BatchEditExamMatrixServiceUT {
 
         var response = service.batchEdit(command);
 
+        verify(lifecycleGuard).requireDraft(courseId, matrixId);
         verify(batchPort).deleteRow(matrixId, deleteId);
         verify(batchPort).replaceRow(updated);
         verify(batchPort).insertRow(created);

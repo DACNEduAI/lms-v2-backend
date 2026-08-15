@@ -117,4 +117,16 @@ class AssessmentServiceReviewUT {
         verify(assessments, never()).update(any(), any(), anyLong(), any(), any(), any(), any(), any(), any(),
                 any());
     }
+
+    @Test
+    void refusesPublishBeforePreviewConfirmation() {
+        when(assessment.currentStep()).thenReturn(8);
+
+        AssessmentValidationException error = assertThrows(AssessmentValidationException.class,
+                () -> service.publish(courseId, assessmentId));
+
+        assertEquals("ASSESSMENT_PUBLISH_VALIDATION_FAILED", error.getCode());
+        assertEquals("preview", error.getFieldPath());
+        verify(workflow, never()).publish(any(), any());
+    }
 }

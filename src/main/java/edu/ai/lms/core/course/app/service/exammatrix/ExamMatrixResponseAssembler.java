@@ -20,7 +20,7 @@ class ExamMatrixResponseAssembler {
                         || row.getTopic() == null || row.getTopic().isBlank()
                         || row.getLearningOutcomeIds().isEmpty())
                 .map(row -> row.getId()).toList();
-        boolean complete = matrix.getCustomLearningLevels().size() >= 3
+        boolean complete = !matrix.getCustomLearningLevels().isEmpty()
                 && emptyLevelIds.isEmpty()
                 && invalidRowIds.isEmpty()
                 && matrix.getUncoveredLearningOutcomeIds().isEmpty()

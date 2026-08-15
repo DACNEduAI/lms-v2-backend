@@ -32,17 +32,14 @@ class CreateExamMatrixServiceUT {
     @InjectMocks CreateExamMatrixService service;
 
     @Test
-    void createsMatrixAndThreeMatrixOwnedLevelsAtomically() {
+    void createsMatrixAndOneMatrixOwnedLevelAtomically() {
         UUID courseId = UUID.randomUUID();
         UUID outcomeId = UUID.randomUUID();
         Course course = Course.builder().id(courseId)
                 .learningOutcomes(List.of(LearningOutcome.builder().id(outcomeId).build())).build();
         ExamMatrix reloaded = ExamMatrix.builder().id(UUID.randomUUID()).build();
         ExamMatrixResponse expected = ExamMatrixResponse.builder().id(reloaded.getId()).build();
-        List<CustomLearningLevelValue> levels = List.of(
-                level("temp-1", "CLL1", outcomeId, 0),
-                level("temp-2", "CLL2", outcomeId, 1),
-                level("temp-3", "CLL3", outcomeId, 2));
+        List<CustomLearningLevelValue> levels = List.of(level("temp-1", "CLL1", outcomeId, 0));
         var command = CreateExamMatrixCommand.builder().courseId(courseId).title("Matrix")
                 .customLearningLevels(levels).rows(List.of()).build();
         when(access.requireCourseTeacher(courseId)).thenReturn(course);
@@ -52,7 +49,7 @@ class CreateExamMatrixServiceUT {
 
         assertSame(expected, service.createExamMatrix(command));
         verify(savePort).save(argThat(matrix -> matrix.getRows().isEmpty()));
-        verify(levelPort, times(3)).insert(argThat(level -> level.getMatrixId() != null));
+        verify(levelPort).insert(argThat(level -> level.getMatrixId() != null));
     }
 
     private CustomLearningLevelValue level(String tempId, String code, UUID outcomeId, int order) {

@@ -88,24 +88,24 @@ class CustomLearningLevelServiceUT {
     }
 
     @Test
-    void rejectsFinalStateWithFewerThanThreeLevels() {
-        CustomLearningLevel first = level(UUID.randomUUID(), "CLL1", "Understand", List.of(outcomeId));
-        CustomLearningLevel second = level(UUID.randomUUID(), "CLL2", "Apply", List.of(secondOutcomeId));
-        when(port.lockAllByMatrixId(matrixId)).thenReturn(List.of(first, second));
+    void allowsFinalStateWithOneLevel() {
+        CustomLearningLevel first = level(UUID.randomUUID(), "CLL1", "Understand", List.of(outcomeId, secondOutcomeId));
+        when(port.lockAllByMatrixId(matrixId)).thenReturn(List.of(first));
+        when(port.findAllByMatrixId(matrixId)).thenReturn(List.of(first));
 
         var command = new BatchEditCustomLearningLevelsCommand(
-                courseId, matrixId, List.of(), List.of(), List.of(first.getId()));
+                courseId, matrixId, List.of(),
+                List.of(value(first.getId(), null, List.of(outcomeId, secondOutcomeId), "CLL1", "Understand", 0)),
+                List.of());
 
-        assertThrows(CustomLearningLevelValidationException.class, () -> service.batchEdit(command));
-        verify(port, never()).delete(any());
+        assertDoesNotThrow(() -> service.batchEdit(command));
+        verify(port).update(argThat(level -> level.getLearningOutcomeIds().equals(List.of(outcomeId, secondOutcomeId))));
     }
 
     @Test
     void rejectsFinalStateWithAnUncoveredOutcome() {
         CustomLearningLevel first = level(UUID.randomUUID(), "CLL1", "Understand", List.of(outcomeId));
-        CustomLearningLevel second = level(UUID.randomUUID(), "CLL2", "Apply", List.of(outcomeId));
-        CustomLearningLevel third = level(UUID.randomUUID(), "CLL3", "Create", List.of(outcomeId));
-        when(port.lockAllByMatrixId(matrixId)).thenReturn(List.of(first, second, third));
+        when(port.lockAllByMatrixId(matrixId)).thenReturn(List.of(first));
 
         var command = new BatchEditCustomLearningLevelsCommand(
                 courseId, matrixId, List.of(),
@@ -113,6 +113,7 @@ class CustomLearningLevelServiceUT {
                 List.of());
 
         assertThrows(CustomLearningLevelValidationException.class, () -> service.batchEdit(command));
+        verify(port, never()).update(any());
     }
 
     private CustomLearningLevelValue value(

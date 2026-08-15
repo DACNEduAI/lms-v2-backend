@@ -51,7 +51,7 @@
                AND row_mapping.is_selected = TRUE
            ) THEN c.question_count ELSE 0 END), 0) AS totalQuestionCount,
            CASE WHEN
-             (SELECT COUNT(*) FROM edu.custom_learning_levels level WHERE level.matrix_id = m.id) &gt;= 3
+             (SELECT COUNT(*) FROM edu.custom_learning_levels level WHERE level.matrix_id = m.id) &gt; 0
              AND NOT EXISTS (
                SELECT 1 FROM edu.custom_learning_levels level
                WHERE level.matrix_id = m.id

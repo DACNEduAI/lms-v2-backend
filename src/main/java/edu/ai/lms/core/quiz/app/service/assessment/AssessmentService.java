@@ -514,6 +514,10 @@ public class AssessmentService {
     public PublishResult publish(UUID courseId, UUID assessmentId) {
         CurrentActor actor = requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
+        if (assessment.currentStep() != 9 || assessment.lifecycleStatus() != LifecycleStatus.READY_TO_PUBLISH) {
+            throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED", "preview", null, null,
+                    "Confirm Preview Variants before publishing");
+        }
         if (questionAi != null && questionAi.hasBlockingDraftOrJob(assessmentId)) {
             throw new IllegalStateException("Publish is blocked by AI work on questions: "
                     + questionAi.blockingQuestionIds(assessmentId)

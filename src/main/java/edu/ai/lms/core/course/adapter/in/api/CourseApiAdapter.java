@@ -70,7 +70,7 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
         if (course == null || matrix == null) {
             return Optional.empty();
         }
-        boolean incomplete = matrix.getCustomLearningLevels().size() < 3
+        boolean incomplete = matrix.getCustomLearningLevels().isEmpty()
                 || !matrix.getUncoveredLearningOutcomeIds().isEmpty()
                 || matrix.getCustomLearningLevels().stream()
                         .anyMatch(level -> level.getLearningOutcomeIds().isEmpty())
