@@ -3,6 +3,26 @@ CREATE SCHEMA IF NOT EXISTS edu;
 -- Set the default schema for the rest of this script!
 SET search_path TO edu;
 
+-- Cloud vector-index registry deliberately lives outside the resettable LMS
+-- schema. initDB may rebuild edu.* but must retain completed Qdrant indexes.
+CREATE SCHEMA IF NOT EXISTS ai_index;
+CREATE TABLE IF NOT EXISTS ai_index.document_indexes
+(
+    bucket_name     VARCHAR(255) NOT NULL,
+    file_key        VARCHAR(1024) NOT NULL,
+    index_profile   VARCHAR(255) NOT NULL,
+    source_hash     VARCHAR(64) NOT NULL,
+    collection_name VARCHAR(255) NOT NULL,
+    status          VARCHAR(20) NOT NULL CHECK (status IN ('READY', 'FAILED')),
+    chunk_count     INTEGER NOT NULL DEFAULT 0,
+    error_message   TEXT,
+    indexed_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (bucket_name, file_key, index_profile)
+);
+CREATE INDEX IF NOT EXISTS idx_document_indexes_ready
+    ON ai_index.document_indexes (status, index_profile);
+
 -- Drop existing tables to start fresh on every application boot
 DROP TABLE IF EXISTS
     users,
@@ -51,6 +71,10 @@ DROP TABLE IF EXISTS
     ai_chat_sessions,
     notifications,
     user_chat_messages,
+    exam_matrix_2_cell_counts,
+    exam_matrix_2_rows,
+    exam_matrix_2_custom_learning_levels,
+    exam_matrices_2,
     exam_matrix_row_learning_level_counts,
     exam_matrix_row_learning_outcomes,
     custom_learning_level_learning_outcomes,
@@ -354,6 +378,53 @@ CREATE INDEX idx_ccct_items_topic_status
     ON ccct_items (topic_id, coverage_status);
 
 -- Exam Matrices
+-- Matrix 2 is deliberately independent from the existing Exam Matrix/Quiz2
+-- tables. It is a teacher-authored planning surface and is not consumed by AI.
+CREATE TABLE IF NOT EXISTS exam_matrices_2
+(
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id   UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+    title       VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
+    description TEXT,
+    created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS exam_matrix_2_custom_learning_levels
+(
+    id          UUID PRIMARY KEY,
+    matrix_id   UUID         NOT NULL REFERENCES exam_matrices_2 (id) ON DELETE CASCADE,
+    name        VARCHAR(255) NOT NULL CHECK (btrim(name) <> ''),
+    sort_order  INTEGER      NOT NULL CHECK (sort_order >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS exam_matrix_2_rows
+(
+    id                         UUID PRIMARY KEY,
+    matrix_id                  UUID NOT NULL REFERENCES exam_matrices_2 (id) ON DELETE CASCADE,
+    chapter_id                 UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
+    mapped_learning_outcome_id UUID REFERENCES learning_outcomes (id) ON DELETE SET NULL,
+    sort_order                 INTEGER NOT NULL CHECK (sort_order >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS exam_matrix_2_cell_counts
+(
+    row_id                     UUID NOT NULL REFERENCES exam_matrix_2_rows (id) ON DELETE CASCADE,
+    custom_learning_level_id   UUID NOT NULL REFERENCES exam_matrix_2_custom_learning_levels (id) ON DELETE CASCADE,
+    question_count             INTEGER NOT NULL DEFAULT 0 CHECK (question_count >= 0),
+    PRIMARY KEY (row_id, custom_learning_level_id)
+);
+
+CREATE INDEX IF NOT EXISTS exam_matrices_2_course_idx ON exam_matrices_2 (course_id);
+CREATE INDEX IF NOT EXISTS exam_matrix_2_rows_matrix_idx ON exam_matrix_2_rows (matrix_id, sort_order);
+
+ALTER TABLE exam_matrices_2
+    ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT'
+        CHECK (lifecycle_status IN ('DRAFT', 'PUBLISHED')),
+    ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0 CHECK (version >= 0),
+    ADD COLUMN IF NOT EXISTS published_by UUID REFERENCES users (id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS published_at TIMESTAMP;
+
 CREATE TABLE IF NOT EXISTS exam_matrices
 (
     id              uuid                        not null default gen_random_uuid(),
@@ -685,20 +756,24 @@ CREATE TABLE IF NOT EXISTS quiz_generation_jobs
         CHECK (phase IN ('TEXT_GENERATION', 'VISUAL_GENERATION', 'FINALIZING', 'DONE')),
     status              VARCHAR(30)  NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'TIMED_OUT')),
     attempt_count       INTEGER      NOT NULL DEFAULT 0,
-    next_attempt_at     TIMESTAMP,
-    lease_until         TIMESTAMP,
+    generated_question_count INTEGER NOT NULL DEFAULT 0 CHECK (generated_question_count >= 0),
+    total_question_count INTEGER NOT NULL DEFAULT 0 CHECK (total_question_count >= 0),
+    next_attempt_at     TIMESTAMPTZ,
+    lease_until         TIMESTAMPTZ,
     error_code          VARCHAR(100),
     error_message       TEXT,
     callback_event_id   UUID UNIQUE,
-    processing_at       TIMESTAMP,
-    completed_at        TIMESTAMP,
-    created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    processing_at       TIMESTAMPTZ,
+    completed_at        TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_quiz_generation_request UNIQUE (requested_by, idempotency_key)
 );
 
 ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE quiz_generation_jobs ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE quiz_generation_jobs ADD COLUMN IF NOT EXISTS generated_question_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE quiz_generation_jobs ADD COLUMN IF NOT EXISTS total_question_count INTEGER NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_quiz_generation_queue
     ON quiz_generation_jobs (status, next_attempt_at);
@@ -781,12 +856,12 @@ CREATE TABLE IF NOT EXISTS assessments
     start_time                      TIMESTAMP,
     due_time                        TIMESTAMP,
     attempt_limited                 INTEGER CHECK (attempt_limited IS NULL OR attempt_limited > 0),
-    variant_count                   INTEGER      NOT NULL DEFAULT 1 CHECK (variant_count BETWEEN 1 AND 20),
-    option_count                    INTEGER      NOT NULL DEFAULT 4 CHECK (option_count IN (4, 5)),
+    variant_count                   INTEGER CHECK (variant_count BETWEEN 1 AND 20),
+    option_count                    INTEGER CHECK (option_count IN (4, 5)),
     allow_recently_used_questions   BOOLEAN      NOT NULL DEFAULT false,
     lifecycle_status                VARCHAR(30)  NOT NULL DEFAULT 'DRAFT'
         CHECK (lifecycle_status IN ('DRAFT', 'GENERATING', 'REVIEW_PENDING', 'READY_TO_PUBLISH', 'PUBLISHED', 'ARCHIVED')),
-    current_step                    INTEGER      NOT NULL DEFAULT 1 CHECK (current_step BETWEEN 1 AND 10),
+    current_step                    INTEGER      NOT NULL DEFAULT 1 CHECK (current_step BETWEEN 1 AND 9),
     ccct_profile_id                 UUID REFERENCES ccct_profiles (id) ON DELETE RESTRICT,
     ccct_profile_version            BIGINT,
     exam_matrix_id                  UUID REFERENCES exam_matrices (id) ON DELETE RESTRICT,
@@ -795,6 +870,9 @@ CREATE TABLE IF NOT EXISTS assessments
     ccct_published_by_assessment    BOOLEAN      NOT NULL DEFAULT false,
     matrix_published_by_assessment  BOOLEAN      NOT NULL DEFAULT false,
     ai_generation_started           BOOLEAN      NOT NULL DEFAULT false,
+    base_generation_job_id          UUID REFERENCES quiz_generation_jobs (id) ON DELETE SET NULL,
+    base_confirmed_by               UUID REFERENCES users (id) ON DELETE SET NULL,
+    base_confirmed_at               TIMESTAMP,
     recent_use_override_by          UUID REFERENCES users (id) ON DELETE SET NULL,
     recent_use_override_at          TIMESTAMP,
     created_by                      UUID REFERENCES users (id) ON DELETE SET NULL,
@@ -943,6 +1021,8 @@ CREATE TABLE IF NOT EXISTS assessment_variants
     variant_code        VARCHAR(20)  NOT NULL,
     order_index         INTEGER      NOT NULL CHECK (order_index >= 0),
     shuffle_seed        BIGINT       NOT NULL,
+    variant_kind        VARCHAR(20)  NOT NULL DEFAULT 'SHUFFLED'
+        CHECK (variant_kind IN ('BASE', 'SHUFFLED')),
     coverage_status     VARCHAR(20)  NOT NULL DEFAULT 'COMPLIANT'
         CHECK (coverage_status IN ('COMPLIANT', 'DRIFTED')),
     coverage_snapshot   JSONB        NOT NULL DEFAULT '{}'::jsonb,
@@ -957,6 +1037,8 @@ CREATE TABLE IF NOT EXISTS assessment_variants
 
 CREATE INDEX IF NOT EXISTS idx_assessment_variants_parent
     ON assessment_variants (assessment_id, order_index);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_assessment_base_variant
+    ON assessment_variants (assessment_id) WHERE variant_kind = 'BASE';
 
 CREATE TABLE IF NOT EXISTS question_images
 (
@@ -1021,14 +1103,14 @@ CREATE TABLE IF NOT EXISTS question_image_generation_jobs
     visual_type            VARCHAR(20) NOT NULL CHECK (visual_type IN ('AUTO', 'LATEX', 'SVG')),
     status                 VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')),
     attempt_count          INTEGER     NOT NULL DEFAULT 0,
-    next_attempt_at        TIMESTAMP,
-    lease_until            TIMESTAMP,
+    next_attempt_at        TIMESTAMPTZ,
+    lease_until            TIMESTAMPTZ,
     error_code             VARCHAR(100),
     error_message          TEXT,
-    processing_at          TIMESTAMP,
-    completed_at           TIMESTAMP,
-    created_at             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+    processing_at          TIMESTAMPTZ,
+    completed_at           TIMESTAMPTZ,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at             TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_question_image_generation_queue
     ON question_image_generation_jobs (status, next_attempt_at);
@@ -1470,3 +1552,110 @@ ALTER TABLE rich_content_assets ADD COLUMN IF NOT EXISTS ai_artifact_id UUID
 CREATE INDEX IF NOT EXISTS idx_rich_content_assets_ai_artifact ON rich_content_assets(ai_artifact_id)
     WHERE ai_artifact_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS code_runner_verifications ( id UUID PRIMARY KEY, revision_id UUID NOT NULL, verified_by UUID NOT NULL, verified_at TIMESTAMP WITH TIME ZONE NOT NULL, execution_profile JSONB NOT NULL, judge0_submission_id VARCHAR(255) NOT NULL, verdict VARCHAR(50) NOT NULL, stdout TEXT, stderr TEXT, time_ms DOUBLE PRECISION, memory_kb BIGINT );
+
+-- Quiz3 is an additive Matrix2 workflow. It deliberately does not reference
+-- Quiz2 assessments, generation batches, drafts, or Question Bank allocation.
+CREATE TABLE IF NOT EXISTS quiz3_assessments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL CHECK (btrim(title)<>''), description TEXT, unlimited BOOLEAN NOT NULL DEFAULT false,
+    time_limit_minutes INTEGER CHECK(time_limit_minutes IS NULL OR time_limit_minutes>0),
+    pass_score DOUBLE PRECISION CHECK(pass_score IS NULL OR(pass_score>=0 AND pass_score<=100)),
+    start_time TIMESTAMP, due_time TIMESTAMP, attempt_limited INTEGER CHECK(attempt_limited IS NULL OR attempt_limited>0),
+    variant_count INTEGER NOT NULL DEFAULT 1 CHECK(variant_count BETWEEN 1 AND 20),
+    lifecycle_status VARCHAR(30) NOT NULL DEFAULT 'DRAFT' CHECK(lifecycle_status IN('DRAFT','GENERATING','REVIEW_PENDING','READY_TO_PUBLISH','PUBLISHED','ARCHIVED')),
+    current_step INTEGER NOT NULL DEFAULT 1 CHECK(current_step BETWEEN 1 AND 9),
+    ccct_profile_id UUID REFERENCES ccct_profiles(id) ON DELETE RESTRICT, ccct_profile_version BIGINT,
+    matrix2_id UUID REFERENCES exam_matrices_2(id) ON DELETE RESTRICT, matrix2_version BIGINT, base_generation_job_id UUID,
+    base_confirmed_by UUID REFERENCES users(id) ON DELETE SET NULL, base_confirmed_at TIMESTAMP,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL, version BIGINT NOT NULL DEFAULT 0 CHECK(version>=0),
+    published_by UUID REFERENCES users(id) ON DELETE SET NULL, published_at TIMESTAMP,
+    last_unpublished_by UUID REFERENCES users(id) ON DELETE SET NULL, last_unpublished_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK(due_time IS NULL OR start_time IS NULL OR due_time>start_time)
+);
+CREATE INDEX IF NOT EXISTS idx_quiz3_assessments_course_updated ON quiz3_assessments(course_id,updated_at DESC,id);
+
+CREATE TABLE IF NOT EXISTS quiz3_generation_jobs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE, matrix2_id UUID NOT NULL REFERENCES exam_matrices_2(id) ON DELETE RESTRICT,
+    matrix2_version BIGINT NOT NULL, quiz_id UUID REFERENCES quizzes(id) ON DELETE SET NULL,
+    requested_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT, request_snapshot JSONB NOT NULL,
+    payload_hash VARCHAR(64) NOT NULL, idempotency_key VARCHAR(255) NOT NULL UNIQUE,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' CHECK(status IN('PENDING','PROCESSING','COMPLETED','FAILED','TIMED_OUT')),
+    phase VARCHAR(30) NOT NULL DEFAULT 'TEXT_GENERATION' CHECK(phase IN('TEXT_GENERATION','FINALIZING','DONE')),
+    attempt_count INTEGER NOT NULL DEFAULT 0 CHECK(attempt_count>=0), generated_question_count INTEGER NOT NULL DEFAULT 0 CHECK(generated_question_count>=0),
+    total_question_count INTEGER NOT NULL CHECK(total_question_count>0), next_attempt_at TIMESTAMPTZ, lease_until TIMESTAMPTZ,
+    error_code VARCHAR(100), error_message TEXT, callback_event_id UUID UNIQUE, processing_at TIMESTAMPTZ, completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE quiz3_assessments DROP CONSTRAINT IF EXISTS quiz3_assessments_base_generation_job_id_fkey;
+ALTER TABLE quiz3_assessments ADD CONSTRAINT quiz3_assessments_base_generation_job_id_fkey
+    FOREIGN KEY(base_generation_job_id) REFERENCES quiz3_generation_jobs(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_quiz3_generation_queue ON quiz3_generation_jobs(status,next_attempt_at);
+
+CREATE TABLE IF NOT EXISTS quiz3_assessment_variants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
+    quiz_id UUID NOT NULL UNIQUE REFERENCES quizzes(id) ON DELETE CASCADE, variant_code VARCHAR(20) NOT NULL,
+    order_index INTEGER NOT NULL CHECK(order_index>=0), shuffle_seed BIGINT NOT NULL,
+    variant_kind VARCHAR(20) NOT NULL CHECK(variant_kind IN('BASE','SHUFFLED')),
+    coverage_status VARCHAR(20) NOT NULL DEFAULT 'COMPLIANT' CHECK(coverage_status IN('COMPLIANT','DRIFTED')),
+    coverage_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(assessment_id,variant_code),UNIQUE(assessment_id,order_index)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz3_base_variant ON quiz3_assessment_variants(assessment_id) WHERE variant_kind='BASE';
+
+CREATE TABLE IF NOT EXISTS quiz3_question_provenance (
+    question_id UUID PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
+    generation_job_id UUID NOT NULL REFERENCES quiz3_generation_jobs(id) ON DELETE RESTRICT,
+    matrix2_row_id UUID REFERENCES exam_matrix_2_rows(id) ON DELETE SET NULL,
+    matrix2_custom_learning_level_id UUID REFERENCES exam_matrix_2_custom_learning_levels(id) ON DELETE SET NULL,
+    learning_outcome_id UUID REFERENCES learning_outcomes(id) ON DELETE SET NULL,
+    source_question_id UUID REFERENCES questions(id) ON DELETE SET NULL, allocation_snapshot JSONB NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_quiz3_provenance_allocation ON quiz3_question_provenance(matrix2_row_id,matrix2_custom_learning_level_id,learning_outcome_id);
+
+CREATE TABLE IF NOT EXISTS quiz3_question_ai_working_drafts (
+    question_id UUID PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
+    assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
+    variant_id UUID NOT NULL REFERENCES quiz3_assessment_variants(id) ON DELETE CASCADE,
+    base_question_version BIGINT NOT NULL CHECK(base_question_version>=0), content TEXT NOT NULL, content_format VARCHAR(30) NOT NULL,
+    applied_change_index INTEGER NOT NULL DEFAULT 0 CHECK(applied_change_index>=0),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS quiz3_question_ai_jobs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
+    variant_id UUID NOT NULL REFERENCES quiz3_assessment_variants(id) ON DELETE CASCADE,question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+    requested_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,mode VARCHAR(20) NOT NULL CHECK(mode IN('ORCHESTRATE','TEXT','LATEX','SVG')),
+    status VARCHAR(40) NOT NULL CHECK(status IN('QUEUED','RUNNING','NEEDS_CLARIFICATION','APPLIED_TO_WORKING_DRAFT','FAILED','CANCELLED','TIMED_OUT')),
+    phase VARCHAR(30) NOT NULL DEFAULT 'QUEUED',prompt TEXT NOT NULL DEFAULT '',request_payload JSONB NOT NULL,action_plan JSONB,
+    base_question_version BIGINT NOT NULL,clarification_question TEXT,clarification_answer TEXT,error_code VARCHAR(80),error_message TEXT,
+    warning_message TEXT,attempt_count INTEGER NOT NULL DEFAULT 0,action_count INTEGER NOT NULL DEFAULT 0,lease_until TIMESTAMP,
+    clarification_expires_at TIMESTAMP,started_at TIMESTAMP,completed_at TIMESTAMP,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz3_question_ai_active_job ON quiz3_question_ai_jobs(question_id) WHERE status IN('QUEUED','RUNNING','NEEDS_CLARIFICATION');
+CREATE TABLE IF NOT EXISTS quiz3_question_ai_job_steps (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),job_id UUID NOT NULL REFERENCES quiz3_question_ai_jobs(id) ON DELETE CASCADE,
+    action_id VARCHAR(64),step_order INTEGER NOT NULL,specialist VARCHAR(30) NOT NULL,status VARCHAR(20) NOT NULL,attempt INTEGER NOT NULL DEFAULT 1,
+    input_payload JSONB,output_payload JSONB,error_message TEXT,started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,completed_at TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS quiz3_question_ai_artifacts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
+    question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,artifact_type VARCHAR(10) NOT NULL,current_revision INTEGER NOT NULL DEFAULT 0,
+    created_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS quiz3_question_ai_artifact_revisions (
+    artifact_id UUID NOT NULL REFERENCES quiz3_question_ai_artifacts(id) ON DELETE CASCADE,revision INTEGER NOT NULL,
+    job_id UUID REFERENCES quiz3_question_ai_jobs(id) ON DELETE SET NULL,source_code TEXT NOT NULL,source_hash VARCHAR(64) NOT NULL,
+    latex_mode VARCHAR(10),visual_kind VARCHAR(30),generator VARCHAR(20),structured_spec JSONB,layout_override JSONB,prompt TEXT,
+    critic_result JSONB,fallback_metadata JSONB,storage_key VARCHAR(1024),created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(artifact_id,revision)
+);
+CREATE TABLE IF NOT EXISTS quiz3_question_ai_change_sets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+    job_id UUID REFERENCES quiz3_question_ai_jobs(id) ON DELETE SET NULL,change_index INTEGER NOT NULL,
+    before_content TEXT NOT NULL,before_content_format VARCHAR(30) NOT NULL,after_content TEXT NOT NULL,after_content_format VARCHAR(30) NOT NULL,
+    artifact_revisions JSONB NOT NULL DEFAULT '[]'::jsonb,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(question_id,change_index)
+);
+>>>>>>> origin/feature/quiz2

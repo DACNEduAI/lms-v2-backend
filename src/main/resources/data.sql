@@ -227,6 +227,109 @@ FROM (
                   AND custom_level.name = level_count.level_name
 WHERE level_count.question_count > 0;
 
+-- 11d. Published quick Exam Matrix: one MCQ for each learning level so the
+-- Quiz2 flow can be exercised without waiting for a large generation job.
+INSERT INTO exam_matrices
+    (id, course_id, title, description, lifecycle_status, version, published_by, published_at, created_at, updated_at)
+VALUES
+    ('b2000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
+     'Exam Matrix – Kiểm tra nhanh (3 câu)',
+     'Matrix seed đã published để tạo nhanh Quiz2: mỗi mức học có đúng một câu trắc nghiệm.',
+     'PUBLISHED', 1, '11111111-1111-1111-1111-111111111111',
+     '2026-08-14 00:00:00', '2026-08-14 00:00:00', '2026-08-14 00:00:00');
+
+INSERT INTO exam_matrix_rows (id, matrix_id, chapter_id, topic, order_index)
+VALUES
+    ('b2000021-0000-4000-8000-000000000001', 'b2000001-0000-4000-8000-000000000001',
+     '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp thuật toán', 0),
+    ('b2000022-0000-4000-8000-000000000001', 'b2000001-0000-4000-8000-000000000001',
+     '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'Heap', 1),
+    ('b2000023-0000-4000-8000-000000000001', 'b2000001-0000-4000-8000-000000000001',
+     'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', 2);
+
+INSERT INTO custom_learning_levels (id, matrix_id, code, name, description, sort_order)
+VALUES
+    ('b2000011-0000-4000-8000-000000000001', 'b2000001-0000-4000-8000-000000000001',
+     'CLL1', 'Hiểu', 'Nắm bắt và giải thích khái niệm đã học.', 1),
+    ('b2000012-0000-4000-8000-000000000001', 'b2000001-0000-4000-8000-000000000001',
+     'CLL2', 'Áp dụng', 'Vận dụng kiến thức để giải quyết bài toán.', 2),
+    ('b2000013-0000-4000-8000-000000000001', 'b2000001-0000-4000-8000-000000000001',
+     'CLL3', 'Áp dụng nâng cao', 'Phân tích và giải quyết bài toán nhiều bước.', 3);
+
+INSERT INTO exam_matrix_row_learning_outcomes (exam_matrix_row_id, learning_outcome_id, is_selected)
+VALUES
+    ('b2000021-0000-4000-8000-000000000001', '81111111-1111-1111-1111-111111111111', TRUE),
+    ('b2000022-0000-4000-8000-000000000001', '85555555-5555-5555-5555-555555555555', TRUE),
+    ('b2000023-0000-4000-8000-000000000001', '8854781e-efc8-4130-9451-3b0391a32419', TRUE);
+
+INSERT INTO custom_learning_level_learning_outcomes
+    (custom_learning_level_id, learning_outcome_id, is_selected)
+VALUES
+    ('b2000011-0000-4000-8000-000000000001', '81111111-1111-1111-1111-111111111111', TRUE),
+    ('b2000011-0000-4000-8000-000000000001', '82222222-2222-2222-2222-222222222222', TRUE),
+    ('b2000012-0000-4000-8000-000000000001', '84444444-4444-4444-4444-444444444444', TRUE),
+    ('b2000012-0000-4000-8000-000000000001', '85555555-5555-5555-5555-555555555555', TRUE),
+    ('b2000013-0000-4000-8000-000000000001', '86666666-6666-6666-6666-666666666666', TRUE),
+    ('b2000013-0000-4000-8000-000000000001', '87777777-7777-7777-7777-777777777777', TRUE),
+    ('b2000013-0000-4000-8000-000000000001', '8854781e-efc8-4130-9451-3b0391a32419', TRUE);
+
+INSERT INTO custom_learning_level_learning_outcomes
+    (custom_learning_level_id, learning_outcome_id, is_selected)
+SELECT level.id, outcome.id, FALSE
+FROM custom_learning_levels level
+         JOIN learning_outcomes outcome ON outcome.course_id = 'c1111111-1111-1111-1111-111111111111'
+WHERE level.matrix_id = 'b2000001-0000-4000-8000-000000000001'
+ON CONFLICT (custom_learning_level_id, learning_outcome_id) DO NOTHING;
+
+INSERT INTO exam_matrix_row_learning_level_counts
+    (exam_matrix_row_id, custom_learning_level_id, matrix_id, question_type, question_count)
+VALUES
+    ('b2000021-0000-4000-8000-000000000001', 'b2000011-0000-4000-8000-000000000001',
+     'b2000001-0000-4000-8000-000000000001', 'MULTIPLE_CHOICE', 1),
+    ('b2000022-0000-4000-8000-000000000001', 'b2000012-0000-4000-8000-000000000001',
+     'b2000001-0000-4000-8000-000000000001', 'MULTIPLE_CHOICE', 1),
+    ('b2000023-0000-4000-8000-000000000001', 'b2000013-0000-4000-8000-000000000001',
+     'b2000001-0000-4000-8000-000000000001', 'MULTIPLE_CHOICE', 1);
+
+-- 11e. Matrix 2 seed data. These records are intentionally separate from the
+-- existing Exam Matrix seed and are not available to Quiz2 or the AI pipeline.
+INSERT INTO exam_matrices_2 (id, course_id, title, description)
+VALUES
+    ('b3000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
+     'Matrix 2 - DSA midterm sample', 'Sample Matrix 2 with direct row-to-LO mapping.'),
+    ('b3000001-0000-4000-8000-000000000002', 'c1111111-1111-1111-1111-111111111111',
+     'Matrix 2 - DSA final sample', 'Second Matrix 2 sample for the course tab.');
+
+INSERT INTO exam_matrix_2_custom_learning_levels (id, matrix_id, name, sort_order)
+VALUES
+    ('b3000011-0000-4000-8000-000000000001', 'b3000001-0000-4000-8000-000000000001', 'Understand', 0),
+    ('b3000011-0000-4000-8000-000000000002', 'b3000001-0000-4000-8000-000000000001', 'Apply', 1),
+    ('b3000011-0000-4000-8000-000000000003', 'b3000001-0000-4000-8000-000000000001', 'Advanced application', 2),
+    ('b3000011-0000-4000-8000-000000000011', 'b3000001-0000-4000-8000-000000000002', 'Recall', 0),
+    ('b3000011-0000-4000-8000-000000000012', 'b3000001-0000-4000-8000-000000000002', 'Problem solving', 1);
+
+INSERT INTO exam_matrix_2_rows
+    (id, matrix_id, chapter_id, mapped_learning_outcome_id, sort_order)
+VALUES
+    ('b3000021-0000-4000-8000-000000000001', 'b3000001-0000-4000-8000-000000000001',
+     '5e055691-371a-4de5-b61a-f6d06712c36a', '81111111-1111-1111-1111-111111111111', 0),
+    ('b3000021-0000-4000-8000-000000000002', 'b3000001-0000-4000-8000-000000000001',
+     'fe369f65-27f3-4314-9885-2099b0ca2fd8', '84444444-4444-4444-4444-444444444444', 1),
+    ('b3000021-0000-4000-8000-000000000011', 'b3000001-0000-4000-8000-000000000002',
+     '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', '85555555-5555-5555-5555-555555555555', 0),
+    ('b3000021-0000-4000-8000-000000000012', 'b3000001-0000-4000-8000-000000000002',
+     'a8c06712-6aa5-4993-901b-77008af766d3', '86666666-6666-6666-6666-666666666666', 1);
+
+INSERT INTO exam_matrix_2_cell_counts (row_id, custom_learning_level_id, question_count)
+VALUES
+    ('b3000021-0000-4000-8000-000000000001', 'b3000011-0000-4000-8000-000000000001', 2),
+    ('b3000021-0000-4000-8000-000000000001', 'b3000011-0000-4000-8000-000000000002', 1),
+    ('b3000021-0000-4000-8000-000000000002', 'b3000011-0000-4000-8000-000000000001', 1),
+    ('b3000021-0000-4000-8000-000000000002', 'b3000011-0000-4000-8000-000000000003', 2),
+    ('b3000021-0000-4000-8000-000000000011', 'b3000011-0000-4000-8000-000000000011', 2),
+    ('b3000021-0000-4000-8000-000000000011', 'b3000011-0000-4000-8000-000000000012', 2),
+    ('b3000021-0000-4000-8000-000000000012', 'b3000011-0000-4000-8000-000000000012', 3);
+
 -- 12. Insert Quizzes
 INSERT INTO quizzes (id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, teacher_id, display)
 VALUES
@@ -327,3 +430,127 @@ VALUES
     ('d9999999-9999-9999-9999-999999999999', '87777777-7777-7777-7777-777777777777'),
     ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '86666666-6666-6666-6666-666666666666'),
     ('dbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '8854781e-efc8-4130-9451-3b0391a32419');
+
+-- 17. Persistent CCCT seed profiles for the DSA course.
+-- schema.sql recreates the development database at every BE startup, then this
+-- script restores these selectable DRAFT profiles with stable UUIDs.
+INSERT INTO ccct_profiles
+    (id, course_id, name, template_title, status, version, format_version,
+     structured_current, last_mode, markdown_content, created_by)
+VALUES
+    ('e1000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
+     'CCCT – Độ phức tạp giải thuật', 'CCCT – Độ phức tạp giải thuật', 'DRAFT', 0, 2,
+     true, 'STRUCTURED',
+     $$# CCCT – Độ phức tạp giải thuật
+
+## Độ phức tạp giải thuật
+
+### Phân tích độ phức tạp tiệm cận
+- Big-O (Cận trên / Upper bound) — Learn and exam
+- Big-Ω (Cận dưới / Lower bound) — Learn and exam$$,
+     '11111111-1111-1111-1111-111111111111'),
+    ('e1000001-0000-4000-8000-000000000002', 'c1111111-1111-1111-1111-111111111111',
+     'CCCT – Heap', 'CCCT – Heap', 'DRAFT', 0, 2,
+     true, 'STRUCTURED',
+     $$# CCCT – Heap
+
+## Heap
+
+### Các loại Heap
+- Max-Heap — Learn and exam
+- Min-Heap — Learn and exam$$,
+     '11111111-1111-1111-1111-111111111111'),
+    ('e1000001-0000-4000-8000-000000000003', 'c1111111-1111-1111-1111-111111111111',
+     'CCCT – Đồ thị', 'CCCT – Đồ thị', 'DRAFT', 0, 2,
+     true, 'STRUCTURED',
+     $$# CCCT – Đồ thị
+
+## Đồ thị
+
+### Duyệt đồ thị
+- BFS (Duyệt theo chiều rộng) — Learn and exam
+- DFS (Duyệt theo chiều sâu) — Learn and exam$$,
+     '11111111-1111-1111-1111-111111111111');
+
+-- Format v2 requires every Course Chapter in its persisted order. Only the
+-- requested chapter contains topics; the remaining chapters are intentionally empty.
+INSERT INTO ccct_chapters (id, profile_id, course_chapter_id, title, custom_content, order_index)
+VALUES
+    ('e2000001-0000-4000-8000-000000000001', 'e1000001-0000-4000-8000-000000000001', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'Cây nhị phân', '', 0),
+    ('e2000001-0000-4000-8000-000000000002', 'e1000001-0000-4000-8000-000000000001', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', '', 1),
+    ('e2000001-0000-4000-8000-000000000003', 'e1000001-0000-4000-8000-000000000001', '6967be86-ae45-4e55-8faa-71318f50bbf6', 'Đồ thị', '', 2),
+    ('e2000001-0000-4000-8000-000000000004', 'e1000001-0000-4000-8000-000000000001', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'Heap', '', 3),
+    ('e2000001-0000-4000-8000-000000000005', 'e1000001-0000-4000-8000-000000000001', '8a01575f-a418-4107-b1b1-5eef75c5b72d', 'Giới thiệu', '', 4),
+    ('e2000001-0000-4000-8000-000000000006', 'e1000001-0000-4000-8000-000000000001', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Sắp xếp', '', 5),
+    ('e2000001-0000-4000-8000-000000000007', 'e1000001-0000-4000-8000-000000000001', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Chồng và Hàng', '', 6),
+    ('e2000001-0000-4000-8000-000000000008', 'e1000001-0000-4000-8000-000000000001', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Tìm kiếm', '', 7),
+    ('e2000001-0000-4000-8000-000000000009', 'e1000001-0000-4000-8000-000000000001', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'Cấu trúc cây nâng cao', '', 8),
+    ('e2000001-0000-4000-8000-000000000010', 'e1000001-0000-4000-8000-000000000001', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', '', 9),
+    ('e2000001-0000-4000-8000-000000000011', 'e1000001-0000-4000-8000-000000000002', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'Cây nhị phân', '', 0),
+    ('e2000001-0000-4000-8000-000000000012', 'e1000001-0000-4000-8000-000000000002', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', '', 1),
+    ('e2000001-0000-4000-8000-000000000013', 'e1000001-0000-4000-8000-000000000002', '6967be86-ae45-4e55-8faa-71318f50bbf6', 'Đồ thị', '', 2),
+    ('e2000001-0000-4000-8000-000000000014', 'e1000001-0000-4000-8000-000000000002', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'Heap', '', 3),
+    ('e2000001-0000-4000-8000-000000000015', 'e1000001-0000-4000-8000-000000000002', '8a01575f-a418-4107-b1b1-5eef75c5b72d', 'Giới thiệu', '', 4),
+    ('e2000001-0000-4000-8000-000000000016', 'e1000001-0000-4000-8000-000000000002', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Sắp xếp', '', 5),
+    ('e2000001-0000-4000-8000-000000000017', 'e1000001-0000-4000-8000-000000000002', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Chồng và Hàng', '', 6),
+    ('e2000001-0000-4000-8000-000000000018', 'e1000001-0000-4000-8000-000000000002', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Tìm kiếm', '', 7),
+    ('e2000001-0000-4000-8000-000000000019', 'e1000001-0000-4000-8000-000000000002', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'Cấu trúc cây nâng cao', '', 8),
+    ('e2000001-0000-4000-8000-000000000020', 'e1000001-0000-4000-8000-000000000002', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', '', 9),
+    ('e2000001-0000-4000-8000-000000000021', 'e1000001-0000-4000-8000-000000000003', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'Cây nhị phân', '', 0),
+    ('e2000001-0000-4000-8000-000000000022', 'e1000001-0000-4000-8000-000000000003', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', '', 1),
+    ('e2000001-0000-4000-8000-000000000023', 'e1000001-0000-4000-8000-000000000003', '6967be86-ae45-4e55-8faa-71318f50bbf6', 'Đồ thị', '', 2),
+    ('e2000001-0000-4000-8000-000000000024', 'e1000001-0000-4000-8000-000000000003', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'Heap', '', 3),
+    ('e2000001-0000-4000-8000-000000000025', 'e1000001-0000-4000-8000-000000000003', '8a01575f-a418-4107-b1b1-5eef75c5b72d', 'Giới thiệu', '', 4),
+    ('e2000001-0000-4000-8000-000000000026', 'e1000001-0000-4000-8000-000000000003', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Sắp xếp', '', 5),
+    ('e2000001-0000-4000-8000-000000000027', 'e1000001-0000-4000-8000-000000000003', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Chồng và Hàng', '', 6),
+    ('e2000001-0000-4000-8000-000000000028', 'e1000001-0000-4000-8000-000000000003', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Tìm kiếm', '', 7),
+    ('e2000001-0000-4000-8000-000000000029', 'e1000001-0000-4000-8000-000000000003', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'Cấu trúc cây nâng cao', '', 8),
+    ('e2000001-0000-4000-8000-000000000030', 'e1000001-0000-4000-8000-000000000003', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', '', 9);
+
+INSERT INTO ccct_topics (id, chapter_id, title, order_index)
+VALUES
+    ('e3000001-0000-4000-8000-000000000001', 'e2000001-0000-4000-8000-000000000002', 'Phân tích độ phức tạp tiệm cận', 0),
+    ('e3000001-0000-4000-8000-000000000002', 'e2000001-0000-4000-8000-000000000014', 'Các loại Heap', 0),
+    ('e3000001-0000-4000-8000-000000000003', 'e2000001-0000-4000-8000-000000000023', 'Duyệt đồ thị', 0);
+
+INSERT INTO ccct_items (id, topic_id, content, coverage_status, note, order_index)
+VALUES
+    ('e4000001-0000-4000-8000-000000000001', 'e3000001-0000-4000-8000-000000000001', 'Big-O (Cận trên / Upper bound)', 'LEARN_AND_EXAM', '', 0),
+    ('e4000001-0000-4000-8000-000000000002', 'e3000001-0000-4000-8000-000000000001', 'Big-Ω (Cận dưới / Lower bound)', 'LEARN_AND_EXAM', '', 1),
+    ('e4000001-0000-4000-8000-000000000003', 'e3000001-0000-4000-8000-000000000002', 'Max-Heap', 'LEARN_AND_EXAM', '', 0),
+    ('e4000001-0000-4000-8000-000000000004', 'e3000001-0000-4000-8000-000000000002', 'Min-Heap', 'LEARN_AND_EXAM', '', 1),
+    ('e4000001-0000-4000-8000-000000000005', 'e3000001-0000-4000-8000-000000000003', 'BFS (Duyệt theo chiều rộng)', 'LEARN_AND_EXAM', '', 0),
+    ('e4000001-0000-4000-8000-000000000006', 'e3000001-0000-4000-8000-000000000003', 'DFS (Duyệt theo chiều sâu)', 'LEARN_AND_EXAM', '', 1);
+
+-- Reset fixtures: the original PDFs remain in the private Supabase bucket.
+-- Each boot recreates their LMS metadata and queues fresh AI ingestion instead
+-- of storing an expiring signed URL in the seed data.
+INSERT INTO materials
+    (id, title, type, file_key, is_downloadable, status, ingestion_status, ingestion_revision, course_id)
+VALUES
+    ('f1000001-0000-4000-8000-000000000001',
+     'DCMH.CO2003_Data_Structures_and_AlgoriThms.pdf',
+     'PDF',
+     'courses/c1111111-1111-1111-1111-111111111111/DCMH.CO2003_Data_Structures_and_AlgoriThms.pdf',
+     true, 'UPLOADED', 'PENDING', 'f2000001-0000-4000-8000-000000000001',
+     'c1111111-1111-1111-1111-111111111111'),
+    ('f1000001-0000-4000-8000-000000000002',
+     'DSABook_1.pdf',
+     'PDF',
+     'courses/c1111111-1111-1111-1111-111111111111/DSABook_1.pdf',
+     true, 'UPLOADED', 'PENDING', 'f2000001-0000-4000-8000-000000000002',
+     'c1111111-1111-1111-1111-111111111111');
+
+INSERT INTO material_index_jobs
+    (id, course_id, material_id, operation, revision, file_key, status, attempt_count, next_attempt_at)
+VALUES
+    ('f3000001-0000-4000-8000-000000000001',
+     'c1111111-1111-1111-1111-111111111111', 'f1000001-0000-4000-8000-000000000001',
+     'INGEST', 'f2000001-0000-4000-8000-000000000001',
+     'courses/c1111111-1111-1111-1111-111111111111/DCMH.CO2003_Data_Structures_and_AlgoriThms.pdf',
+     'PENDING', 0, NOW()),
+    ('f3000001-0000-4000-8000-000000000002',
+     'c1111111-1111-1111-1111-111111111111', 'f1000001-0000-4000-8000-000000000002',
+     'INGEST', 'f2000001-0000-4000-8000-000000000002',
+     'courses/c1111111-1111-1111-1111-111111111111/DSABook_1.pdf',
+     'PENDING', 0, NOW());

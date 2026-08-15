@@ -52,6 +52,10 @@ public class RichContentAssetRepository {
         copy("question_bank_question_id", bankId, "question_id", questionId);
     }
 
+    public void copyQuestionAssetsToQuestion(UUID sourceQuestionId, UUID targetQuestionId) {
+        copy("question_id", sourceQuestionId, "question_id", targetQuestionId);
+    }
+
     public List<RichContentAsset> findByQuestionDraftId(UUID draftId) {
         return find("question_draft_id", draftId);
     }

@@ -65,8 +65,8 @@ public class CreateExamMatrixService implements TeacherCreateExamMatrixUseCase {
             List<LearningOutcome> courseOutcomes,
             UUID matrixId,
             List<edu.ai.lms.core.course.app.port.in.command.CustomLearningLevelValue> values) {
-        if (values == null || values.size() < 3) {
-            throw invalid("An exam matrix must contain at least three custom learning levels");
+        if (values == null || values.isEmpty()) {
+            throw invalid("An exam matrix must contain at least one custom learning level");
         }
         Set<UUID> courseOutcomeIds = courseOutcomes.stream().map(LearningOutcome::getId)
                 .collect(Collectors.toSet());

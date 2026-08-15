@@ -29,6 +29,7 @@ public class BatchEditExamMatrixService implements TeacherBatchEditExamMatrixUse
     private final ExamMatrixValidator validator;
     private final ExamMatrixResponseAssembler assembler;
     private final CustomLearningLevelUseCase customLearningLevelUseCase;
+    private final ExamMatrixLifecycleGuard lifecycleGuard;
 
     @Override
     @Transactional
@@ -40,6 +41,7 @@ public class BatchEditExamMatrixService implements TeacherBatchEditExamMatrixUse
         }
         var existing = batchPort.lockByCourseIdAndId(command.courseId(), command.matrixId())
                 .orElseThrow(() -> new ExamMatrixNotFoundException("Exam matrix not found: " + command.matrixId()));
+        lifecycleGuard.requireDraft(command.courseId(), command.matrixId());
         List<CreatedCustomLearningLevelMappingResponse> createdLevelMappings = List.of();
         Map<String, UUID> resolvedCreatedLevelIds = Map.of();
         if (command.customLearningLevels() != null) {
@@ -96,7 +98,7 @@ public class BatchEditExamMatrixService implements TeacherBatchEditExamMatrixUse
         }
         var reloaded = loadPort.findByCourseIdAndId(command.courseId(), command.matrixId())
                 .orElseThrow(() -> new IllegalStateException("Exam matrix disappeared after batch edit"));
-        boolean incomplete = reloaded.getCustomLearningLevels().size() < 3
+        boolean incomplete = reloaded.getCustomLearningLevels().isEmpty()
                 || !reloaded.getUncoveredLearningOutcomeIds().isEmpty()
                 || reloaded.getCustomLearningLevels().stream()
                         .anyMatch(level -> level.getLearningOutcomeIds().isEmpty())

@@ -33,6 +33,7 @@ import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.AssessmentC
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.ContextSelection;
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.DraftVersion;
 import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.VariantQuestionInput;
+import edu.ai.lms.core.quiz.app.service.assessment.AssessmentService.VariantQuestionUpdate;
 import edu.ai.lms.core.quiz.app.service.assessment.QuestionRefinementService;
 import edu.ai.lms.core.quiz.app.service.assessment.QuestionRefinementService.RefinementRequest;
 import edu.ai.lms.core.quiz.app.service.assessment.QuestionRefinementService.RefinementResponse;
@@ -65,9 +66,14 @@ public class AssessmentController {
     }
 
     @PostMapping
-    public ResponseEntity<AssessmentView> create(@PathVariable UUID courseId,
+    public ResponseEntity<?> create(@PathVariable UUID courseId,
             @RequestBody AssessmentConfiguration request) {
-        return ResponseEntity.status(201).body(service.create(courseId, request));
+        return ResponseEntity.status(410)
+                .header("X-Replacement-API", "/api/courses/" + courseId + "/quiz3/assessments")
+                .body(java.util.Map.of(
+                        "code", "QUIZ2_CREATION_RETIRED",
+                        "message", "New Assessments must be created with Quiz3 and Matrix2.",
+                        "replacement", "/api/courses/" + courseId + "/quiz3/assessments"));
     }
 
     @GetMapping("/{assessmentId}")
@@ -107,6 +113,23 @@ public class AssessmentController {
     @PostMapping("/{assessmentId}/sources/rollback")
     public AssessmentView rollbackSources(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
         return service.rollbackSources(courseId, assessmentId);
+    }
+
+    @PostMapping("/{assessmentId}/base-quiz/generation")
+    public ResponseEntity<BaseGenerationView> startBaseGeneration(@PathVariable UUID courseId,
+            @PathVariable UUID assessmentId, @RequestBody BaseGenerationRequest request) {
+        return ResponseEntity.accepted()
+                .body(service.startBaseGeneration(courseId, assessmentId, request.optionCount()));
+    }
+
+    @GetMapping("/{assessmentId}/base-quiz/generation")
+    public BaseGenerationView baseGeneration(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+        return service.reconcileBaseGeneration(courseId, assessmentId);
+    }
+
+    @PostMapping("/{assessmentId}/base-quiz/confirm")
+    public List<VariantView> confirmBaseQuiz(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+        return service.confirmBaseQuiz(courseId, assessmentId);
     }
 
     @GetMapping("/{assessmentId}/bank-plan")
@@ -189,8 +212,18 @@ public class AssessmentController {
 
     @PostMapping("/{assessmentId}/variants")
     public ResponseEntity<List<VariantView>> createVariants(@PathVariable UUID courseId,
-            @PathVariable UUID assessmentId) {
-        return ResponseEntity.status(201).body(service.createVariants(courseId, assessmentId));
+            @PathVariable UUID assessmentId, @RequestBody CreateVariantsRequest request) {
+        return ResponseEntity.status(201).body(service.createVariants(courseId, assessmentId, request.variantCount()));
+    }
+
+    @PostMapping("/{assessmentId}/variants/preview/confirm")
+    public AssessmentView confirmVariantPreview(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+        return service.confirmVariantPreview(courseId, assessmentId);
+    }
+
+    @PostMapping("/{assessmentId}/variants/reopen-base")
+    public List<VariantView> reopenBaseQuiz(@PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+        return service.reopenBaseQuiz(courseId, assessmentId);
     }
 
     @GetMapping("/{assessmentId}/variants")
@@ -227,8 +260,9 @@ public class AssessmentController {
     @PutMapping(value = "/{assessmentId}/variants/{variantId}/questions/{questionId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public List<VariantView> updateQuestion(@PathVariable UUID courseId, @PathVariable UUID assessmentId,
             @PathVariable UUID variantId, @PathVariable UUID questionId,
-            @RequestBody VariantQuestionInput request) {
-        return richContent.updateVariantQuestion(courseId, assessmentId, variantId, questionId, request, List.of());
+            @RequestBody VariantQuestionUpdate request) {
+        return richContent.updateVariantQuestion(courseId, assessmentId, variantId, questionId,
+                request.expectedQuestionVersion(), request.draft(), List.of());
     }
 
     @PutMapping(value = "/{assessmentId}/variants/{variantId}/questions/{questionId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -236,9 +270,9 @@ public class AssessmentController {
             @PathVariable UUID variantId, @PathVariable UUID questionId,
             @RequestPart("payload") String payload,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) throws Exception {
-        VariantQuestionInput request = objectMapper.readValue(payload, VariantQuestionInput.class);
-        return richContent.updateVariantQuestion(courseId, assessmentId, variantId, questionId, request,
-                images == null ? List.of() : images);
+        VariantQuestionUpdate request = objectMapper.readValue(payload, VariantQuestionUpdate.class);
+        return richContent.updateVariantQuestion(courseId, assessmentId, variantId, questionId,
+                request.expectedQuestionVersion(), request.draft(), images == null ? List.of() : images);
     }
 
     @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-refine")
@@ -361,6 +395,10 @@ public class AssessmentController {
     public record VersionedConfiguration(long version, AssessmentConfiguration configuration) {
     }
     public record SourceVersion(long version) {
+    }
+    public record BaseGenerationRequest(int optionCount) {
+    }
+    public record CreateVariantsRequest(int variantCount) {
     }
     public record RejectDraft(long version, String reason) {
     }

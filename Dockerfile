@@ -7,8 +7,11 @@ COPY src ./src
 RUN mvn clean package -DskipTests -B
 
 # Stage 2: Run
-FROM eclipse-temurin:25-jre-alpine
+FROM eclipse-temurin:25-jre
 WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends chromium fonts-noto-core \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/target/*.jar app.jar
 
 # Runtime environment variables (injected at build time via --build-arg)
@@ -36,7 +39,8 @@ ENV PROFILE=${PROFILE} \
     DO_END_POINT=${DO_END_POINT} \
     DO_ACCESS_KEY=${DO_ACCESS_KEY} \
     DO_SECRET_KEY=${DO_SECRET_KEY} \
-    DO_BUCKET=${DO_BUCKET}
+    DO_BUCKET=${DO_BUCKET} \
+    QUIZ_PDF_CHROMIUM_EXECUTABLE=/usr/bin/chromium
 
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

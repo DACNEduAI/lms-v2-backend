@@ -29,8 +29,9 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Clock;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashSet;
@@ -75,6 +76,7 @@ public class QuestionVisualGenerationService {
     private final LoadSignedInUserPort signedInUser;
     private final ScheduleQuestionVisualJobPort visualScheduler;
     private final QuizGenerationTimingLogger timingLogger;
+    private final Clock quizGenerationClock;
     private final int maxConcurrency;
     private final long generationTimeoutMinutes;
     private final Duration requestTimeout;
@@ -93,6 +95,7 @@ public class QuestionVisualGenerationService {
             LoadSignedInUserPort signedInUser,
             ScheduleQuestionVisualJobPort visualScheduler,
             QuizGenerationTimingLogger timingLogger,
+            Clock quizGenerationClock,
             @Value("${quiz.visual.max-concurrency:3}") int maxConcurrency,
             @Value("${quiz.generation.timeout-minutes:20}") long generationTimeoutMinutes,
             @Value("${quiz.visual.request-timeout-seconds:120}") long requestTimeoutSeconds,
@@ -112,6 +115,7 @@ public class QuestionVisualGenerationService {
         this.signedInUser = signedInUser;
         this.visualScheduler = visualScheduler;
         this.timingLogger = timingLogger;
+        this.quizGenerationClock = quizGenerationClock;
         this.maxConcurrency = maxConcurrency;
         this.generationTimeoutMinutes = generationTimeoutMinutes;
         this.requestTimeout = Duration.ofSeconds(requestTimeoutSeconds);
@@ -119,7 +123,7 @@ public class QuestionVisualGenerationService {
         this.visualExecutor = visualExecutor;
     }
 
-    public void requestDispatchAfterCommit(UUID parentJobId, LocalDateTime parentCreatedAt) {
+    public void requestDispatchAfterCommit(UUID parentJobId, Instant parentCreatedAt) {
         Runnable schedule = () -> scheduleParent(parentJobId, parentCreatedAt);
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             schedule.run();
@@ -133,10 +137,10 @@ public class QuestionVisualGenerationService {
         });
     }
 
-    private void scheduleParent(UUID parentJobId, LocalDateTime parentCreatedAt) {
-        LocalDateTime startedAt = parentCreatedAt == null ? LocalDateTime.now() : parentCreatedAt;
-        visualScheduler.scheduleImmediate(parentJobId, LocalDateTime.now());
-        visualScheduler.scheduleDeadline(parentJobId, startedAt.plusMinutes(generationTimeoutMinutes));
+    private void scheduleParent(UUID parentJobId, Instant parentCreatedAt) {
+        Instant startedAt = parentCreatedAt == null ? Instant.now(quizGenerationClock) : parentCreatedAt;
+        visualScheduler.scheduleImmediate(parentJobId, Instant.now(quizGenerationClock));
+        visualScheduler.scheduleDeadline(parentJobId, startedAt.plus(Duration.ofMinutes(generationTimeoutMinutes)));
     }
 
     public void requestDispatch() {
@@ -146,13 +150,13 @@ public class QuestionVisualGenerationService {
     synchronized void dispatchAvailable() {
         int available = Math.max(0, maxConcurrency - inFlight.get());
         if (available == 0) return;
-        LocalDateTime leaseUntil = LocalDateTime.now().plus(leaseDuration);
+        Instant leaseUntil = Instant.now(quizGenerationClock).plus(leaseDuration);
         List<QuestionVisualJobPort.WorkItem> claimed = visualJobs.claimAvailable(available, leaseUntil);
         for (QuestionVisualJobPort.WorkItem work : claimed) {
             try {
                 visualScheduler.scheduleLeaseRecovery(work.id(), leaseUntil);
             } catch (RuntimeException ex) {
-                LocalDateTime retryAt = LocalDateTime.now().plusSeconds(1);
+                Instant retryAt = Instant.now(quizGenerationClock).plusSeconds(1);
                 if (visualJobs.retry(work.id(), "SCHEDULER_ERROR", "Visual scheduling will be retried", retryAt)) {
                     scheduleRetryOrFail(work, retryAt);
                 }
@@ -163,7 +167,7 @@ public class QuestionVisualGenerationService {
                 visualExecutor.execute(() -> runWorker(work));
             } catch (RejectedExecutionException ex) {
                 inFlight.decrementAndGet();
-                LocalDateTime retryAt = LocalDateTime.now().plusSeconds(1);
+                Instant retryAt = Instant.now(quizGenerationClock).plusSeconds(1);
                 if (visualJobs.retry(work.id(), "WORKER_BUSY", "Visual worker is busy", retryAt)) {
                     scheduleRetryOrFail(work, retryAt);
                 }
@@ -182,7 +186,7 @@ public class QuestionVisualGenerationService {
                 log.warn("Could not refill question visual workers after job {}; scheduling a one-time wake-up",
                         work.id(), ex);
                 try {
-                    visualScheduler.scheduleImmediate(work.parentJobId(), LocalDateTime.now().plusSeconds(1));
+                    visualScheduler.scheduleImmediate(work.parentJobId(), Instant.now(quizGenerationClock).plusSeconds(1));
                 } catch (RuntimeException schedulingFailure) {
                     log.error("Could not schedule the question visual refill wake-up for parent {}",
                             work.parentJobId(), schedulingFailure);
@@ -193,7 +197,8 @@ public class QuestionVisualGenerationService {
 
     void process(QuestionVisualJobPort.WorkItem work) {
         try {
-            if (work.parentCreatedAt().plusMinutes(generationTimeoutMinutes).isBefore(LocalDateTime.now())) {
+            if (work.parentCreatedAt().plus(Duration.ofMinutes(generationTimeoutMinutes))
+                    .isBefore(Instant.now(quizGenerationClock))) {
                 expireParent(work.parentJobId());
                 return;
             }
@@ -236,7 +241,7 @@ public class QuestionVisualGenerationService {
             boolean completed = visualJobs.completeVisual(work.id(), work.imageId(), response.visualType(),
                     source, key, publicUrl.getPublicImageUrl(key), hash, bytes.length);
             if (!completed) return;
-            timingLogger.visualCompleted(work, response.visualType(), LocalDateTime.now());
+            timingLogger.visualCompleted(work, response.visualType(), Instant.now(quizGenerationClock));
             cancelChildSafely(work.id());
             pushParentProgress(work.parentJobId());
             finalizeParentIfTerminal(work.parentJobId());
@@ -245,7 +250,7 @@ public class QuestionVisualGenerationService {
         } catch (Exception ex) {
             int attempted = work.attemptCount() + 1;
             if (attempted < MAX_ATTEMPTS) {
-                LocalDateTime retryAt = LocalDateTime.now().plusSeconds(1L << attempted);
+                Instant retryAt = Instant.now(quizGenerationClock).plusSeconds(1L << attempted);
                 if (visualJobs.retry(work.id(), "VISUAL_SERVICE_ERROR", "Visual generation will be retried", retryAt)) {
                     timingLogger.visualRetry(work, "VISUAL_SERVICE_ERROR", attempted);
                     scheduleRetryOrFail(work, retryAt);
@@ -267,7 +272,7 @@ public class QuestionVisualGenerationService {
 
     private void terminalFailure(QuestionVisualJobPort.WorkItem work, String code, String message) {
         if (!visualJobs.fail(work.id(), work.imageId(), code, message)) return;
-        timingLogger.visualFailed(work, code, LocalDateTime.now());
+        timingLogger.visualFailed(work, code, Instant.now(quizGenerationClock));
         cancelChildSafely(work.id());
         pushParentProgress(work.parentJobId());
         finalizeParentIfTerminal(work.parentJobId());
@@ -278,7 +283,7 @@ public class QuestionVisualGenerationService {
         QuestionVisualJobPort.DeadlineResult result = visualJobs.expireParent(
                 parentId, "VISUAL_DEADLINE_EXCEEDED", message);
         if (!result.applied()) return;
-        LocalDateTime completedAt = LocalDateTime.now();
+        Instant completedAt = Instant.now(quizGenerationClock);
         result.expiredItems().forEach(item -> {
             timingLogger.visualExpired(item, parentId, "VISUAL_DEADLINE_EXCEEDED", completedAt);
             cancelChildSafely(item.jobId());
@@ -295,19 +300,19 @@ public class QuestionVisualGenerationService {
     }
 
     public void reconcileSchedules() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now(quizGenerationClock);
         Set<UUID> deadlines = new HashSet<>();
         for (QuestionVisualJobPort.RecoveryItem item : visualJobs.findActiveForScheduling()) {
             if (deadlines.add(item.parentJobId())) {
                 visualScheduler.scheduleDeadline(item.parentJobId(),
-                        item.parentCreatedAt().plusMinutes(generationTimeoutMinutes));
+                        item.parentCreatedAt().plus(Duration.ofMinutes(generationTimeoutMinutes)));
             }
             if ("PROCESSING".equals(item.status())) {
-                LocalDateTime fireAt = item.leaseUntil() == null || item.leaseUntil().isBefore(now)
+                Instant fireAt = item.leaseUntil() == null || item.leaseUntil().isBefore(now)
                         ? now : item.leaseUntil();
                 visualScheduler.scheduleLeaseRecovery(item.jobId(), fireAt);
             } else {
-                LocalDateTime fireAt = item.nextAttemptAt() == null || item.nextAttemptAt().isBefore(now)
+                Instant fireAt = item.nextAttemptAt() == null || item.nextAttemptAt().isBefore(now)
                         ? now : item.nextAttemptAt();
                 visualScheduler.scheduleRetry(item.jobId(), fireAt);
             }
@@ -327,7 +332,7 @@ public class QuestionVisualGenerationService {
     private void finalizeParentIfTerminal(UUID parentId) {
         QuestionVisualJobPort.Summary summary = visualJobs.summarize(parentId);
         if (summary.active() > 0) return;
-        LocalDateTime completedAt = LocalDateTime.now();
+        Instant completedAt = Instant.now(quizGenerationClock);
         String errorCode = null;
         String errorMessage = null;
         if (summary.failed() > 0) {
@@ -450,9 +455,9 @@ public class QuestionVisualGenerationService {
         QuestionVisualJobPort.RetryItem retry = visualJobs.retryFailed(quizId, questionId, requestedBy)
                 .orElseThrow(() -> new IllegalArgumentException("No failed visual generation job exists for this question"));
         Runnable schedule = () -> {
-            visualScheduler.scheduleRetry(retry.jobId(), LocalDateTime.now());
+            visualScheduler.scheduleRetry(retry.jobId(), Instant.now(quizGenerationClock));
             visualScheduler.scheduleDeadline(retry.parentJobId(),
-                    retry.parentCreatedAt().plusMinutes(generationTimeoutMinutes));
+                    retry.parentCreatedAt().plus(Duration.ofMinutes(generationTimeoutMinutes)));
         };
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             schedule.run();
@@ -463,7 +468,7 @@ public class QuestionVisualGenerationService {
         }
     }
 
-    private void scheduleRetryOrFail(QuestionVisualJobPort.WorkItem work, LocalDateTime retryAt) {
+    private void scheduleRetryOrFail(QuestionVisualJobPort.WorkItem work, Instant retryAt) {
         try {
             visualScheduler.scheduleRetry(work.id(), retryAt);
         } catch (RuntimeException ex) {

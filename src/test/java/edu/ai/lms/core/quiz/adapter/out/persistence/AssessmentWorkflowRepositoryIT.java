@@ -8,6 +8,7 @@ import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.DraftR
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.LifecycleStatus;
 import static edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.VariantView;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,6 +19,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import edu.ai.lms.config.IntegrationTestConfiguration;
+import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
+import edu.ai.lms.core.quiz.app.exception.QuestionVersionConflictException;
 
 class AssessmentWorkflowRepositoryIT extends IntegrationTestConfiguration {
     @Autowired
@@ -104,6 +107,29 @@ class AssessmentWorkflowRepositoryIT extends IntegrationTestConfiguration {
             assertThat(item.status()).isEqualTo("VALIDATED");
             assertThat(item.content()).isEqualTo("Which option is correct?");
         });
+    }
+
+    @Test
+    void savesVariantQuestionWithRequiredVersionAndRejectsStaleWrites() {
+        Fixture fixture = createFixture();
+        VariantView variant = workflow.createVariants(fixture.assessment(), fixture.plan()).getFirst();
+        var question = variant.questions().getFirst();
+        List<AssessmentWorkflowRepository.AnswerInput> answers = question.answers().stream()
+                .map(answer -> new AssessmentWorkflowRepository.AnswerInput(answer.content(), answer.contentFormat(),
+                        answer.correct()))
+                .toList();
+
+        workflow.updateVariantQuestion(fixture.assessment().id(), variant.id(), question.id(), question.version(),
+                "Updated question content", RichContentFormat.PLAIN_TEXT, null, RichContentFormat.PLAIN_TEXT, answers);
+
+        assertThat(jdbc.queryForObject("SELECT content FROM edu.questions WHERE id = ?", String.class, question.id()))
+                .isEqualTo("Updated question content");
+        assertThat(jdbc.queryForObject("SELECT version FROM edu.questions WHERE id = ?", Long.class, question.id()))
+                .isEqualTo(question.version() + 1);
+        assertThatThrownBy(() -> workflow.updateVariantQuestion(fixture.assessment().id(), variant.id(), question.id(),
+                question.version(), "Stale update", RichContentFormat.PLAIN_TEXT, null,
+                RichContentFormat.PLAIN_TEXT, answers))
+                .isInstanceOf(QuestionVersionConflictException.class);
     }
 
     private Fixture createFixture() {

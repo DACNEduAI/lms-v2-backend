@@ -59,7 +59,8 @@ public class QuestionAiDocumentService {
 
     public String insertSvg(String html, UUID artifactId, String altText, String sourceUrl, Anchor anchor) {
         Element node = new Element("img").attr("src", sourceUrl).attr("alt", altText)
-                .attr("data-ai-artifact-id", artifactId.toString()).attr("data-ai-artifact-type", "SVG");
+                .attr("data-ai-artifact-id", artifactId.toString()).attr("data-ai-artifact-type", "SVG")
+                .attr("data-image-width", "50").attr("style", "width: 50%; height: auto;");
         return insert(html, node, anchor);
     }
 

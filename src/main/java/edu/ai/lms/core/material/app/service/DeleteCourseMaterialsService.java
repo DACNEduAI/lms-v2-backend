@@ -30,7 +30,7 @@ public class DeleteCourseMaterialsService implements DeleteCourseMaterialsApi {
 
         // 2. Delete S3 files first
         for (Material material : materials) {
-            materialIndexingService.queueDelete(courseId, material.getId());
+            materialIndexingService.queueDelete(courseId, material.getId(), material.getFileKey());
             if (material.getFileKey() != null) {
                 deleteFilePort.deleteFile(material.getFileKey());
             }

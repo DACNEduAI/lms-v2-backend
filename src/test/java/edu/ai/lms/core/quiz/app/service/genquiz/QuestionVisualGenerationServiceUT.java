@@ -22,7 +22,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.Instant;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
@@ -63,8 +64,8 @@ class QuestionVisualGenerationServiceUT {
     void setUp() {
         service = spy(new QuestionVisualGenerationService(
                 visualJobs, loadParent, saveParent, uploadImage, publicUrl, aiWebClient, sse,
-                signedInUser, visualScheduler, timingLogger, 3, 20, 120, 30, executor));
-        lenient().when(visualJobs.claimAvailable(anyInt(), any(LocalDateTime.class))).thenReturn(List.of());
+                signedInUser, visualScheduler, timingLogger, Clock.systemUTC(), 3, 20, 120, 30, executor));
+        lenient().when(visualJobs.claimAvailable(anyInt(), any(Instant.class))).thenReturn(List.of());
     }
 
     @AfterEach
@@ -78,33 +79,33 @@ class QuestionVisualGenerationServiceUT {
     void defersDispatchUntilTransactionCommit() {
         TransactionSynchronizationManager.initSynchronization();
         UUID parentId = UUID.randomUUID();
-        LocalDateTime createdAt = LocalDateTime.now();
+        Instant createdAt = Instant.now();
 
         service.requestDispatchAfterCommit(parentId, createdAt);
 
         verify(visualScheduler, never()).scheduleImmediate(any(), any());
         TransactionSynchronizationManager.getSynchronizations().forEach(synchronization -> synchronization.afterCommit());
-        verify(visualScheduler).scheduleImmediate(eq(parentId), any(LocalDateTime.class));
-        verify(visualScheduler).scheduleDeadline(parentId, createdAt.plusMinutes(20));
+        verify(visualScheduler).scheduleImmediate(eq(parentId), any(Instant.class));
+        verify(visualScheduler).scheduleDeadline(parentId, createdAt.plusSeconds(1_200));
     }
 
     @Test
     void claimsOnlyConfiguredConcurrencyAndDoesNotBuildAnExecutorBacklog() {
         List<QuestionVisualJobPort.WorkItem> firstBatch = List.of(workItem(), workItem(), workItem());
-        when(visualJobs.claimAvailable(eq(3), any(LocalDateTime.class))).thenReturn(firstBatch);
+        when(visualJobs.claimAvailable(eq(3), any(Instant.class))).thenReturn(firstBatch);
 
         service.requestDispatch();
         service.requestDispatch();
 
         verify(executor, times(3)).execute(any(Runnable.class));
-        verify(visualJobs).claimAvailable(eq(3), any(LocalDateTime.class));
+        verify(visualJobs).claimAvailable(eq(3), any(Instant.class));
     }
 
     @Test
     void completedWorkerImmediatelyRefillsItsReleasedSlot() {
         QuestionVisualJobPort.WorkItem first = workItem();
         QuestionVisualJobPort.WorkItem second = workItem();
-        when(visualJobs.claimAvailable(anyInt(), any(LocalDateTime.class)))
+        when(visualJobs.claimAvailable(anyInt(), any(Instant.class)))
                 .thenReturn(List.of(first), List.of(second), List.of());
         doNothing().when(service).process(any(QuestionVisualJobPort.WorkItem.class));
         ArgumentCaptor<Runnable> firstTask = ArgumentCaptor.forClass(Runnable.class);
@@ -123,16 +124,16 @@ class QuestionVisualGenerationServiceUT {
     @Test
     void rejectedExecutorSubmissionReturnsJobToDurableQueueAndSchedulesWakeup() {
         QuestionVisualJobPort.WorkItem work = workItem();
-        when(visualJobs.claimAvailable(eq(3), any(LocalDateTime.class))).thenReturn(List.of(work));
+        when(visualJobs.claimAvailable(eq(3), any(Instant.class))).thenReturn(List.of(work));
         when(visualJobs.retry(eq(work.id()), eq("WORKER_BUSY"), eq("Visual worker is busy"),
-                any(LocalDateTime.class))).thenReturn(true);
+                any(Instant.class))).thenReturn(true);
         doThrow(new RejectedExecutionException("busy")).when(executor).execute(any(Runnable.class));
 
         service.requestDispatch();
 
         verify(visualJobs).retry(eq(work.id()), eq("WORKER_BUSY"), eq("Visual worker is busy"),
-                any(LocalDateTime.class));
-        verify(visualScheduler).scheduleRetry(eq(work.id()), any(LocalDateTime.class));
+                any(Instant.class));
+        verify(visualScheduler).scheduleRetry(eq(work.id()), any(Instant.class));
     }
 
     @Test
@@ -140,13 +141,13 @@ class QuestionVisualGenerationServiceUT {
         QuestionVisualJobPort.WorkItem work = workItem();
         doThrow(new RuntimeException("AI unavailable")).when(service).requestVisual(work);
         when(visualJobs.retry(eq(work.id()), eq("VISUAL_SERVICE_ERROR"),
-                eq("Visual generation will be retried"), any(LocalDateTime.class))).thenReturn(true);
+                eq("Visual generation will be retried"), any(Instant.class))).thenReturn(true);
 
         service.process(work);
 
         verify(visualJobs).retry(eq(work.id()), eq("VISUAL_SERVICE_ERROR"),
-                eq("Visual generation will be retried"), any(LocalDateTime.class));
-        verify(visualScheduler).scheduleRetry(eq(work.id()), any(LocalDateTime.class));
+                eq("Visual generation will be retried"), any(Instant.class));
+        verify(visualScheduler).scheduleRetry(eq(work.id()), any(Instant.class));
         verify(timingLogger).visualRetry(work, "VISUAL_SERVICE_ERROR", 1);
     }
 
@@ -159,14 +160,14 @@ class QuestionVisualGenerationServiceUT {
                 CurrentActor.builder().id(teacherId).role(Roles.TEACHER).build()));
         UUID jobId = UUID.randomUUID();
         UUID parentId = UUID.randomUUID();
-        LocalDateTime parentCreatedAt = LocalDateTime.now();
+        Instant parentCreatedAt = Instant.now();
         when(visualJobs.retryFailed(quizId, questionId, teacherId)).thenReturn(Optional.of(
                 new QuestionVisualJobPort.RetryItem(jobId, parentId, parentCreatedAt)));
 
         service.retryFailed(quizId, questionId);
 
-        verify(visualScheduler).scheduleRetry(eq(jobId), any(LocalDateTime.class));
-        verify(visualScheduler).scheduleDeadline(parentId, parentCreatedAt.plusMinutes(20));
+        verify(visualScheduler).scheduleRetry(eq(jobId), any(Instant.class));
+        verify(visualScheduler).scheduleDeadline(parentId, parentCreatedAt.plusSeconds(1_200));
     }
 
     @Test
@@ -174,25 +175,25 @@ class QuestionVisualGenerationServiceUT {
         UUID parentId = UUID.randomUUID();
         UUID pendingId = UUID.randomUUID();
         UUID processingId = UUID.randomUUID();
-        LocalDateTime parentCreatedAt = LocalDateTime.now().minusMinutes(2);
+        Instant parentCreatedAt = Instant.now().minusSeconds(120);
         when(visualJobs.findActiveForScheduling()).thenReturn(List.of(
                 new QuestionVisualJobPort.RecoveryItem(pendingId, parentId, "PENDING",
-                        LocalDateTime.now().plusSeconds(3), null, parentCreatedAt),
+                        Instant.now().plusSeconds(3), null, parentCreatedAt),
                 new QuestionVisualJobPort.RecoveryItem(processingId, parentId, "PROCESSING",
-                        null, LocalDateTime.now().plusSeconds(30), parentCreatedAt)));
+                        null, Instant.now().plusSeconds(30), parentCreatedAt)));
 
         service.reconcileSchedules();
 
-        verify(visualScheduler).scheduleDeadline(parentId, parentCreatedAt.plusMinutes(20));
-        verify(visualScheduler).scheduleRetry(eq(pendingId), any(LocalDateTime.class));
-        verify(visualScheduler).scheduleLeaseRecovery(eq(processingId), any(LocalDateTime.class));
+        verify(visualScheduler).scheduleDeadline(parentId, parentCreatedAt.plusSeconds(1_200));
+        verify(visualScheduler).scheduleRetry(eq(pendingId), any(Instant.class));
+        verify(visualScheduler).scheduleLeaseRecovery(eq(processingId), any(Instant.class));
     }
 
     @Test
     void deadlineFailsActiveChildrenAndCompletesParentWithWarning() {
         UUID parentId = UUID.randomUUID();
         UUID childId = UUID.randomUUID();
-        LocalDateTime startedAt = LocalDateTime.now().minusMinutes(1);
+        Instant startedAt = Instant.now().minusSeconds(60);
         QuestionVisualJobPort.Summary summary = new QuestionVisualJobPort.Summary(2, 1, 1, 0, startedAt);
         QuestionVisualJobPort.ExpiredItem expired = new QuestionVisualJobPort.ExpiredItem(
                 childId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "AUTO", 1, startedAt);
@@ -207,9 +208,9 @@ class QuestionVisualGenerationServiceUT {
         verify(visualScheduler).cancelChild(childId);
         verify(visualScheduler).cancelParent(parentId);
         verify(timingLogger).visualExpired(eq(expired), eq(parentId),
-                eq("VISUAL_DEADLINE_EXCEEDED"), any(LocalDateTime.class));
-        verify(timingLogger).visualPhaseTerminal(eq(parent), eq(summary), any(LocalDateTime.class));
-        verify(timingLogger).quizTerminal(eq(parent), eq(summary), any(LocalDateTime.class));
+                eq("VISUAL_DEADLINE_EXCEEDED"), any(Instant.class));
+        verify(timingLogger).visualPhaseTerminal(eq(parent), eq(summary), any(Instant.class));
+        verify(timingLogger).quizTerminal(eq(parent), eq(summary), any(Instant.class));
         verify(sse).pushStatus(eq(parentId), any());
     }
 
@@ -253,19 +254,19 @@ class QuestionVisualGenerationServiceUT {
                 .requestSnapshot("{\"questionCount\":1,\"examMatrix\":[]}").build();
         when(loadParent.getById(work.parentJobId())).thenReturn(Optional.of(completedParent));
         when(saveParent.completeVisualPhase(eq(work.parentJobId()), eq(null), eq(null),
-                any(LocalDateTime.class))).thenReturn(true);
+                any(Instant.class))).thenReturn(true);
 
         service.process(work);
 
-        verify(timingLogger).visualCompleted(eq(work), eq("SVG"), any(LocalDateTime.class));
-        verify(timingLogger).visualPhaseTerminal(eq(completedParent), eq(summary), any(LocalDateTime.class));
-        verify(timingLogger).quizTerminal(eq(completedParent), eq(summary), any(LocalDateTime.class));
+        verify(timingLogger).visualCompleted(eq(work), eq("SVG"), any(Instant.class));
+        verify(timingLogger).visualPhaseTerminal(eq(completedParent), eq(summary), any(Instant.class));
+        verify(timingLogger).quizTerminal(eq(completedParent), eq(summary), any(Instant.class));
     }
 
     private QuestionVisualJobPort.WorkItem workItem() {
         return new QuestionVisualJobPort.WorkItem(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 "AUTO", "Question", "Draw it", "Description", 0,
-                LocalDateTime.now(), LocalDateTime.now());
+                Instant.now(), Instant.now());
     }
 }

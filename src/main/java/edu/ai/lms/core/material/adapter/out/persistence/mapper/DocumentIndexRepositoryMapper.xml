@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.material.adapter.out.persistence.DocumentIndexRepository">
+  <resultMap id="DocumentIndexMap" type="edu.ai.lms.core.material.app.domain.DocumentIndex">
+    <result property="bucketName" column="bucket_name" />
+    <result property="fileKey" column="file_key" />
+    <result property="indexProfile" column="index_profile" />
+    <result property="sourceHash" column="source_hash" />
+    <result property="collectionName" column="collection_name" />
+    <result property="status" column="status" javaType="edu.ai.lms.core.material.app.domain.DocumentIndex$Status" typeHandler="edu.ai.lms.config.mybatis.DocumentIndexStatusTypeHandler" />
+    <result property="chunkCount" column="chunk_count" />
+    <result property="errorMessage" column="error_message" />
+    <result property="indexedAt" column="indexed_at" />
+    <result property="updatedAt" column="updated_at" />
+  </resultMap>
+
+  <select id="findReady" resultMap="DocumentIndexMap">
+    SELECT * FROM ai_index.document_indexes
+    WHERE bucket_name = #{bucketName} AND file_key = #{fileKey}
+      AND index_profile = #{indexProfile} AND status = 'READY'
+  </select>
+
+  <insert id="save" parameterType="edu.ai.lms.core.material.app.domain.DocumentIndex">
+    INSERT INTO ai_index.document_indexes
+      (bucket_name, file_key, index_profile, source_hash, collection_name, status,
+       chunk_count, error_message, indexed_at, updated_at)
+    VALUES
+      (#{bucketName}, #{fileKey}, #{indexProfile}, #{sourceHash}, #{collectionName}, #{status},
+       #{chunkCount}, #{errorMessage}, #{indexedAt}, NOW())
+    ON CONFLICT (bucket_name, file_key, index_profile) DO UPDATE SET
+      source_hash = EXCLUDED.source_hash,
+      collection_name = EXCLUDED.collection_name,
+      status = EXCLUDED.status,
+      chunk_count = EXCLUDED.chunk_count,
+      error_message = EXCLUDED.error_message,
+      indexed_at = EXCLUDED.indexed_at,
+      updated_at = NOW()
+  </insert>
+
+  <delete id="deleteByDocument">
+    DELETE FROM ai_index.document_indexes
+    WHERE bucket_name = #{bucketName} AND file_key = #{fileKey}
+  </delete>
+</mapper>

@@ -34,6 +34,7 @@ import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.VariantQuesti
 import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.VariantView;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentAsset;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
+import edu.ai.lms.core.quiz.app.exception.VariantPdfFormulaException;
 import edu.ai.lms.core.quiz.app.exception.VariantPdfImageException;
 import edu.ai.lms.core.quiz.app.port.out.RichContentAssetStoragePort;
 
@@ -74,7 +75,7 @@ class VariantPdfRendererUT {
     }
 
     @Test
-    void keepsUnsupportedLatexAsRawText() throws Exception {
+    void rejectsUnsupportedLatexWithItsQuestionFieldPath() {
         UUID questionId = UUID.randomUUID();
         when(assets.findByQuestionId(questionId)).thenReturn(List.of());
         String unsupported = "\\commandThatDoesNotExist{abc}";
@@ -82,10 +83,26 @@ class VariantPdfRendererUT {
                 "<p><span data-type=\"inline-math\" data-latex=\"" + unsupported + "\"></span></p>",
                 RichContentFormat.TIPTAP_HTML, fourAnswers());
 
-        String text = text(renderer.render(variant));
+        VariantPdfFormulaException error = assertThrows(VariantPdfFormulaException.class, () -> renderer.render(variant));
 
-        assertTrue(text.contains("commandThatDoesNotExist"));
-        assertTrue(text.contains("abc"));
+        assertEquals("questions[0].content.formulas[0]", error.getFieldPath());
+        assertTrue(error.getDetails().contains("latex=" + unsupported));
+    }
+
+    @Test
+    void keepsKatexChildSelectorsRawInThePdfStylesheet() {
+        UUID questionId = UUID.randomUUID();
+        when(assets.findByQuestionId(questionId)).thenReturn(List.of());
+        VariantView variant = variant(questionId,
+                "<div data-type=\"block-math\" data-latex=\"\\sqrt[n+1]{x^{2n+1}+\\alpha_n^2}\"></div>",
+                RichContentFormat.TIPTAP_HTML, fourAnswers());
+
+        String html = renderer.buildHtml(variant);
+
+        assertTrue(html.contains(".katex .vlist>span{"));
+        assertTrue(html.contains(".katex .mfrac>span>span{"));
+        assertFalse(html.contains(".katex .vlist&gt;span{"));
+        assertFalse(html.contains(".katex .mfrac&gt;span&gt;span{"));
     }
 
     @Test

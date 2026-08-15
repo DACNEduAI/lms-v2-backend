@@ -1,6 +1,7 @@
 package edu.ai.lms.core.quiz.adapter.in.http;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.ai.lms.core.quiz.adapter.in.http.request.QuizGenerationProgressWebhookRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.request.QuizWebhookRequest;
 import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusResponse;
 import edu.ai.lms.core.quiz.app.service.genquiz.QuizWebhookProcessingService;
@@ -41,6 +42,20 @@ public class InternalQuizWebhookController {
         }
         QuizWebhookRequest request = objectMapper.readValue(rawBody, QuizWebhookRequest.class);
         return ResponseEntity.ok(processingService.handleWebhook(request));
+    }
+
+    @PostMapping("/quiz-generation/progress")
+    public ResponseEntity<Void> handleProgress(
+            @RequestHeader(value = "X-Webhook-Timestamp", required = false) String timestamp,
+            @RequestHeader(value = "X-Webhook-Signature", required = false) String signature,
+            @RequestBody String rawBody) throws Exception {
+        if (!isValid(timestamp, signature, rawBody)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        QuizGenerationProgressWebhookRequest request = objectMapper.readValue(
+                rawBody, QuizGenerationProgressWebhookRequest.class);
+        processingService.handleProgress(request);
+        return ResponseEntity.noContent().build();
     }
 
     private boolean isValid(String timestamp, String signature, String rawBody) {

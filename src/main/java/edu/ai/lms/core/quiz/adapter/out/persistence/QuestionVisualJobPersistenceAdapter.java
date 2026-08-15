@@ -6,8 +6,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,7 +29,7 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
 
     @Override
     @Transactional
-    public List<WorkItem> claimAvailable(int limit, LocalDateTime leaseUntil) {
+    public List<WorkItem> claimAvailable(int limit, Instant leaseUntil) {
         List<WorkItem> work = jdbc.query("""
                 SELECT j.id, j.quiz_generation_job_id, j.question_image_id, q.quiz_id, q.id AS question_id,
                        j.visual_type, q.content, i.generation_brief, i.alt_text,
@@ -47,14 +48,13 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
                 rs.getObject("question_id", UUID.class),
                 rs.getString("visual_type"), rs.getString("content"), rs.getString("generation_brief"),
                 rs.getString("alt_text"), rs.getInt("attempt_count"),
-                rs.getTimestamp("created_at").toLocalDateTime(),
-                rs.getTimestamp("parent_created_at").toLocalDateTime()), limit);
+                instant(rs, "created_at"), instant(rs, "parent_created_at")), limit);
         for (WorkItem item : work) {
             jdbc.update("""
                     UPDATE edu.question_image_generation_jobs SET status='PROCESSING',
                       attempt_count=attempt_count+1, processing_at=COALESCE(processing_at,NOW()),
                       lease_until=?, error_code=NULL, error_message=NULL, updated_at=NOW() WHERE id=?
-                    """, Timestamp.valueOf(leaseUntil), item.id());
+                    """, asOffsetDateTime(leaseUntil), item.id());
             jdbc.update("UPDATE edu.question_images SET status='PROCESSING', updated_at=NOW() WHERE id=?", item.imageId());
         }
         return work;
@@ -83,12 +83,12 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
 
     @Override
     @Transactional
-    public boolean retry(UUID jobId, String code, String message, LocalDateTime nextAttemptAt) {
+    public boolean retry(UUID jobId, String code, String message, Instant nextAttemptAt) {
         int updated = jdbc.update("""
                 UPDATE edu.question_image_generation_jobs SET status='PENDING', lease_until=NULL,
                   next_attempt_at=?, error_code=?, error_message=?, updated_at=NOW() WHERE id=?
                   AND status='PROCESSING'
-                """, Timestamp.valueOf(nextAttemptAt), code, message, jobId);
+                """, asOffsetDateTime(nextAttemptAt), code, message, jobId);
         if (updated == 0) return false;
         jdbc.update("""
                 UPDATE edu.question_images i SET status='PENDING', error_code=?, error_message=?, updated_at=NOW()
@@ -125,7 +125,7 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
                 ORDER BY j.created_at DESC LIMIT 1 FOR UPDATE OF j
                 """, (rs, row) -> new RetryItem(rs.getObject("id", UUID.class),
                 rs.getObject("quiz_generation_job_id", UUID.class),
-                rs.getTimestamp("parent_created_at").toLocalDateTime()), quizId, questionId, requestedBy);
+                instant(rs, "parent_created_at")), quizId, questionId, requestedBy);
         if (items.isEmpty()) return Optional.empty();
         RetryItem item = items.getFirst();
         UUID id = item.jobId();
@@ -159,8 +159,8 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
                 ORDER BY j.created_at
                 """, (rs, row) -> new RecoveryItem(
                 rs.getObject("id", UUID.class), rs.getObject("quiz_generation_job_id", UUID.class),
-                rs.getString("status"), timestamp(rs, "next_attempt_at"), timestamp(rs, "lease_until"),
-                rs.getTimestamp("parent_created_at").toLocalDateTime()));
+                rs.getString("status"), instant(rs, "next_attempt_at"), instant(rs, "lease_until"),
+                instant(rs, "parent_created_at")));
     }
 
     @Override
@@ -186,7 +186,7 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
                 rs.getObject("id", UUID.class), rs.getObject("question_image_id", UUID.class),
                 rs.getObject("quiz_id", UUID.class), rs.getObject("question_id", UUID.class),
                 rs.getString("visual_type"), rs.getInt("attempt_count"),
-                rs.getTimestamp("created_at").toLocalDateTime()), parentJobId);
+                instant(rs, "created_at")), parentJobId);
         jdbc.update("""
                 UPDATE edu.question_images i SET status='FAILED', error_code=?, error_message=?, updated_at=NOW()
                 FROM edu.question_image_generation_jobs j
@@ -217,7 +217,7 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
                   MIN(created_at) AS started_at
                 FROM edu.question_image_generation_jobs WHERE quiz_generation_job_id=?
                 """, (rs, row) -> new Summary(rs.getInt("requested"), rs.getInt("ready"),
-                rs.getInt("failed"), rs.getInt("active"), timestamp(rs, "started_at")), parentJobId);
+                rs.getInt("failed"), rs.getInt("active"), instant(rs, "started_at")), parentJobId);
     }
 
     @Override
@@ -233,8 +233,12 @@ class QuestionVisualJobPersistenceAdapter implements QuestionVisualJobPort {
         return Boolean.TRUE.equals(value);
     }
 
-    private LocalDateTime timestamp(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
-        Timestamp value = rs.getTimestamp(column);
-        return value == null ? null : value.toLocalDateTime();
+    private Instant instant(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        OffsetDateTime value = rs.getObject(column, OffsetDateTime.class);
+        return value == null ? null : value.toInstant();
+    }
+
+    private OffsetDateTime asOffsetDateTime(Instant value) {
+        return value == null ? null : value.atOffset(ZoneOffset.UTC);
     }
 }

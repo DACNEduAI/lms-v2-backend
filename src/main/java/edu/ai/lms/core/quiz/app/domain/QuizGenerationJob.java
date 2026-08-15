@@ -1,5 +1,6 @@
 package edu.ai.lms.core.quiz.app.domain;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -76,9 +77,13 @@ public class QuizGenerationJob {
 
     private Integer attemptCount;
 
-    private LocalDateTime nextAttemptAt;
+    private Integer generatedQuestionCount;
 
-    private LocalDateTime leaseUntil;
+    private Integer totalQuestionCount;
+
+    private Instant nextAttemptAt;
+
+    private Instant leaseUntil;
 
     private String errorCode;
 
@@ -86,11 +91,11 @@ public class QuizGenerationJob {
 
     private UUID callbackEventId;
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime processingAt;
+    private Instant processingAt;
 
-    private LocalDateTime completedAt;
+    private Instant completedAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 }

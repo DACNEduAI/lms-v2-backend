@@ -33,6 +33,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
@@ -53,6 +55,7 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
     private final ValidateMaterialSelectionPort materialSelectionPort;
     private final ObjectMapper objectMapper;
     private final QuestionVisualJobPort visualJobs;
+    private final Clock quizGenerationClock;
 
     @Override
     @Transactional
@@ -78,9 +81,12 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         List<UUID> materialIds = command.selectedMaterialIds() == null ? List.of() : command.selectedMaterialIds();
         materialIds = materialIds.stream().distinct().toList();
         validateSelectedMaterials(command.courseId(), materialIds);
-        List<Map<String, Object>> materialSnapshot = materialIds.stream().distinct().map(id -> {
+        List<String> documentKeys = materialSelectionPort.readyDocumentKeys(command.courseId(), materialIds);
+        List<UUID> selectedMaterialIds = materialIds;
+        List<Map<String, Object>> materialSnapshot = java.util.stream.IntStream.range(0, selectedMaterialIds.size()).mapToObj(index -> {
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("materialId", id);
+            item.put("materialId", selectedMaterialIds.get(index));
+            item.put("documentKey", documentKeys.get(index));
             return item;
         }).toList();
 
@@ -150,7 +156,9 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
                 .status(QuizGenerationStatus.PENDING)
                 .phase(QuizGenerationJob.Phase.TEXT_GENERATION)
                 .attemptCount(0)
-                .nextAttemptAt(LocalDateTime.now())
+                .generatedQuestionCount(0)
+                .totalQuestionCount(questionCount)
+                .nextAttemptAt(Instant.now(quizGenerationClock))
                 .build();
 
         QuizGenerationJob saved = saveJobPort.save(job);
@@ -388,7 +396,9 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
                 .jobId(job.getId()).status(job.getStatus()).quizId(job.getQuizId())
                 .phase(job.getPhase())
                 .errorCode(job.getErrorCode()).errorMessage(job.getErrorMessage())
-                .attemptCount(job.getAttemptCount()).createdAt(job.getCreatedAt())
+                .attemptCount(job.getAttemptCount())
+                .generatedQuestionCount(job.getGeneratedQuestionCount())
+                .totalQuestionCount(job.getTotalQuestionCount()).createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt()).build();
     }
 }

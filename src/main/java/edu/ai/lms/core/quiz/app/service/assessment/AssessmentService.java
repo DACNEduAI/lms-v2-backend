@@ -26,13 +26,20 @@ import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionBankQuestion;
 import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichTextValue;
+import edu.ai.lms.core.quiz.app.exception.QuizGenerationJobNotFoundException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthenticatedException;
 import edu.ai.lms.core.quiz.app.exception.UserNotAuthorizedException;
 import edu.ai.lms.core.quiz.app.exception.AssessmentValidationException;
 import edu.ai.lms.core.quiz.app.port.in.usecase.QuestionBankUseCase;
+import edu.ai.lms.core.quiz.app.port.in.usecase.GenerateQuizUseCase;
+import edu.ai.lms.core.quiz.app.port.in.usecase.GetQuizGenerationJobUseCase;
+import edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand;
 import edu.ai.lms.core.quiz.app.port.out.LoadCourseMembershipPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.service.richcontent.RichContentPolicyService;
+import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationJobResponse;
+import edu.ai.lms.core.quiz.adapter.in.http.response.QuizGenerationStatusResponse;
+import edu.ai.lms.core.quiz.app.domain.QuizGenerationStatus;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -48,6 +55,8 @@ public class AssessmentService {
     private final ObjectMapper objectMapper;
     private final RichContentPolicyService richContentPolicy;
     private final QuestionAiRepository questionAi;
+    private final GenerateQuizUseCase generateQuizUseCase;
+    private final GetQuizGenerationJobUseCase getQuizGenerationJobUseCase;
 
     public AssessmentService(AssessmentRepository assessments, AssessmentWorkflowRepository workflow,
             QuestionBankUseCase questionBank, LoadSignedInUserPort signedInUserPort,
@@ -55,7 +64,7 @@ public class AssessmentService {
             AssessmentDraftValidationService draftValidator, ObjectMapper objectMapper,
             RichContentPolicyService richContentPolicy) {
         this(assessments, workflow, questionBank, signedInUserPort, membershipPort, dispatcher,
-                draftValidator, objectMapper, richContentPolicy, null);
+                draftValidator, objectMapper, richContentPolicy, null, null, null);
     }
 
     public List<AssessmentView> list(UUID courseId) {
@@ -74,9 +83,7 @@ public class AssessmentService {
         CurrentActor actor = requireTeacher(courseId);
         validateConfiguration(input);
         return assessments.create(courseId, actor.id(), input.title().trim(), trimToNull(input.description()),
-                input.unlimited(), input.timeLimitMinutes(), input.passScore(), input.startTime(), input.dueTime(),
-                input.attemptLimited(), input.variantCount(), input.optionCount(),
-                input.allowRecentlyUsedQuestions());
+                input.timeLimitMinutes(), input.passScore(), input.startTime(), input.dueTime(), input.attemptLimited());
     }
 
     public AssessmentView update(UUID courseId, UUID assessmentId, long version, AssessmentConfiguration input) {
@@ -88,9 +95,7 @@ public class AssessmentService {
         }
         validateConfiguration(input);
         if (!assessments.update(courseId, assessmentId, version, input.title().trim(), trimToNull(input.description()),
-                input.unlimited(), input.timeLimitMinutes(), input.passScore(), input.startTime(), input.dueTime(),
-                input.attemptLimited(), input.variantCount(), input.optionCount(),
-                input.allowRecentlyUsedQuestions(), actor.id())) {
+                input.timeLimitMinutes(), input.passScore(), input.startTime(), input.dueTime(), input.attemptLimited())) {
             throw new IllegalStateException("Assessment changed before this update; reload and try again");
         }
         return required(courseId, assessmentId);
@@ -168,6 +173,103 @@ public class AssessmentService {
         requireTeacher(courseId);
         assessments.rollbackSources(courseId, assessmentId);
         return required(courseId, assessmentId);
+    }
+
+    public BaseGenerationView startBaseGeneration(UUID courseId, UUID assessmentId, int optionCount) {
+        requireTeacher(courseId);
+        if (!List.of(4, 5).contains(optionCount)) {
+            throw new IllegalArgumentException("Option count must be four or five");
+        }
+        AssessmentView assessment = required(courseId, assessmentId);
+        if (assessment.currentStep() < 5 || assessment.examMatrixId() == null) {
+            throw new IllegalStateException("Confirm CCCT and Exam Matrix before creating Quiz 001");
+        }
+        UUID existingJobId = assessments.baseGenerationJobId(courseId, assessmentId);
+        if (existingJobId != null) {
+            QuizGenerationStatusResponse existing;
+            try {
+                existing = getQuizGenerationJobUseCase.getStatus(existingJobId);
+            } catch (QuizGenerationJobNotFoundException ex) {
+                assessments.resetFailedBaseGeneration(courseId, assessmentId, existingJobId);
+                assessment = required(courseId, assessmentId);
+                existing = null;
+            }
+            if (existing != null) {
+                if (existing.getStatus() != QuizGenerationStatus.FAILED
+                        && existing.getStatus() != QuizGenerationStatus.TIMED_OUT) {
+                    return reconcileBaseGeneration(courseId, assessmentId);
+                }
+                assessments.resetFailedBaseGeneration(courseId, assessmentId, existingJobId);
+                assessment = required(courseId, assessmentId);
+            }
+        }
+        List<String> unavailable = assessments.unreadyMaterialNames(courseId);
+        if (!unavailable.isEmpty()) {
+            throw new IllegalStateException("Materials are not ready for AI generation: " + String.join(", ", unavailable));
+        }
+        List<UUID> materialIds = assessments.allMaterialIds(courseId);
+        if (materialIds.isEmpty()) throw new IllegalStateException("The course has no source materials");
+        if (generateQuizUseCase == null) throw new IllegalStateException("Quiz generation is unavailable");
+        GenerateQuizCommand command = GenerateQuizCommand.builder()
+                .courseId(courseId)
+                .examMatrixId(assessment.examMatrixId())
+                .selectedMaterialIds(materialIds)
+                .visualRequirements(List.of())
+                .questionTypeOverrides(assessments.matrixCells(assessment.examMatrixId()).stream()
+                        .map(cell -> new GenerateQuizCommand.QuestionTypeOverride(
+                                cell.matrixRowId(), cell.customLearningLevelId(), "MULTIPLE_CHOICE"))
+                        .toList())
+                .questionDefaultsConfiguration(new GenerateQuizCommand.QuestionDefaultsConfiguration(
+                        new GenerateQuizCommand.MultipleChoiceDefaults(optionCount, false, true)))
+                .strictMode(true)
+                .codeRunnerPolicy("PRESERVE")
+                .idempotencyKey("quiz2-base-" + assessment.id() + "-" + assessment.version())
+                .quizTitle(assessment.title() + " - 001")
+                .description(assessment.description())
+                .unlimited(false)
+                .timeLimitMinutes(assessment.timeLimitMinutes())
+                .passScore(assessment.passScore())
+                .startTime(assessment.startTime())
+                .dueTime(assessment.dueTime())
+                .attemptLimited(assessment.attemptLimited())
+                .display(false)
+                .build();
+        QuizGenerationJobResponse job = generateQuizUseCase.generateQuiz(command);
+        assessments.startBaseGeneration(courseId, assessmentId, job.getJobId(), optionCount);
+        return new BaseGenerationView(job.getJobId(), job.getStatus().name(), "TEXT_GENERATION", 0,
+                null, null, null, 0, null);
+    }
+
+    @Transactional
+    public BaseGenerationView reconcileBaseGeneration(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        UUID jobId = assessments.baseGenerationJobId(courseId, assessmentId);
+        if (jobId == null) return new BaseGenerationView(null, "NOT_STARTED", null, null,
+                null, null, null, null, null);
+        if (getQuizGenerationJobUseCase == null) throw new IllegalStateException("Quiz generation status is unavailable");
+        QuizGenerationStatusResponse status;
+        try {
+            status = getQuizGenerationJobUseCase.getStatus(jobId);
+        } catch (QuizGenerationJobNotFoundException ex) {
+            assessments.resetFailedBaseGeneration(courseId, assessmentId, jobId);
+            return new BaseGenerationView(null, "NOT_STARTED", null, null,
+                    null, null, null, null, null);
+        }
+        if (status.getStatus() == QuizGenerationStatus.COMPLETED && status.getQuizId() != null) {
+            AssessmentView assessment = required(courseId, assessmentId);
+            workflow.attachBaseQuiz(assessment, status.getQuizId());
+        }
+        return new BaseGenerationView(jobId, status.getStatus().name(),
+                status.getPhase() == null ? null : status.getPhase().name(), status.getAttemptCount(),
+                status.getQuizId(), status.getErrorCode(), status.getErrorMessage(),
+                status.getGeneratedQuestionCount(), status.getTotalQuestionCount());
+    }
+
+    public List<VariantView> confirmBaseQuiz(UUID courseId, UUID assessmentId) {
+        CurrentActor actor = requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        workflow.confirmBaseQuiz(assessment, actor.id());
+        return workflow.variants(assessmentId);
     }
 
     public BankPlan bankPlan(UUID courseId, UUID assessmentId) {
@@ -311,12 +413,33 @@ public class AssessmentService {
         return workflow.resetRecentlyUsed(courseId, questionIds);
     }
 
-    public List<VariantView> createVariants(UUID courseId, UUID assessmentId) {
+    public List<VariantView> createVariants(UUID courseId, UUID assessmentId, int variantCount) {
         requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
-        BankPlan plan = workflow.bankPlan(assessment);
-        if (plan.missing() > 0) throw new IllegalStateException("Question Bank is missing " + plan.missing() + " questions");
-        return workflow.createVariants(assessment, plan);
+        if (variantCount < 1 || variantCount > 20) {
+            throw new IllegalArgumentException("Variant count must be between 1 and 20");
+        }
+        return workflow.createShuffledVariants(assessment, variantCount);
+    }
+
+    public List<VariantView> createVariants(UUID courseId, UUID assessmentId) {
+        AssessmentView assessment = required(courseId, assessmentId);
+        return createVariants(courseId, assessmentId, assessment.variantCount() == null ? 1 : assessment.variantCount());
+    }
+
+    @Transactional
+    public AssessmentView confirmVariantPreview(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        workflow.confirmVariantPreview(assessment);
+        return required(courseId, assessmentId);
+    }
+
+    public List<VariantView> reopenBaseQuiz(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        workflow.reopenBaseQuiz(assessment);
+        return workflow.variants(assessmentId);
     }
 
     public List<VariantView> variants(UUID courseId, UUID assessmentId) {
@@ -340,17 +463,6 @@ public class AssessmentService {
     }
 
     public List<VariantView> updateVariantQuestion(UUID courseId, UUID assessmentId, UUID variantId,
-            UUID questionId, VariantQuestionInput input) {
-        VariantEditingContext editing = requireVariantEditingContext(courseId, assessmentId, variantId, questionId);
-        AssessmentView assessment = editing.assessment();
-        VariantQuestionInput sanitized = sanitizeVariantQuestionInput(input, assessment.optionCount());
-        workflow.updateVariantQuestion(assessmentId, variantId, questionId, sanitized.content(), sanitized.contentFormat(),
-                sanitized.explanation(), sanitized.explanationFormat(), sanitized.answers());
-        workflow.recalculateCoverage(required(courseId, assessmentId), variantId);
-        return workflow.variants(assessmentId);
-    }
-
-    public List<VariantView> updateVariantQuestion(UUID courseId, UUID assessmentId, UUID variantId,
             UUID questionId, long expectedQuestionVersion, VariantQuestionInput input) {
         VariantEditingContext editing = requireVariantEditingContext(courseId, assessmentId, variantId, questionId);
         VariantQuestionInput sanitized = sanitizeVariantQuestionInput(input, editing.assessment().optionCount());
@@ -368,12 +480,13 @@ public class AssessmentService {
         if (assessment.lifecycleStatus() == LifecycleStatus.PUBLISHED) {
             throw new IllegalStateException("Assessment is published and read-only; unpublish it before editing");
         }
-        if (assessment.lifecycleStatus() != LifecycleStatus.READY_TO_PUBLISH) {
-            throw new IllegalStateException("Variant content can only be edited at the review step");
-        }
         VariantView variant = workflow.variants(assessmentId).stream()
                 .filter(value -> value.id().equals(variantId)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Assessment variant was not found"));
+        if (assessment.currentStep() != 6 || assessment.lifecycleStatus() != LifecycleStatus.REVIEW_PENDING
+                || !"BASE".equals(variant.kind())) {
+            throw new IllegalStateException("Only Quiz 001 can be edited during Base Quiz review");
+        }
         VariantQuestionView question = variant.questions().stream()
                 .filter(value -> value.id().equals(questionId)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Variant question was not found"));
@@ -400,12 +513,17 @@ public class AssessmentService {
 
     public PublishResult publish(UUID courseId, UUID assessmentId) {
         CurrentActor actor = requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        if (assessment.currentStep() != 9 || assessment.lifecycleStatus() != LifecycleStatus.READY_TO_PUBLISH) {
+            throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED", "preview", null, null,
+                    "Confirm Preview Variants before publishing");
+        }
         if (questionAi != null && questionAi.hasBlockingDraftOrJob(assessmentId)) {
             throw new IllegalStateException("Publish is blocked by AI work on questions: "
                     + questionAi.blockingQuestionIds(assessmentId)
                     + ". Save/discard their working drafts and finish or cancel active jobs.");
         }
-        return workflow.publish(required(courseId, assessmentId), actor.id());
+        return workflow.publish(assessment, actor.id());
     }
 
     @Transactional
@@ -477,10 +595,8 @@ public class AssessmentService {
 
     private void validateConfiguration(AssessmentConfiguration input) {
         if (input == null || trimToNull(input.title()) == null) throw new IllegalArgumentException("Assessment title is required");
-        if (input.variantCount() < 1 || input.variantCount() > 20) throw new IllegalArgumentException("Variant count must be between 1 and 20");
-        if (!List.of(4, 5).contains(input.optionCount())) throw new IllegalArgumentException("Option count must be four or five");
-        if (!input.unlimited() && (input.timeLimitMinutes() == null || input.timeLimitMinutes() <= 0)) {
-            throw new IllegalArgumentException("A positive time limit is required when time is limited");
+        if (input.timeLimitMinutes() == null || input.timeLimitMinutes() <= 0) {
+            throw new IllegalArgumentException("A positive time limit is required");
         }
         if (input.passScore() != null && (input.passScore() < 0 || input.passScore() > 100)) {
             throw new IllegalArgumentException("Pass score must be between 0 and 100");
@@ -495,9 +611,15 @@ public class AssessmentService {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    public record AssessmentConfiguration(String title, String description, boolean unlimited,
+    public record AssessmentConfiguration(String title, String description,
             Integer timeLimitMinutes, Double passScore, LocalDateTime startTime, LocalDateTime dueTime,
-            Integer attemptLimited, int variantCount, int optionCount, boolean allowRecentlyUsedQuestions) {
+            Integer attemptLimited) {
+        public AssessmentConfiguration(String title, String description, boolean ignoredUnlimited,
+                Integer timeLimitMinutes, Double passScore, LocalDateTime startTime, LocalDateTime dueTime,
+                Integer attemptLimited, int ignoredVariantCount, int ignoredOptionCount,
+                boolean ignoredAllowRecentlyUsedQuestions) {
+            this(title, description, timeLimitMinutes, passScore, startTime, dueTime, attemptLimited);
+        }
     }
 
     public enum SourceSelectionMode {
@@ -523,6 +645,9 @@ public class AssessmentService {
         public VariantQuestionInput(String content, List<AnswerInput> answers) {
             this(content, RichContentFormat.PLAIN_TEXT, null, RichContentFormat.PLAIN_TEXT, answers);
         }
+    }
+
+    public record VariantQuestionUpdate(long expectedQuestionVersion, VariantQuestionInput draft) {
     }
 
     public record VariantEditingContext(AssessmentView assessment, VariantView variant, VariantQuestionView question) {

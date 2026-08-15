@@ -17,8 +17,7 @@ import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
 
@@ -51,24 +50,24 @@ class QuestionVisualQuartzSchedulerAdapter implements ScheduleQuestionVisualJobP
     }
 
     @Override
-    public void scheduleImmediate(UUID parentJobId, LocalDateTime fireAt) {
+    public void scheduleImmediate(UUID parentJobId, Instant fireAt) {
         scheduleDispatchTrigger(TriggerKey.triggerKey(parentJobId.toString(), READY_GROUP), fireAt);
     }
 
     @Override
-    public void scheduleRetry(UUID visualJobId, LocalDateTime fireAt) {
+    public void scheduleRetry(UUID visualJobId, Instant fireAt) {
         scheduleDispatchTrigger(TriggerKey.triggerKey(visualJobId.toString(), RETRY_GROUP), fireAt);
         cancelTrigger(TriggerKey.triggerKey(visualJobId.toString(), LEASE_GROUP));
     }
 
     @Override
-    public void scheduleLeaseRecovery(UUID visualJobId, LocalDateTime fireAt) {
+    public void scheduleLeaseRecovery(UUID visualJobId, Instant fireAt) {
         scheduleDispatchTrigger(TriggerKey.triggerKey(visualJobId.toString(), LEASE_GROUP), fireAt);
         cancelTrigger(TriggerKey.triggerKey(visualJobId.toString(), RETRY_GROUP));
     }
 
     @Override
-    public void scheduleDeadline(UUID parentJobId, LocalDateTime fireAt) {
+    public void scheduleDeadline(UUID parentJobId, Instant fireAt) {
         JobKey jobKey = JobKey.jobKey(parentJobId.toString(), DEADLINE_JOB_GROUP);
         TriggerKey triggerKey = TriggerKey.triggerKey(parentJobId.toString(), DEADLINE_TRIGGER_GROUP);
         JobDataMap data = new JobDataMap();
@@ -108,7 +107,7 @@ class QuestionVisualQuartzSchedulerAdapter implements ScheduleQuestionVisualJobP
         }
     }
 
-    private void scheduleDispatchTrigger(TriggerKey key, LocalDateTime fireAt) {
+    private void scheduleDispatchTrigger(TriggerKey key, Instant fireAt) {
         Trigger trigger = TriggerBuilder.newTrigger()
                 .withIdentity(key)
                 .forJob(DISPATCH_JOB)
@@ -126,7 +125,7 @@ class QuestionVisualQuartzSchedulerAdapter implements ScheduleQuestionVisualJobP
         }
     }
 
-    private Trigger oneShot(TriggerKey key, JobDetail detail, LocalDateTime fireAt) {
+    private Trigger oneShot(TriggerKey key, JobDetail detail, Instant fireAt) {
         return TriggerBuilder.newTrigger()
                 .withIdentity(key)
                 .forJob(detail)
@@ -135,9 +134,8 @@ class QuestionVisualQuartzSchedulerAdapter implements ScheduleQuestionVisualJobP
                 .build();
     }
 
-    private Date toDate(LocalDateTime fireAt) {
-        LocalDateTime value = fireAt == null ? LocalDateTime.now() : fireAt;
-        return Date.from(value.atZone(ZoneId.systemDefault()).toInstant());
+    private Date toDate(Instant fireAt) {
+        return Date.from(fireAt == null ? Instant.now() : fireAt);
     }
 
     private void cancelTrigger(TriggerKey key) {

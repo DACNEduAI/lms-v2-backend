@@ -53,6 +53,7 @@ import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.LifecycleStat
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichTextValue;
 import edu.ai.lms.core.quiz.app.exception.AssessmentValidationException;
+import edu.ai.lms.core.quiz.app.exception.QuestionVersionConflictException;
 import edu.ai.lms.core.quiz.app.exception.RichContentValidationException;
 import edu.ai.lms.core.quiz.app.port.out.ManageQuizReleasePort;
 import edu.ai.lms.core.quiz.app.service.richcontent.RichContentPolicyService;
@@ -641,6 +642,239 @@ public class AssessmentWorkflowRepository {
     }
 
     @Transactional
+    public void attachBaseQuiz(AssessmentView assessment, UUID quizId) {
+        List<VariantView> existing = variants(assessment.id());
+        if (!existing.isEmpty()) {
+            if (existing.size() == 1 && "BASE".equals(existing.get(0).kind())
+                    && existing.get(0).quizId().equals(quizId)) return;
+            throw new IllegalStateException("Assessment already has a Quiz 001");
+        }
+        Integer owned = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM edu.quizzes
+                WHERE id = :quizId AND course_id = :courseId AND source_type = 'AI_GENERATED'
+                """, Map.of("quizId", quizId, "courseId", assessment.courseId()), Integer.class);
+        if (owned == null || owned != 1) throw new IllegalStateException("Generated Quiz 001 is invalid");
+        jdbc.update("""
+                UPDATE edu.questions q
+                SET matrix_row_id = provenance.matrix_row_id,
+                    custom_learning_level_id = provenance.custom_learning_level_id,
+                    chapter_id = matrix_row.chapter_id
+                FROM edu.question_generation_provenance provenance
+                LEFT JOIN edu.exam_matrix_rows matrix_row ON matrix_row.id = provenance.matrix_row_id
+                WHERE q.id = provenance.question_id AND q.quiz_id = :quizId
+                """, Map.of("quizId", quizId));
+        jdbc.update("""
+                WITH ordered AS (
+                    SELECT id, row_number() OVER (ORDER BY created_at, id) - 1 AS next_order
+                    FROM edu.questions WHERE quiz_id = :quizId
+                )
+                UPDATE edu.questions q SET order_index = ordered.next_order
+                FROM ordered WHERE q.id = ordered.id
+                """, Map.of("quizId", quizId));
+        UUID variantId = UUID.randomUUID();
+        long seed = assessment.id().getMostSignificantBits() ^ assessment.id().getLeastSignificantBits();
+        jdbc.update("""
+                INSERT INTO edu.assessment_variants
+                    (id, assessment_id, quiz_id, variant_code, variant_kind, order_index, shuffle_seed)
+                VALUES (:id, :assessmentId, :quizId, '001', 'BASE', 0, :seed)
+                """, Map.of("id", variantId, "assessmentId", assessment.id(), "quizId", quizId, "seed", seed));
+        jdbc.update("""
+                UPDATE edu.assessments
+                SET lifecycle_status = 'REVIEW_PENDING', current_step = 6,
+                    version = version + 1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = :assessmentId AND base_generation_job_id IS NOT NULL
+                """, Map.of("assessmentId", assessment.id()));
+    }
+
+    @Transactional
+    public void confirmBaseQuiz(AssessmentView assessment, UUID actorId) {
+        if (assessment.currentStep() != 6 || assessment.optionCount() == null) {
+            throw new IllegalStateException("Quiz 001 is not ready for confirmation");
+        }
+        VariantView base = variants(assessment.id()).stream()
+                .filter(value -> "BASE".equals(value.kind())).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Quiz 001 was not found"));
+        int required = matrixQuestionCount(assessment);
+        if (base.questions().size() != required) {
+            throw new AssessmentValidationException("ASSESSMENT_BASE_VALIDATION_FAILED", "questions",
+                    base.id(), null, "Quiz 001 must contain exactly " + required + " Matrix questions");
+        }
+        validateVariantStructure(base, assessment.optionCount());
+        validateVariantRichContent(base);
+        Integer missingMetadata = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM edu.questions
+                WHERE quiz_id = :quizId AND (matrix_row_id IS NULL OR custom_learning_level_id IS NULL)
+                """, Map.of("quizId", base.quizId()), Integer.class);
+        if (missingMetadata != null && missingMetadata > 0) {
+            throw new AssessmentValidationException("ASSESSMENT_BASE_VALIDATION_FAILED", "metadata",
+                    base.id(), null, "Every Quiz 001 question requires Matrix allocation metadata");
+        }
+        Integer unreadyVisuals = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM edu.question_images image
+                JOIN edu.questions question ON question.id = image.question_id
+                WHERE question.quiz_id = :quizId AND image.status <> 'READY'
+                """, Map.of("quizId", base.quizId()), Integer.class);
+        if (unreadyVisuals != null && unreadyVisuals > 0) {
+            throw new AssessmentValidationException("ASSESSMENT_BASE_VALIDATION_FAILED", "visuals",
+                    base.id(), null, "Every required visual must be ready before confirming Quiz 001");
+        }
+        if (!"COMPLIANT".equals(recalculateCoverage(assessment, base.id()))) {
+            throw new AssessmentValidationException("ASSESSMENT_BASE_VALIDATION_FAILED", "coverage",
+                    base.id(), null, "Quiz 001 must satisfy the Exam Matrix before confirmation");
+        }
+        jdbc.update("UPDATE edu.questions SET review_status = 'APPROVED', reviewed_by = :actorId, reviewed_at = CURRENT_TIMESTAMP WHERE quiz_id = :quizId",
+                Map.of("actorId", actorId, "quizId", base.quizId()));
+        jdbc.update("UPDATE edu.quizzes SET lifecycle_status = 'READY_TO_PUBLISH', version = version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = :quizId",
+                Map.of("quizId", base.quizId()));
+        jdbc.update("""
+                UPDATE edu.assessments
+                SET base_confirmed_by = :actorId, base_confirmed_at = CURRENT_TIMESTAMP,
+                    current_step = 7, version = version + 1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = :assessmentId
+                """, Map.of("actorId", actorId, "assessmentId", assessment.id()));
+    }
+
+    @Transactional
+    public List<VariantView> createShuffledVariants(AssessmentView assessment, int variantCount) {
+        if (assessment.currentStep() == 8) {
+            throw new IllegalStateException("Variants have already been created; open Preview Variants to continue");
+        }
+        if (assessment.currentStep() != 7) throw new IllegalStateException("Confirm Quiz 001 before creating variants");
+        VariantView base = variants(assessment.id()).stream().filter(value -> "BASE".equals(value.kind())).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Quiz 001 was not found"));
+        Integer confirmed = jdbc.queryForObject("SELECT COUNT(*) FROM edu.assessments WHERE id = :id AND base_confirmed_at IS NOT NULL",
+                Map.of("id", assessment.id()), Integer.class);
+        if (confirmed == null || confirmed != 1) throw new IllegalStateException("Confirm Quiz 001 before creating variants");
+        Integer shuffledCount = jdbc.queryForObject("SELECT COUNT(*) FROM edu.assessment_variants WHERE assessment_id = :id AND variant_kind = 'SHUFFLED'",
+                Map.of("id", assessment.id()), Integer.class);
+        if (shuffledCount != null && shuffledCount > 0) throw new IllegalStateException("Shuffled variants already exist");
+        for (int variantIndex = 1; variantIndex < variantCount; variantIndex++) {
+            cloneBaseVariant(assessment, base.quizId(), variantIndex);
+        }
+        jdbc.update("""
+                UPDATE edu.assessments
+                SET variant_count = :variantCount, lifecycle_status = 'READY_TO_PUBLISH', current_step = 8,
+                    version = version + 1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = :assessmentId
+                """, Map.of("variantCount", variantCount, "assessmentId", assessment.id()));
+        return variants(assessment.id());
+    }
+
+    @Transactional
+    public void confirmVariantPreview(AssessmentView assessment) {
+        if (assessment.currentStep() != 8 || assessment.lifecycleStatus() != LifecycleStatus.READY_TO_PUBLISH) {
+            throw new IllegalStateException("Create and review shuffled variants before continuing to Publish");
+        }
+        Integer expected = assessment.variantCount();
+        Integer actual = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM edu.assessment_variants WHERE assessment_id = :assessmentId
+                """, Map.of("assessmentId", assessment.id()), Integer.class);
+        if (expected == null || actual == null || !actual.equals(expected)) {
+            throw new IllegalStateException("Assessment variants are incomplete; reload Preview Variants before continuing to Publish");
+        }
+        int updated = jdbc.update("""
+                UPDATE edu.assessments
+                SET current_step = 9, version = version + 1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = :assessmentId AND current_step = 8 AND lifecycle_status = 'READY_TO_PUBLISH'
+                """, Map.of("assessmentId", assessment.id()));
+        if (updated != 1) throw new IllegalStateException("Assessment changed before Preview Variants was confirmed");
+    }
+
+    @Transactional
+    public void reopenBaseQuiz(AssessmentView assessment) {
+        if (assessment.lifecycleStatus() == LifecycleStatus.PUBLISHED) {
+            throw new IllegalStateException("Unpublish the Assessment before reopening Quiz 001");
+        }
+        List<UUID> quizIds = jdbc.query("""
+                SELECT quiz_id FROM edu.assessment_variants
+                WHERE assessment_id = :assessmentId AND variant_kind = 'SHUFFLED'
+                """, Map.of("assessmentId", assessment.id()), (rs, rowNum) -> rs.getObject(1, UUID.class));
+        jdbc.update("DELETE FROM edu.assessment_variants WHERE assessment_id = :assessmentId AND variant_kind = 'SHUFFLED'",
+                Map.of("assessmentId", assessment.id()));
+        if (!quizIds.isEmpty()) jdbc.update("DELETE FROM edu.quizzes WHERE id IN (:quizIds)",
+                new MapSqlParameterSource().addValue("quizIds", quizIds));
+        UUID baseQuizId = jdbc.queryForObject("SELECT quiz_id FROM edu.assessment_variants WHERE assessment_id = :id AND variant_kind = 'BASE'",
+                Map.of("id", assessment.id()), UUID.class);
+        jdbc.update("UPDATE edu.quizzes SET lifecycle_status = 'REVIEW_PENDING', version = version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = :quizId",
+                Map.of("quizId", baseQuizId));
+        jdbc.update("""
+                UPDATE edu.assessments
+                SET variant_count = NULL, base_confirmed_by = NULL, base_confirmed_at = NULL,
+                    lifecycle_status = 'REVIEW_PENDING', current_step = 6,
+                    version = version + 1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = :assessmentId
+                """, Map.of("assessmentId", assessment.id()));
+    }
+
+    private void cloneBaseVariant(AssessmentView assessment, UUID baseQuizId, int variantIndex) {
+        UUID quizId = UUID.randomUUID();
+        UUID variantId = UUID.randomUUID();
+        String code = "%03d".formatted(variantIndex + 1);
+        long seed = assessment.id().getMostSignificantBits() ^ assessment.id().getLeastSignificantBits() ^ variantIndex;
+        jdbc.update("""
+                INSERT INTO edu.quizzes
+                    (id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time,
+                     attempt_limited, course_id, teacher_id, display, lifecycle_status, source_type, original_quiz_id)
+                SELECT :quizId, :title, description, false, time_limit_minutes, pass_score, start_time, due_time,
+                       attempt_limited, course_id, teacher_id, false, 'READY_TO_PUBLISH', 'CLONED', id
+                FROM edu.quizzes WHERE id = :baseQuizId
+                """, Map.of("quizId", quizId, "title", assessment.title() + " - " + code, "baseQuizId", baseQuizId));
+        jdbc.update("""
+                INSERT INTO edu.assessment_variants
+                    (id, assessment_id, quiz_id, variant_code, variant_kind, order_index, shuffle_seed)
+                VALUES (:id, :assessmentId, :quizId, :code, 'SHUFFLED', :orderIndex, :seed)
+                """, Map.of("id", variantId, "assessmentId", assessment.id(), "quizId", quizId,
+                "code", code, "orderIndex", variantIndex, "seed", seed));
+        List<UUID> sourceQuestions = new ArrayList<>(jdbc.query("SELECT id FROM edu.questions WHERE quiz_id = :quizId ORDER BY order_index, id",
+                Map.of("quizId", baseQuizId), (rs, rowNum) -> rs.getObject(1, UUID.class)));
+        Collections.shuffle(sourceQuestions, new Random(seed));
+        for (int questionIndex = 0; questionIndex < sourceQuestions.size(); questionIndex++) {
+            cloneBaseQuestion(sourceQuestions.get(questionIndex), quizId, questionIndex, seed);
+        }
+    }
+
+    private void cloneBaseQuestion(UUID sourceQuestionId, UUID quizId, int orderIndex, long seed) {
+        UUID questionId = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO edu.questions
+                    (id, content, content_format, explanation, explanation_format, type, quiz_id,
+                     review_status, source_type, source_question_id, chapter_id, cognitive_level_id,
+                     matrix_row_id, custom_learning_level_id, order_index)
+                SELECT :id, content, content_format, explanation, explanation_format, type, :quizId,
+                       'APPROVED', 'QUIZ_CLONE', id, chapter_id, cognitive_level_id,
+                       matrix_row_id, custom_learning_level_id, :orderIndex
+                FROM edu.questions WHERE id = :sourceQuestionId
+                """, Map.of("id", questionId, "quizId", quizId, "orderIndex", orderIndex,
+                "sourceQuestionId", sourceQuestionId));
+        List<Map<String, Object>> answers = new ArrayList<>(jdbc.queryForList("""
+                SELECT content, content_format, is_correct, explanation, explanation_format
+                FROM edu.answers WHERE question_id = :questionId ORDER BY answer_number
+                """, Map.of("questionId", sourceQuestionId)));
+        Collections.shuffle(answers, new Random(seed ^ sourceQuestionId.getLeastSignificantBits()));
+        for (Map<String, Object> answer : answers) {
+            jdbc.update("""
+                    INSERT INTO edu.answers
+                        (question_id, content, content_format, is_correct, explanation, explanation_format)
+                    VALUES (:questionId, :content, :content_format, :is_correct, :explanation, :explanation_format)
+                    """, new MapSqlParameterSource(answer).addValue("questionId", questionId));
+        }
+        jdbc.update("""
+                INSERT INTO edu.question_learning_outcomes (question_id, learning_outcome_id)
+                SELECT :questionId, learning_outcome_id FROM edu.question_learning_outcomes
+                WHERE question_id = :sourceQuestionId
+                """, Map.of("questionId", questionId, "sourceQuestionId", sourceQuestionId));
+        jdbc.update("""
+                INSERT INTO edu.question_images
+                    (id, question_id, source_type, source_text, generation_brief, alt_text, status,
+                     image_name, storage_key, url, media_type, content_hash, byte_size, error_code, error_message)
+                SELECT gen_random_uuid(), :questionId, source_type, source_text, generation_brief, alt_text, status,
+                       image_name, storage_key, url, media_type, content_hash, byte_size, error_code, error_message
+                FROM edu.question_images WHERE question_id = :sourceQuestionId
+                """, Map.of("questionId", questionId, "sourceQuestionId", sourceQuestionId));
+        richContentAssets.copyQuestionAssetsToQuestion(sourceQuestionId, questionId);
+    }
+
+    @Transactional
     public List<VariantView> createVariants(AssessmentView assessment, BankPlan plan) {
         Integer existing = jdbc.queryForObject("SELECT COUNT(*) FROM edu.assessment_variants WHERE assessment_id = :id",
                 Map.of("id", assessment.id()), Integer.class);
@@ -707,12 +941,12 @@ public class AssessmentWorkflowRepository {
 
     public List<VariantView> variants(UUID assessmentId) {
         return jdbc.query("""
-                SELECT id, quiz_id, variant_code, order_index, shuffle_seed, coverage_status,
+                SELECT id, quiz_id, variant_code, variant_kind, order_index, shuffle_seed, coverage_status,
                        override_reason, override_by, override_at
                 FROM edu.assessment_variants WHERE assessment_id = :assessmentId ORDER BY order_index
                 """, Map.of("assessmentId", assessmentId), (rs, rowNum) -> new VariantView(
                 rs.getObject("id", UUID.class), rs.getObject("quiz_id", UUID.class), rs.getString("variant_code"),
-                rs.getInt("order_index"), rs.getLong("shuffle_seed"), rs.getString("coverage_status"),
+                rs.getString("variant_kind"), rs.getInt("order_index"), rs.getLong("shuffle_seed"), rs.getString("coverage_status"),
                 rs.getString("override_reason"), rs.getObject("override_by", UUID.class),
                 rs.getObject("override_at", LocalDateTime.class),
                 variantQuestions(rs.getObject("quiz_id", UUID.class))));
@@ -721,7 +955,7 @@ public class AssessmentWorkflowRepository {
     public String recalculateCoverage(AssessmentView assessment, UUID variantId) {
         UUID quizId = variantQuiz(assessment.id(), variantId);
         List<Map<String, Object>> differences = new ArrayList<>();
-        for (BankPlanCell cell : bankPlan(assessment).cells()) {
+        for (MatrixRequirement cell : matrixRequirements(assessment)) {
             MapSqlParameterSource params = new MapSqlParameterSource()
                     .addValue("quizId", quizId).addValue("chapterId", cell.chapterId())
                     .addValue("levelId", cell.customLearningLevelId()).addValue("levelCode", cell.levelCode())
@@ -755,6 +989,28 @@ public class AssessmentWorkflowRepository {
         return status;
     }
 
+    private List<MatrixRequirement> matrixRequirements(AssessmentView assessment) {
+        if (assessment.examMatrixId() == null) throw new IllegalStateException("Select an Exam Matrix first");
+        return jdbc.query("""
+                SELECT r.id AS matrix_row_id, counts.custom_learning_level_id,
+                       SUM(counts.question_count) AS question_count
+                FROM edu.exam_matrix_row_learning_level_counts counts
+                JOIN edu.exam_matrix_rows r ON r.id = counts.exam_matrix_row_id
+                WHERE r.matrix_id = :matrixId AND counts.question_count > 0
+                GROUP BY r.id, r.order_index, counts.custom_learning_level_id
+                ORDER BY r.order_index, r.id, counts.custom_learning_level_id
+                """, Map.of("matrixId", assessment.examMatrixId()), (rs, rowNum) -> {
+            UUID rowId = rs.getObject("matrix_row_id", UUID.class);
+            UUID levelId = rs.getObject("custom_learning_level_id", UUID.class);
+            return new MatrixRequirement(rowId, levelId, cellOutcomeIds(rowId, levelId),
+                    rs.getInt("question_count"));
+        });
+    }
+
+    private int matrixQuestionCount(AssessmentView assessment) {
+        return matrixRequirements(assessment).stream().mapToInt(MatrixRequirement::required).sum();
+    }
+
     public void setOverride(UUID assessmentId, UUID variantId, UUID actorId, String reason) {
         int updated = jdbc.update("""
                 UPDATE edu.assessment_variants SET override_reason = :reason, override_by = :actorId,
@@ -767,13 +1023,23 @@ public class AssessmentWorkflowRepository {
 
     @Transactional
     public PublishResult publish(AssessmentView assessment, UUID actorId) {
+        Integer confirmed = jdbc.queryForObject("SELECT COUNT(*) FROM edu.assessments WHERE id = :id AND base_confirmed_at IS NOT NULL",
+                Map.of("id", assessment.id()), Integer.class);
+        if (confirmed == null || confirmed != 1) {
+            throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED", "baseQuiz", null, null,
+                    "Confirm Quiz 001 before publishing");
+        }
+        if (assessment.optionCount() == null || assessment.variantCount() == null) {
+            throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED", "configuration", null, null,
+                    "Configure Answers per MCQ and Number of variants before publishing");
+        }
         AssessmentQuestionProgress progress = questionProgress(assessment);
         if (!progress.complete()) {
             throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED", "questions", null, null,
                     "Every variant must contain exactly " + progress.requiredPerVariant() + " Matrix questions before publishing");
         }
         List<VariantView> variants = variants(assessment.id());
-        if (variants.size() != assessment.variantCount()) {
+        if (assessment.variantCount() == null || variants.size() != assessment.variantCount()) {
             throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED", "variants", null, null,
                     "Assessment variants are incomplete");
         }
@@ -792,9 +1058,10 @@ public class AssessmentWorkflowRepository {
                     published_by = :actorId, published_at = :publishedAt,
                     version = version + 1, updated_at = CURRENT_TIMESTAMP
                 WHERE q.id IN (SELECT quiz_id FROM edu.assessment_variants WHERE assessment_id = :assessmentId)
-                  AND q.lifecycle_status = 'DRAFT'
+                  AND q.lifecycle_status = 'READY_TO_PUBLISH'
                 """, Map.of("actorId", actorId, "publishedAt", publishedAt, "assessmentId", assessment.id()));
         if (publishedVariants != variants.size()) throw new IllegalStateException("One or more variants changed before publish");
+<<<<<<< HEAD
         for (VariantView variant : variants) {
             quizReleases.publishRelease(variant.quizId(), 1, actorId, publishedAt);
         }
@@ -813,18 +1080,19 @@ public class AssessmentWorkflowRepository {
                     """, new MapSqlParameterSource().addValue("publishedAt", publishedAt).addValue("ids", bankIds));
         }
         int updated = jdbc.update("""
-                UPDATE edu.assessments SET lifecycle_status = 'PUBLISHED', current_step = 10,
+                UPDATE edu.assessments SET lifecycle_status = 'PUBLISHED', current_step = 9,
                     published_by = :actorId, published_at = :publishedAt,
                     version = version + 1, updated_at = CURRENT_TIMESTAMP
                 WHERE id = :assessmentId AND lifecycle_status = 'READY_TO_PUBLISH'
                 """, Map.of("actorId", actorId, "publishedAt", publishedAt, "assessmentId", assessment.id()));
         if (updated != 1) throw new IllegalStateException("Assessment changed before publish");
-        return new PublishResult(assessment.id(), LifecycleStatus.PUBLISHED, publishedVariants, bankIds.size(), publishedAt);
+        return new PublishResult(assessment.id(), LifecycleStatus.PUBLISHED, publishedVariants, 0, publishedAt);
     }
 
     public AssessmentQuestionProgress questionProgress(AssessmentView assessment) {
         if (assessment.examMatrixId() == null) {
-            return new AssessmentQuestionProgress(null, 0, 0, assessment.variantCount(), false);
+            return new AssessmentQuestionProgress(null, 0, 0,
+                    assessment.variantCount() == null ? 0 : assessment.variantCount(), false);
         }
         Integer required = jdbc.queryForObject("""
                 SELECT COALESCE(SUM(c.question_count), 0)
@@ -844,9 +1112,10 @@ public class AssessmentWorkflowRepository {
         int minimum = counts.isEmpty() ? 0 : counts.stream().mapToInt(Integer::intValue).min().orElse(0);
         int maximum = counts.isEmpty() ? 0 : counts.stream().mapToInt(Integer::intValue).max().orElse(0);
         int target = required == null ? 0 : required;
-        boolean complete = counts.size() == assessment.variantCount()
+        int configuredVariants = assessment.variantCount() == null ? 0 : assessment.variantCount();
+        boolean complete = configuredVariants > 0 && counts.size() == configuredVariants
                 && counts.stream().allMatch(count -> count == target);
-        return new AssessmentQuestionProgress(target, minimum, maximum, assessment.variantCount(), complete);
+        return new AssessmentQuestionProgress(target, minimum, maximum, configuredVariants, complete);
     }
 
     @Transactional
@@ -854,16 +1123,16 @@ public class AssessmentWorkflowRepository {
         variants(assessment.id()).forEach(variant -> quizReleases.deactivate(variant.quizId()));
         int variants = jdbc.update("""
                 UPDATE edu.quizzes q
-                SET lifecycle_status = 'DRAFT', display = false, version = version + 1, updated_at = CURRENT_TIMESTAMP
+                SET lifecycle_status = 'READY_TO_PUBLISH', display = false, version = version + 1, updated_at = CURRENT_TIMESTAMP
                 WHERE q.id IN (SELECT quiz_id FROM edu.assessment_variants WHERE assessment_id = :assessmentId)
                   AND q.lifecycle_status = 'PUBLISHED'
                 """, Map.of("assessmentId", assessment.id()));
-        if (variants != assessment.variantCount()) {
+        if (assessment.variantCount() == null || variants != assessment.variantCount()) {
             throw new IllegalStateException("Assessment variants changed before unpublish");
         }
         int updated = jdbc.update("""
                 UPDATE edu.assessments
-                SET lifecycle_status = 'READY_TO_PUBLISH', current_step = 9,
+                SET lifecycle_status = 'READY_TO_PUBLISH', current_step = 8,
                     last_unpublished_by = :actorId, last_unpublished_at = CURRENT_TIMESTAMP,
                     version = version + 1, updated_at = CURRENT_TIMESTAMP
                 WHERE id = :assessmentId AND lifecycle_status = 'PUBLISHED'
@@ -871,14 +1140,7 @@ public class AssessmentWorkflowRepository {
         if (updated != 1) throw new IllegalStateException("Assessment changed before unpublish");
     }
 
-    public void updateVariantQuestion(UUID assessmentId, UUID variantId, UUID questionId,
-            String content, RichContentFormat contentFormat, String explanation,
-            RichContentFormat explanationFormat, List<AnswerInput> answers) {
-        updateVariantQuestion(assessmentId, variantId, questionId, null, content, contentFormat,
-                explanation, explanationFormat, answers);
-    }
-
-    public void updateVariantQuestion(UUID assessmentId, UUID variantId, UUID questionId, Long expectedVersion,
+    public void updateVariantQuestion(UUID assessmentId, UUID variantId, UUID questionId, long expectedVersion,
             String content, RichContentFormat contentFormat, String explanation,
             RichContentFormat explanationFormat, List<AnswerInput> answers) {
         UUID quizId = variantQuiz(assessmentId, variantId);
@@ -887,12 +1149,13 @@ public class AssessmentWorkflowRepository {
                     explanation = :explanation, explanation_format = :explanationFormat,
                     version = version + 1, updated_at = CURRENT_TIMESTAMP
                 WHERE id = :questionId AND quiz_id = :quizId
-                  AND (:expectedVersion IS NULL OR version = :expectedVersion)
+                  AND version = :expectedVersion
                 """, new MapSqlParameterSource().addValue("content", content).addValue("questionId", questionId)
                 .addValue("quizId", quizId).addValue("contentFormat", contentFormat.name())
                 .addValue("expectedVersion", expectedVersion)
                 .addValue("explanation", explanation).addValue("explanationFormat", explanationFormat.name()));
-        if (updated != 1) throw new IllegalStateException("Question version changed before Save; reload and review the AI draft");
+        if (updated != 1) throw new QuestionVersionConflictException(
+                "Question changed before this save; reload the Quiz 001 and try again");
         jdbc.update("DELETE FROM edu.answers WHERE question_id = :id", Map.of("id", questionId));
         for (AnswerInput answer : answers) {
             jdbc.update("""
@@ -1399,5 +1662,9 @@ public class AssessmentWorkflowRepository {
     }
 
     private record SelectedQuestion(UUID bankId, UUID matrixRowId, UUID customLearningLevelId) {
+    }
+
+    private record MatrixRequirement(UUID matrixRowId, UUID customLearningLevelId,
+            List<UUID> learningOutcomeIds, int required) {
     }
 }

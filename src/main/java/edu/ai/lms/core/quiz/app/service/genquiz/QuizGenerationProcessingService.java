@@ -19,8 +19,9 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.Clock;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -37,6 +38,7 @@ public class QuizGenerationProcessingService {
     private final WebClient aiWebClient;
     private final ObjectMapper objectMapper;
     private final QuizGenerationTimingLogger timingLogger;
+    private final Clock quizGenerationClock;
 
     @Value("${quiz.generation.webhook.base-url}")
     private String webhookBaseUrl;
@@ -51,18 +53,19 @@ public class QuizGenerationProcessingService {
             return;
         }
         if (beforeClaim.getCreatedAt() != null
-                && beforeClaim.getCreatedAt().plusMinutes(timeoutMinutes).isBefore(LocalDateTime.now())) {
+                && beforeClaim.getCreatedAt().plus(Duration.ofMinutes(timeoutMinutes))
+                .isBefore(Instant.now(quizGenerationClock))) {
             markTimedOut(beforeClaim);
             return;
         }
         if (beforeClaim.getStatus() == QuizGenerationStatus.PROCESSING
                 && beforeClaim.getLeaseUntil() != null
-                && beforeClaim.getLeaseUntil().isBefore(LocalDateTime.now())) {
+                && beforeClaim.getLeaseUntil().isBefore(Instant.now(quizGenerationClock))) {
             beforeClaim.setStatus(QuizGenerationStatus.PENDING);
-            beforeClaim.setNextAttemptAt(LocalDateTime.now());
+            beforeClaim.setNextAttemptAt(Instant.now(quizGenerationClock));
             saveJobPort.save(beforeClaim);
         }
-        if (!saveJobPort.claim(jobId, LocalDateTime.now().plusMinutes(timeoutMinutes))) {
+        if (!saveJobPort.claim(jobId, Instant.now(quizGenerationClock).plus(Duration.ofMinutes(timeoutMinutes)))) {
             return;
         }
 
@@ -74,17 +77,22 @@ public class QuizGenerationProcessingService {
         try {
             JsonNode snapshot = objectMapper.readTree(job.getRequestSnapshot());
             List<UUID> materialIds = new ArrayList<>();
-            snapshot.path("selectedMaterials").forEach(node -> materialIds.add(UUID.fromString(node.path("materialId").asText())));
+            List<String> documentKeys = new ArrayList<>();
+            snapshot.path("selectedMaterials").forEach(node -> {
+                materialIds.add(UUID.fromString(node.path("materialId").asText()));
+                if (!node.path("documentKey").asText().isBlank()) documentKeys.add(node.path("documentKey").asText());
+            });
             AiExamMatrix aiExamMatrix = toAiExamMatrixFromSnapshot(snapshot);
             GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfiguration =
                     questionDefaultsConfigurationFromSnapshot(snapshot);
             AiGenerationRequest request = new AiGenerationRequest(
                     job.getId(), aiExamMatrix.contractVersion(), job.getCourseId(),
                     snapshot.path("courseTitle").asText(), job.getQuizTitle(),
-                    aiExamMatrix.rows(), aiExamMatrix.learningOutcomeIds(), materialIds, job.getPrompt(),
+                    aiExamMatrix.rows(), aiExamMatrix.learningOutcomeIds(), materialIds, documentKeys, job.getPrompt(),
                     questionDefaultsConfiguration,
                     Boolean.TRUE.equals(job.getStrictMode()), job.getCodeRunnerPolicy(),
-                    job.getIdempotencyKey(), callbackUrl());
+                    job.getIdempotencyKey(), callbackUrl(), progressCallbackUrl(), webhookSecret,
+                    job.getAttemptCount());
 
             WebClient.RequestBodySpec call = aiWebClient.post().uri("/quiz-gen/generate")
                     .header(CorrelationIdFilter.HEADER_NAME, job.getId().toString())
@@ -110,16 +118,16 @@ public class QuizGenerationProcessingService {
         job.setLeaseUntil(null);
         job.setErrorCode(code);
         boolean willRetry = job.getAttemptCount() != null && job.getAttemptCount() < maxAttempts;
-        job.setErrorMessage(publicErrorMessage(code, willRetry));
+        job.setErrorMessage(technicalErrorMessage(message, code));
         if (willRetry) {
             long delaySeconds = Math.min(60, 1L << Math.max(1, job.getAttemptCount()));
             job.setStatus(QuizGenerationStatus.PENDING);
-            job.setNextAttemptAt(LocalDateTime.now().plusSeconds(delaySeconds));
+            job.setNextAttemptAt(Instant.now(quizGenerationClock).plusSeconds(delaySeconds));
             QuizGenerationJob saved = saveJobPort.save(job);
             schedulerPort.schedule(saved.getId(), saved.getNextAttemptAt());
         } else {
             job.setStatus(QuizGenerationStatus.FAILED);
-            LocalDateTime completedAt = LocalDateTime.now();
+            Instant completedAt = Instant.now(quizGenerationClock);
             job.setCompletedAt(completedAt);
             QuizGenerationJob saved = saveJobPort.save(job);
             timingLogger.textTerminal(saved, "failed", code, completedAt);
@@ -133,7 +141,7 @@ public class QuizGenerationProcessingService {
         job.setLeaseUntil(null);
         job.setErrorCode("GENERATION_TIMEOUT");
         job.setErrorMessage("Quiz generation exceeded its deadline");
-        LocalDateTime completedAt = LocalDateTime.now();
+        Instant completedAt = Instant.now(quizGenerationClock);
         job.setCompletedAt(completedAt);
         QuizGenerationJob saved = saveJobPort.save(job);
         timingLogger.textTerminal(saved, "timed_out", job.getErrorCode(), completedAt);
@@ -150,16 +158,21 @@ public class QuizGenerationProcessingService {
         return webhookBaseUrl.replaceAll("/+$", "") + "/api/internal/webhooks/quiz-generation";
     }
 
-    private String safeMessage(Exception ex) {
-        String message = ex.getMessage();
-        return message == null ? ex.getClass().getSimpleName() : message.substring(0, Math.min(1000, message.length()));
+    private String progressCallbackUrl() {
+        return callbackUrl() + "/progress";
     }
 
-    private String publicErrorMessage(String code, boolean willRetry) {
-        String message = "CALLBACK_MISSING".equals(code)
-                ? "The quiz service did not confirm delivery."
-                : "The quiz generation service is temporarily unavailable.";
-        return willRetry ? message + " The request will be retried." : message + " Retry the request later.";
+    private String safeMessage(Exception ex) {
+        return technicalErrorMessage(ex.getMessage(), ex.getClass().getSimpleName());
+    }
+
+    private String technicalErrorMessage(String value, String fallback) {
+        String message = value == null ? "" : value.trim();
+        if (message.isEmpty() || "no message available".equalsIgnoreCase(message)) message = fallback;
+        message = message.replaceAll("(?i)(authorization\\s*[:=]\\s*)([^\\s,;]+)", "$1[REDACTED]");
+        message = message.replaceAll("(?i)(bearer\\s+)([^\\s,;]+)", "$1[REDACTED]");
+        message = message.replaceAll("(?i)((?:token|secret|password|api[_-]?key)\\s*[:=]\\s*)([^\\s,;]+)", "$1[REDACTED]");
+        return message.substring(0, Math.min(1000, message.length()));
     }
 
     AiExamMatrix toAiExamMatrix(JsonNode snapshotRows) {
@@ -215,11 +228,15 @@ public class QuizGenerationProcessingService {
             JsonNode examMatrix,
             List<UUID> learningOutcomeIds,
             @JsonProperty("material_ids") List<UUID> selectedMaterialIds,
+            @JsonProperty("material_document_keys") List<String> materialDocumentKeys,
             String teacherInstruction,
             GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfiguration,
             boolean strictMode,
             String codeRunnerPolicy,
             String idempotencyKey,
-            String webhookUrl) {
+            String webhookUrl,
+            String progressWebhookUrl,
+            String webhookSecret,
+            Integer attempt) {
     }
 }

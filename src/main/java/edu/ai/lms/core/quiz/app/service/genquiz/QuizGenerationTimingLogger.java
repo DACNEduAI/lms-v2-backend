@@ -9,7 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /** Emits content-free, end-to-end timing logs for quiz generation. */
@@ -25,7 +25,7 @@ public class QuizGenerationTimingLogger {
                 job.getId(), counts.questions(), counts.visuals(), value(job.getAttemptCount()));
     }
 
-    public void textTerminal(QuizGenerationJob job, String outcome, String errorCode, LocalDateTime endedAt) {
+    public void textTerminal(QuizGenerationJob job, String outcome, String errorCode, Instant endedAt) {
         Counts counts = counts(job);
         long durationMs = durationMillis("quiz_generation.text." + outcome, job.getCreatedAt(), endedAt);
         if ("completed".equals(outcome)) {
@@ -40,7 +40,7 @@ public class QuizGenerationTimingLogger {
         }
     }
 
-    public void visualCompleted(QuestionVisualJobPort.WorkItem work, String actualType, LocalDateTime endedAt) {
+    public void visualCompleted(QuestionVisualJobPort.WorkItem work, String actualType, Instant endedAt) {
         log.info("quiz_generation.visual.completed job_id={} quiz_id={} question_id={} visual_job_id={} "
                         + "image_id={} requested_type={} actual_type={} outcome=completed attempts={} duration_ms={}",
                 work.parentJobId(), work.quizId(), work.questionId(), work.id(), work.imageId(),
@@ -48,13 +48,13 @@ public class QuizGenerationTimingLogger {
                 durationMillis("quiz_generation.visual.completed", work.createdAt(), endedAt));
     }
 
-    public void visualFailed(QuestionVisualJobPort.WorkItem work, String errorCode, LocalDateTime endedAt) {
+    public void visualFailed(QuestionVisualJobPort.WorkItem work, String errorCode, Instant endedAt) {
         visualFailed(work.parentJobId(), work.quizId(), work.questionId(), work.id(), work.imageId(),
                 work.visualType(), work.attemptCount() + 1, work.createdAt(), errorCode, endedAt);
     }
 
     public void visualExpired(QuestionVisualJobPort.ExpiredItem item, UUID parentJobId,
-                              String errorCode, LocalDateTime endedAt) {
+                               String errorCode, Instant endedAt) {
         visualFailed(parentJobId, item.quizId(), item.questionId(), item.jobId(), item.imageId(),
                 item.visualType(), item.attemptCount(), item.createdAt(), errorCode, endedAt);
     }
@@ -67,7 +67,7 @@ public class QuizGenerationTimingLogger {
     }
 
     public void visualPhaseTerminal(QuizGenerationJob parent, QuestionVisualJobPort.Summary summary,
-                                    LocalDateTime endedAt) {
+                                     Instant endedAt) {
         long durationMs = durationMillis(
                 "quiz_generation.visual_phase.completed", summary.startedAt(), endedAt);
         if (summary.failed() == 0) {
@@ -84,7 +84,7 @@ public class QuizGenerationTimingLogger {
     }
 
     public void quizTerminal(QuizGenerationJob job, QuestionVisualJobPort.Summary summary,
-                             LocalDateTime endedAt) {
+                             Instant endedAt) {
         Counts counts = counts(job);
         int requested = summary == null ? counts.visuals() : summary.requested();
         int ready = summary == null ? 0 : summary.ready();
@@ -105,7 +105,7 @@ public class QuizGenerationTimingLogger {
         }
     }
 
-    long durationMillis(String event, LocalDateTime startedAt, LocalDateTime endedAt) {
+    long durationMillis(String event, Instant startedAt, Instant endedAt) {
         if (startedAt == null || endedAt == null) {
             log.warn("quiz_generation.timing.missing event={} start_missing={} end_missing={}",
                     event, startedAt == null, endedAt == null);
@@ -121,7 +121,7 @@ public class QuizGenerationTimingLogger {
 
     private void visualFailed(UUID parentJobId, UUID quizId, UUID questionId, UUID visualJobId,
                               UUID imageId, String requestedType, int attempts,
-                              LocalDateTime startedAt, String errorCode, LocalDateTime endedAt) {
+                               Instant startedAt, String errorCode, Instant endedAt) {
         log.warn("quiz_generation.visual.failed job_id={} quiz_id={} question_id={} visual_job_id={} "
                         + "image_id={} requested_type={} actual_type=none outcome=failed attempts={} "
                         + "duration_ms={} error_code={}",

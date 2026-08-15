@@ -126,7 +126,7 @@ public class ExamMatrixController {
                       - learningOutcomeIds: One or more outcomes assigned to the chapter.
                       - levelCounts: Learning-level reference, explicit MULTIPLE_CHOICE type,
                         and non-negative question count.
-                    - customLearningLevels[]: At least three matrix-scoped levels created atomically
+                    - customLearningLevels[]: At least one matrix-scoped level created atomically
                       with the matrix.
                     """)
     @ApiResponses(value = {

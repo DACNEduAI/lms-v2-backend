@@ -217,8 +217,8 @@ public class CustomLearningLevelService implements CustomLearningLevelUseCase {
     }
 
     private void validateCompleteCoverage(Course course, List<CustomLearningLevel> levels) {
-        if (levels.size() < 3) {
-            throw invalid("An exam matrix must contain at least three custom learning levels");
+        if (levels.isEmpty()) {
+            throw invalid("An exam matrix must contain at least one custom learning level");
         }
         if (levels.stream().anyMatch(level -> level.getLearningOutcomeIds().isEmpty())) {
             throw invalid("Every custom learning level must contain at least one learning outcome");

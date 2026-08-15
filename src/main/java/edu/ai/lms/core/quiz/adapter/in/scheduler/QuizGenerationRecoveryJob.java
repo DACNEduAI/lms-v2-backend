@@ -11,7 +11,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.quartz.QuartzJobBean;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.Instant;
 
 @Slf4j
 @Component
@@ -21,6 +22,7 @@ public class QuizGenerationRecoveryJob extends QuartzJobBean {
     private final LoadQuizGenerationJobPort loadJobPort;
     private final SaveQuizGenerationJobPort saveJobPort;
     private final ScheduleQuizGenerationJobPort schedulerPort;
+    private final Clock quizGenerationClock;
 
     @Value("${quiz.generation.retention-days:30}")
     private long retentionDays;
@@ -29,12 +31,12 @@ public class QuizGenerationRecoveryJob extends QuartzJobBean {
     protected void executeInternal(JobExecutionContext context) {
         for (var jobId : loadJobPort.findRecoverableIds(25)) {
             try {
-                schedulerPort.schedule(jobId, LocalDateTime.now());
+                schedulerPort.schedule(jobId, Instant.now(quizGenerationClock));
             } catch (RuntimeException ex) {
                 log.warn("Could not recover quiz generation job {}", jobId, ex);
             }
         }
-        int deleted = saveJobPort.deleteTerminalBefore(LocalDateTime.now().minusDays(retentionDays));
+        int deleted = saveJobPort.deleteTerminalBefore(Instant.now(quizGenerationClock).minusSeconds(retentionDays * 86_400));
         if (deleted > 0) {
             log.info("Removed {} expired quiz generation job records", deleted);
         }
