@@ -86,6 +86,7 @@ public class VariantPdfRenderer {
             th, td { border: .25mm solid #777; padding: 1.5mm; vertical-align: top; }
             tr, pre, blockquote { break-inside: avoid; page-break-inside: avoid; }
             img { display: inline-block; height: auto; max-width: 100%; margin: .15rem .25rem; vertical-align: middle; break-inside: avoid; page-break-inside: avoid; }
+            img[data-image-layout=block] { display: block; margin: 1.5mm 0; }
             .math-block { display: block; width: 100%; margin: 1.5mm 0; text-align: center; }
             .katex-display { margin: 0; }
             """;

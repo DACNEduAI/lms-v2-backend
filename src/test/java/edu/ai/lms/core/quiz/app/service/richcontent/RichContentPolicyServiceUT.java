@@ -101,6 +101,18 @@ class RichContentPolicyServiceUT {
     }
 
     @Test
+    void preservesNativeTiptapPixelImageDimensions() {
+        var value = service.sanitize(new RichTextValue(
+                "<img src=\"https://assets.example/diagram.png\" alt=\"Diagram\" width=\"320\" height=\"180\">",
+                RichContentFormat.TIPTAP_HTML), 10_000);
+
+        var image = Jsoup.parseBodyFragment(value.content()).selectFirst("img");
+        assertTrue(image != null);
+        assertEquals("320", image.attr("width"));
+        assertEquals("180", image.attr("height"));
+    }
+
+    @Test
     void detectsMathAndImagesAsMeaningfulContent() {
         assertTrue(service.hasMeaningfulContent(new RichTextValue(
                 "<span data-type=\"inline-math\" data-latex=\"x\"></span>", RichContentFormat.TIPTAP_HTML)));

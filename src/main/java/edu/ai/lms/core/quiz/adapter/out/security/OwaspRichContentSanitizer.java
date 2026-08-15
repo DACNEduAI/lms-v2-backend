@@ -29,7 +29,7 @@ public class OwaspRichContentSanitizer implements SanitizeRichContentPort {
                     "ul", "ol", "li", "blockquote", "pre", "code")
             .allowAttributes("style").onElements("span", "p", "h1", "h2", "h3", "h4", "h5", "h6", "img")
             .allowAttributes("href", "target", "rel").onElements("a")
-            .allowAttributes("src", "alt", "title", "data-image-width").onElements("img")
+            .allowAttributes("src", "alt", "title", "width", "height", "data-image-width", "data-image-layout").onElements("img")
             .allowAttributes("colspan", "rowspan", "colwidth").onElements("th", "td")
             .allowAttributes("type", "checked", "data-checked").onElements("input", "li")
             .allowAttributes("data-type", "data-latex", "data-ai-artifact-id", "data-ai-artifact-type")
