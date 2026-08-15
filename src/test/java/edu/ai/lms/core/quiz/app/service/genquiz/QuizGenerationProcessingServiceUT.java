@@ -153,7 +153,8 @@ class QuizGenerationProcessingServiceUT {
         QuizGenerationProcessingService.AiGenerationRequest request =
                 new QuizGenerationProcessingService.AiGenerationRequest(
                         UUID.randomUUID(), 2, courseId, "DSA", "Quiz", objectMapper.createArrayNode(),
-                        java.util.List.of(), java.util.List.of(materialId), null,
+                        java.util.List.of(), java.util.List.of(materialId),
+                        java.util.List.of("lms-materials/courses/course/materials/file/source.pdf"), null,
                          new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.QuestionDefaultsConfiguration(
                                  new edu.ai.lms.core.quiz.app.port.in.command.GenerateQuizCommand.MultipleChoiceDefaults(
                                          6, true, false)),
@@ -164,6 +165,8 @@ class QuizGenerationProcessingServiceUT {
 
         assertEquals(courseId.toString(), json.path("course_id").asText());
         assertEquals(materialId.toString(), json.path("material_ids").get(0).asText());
+        assertEquals("lms-materials/courses/course/materials/file/source.pdf",
+                json.path("material_document_keys").get(0).asText());
         assertEquals(2, json.path("contractVersion").asInt());
         assertEquals("idempotency-key", json.path("idempotencyKey").asText());
         assertEquals("http://lms/callback/progress", json.path("progressWebhookUrl").asText());

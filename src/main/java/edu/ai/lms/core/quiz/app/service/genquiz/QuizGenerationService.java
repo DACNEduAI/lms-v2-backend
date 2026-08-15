@@ -81,9 +81,12 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         List<UUID> materialIds = command.selectedMaterialIds() == null ? List.of() : command.selectedMaterialIds();
         materialIds = materialIds.stream().distinct().toList();
         validateSelectedMaterials(command.courseId(), materialIds);
-        List<Map<String, Object>> materialSnapshot = materialIds.stream().distinct().map(id -> {
+        List<String> documentKeys = materialSelectionPort.readyDocumentKeys(command.courseId(), materialIds);
+        List<UUID> selectedMaterialIds = materialIds;
+        List<Map<String, Object>> materialSnapshot = java.util.stream.IntStream.range(0, selectedMaterialIds.size()).mapToObj(index -> {
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("materialId", id);
+            item.put("materialId", selectedMaterialIds.get(index));
+            item.put("documentKey", documentKeys.get(index));
             return item;
         }).toList();
 

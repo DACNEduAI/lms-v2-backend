@@ -2,7 +2,9 @@ package edu.ai.lms.core.material.app.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.ai.lms.core.material.app.domain.Material;
+import edu.ai.lms.core.material.app.domain.DocumentIndex;
 import edu.ai.lms.core.material.app.domain.MaterialIndexJob;
+import edu.ai.lms.core.material.app.port.out.persistence.DocumentIndexPort;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.MaterialIndexJobPort;
 import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
@@ -31,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,19 +43,13 @@ class MaterialIndexingServiceUT {
     @Mock GetMaterialPort materialPort;
     @Mock ModifyMaterialPort modifyMaterialPort;
     @Mock CreateDownloadLinkPort downloadLinkPort;
+    @Mock DocumentIndexPort documentIndexPort;
 
     private MaterialIndexingService service;
 
     @BeforeEach
     void setUp() {
-        ExchangeFunction exchange = request -> Mono.just(org.springframework.web.reactive.function.client.ClientResponse
-                .create(org.springframework.http.HttpStatus.OK)
-                .header("Content-Type", "application/json")
-                .body("{\"status\":\"success\"}").build());
-        service = new MaterialIndexingService(jobPort, schedulerPort, materialPort, modifyMaterialPort,
-                downloadLinkPort, WebClient.builder().exchangeFunction(exchange).build());
-        ReflectionTestUtils.setField(service, "maxAttempts", 3);
-        ReflectionTestUtils.setField(service, "timeoutMinutes", 1L);
+        service = createService(request -> jsonResponse("{\"status\":\"success\",\"source_hash\":\"sha-default\",\"chunks_created\":3}"));
     }
 
     @Test
@@ -122,7 +119,11 @@ class MaterialIndexingServiceUT {
     }
 
     @Test
-    void successfulProcessingMarksMatchingRevisionReady() {
+    void missingCloudIndexDownloadsAndRegistersMatchingRevision() {
+        AtomicInteger calls = new AtomicInteger();
+        service = createService(request -> calls.getAndIncrement() == 0
+                ? jsonResponse("{\"status\":\"missing\"}")
+                : jsonResponse("{\"status\":\"success\",\"source_hash\":\"sha-new\",\"chunks_created\":4}"));
         Material material = readyToQueue();
         MaterialIndexJob job = MaterialIndexJob.builder()
                 .id(UUID.randomUUID()).courseId(material.getCourseId()).materialId(material.getId())
@@ -139,7 +140,57 @@ class MaterialIndexingServiceUT {
         service.process(job.getId());
 
         assertEquals(Material.IngestionStatus.READY, material.getIngestionStatus());
+        verify(downloadLinkPort).createDownloadLink(material.getFileKey(), null);
+        verify(documentIndexPort).save(argThat(index ->
+                "sha-new".equals(index.getSourceHash()) && index.getChunkCount() == 4));
         verify(modifyMaterialPort, atLeast(2)).update(material);
+    }
+
+    @Test
+    void existingReadyCloudIndexSkipsDownloadAndMarksMaterialReady() {
+        Material material = readyToQueue();
+        MaterialIndexJob job = MaterialIndexJob.builder()
+                .id(UUID.randomUUID()).courseId(material.getCourseId()).materialId(material.getId())
+                .revision(material.getIngestionRevision()).operation(MaterialIndexJob.Operation.INGEST)
+                .status(MaterialIndexJob.Status.PROCESSING).attemptCount(1).build();
+        when(jobPort.findById(job.getId())).thenReturn(Optional.of(job));
+        when(jobPort.claim(eq(job.getId()), any())).thenReturn(true);
+        when(materialPort.findByIdAndCourseId(material.getId(), material.getCourseId()))
+                .thenReturn(Optional.of(material));
+        when(modifyMaterialPort.update(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(jobPort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(documentIndexPort.findReady("lms-materials", material.getFileKey(), "lms-index-v1"))
+                .thenReturn(Optional.of(DocumentIndex.builder().bucketName("lms-materials")
+                        .fileKey(material.getFileKey()).indexProfile("lms-index-v1")
+                        .sourceHash("sha-existing").status(DocumentIndex.Status.READY).build()));
+        service = createService(request -> jsonResponse(
+                "{\"status\":\"skipped\",\"source_hash\":\"sha-existing\",\"chunks_created\":4}"));
+
+        service.process(job.getId());
+
+        assertEquals(Material.IngestionStatus.READY, material.getIngestionStatus());
+        verifyNoInteractions(downloadLinkPort);
+        verify(documentIndexPort).save(argThat(index ->
+                "sha-existing".equals(index.getSourceHash()) && index.getChunkCount() == 4));
+    }
+
+    @Test
+    void deleteProcessingRemovesCloudRegistryAfterAiDeletion() {
+        UUID courseId = UUID.randomUUID();
+        UUID materialId = UUID.randomUUID();
+        String fileKey = "courses/course/notes.pdf";
+        MaterialIndexJob job = MaterialIndexJob.builder()
+                .id(UUID.randomUUID()).courseId(courseId).materialId(materialId).fileKey(fileKey)
+                .operation(MaterialIndexJob.Operation.DELETE).status(MaterialIndexJob.Status.PENDING)
+                .attemptCount(1).build();
+        when(jobPort.findById(job.getId())).thenReturn(Optional.of(job));
+        when(jobPort.claim(eq(job.getId()), any())).thenReturn(true);
+        when(jobPort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.process(job.getId());
+
+        assertEquals(MaterialIndexJob.Status.COMPLETED, job.getStatus());
+        verify(documentIndexPort).deleteByDocument("lms-materials", fileKey);
     }
 
     @Test
@@ -167,20 +218,12 @@ class MaterialIndexingServiceUT {
     @Test
     void retryCreatesAFreshDownloadUrlForEveryAttempt() {
         AtomicInteger calls = new AtomicInteger();
-        ExchangeFunction exchange = request -> {
-            if (calls.getAndIncrement() == 0) {
-                return Mono.just(org.springframework.web.reactive.function.client.ClientResponse
-                        .create(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE).build());
-            }
-            return Mono.just(org.springframework.web.reactive.function.client.ClientResponse
-                    .create(org.springframework.http.HttpStatus.OK)
-                    .header("Content-Type", "application/json")
-                    .body("{\"status\":\"success\"}").build());
-        };
-        service = new MaterialIndexingService(jobPort, schedulerPort, materialPort, modifyMaterialPort,
-                downloadLinkPort, WebClient.builder().exchangeFunction(exchange).build());
-        ReflectionTestUtils.setField(service, "maxAttempts", 3);
-        ReflectionTestUtils.setField(service, "timeoutMinutes", 1L);
+        service = createService(request -> switch (calls.getAndIncrement()) {
+            case 0, 2 -> jsonResponse("{\"status\":\"missing\"}");
+            case 1 -> Mono.just(org.springframework.web.reactive.function.client.ClientResponse
+                    .create(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE).build());
+            default -> jsonResponse("{\"status\":\"success\",\"source_hash\":\"sha-retry\",\"chunks_created\":2}");
+        });
 
         Material material = readyToQueue();
         MaterialIndexJob job = MaterialIndexJob.builder()
@@ -209,5 +252,23 @@ class MaterialIndexingServiceUT {
                 .fileKey("courses/course/notes.pdf").status(Material.MaterialStatus.UPLOADED)
                 .ingestionStatus(Material.IngestionStatus.PENDING).ingestionRevision(UUID.randomUUID())
                 .createdAt(LocalDateTime.now()).build();
+    }
+
+    private MaterialIndexingService createService(ExchangeFunction exchange) {
+        MaterialIndexingService created = new MaterialIndexingService(jobPort, schedulerPort, materialPort,
+                modifyMaterialPort, downloadLinkPort, WebClient.builder().exchangeFunction(exchange).build(),
+                documentIndexPort);
+        ReflectionTestUtils.setField(created, "maxAttempts", 3);
+        ReflectionTestUtils.setField(created, "timeoutMinutes", 1L);
+        ReflectionTestUtils.setField(created, "indexProfile", "lms-index-v1");
+        ReflectionTestUtils.setField(created, "bucketName", "lms-materials");
+        return created;
+    }
+
+    private Mono<org.springframework.web.reactive.function.client.ClientResponse> jsonResponse(String body) {
+        return Mono.just(org.springframework.web.reactive.function.client.ClientResponse
+                .create(org.springframework.http.HttpStatus.OK)
+                .header("Content-Type", "application/json")
+                .body(body).build());
     }
 }

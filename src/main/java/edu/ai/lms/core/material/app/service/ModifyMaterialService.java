@@ -30,28 +30,18 @@ public class ModifyMaterialService implements ModifyMaterialUseCase {
         Material patch = command.material();
         boolean fileKeyChanged = patch.getFileKey() != null && !patch.getFileKey().equals(existing.getFileKey());
 
+        if (fileKeyChanged) {
+            throw new IllegalStateException(
+                    "Material file keys are immutable. Create a new material to upload replacement content.");
+        }
+
         if (patch.getTitle() != null) existing.setTitle(patch.getTitle());
         if (patch.getType() != null) existing.setType(patch.getType());
-        if (patch.getFileKey() != null) existing.setFileKey(patch.getFileKey());
         existing.setDownloadable(patch.isDownloadable());
-
-        // Reset status to PENDING when the file key changes (new upload expected)
-        if (fileKeyChanged) {
-            existing.setStatus(Material.MaterialStatus.PENDING);
-            existing.setIngestionStatus(Material.IngestionStatus.NOT_STARTED);
-            existing.setIngestionError(null);
-            existing.setIngestionRevision(null);
-            existing.setIngestedAt(null);
-        }
 
         Material updated = modifyMaterialPort.update(existing);
 
-        // Generate a presigned upload URL when the file key changed
         String presignedUploadUrl = null;
-        if (fileKeyChanged && updated.getFileKey() != null) {
-            presignedUploadUrl = createUploadLinkPort.createUploadLink(
-                    updated.getFileKey(), updated.getContentType(), null);
-        }
 
         return ModifyMaterialResponse.builder()
                 .id(updated.getId())

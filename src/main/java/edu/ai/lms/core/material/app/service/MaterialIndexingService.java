@@ -5,11 +5,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import edu.ai.lms.config.CorrelationIdFilter;
 import edu.ai.lms.core.material.adapter.in.response.ConfirmUploadResponse;
 import edu.ai.lms.core.material.app.domain.Material;
+import edu.ai.lms.core.material.app.domain.DocumentIndex;
 import edu.ai.lms.core.material.app.domain.MaterialIndexJob;
 import edu.ai.lms.core.material.app.exception.MaterialNotFoundException;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.MaterialIndexJobPort;
 import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
+import edu.ai.lms.core.material.app.port.out.persistence.DocumentIndexPort;
 import edu.ai.lms.core.material.app.port.out.scheduler.ScheduleMaterialIndexJobPort;
 import edu.ai.lms.core.material.app.port.out.storage.CreateDownloadLinkPort;
 import lombok.RequiredArgsConstructor;
@@ -37,11 +39,16 @@ public class MaterialIndexingService {
     private final ModifyMaterialPort modifyMaterialPort;
     private final CreateDownloadLinkPort downloadLinkPort;
     private final WebClient aiWebClient;
+    private final DocumentIndexPort documentIndexPort;
 
     @Value("${material.indexing.max-attempts:3}")
     private int maxAttempts;
     @Value("${material.indexing.timeout-minutes:15}")
     private long timeoutMinutes;
+    @Value("${material.indexing.profile:lms-index-v1}")
+    private String indexProfile;
+    @Value("${material.indexing.bucket:lms-materials}")
+    private String bucketName;
 
     public MaterialIndexJob queueIngest(Material material) {
         MaterialIndexJob job = MaterialIndexJob.builder()
@@ -61,11 +68,12 @@ public class MaterialIndexingService {
         return saved;
     }
 
-    public MaterialIndexJob queueDelete(UUID courseId, UUID materialId) {
+    public MaterialIndexJob queueDelete(UUID courseId, UUID materialId, String fileKey) {
         MaterialIndexJob job = MaterialIndexJob.builder()
                 .courseId(courseId)
                 .materialId(materialId)
                 .operation(MaterialIndexJob.Operation.DELETE)
+                .fileKey(fileKey)
                 .status(MaterialIndexJob.Status.PENDING)
                 .attemptCount(0)
                 .nextAttemptAt(Instant.now())
@@ -90,7 +98,9 @@ public class MaterialIndexingService {
         material.setIngestionStatus(Material.IngestionStatus.PENDING);
         material.setIngestionError(null);
         material.setIngestedAt(null);
-        material.setIngestionRevision(UUID.randomUUID());
+        if (material.getIngestionRevision() == null) {
+            material.setIngestionRevision(UUID.randomUUID());
+        }
         Material updated = modifyMaterialPort.update(material);
         queueIngest(updated);
         return ConfirmUploadResponse.builder()
@@ -121,9 +131,12 @@ public class MaterialIndexingService {
         try {
             if (job.getOperation() == MaterialIndexJob.Operation.DELETE) {
                 aiWebClient.delete()
-                        .uri("/api/ingest/{courseId}/{materialId}", job.getCourseId(), job.getMaterialId())
+                        .uri(builder -> builder.path("/api/ingest/{courseId}/{materialId}")
+                                .queryParam("document_key", documentKey(job.getFileKey()))
+                                .build(job.getCourseId(), job.getMaterialId()))
                         .header(CorrelationIdFilter.HEADER_NAME, job.getId().toString())
                         .retrieve().toBodilessEntity().block(Duration.ofMinutes(timeoutMinutes));
+                documentIndexPort.deleteByDocument(bucketName, job.getFileKey());
             } else {
                 ingest(job);
             }
@@ -156,22 +169,33 @@ public class MaterialIndexingService {
         material.setIngestionError(null);
         modifyMaterialPort.update(material);
 
-        String fileUrl = downloadLinkPort.createDownloadLink(material.getFileKey(), null);
-        JsonNode response = aiWebClient.post().uri("/api/ingest")
-                .header(CorrelationIdFilter.HEADER_NAME, job.getId().toString())
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(new AiIngestRequest(
-                        material.getCourseId().toString(), material.getId().toString(), fileUrl))
-                .retrieve()
-                .onStatus(status -> status.isError(), clientResponse -> clientResponse.bodyToMono(String.class)
-                        .defaultIfEmpty("No response body")
-                        .map(body -> new IllegalStateException(
-                                "AI ingestion request failed (" + clientResponse.statusCode() + "): " + body)))
-                .bodyToMono(JsonNode.class).block(Duration.ofMinutes(timeoutMinutes));
+        DocumentIndex existing = documentIndexPort.findReady(bucketName, material.getFileKey(), indexProfile)
+                .orElse(null);
+        JsonNode response = callAiIngest(job, material, existing == null ? null : existing.getSourceHash(), null);
         String status = response == null ? "" : response.path("status").asText();
+        if (!"skipped".equals(status) && !"success".equals(status) && !"missing".equals(status)) {
+            throw new IllegalStateException("AI ingestion did not complete: " + status);
+        }
+        if ("missing".equals(status)) {
+            String fileUrl = downloadLinkPort.createDownloadLink(material.getFileKey(), null);
+            response = callAiIngest(job, material, null, fileUrl);
+            status = response == null ? "" : response.path("status").asText();
+        }
         if (!"success".equals(status) && !"skipped".equals(status)) {
             throw new IllegalStateException("AI ingestion did not complete: " + status);
         }
+
+        String sourceHash = response.path("source_hash").asText();
+        if (sourceHash.isBlank()) {
+            throw new IllegalStateException("AI ingestion completed without source_hash");
+        }
+        documentIndexPort.save(DocumentIndex.builder()
+                .bucketName(bucketName).fileKey(material.getFileKey()).indexProfile(indexProfile)
+                .sourceHash(sourceHash).collectionName("eduai_chunks")
+                .status(DocumentIndex.Status.READY)
+                .chunkCount(response.path("chunks_created").asInt(0))
+                .indexedAt(LocalDateTime.now())
+                .build());
 
         Material current = materialPort.findByIdAndCourseId(job.getMaterialId(), job.getCourseId())
                 .orElseThrow();
@@ -182,6 +206,22 @@ public class MaterialIndexingService {
         current.setIngestionError(null);
         current.setIngestedAt(LocalDateTime.now());
         modifyMaterialPort.update(current);
+    }
+
+    private JsonNode callAiIngest(
+            MaterialIndexJob job, Material material, String sourceHash, String fileUrl) {
+        return aiWebClient.post().uri("/api/ingest")
+                .header(CorrelationIdFilter.HEADER_NAME, job.getId().toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new AiIngestRequest(
+                        material.getCourseId().toString(), material.getId().toString(), fileUrl,
+                        documentKey(material.getFileKey()), indexProfile, sourceHash))
+                .retrieve()
+                .onStatus(status -> status.isError(), clientResponse -> clientResponse.bodyToMono(String.class)
+                        .defaultIfEmpty("No response body")
+                        .map(body -> new IllegalStateException(
+                                "AI ingestion request failed (" + clientResponse.statusCode() + "): " + body)))
+                .bodyToMono(JsonNode.class).block(Duration.ofMinutes(timeoutMinutes));
     }
 
     private void retryOrFail(MaterialIndexJob job, String message) {
@@ -247,7 +287,14 @@ public class MaterialIndexingService {
     private record AiIngestRequest(
             @JsonProperty("course_id") String courseId,
             @JsonProperty("material_id") String materialId,
-            @JsonProperty("file_url") String fileUrl) {}
+            @JsonProperty("file_url") String fileUrl,
+            @JsonProperty("document_key") String documentKey,
+            @JsonProperty("index_profile") String indexProfile,
+            @JsonProperty("source_hash") String sourceHash) {}
+
+    private String documentKey(String fileKey) {
+        return bucketName + "/" + fileKey;
+    }
 
     private static class StaleMaterialRevisionException extends RuntimeException {
         StaleMaterialRevisionException() { super("Material revision changed while indexing"); }

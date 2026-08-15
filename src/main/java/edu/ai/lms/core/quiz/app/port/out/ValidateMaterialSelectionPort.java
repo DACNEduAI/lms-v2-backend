@@ -7,4 +7,6 @@ import java.util.UUID;
 public interface ValidateMaterialSelectionPort {
 
     Optional<String> findValidationError(UUID courseId, List<UUID> materialIds);
+
+    List<String> readyDocumentKeys(UUID courseId, List<UUID> materialIds);
 }

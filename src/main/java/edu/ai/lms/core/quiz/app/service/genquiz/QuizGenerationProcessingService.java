@@ -79,14 +79,18 @@ public class QuizGenerationProcessingService {
         try {
             JsonNode snapshot = objectMapper.readTree(job.getRequestSnapshot());
             List<UUID> materialIds = new ArrayList<>();
-            snapshot.path("selectedMaterials").forEach(node -> materialIds.add(UUID.fromString(node.path("materialId").asText())));
+            List<String> documentKeys = new ArrayList<>();
+            snapshot.path("selectedMaterials").forEach(node -> {
+                materialIds.add(UUID.fromString(node.path("materialId").asText()));
+                if (!node.path("documentKey").asText().isBlank()) documentKeys.add(node.path("documentKey").asText());
+            });
             AiExamMatrix aiExamMatrix = toAiExamMatrixFromSnapshot(snapshot);
             GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfiguration =
                     questionDefaultsConfigurationFromSnapshot(snapshot);
             AiGenerationRequest request = new AiGenerationRequest(
                     job.getId(), aiExamMatrix.contractVersion(), job.getCourseId(),
                     snapshot.path("courseTitle").asText(), job.getQuizTitle(),
-                    aiExamMatrix.rows(), aiExamMatrix.learningOutcomeIds(), materialIds, job.getPrompt(),
+                    aiExamMatrix.rows(), aiExamMatrix.learningOutcomeIds(), materialIds, documentKeys, job.getPrompt(),
                     questionDefaultsConfiguration,
                     Boolean.TRUE.equals(job.getStrictMode()), job.getCodeRunnerPolicy(),
                     job.getIdempotencyKey(), callbackUrl(), progressCallbackUrl(), webhookSecret,
@@ -226,6 +230,7 @@ public class QuizGenerationProcessingService {
             JsonNode examMatrix,
             List<UUID> learningOutcomeIds,
             @JsonProperty("material_ids") List<UUID> selectedMaterialIds,
+            @JsonProperty("material_document_keys") List<String> materialDocumentKeys,
             String teacherInstruction,
             GenerateQuizCommand.QuestionDefaultsConfiguration questionDefaultsConfiguration,
             boolean strictMode,

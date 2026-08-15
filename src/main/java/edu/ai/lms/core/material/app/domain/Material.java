@@ -49,6 +49,7 @@ public class Material {
 
     // --- NEW: Dedicated constructor for creating NEW materials ---
     public Material(UUID courseId, String title, MaterialType type, boolean downloadable) {
+        this.id = UUID.randomUUID();
         this.courseId = courseId;
         this.title = title;
         this.type = type;
@@ -61,15 +62,10 @@ public class Material {
     }
 
     private String generateFileKey(UUID courseId, String title, MaterialType type) {
-        String safeTitle = (title != null) ? title : "untitled";
-        String sanitizedTitle = safeTitle.replaceAll("[^a-zA-Z0-9._-]", "_");
-        String extension = resolveFileExtension(type, sanitizedTitle);
-
-        // Prevent generating keys like "diagram.png.png" if the title already includes the extension
-        if (sanitizedTitle.toLowerCase().endsWith("." + extension)) {
-            return String.format("courses/%s/%s", courseId, sanitizedTitle);
-        }
-        return String.format("courses/%s/%s.%s", courseId, sanitizedTitle, extension);
+        String extension = resolveFileExtension(type, title == null ? "" : title);
+        // The object key identifies immutable source content. Replacements must
+        // create a new material rather than overwrite an indexed object.
+        return String.format("courses/%s/materials/%s/source.%s", courseId, id, extension);
     }
 
     private String resolveFileExtension(MaterialType type, String title) {

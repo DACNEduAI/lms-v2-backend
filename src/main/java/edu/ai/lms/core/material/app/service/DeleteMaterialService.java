@@ -36,7 +36,7 @@ public class DeleteMaterialService implements DeleteMaterialUseCase {
             deleteFilePort.deleteFile(material.getFileKey());
         }
 
-        materialIndexingService.queueDelete(courseId, materialId);
+        materialIndexingService.queueDelete(courseId, materialId, material.getFileKey());
 
         // Then delete DB record
         deleteMaterialPort.deleteById(materialId);

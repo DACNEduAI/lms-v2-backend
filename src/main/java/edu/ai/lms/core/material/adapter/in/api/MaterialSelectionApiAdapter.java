@@ -33,16 +33,16 @@ class MaterialSelectionApiAdapter implements MaterialSelectionApi {
         return materialIds.stream().distinct().map(materialId -> {
             Material material = materialPort.findByIdAndCourseId(materialId, courseId).orElse(null);
             if (material == null) {
-                return new MaterialEligibility(materialId, false, "Material does not belong to the course");
+                return new MaterialEligibility(materialId, false, "Material does not belong to the course", null);
             }
             if (requireReadyPdf && material.getType() != Material.MaterialType.PDF) {
-                return new MaterialEligibility(materialId, false, "Only PDF materials can be used for quiz generation");
+                return new MaterialEligibility(materialId, false, "Only PDF materials can be used for quiz generation", null);
             }
             if (material.getStatus() != Material.MaterialStatus.UPLOADED
                     || (requireReadyPdf && material.getIngestionStatus() != Material.IngestionStatus.READY)) {
-                return new MaterialEligibility(materialId, false, "Material is not ready for quiz generation");
+                return new MaterialEligibility(materialId, false, "Material is not ready for quiz generation", null);
             }
-            return new MaterialEligibility(materialId, true, null);
+            return new MaterialEligibility(materialId, true, null, material.getFileKey());
         }).toList();
     }
 }

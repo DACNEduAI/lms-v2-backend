@@ -42,6 +42,20 @@ public class Matrix2Controller {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(courseId, payload));
     }
 
+    @PostMapping("/{matrixId}/copy")
+    public ResponseEntity<Matrix2Service.Matrix2Detail> copyAsDraft(
+            @PathVariable UUID courseId, @PathVariable UUID matrixId,
+            @RequestBody(required = false) Matrix2Service.Matrix2CopyRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.copyAsDraft(courseId, matrixId, request));
+    }
+
+    @PostMapping("/{matrixId}/publish")
+    public ResponseEntity<Matrix2Service.Matrix2Detail> publish(
+            @PathVariable UUID courseId, @PathVariable UUID matrixId,
+            @RequestBody Matrix2Service.Matrix2PublishRequest request) {
+        return ResponseEntity.ok(service.publish(courseId, matrixId, request));
+    }
+
     @PutMapping("/{matrixId}")
     public ResponseEntity<Matrix2Service.Matrix2Detail> update(
             @PathVariable UUID courseId, @PathVariable UUID matrixId,

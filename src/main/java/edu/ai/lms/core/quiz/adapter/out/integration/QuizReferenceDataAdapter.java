@@ -91,6 +91,14 @@ class QuizReferenceDataAdapter implements LoadCourseMembershipPort, LoadQuizGene
     }
 
     @Override
+    public List<String> readyDocumentKeys(UUID courseId, List<UUID> materialIds) {
+        return materialSelectionApi.inspectReadyPdfMaterials(courseId, materialIds).stream()
+                .filter(result -> result.eligible() && result.fileKey() != null)
+                .map(result -> "lms-materials/" + result.fileKey())
+                .toList();
+    }
+
+    @Override
     public boolean allBelongToCourse(UUID courseId, Collection<UUID> learningOutcomeIds) {
         return learningOutcomeCatalogApi.findExistingIds(courseId, learningOutcomeIds).size()
                 == learningOutcomeIds.stream().distinct().count();

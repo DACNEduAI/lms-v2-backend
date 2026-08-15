@@ -66,9 +66,14 @@ public class AssessmentController {
     }
 
     @PostMapping
-    public ResponseEntity<AssessmentView> create(@PathVariable UUID courseId,
+    public ResponseEntity<?> create(@PathVariable UUID courseId,
             @RequestBody AssessmentConfiguration request) {
-        return ResponseEntity.status(201).body(service.create(courseId, request));
+        return ResponseEntity.status(410)
+                .header("X-Replacement-API", "/api/courses/" + courseId + "/quiz3/assessments")
+                .body(java.util.Map.of(
+                        "code", "QUIZ2_CREATION_RETIRED",
+                        "message", "New Assessments must be created with Quiz3 and Matrix2.",
+                        "replacement", "/api/courses/" + courseId + "/quiz3/assessments"));
     }
 
     @GetMapping("/{assessmentId}")
