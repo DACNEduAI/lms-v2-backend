@@ -30,10 +30,12 @@ public class AttemptScoringService {
     /** The maximum possible score for any quiz attempt. */
     public static final double DEFAULT_MAX_SCORE = 10.0;
 
-    public double calculateScore(List<QuestionAnswerKey> answerKeys, List<SubmittedAnswer> submittedAnswers,
-                                 UUID attemptId, UUID studentId) {
+    public record ScoringResult(double score, boolean hasPendingSubmissions) {}
+
+    public ScoringResult calculateScore(List<QuestionAnswerKey> answerKeys, List<SubmittedAnswer> submittedAnswers,
+                                        UUID attemptId, UUID studentId) {
         if (answerKeys == null || answerKeys.isEmpty()) {
-            return 0.0;
+            return new ScoringResult(0.0, false);
         }
         List<SubmittedAnswer> answers = submittedAnswers == null ? List.of() : submittedAnswers;
 
@@ -70,10 +72,11 @@ public class AttemptScoringService {
                 .count();
 
         if (totalGradable == 0) {
-            return 0.0;
+            return new ScoringResult(0.0, false);
         }
 
         double earnedRatios = 0;
+        boolean hasPendingSubmissions = false;
         for (UUID questionId : questionTypes.keySet()) {
             QuestionAnswerKey.QuestionType type = questionTypes.get(questionId);
             if (!isAutomaticallyGradable(type)) continue;
@@ -84,8 +87,8 @@ public class AttemptScoringService {
                 var ratio = codeRunnerPort.findCompletedSubmitRatio(
                         answer.getCodeSubmissionId(), attemptId, studentId, questionId);
                 if (ratio.isEmpty()) {
-                    throw new InvalidAttemptSubmissionException(
-                            "Code submission is not completed or does not belong to this attempt");
+                    hasPendingSubmissions = true;
+                    continue;
                 }
                 earnedRatios += ratio.getAsDouble();
             } else {
@@ -98,8 +101,7 @@ public class AttemptScoringService {
 
         // Scale to DEFAULT_MAX_SCORE
         double rawRatio = earnedRatios / totalGradable;
-        double score = Math.round(rawRatio * DEFAULT_MAX_SCORE * 100.0) / 100.0;
-        return score;
+        return new ScoringResult(Math.round(rawRatio * DEFAULT_MAX_SCORE * 100.0) / 100.0, hasPendingSubmissions);
     }
 
     private boolean isAutomaticallyGradable(QuestionAnswerKey.QuestionType type) {

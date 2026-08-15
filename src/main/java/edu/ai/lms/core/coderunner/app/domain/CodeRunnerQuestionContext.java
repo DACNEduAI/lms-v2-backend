@@ -10,5 +10,6 @@ public record CodeRunnerQuestionContext(
         String questionType,
         String questionReviewStatus,
         String quizLifecycleStatus,
-        long questionVersion) {
+        long questionVersion,
+        String draftContractJson) {
 }

@@ -63,6 +63,9 @@ public class CodeRunnerVerificationService {
         int maxTimeMs = 0;
         int maxMemoryKb = 0;
 
+        int wallTimeLimitMs = 5_000;
+        int memoryLimitKb = 131_072;
+
         for (var test : tests) {
             String harness = harnessBuilder.buildCase(
                     contract,
@@ -71,7 +74,7 @@ public class CodeRunnerVerificationService {
             CodeExecutionEngine.ExecutionTicket ticket = executionEngine.submit(
                     new CodeExecutionEngine.ExecutionRequest(
                             harness, cpp17LanguageId, null,
-                            2_000, 5_000, 131_072, 64, 16));
+                            2_000, wallTimeLimitMs, memoryLimitKb, 64, 16));
             lastSubmissionId = ticket.engineSubmissionId();
             
             CodeExecutionEngine.ExecutionResult result = await(ticket.engineSubmissionId());
@@ -102,29 +105,39 @@ public class CodeRunnerVerificationService {
         
         boolean passedAll = results.size() == tests.size() && passed == tests.size();
         
-        try {
-            CodeRunnerVerificationRecord record = new CodeRunnerVerificationRecord(
-                    UUID.randomUUID(),
-                    configId,
-                    verifiedBy,
-                    Instant.now(),
-                    objectMapper.writeValueAsString(contract.runtime().executionProfile()),
-                    lastSubmissionId,
-                    overallVerdict.name(),
-                    lastStdout,
-                    lastStderr,
-                    maxTimeMs,
-                    maxMemoryKb
-            );
-            saveContractPort.saveVerification(record);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Failed to serialize execution profile", e);
-        }
+        List<CodeRunnerVerificationRecord.TestCaseResult> recordTestCaseResults = results.stream()
+                .map(r -> new CodeRunnerVerificationRecord.TestCaseResult(
+                        r.testId(), r.visibility(), r.verdict(), r.timeMs(), r.memoryKb(), r.diagnostic()))
+                .toList();
 
-        if (passedAll) {
-            if (!saveContractPort.markVerified(questionId, configId)) {
-                throw new CodeRunnerConflictException(
-                        "Code Runner contract changed during verification; verify the latest revision again");
+        if (configId != null) {
+            try {
+                CodeRunnerVerificationRecord record = new CodeRunnerVerificationRecord(
+                        UUID.randomUUID(),
+                        configId,
+                        verifiedBy,
+                        Instant.now(),
+                        objectMapper.writeValueAsString(contract.runtime().executionProfile()),
+                        lastSubmissionId,
+                        overallVerdict.name(),
+                        lastStdout,
+                        lastStderr,
+                        maxTimeMs,
+                        maxMemoryKb,
+                        wallTimeLimitMs,
+                        memoryLimitKb,
+                        recordTestCaseResults
+                );
+                saveContractPort.saveVerification(record);
+            } catch (JsonProcessingException e) {
+                throw new IllegalStateException("Failed to serialize execution profile", e);
+            }
+
+            if (passedAll) {
+                if (!saveContractPort.markVerified(questionId, configId)) {
+                    throw new CodeRunnerConflictException(
+                            "Code Runner contract changed during verification; verify the latest revision again");
+                }
             }
         }
 

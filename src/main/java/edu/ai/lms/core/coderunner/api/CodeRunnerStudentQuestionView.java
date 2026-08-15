@@ -10,6 +10,7 @@ public record CodeRunnerStudentQuestionView(
         String starterCode,
         String entryPoint,
         String executionProfile,
+        UUID activeSubmissionId,
         List<PublicTestView> publicTests) {
 
     public record PublicTestView(String id, String category, String argumentsJson, String expectedOutputJson) { }

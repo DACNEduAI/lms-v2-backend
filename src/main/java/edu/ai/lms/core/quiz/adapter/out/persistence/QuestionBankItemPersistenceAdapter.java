@@ -65,6 +65,12 @@ class QuestionBankItemPersistenceAdapter implements LoadQuestionBankItemPort, Sa
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<QuestionDraft> findDraftById(UUID draftId) {
+        return repository.findDraftById(draftId).map(this::loadDraftChildren);
+    }
+
+    @Override
     @Transactional
     public Optional<QuestionDraft> findDraftByCourseIdAndIdForUpdate(UUID courseId, UUID draftId) {
         return repository.findDraftByCourseIdAndIdForUpdate(courseId, draftId).map(this::loadDraftChildren);
@@ -74,6 +80,12 @@ class QuestionBankItemPersistenceAdapter implements LoadQuestionBankItemPort, Sa
     @Transactional(readOnly = true)
     public Optional<QuestionBankQuestion> findBankByCourseIdAndId(UUID courseId, UUID questionId) {
         return repository.findBankByCourseIdAndId(courseId, questionId).map(this::loadBankChildren);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<QuestionBankQuestion> findBankQuestionById(UUID questionId) {
+        return repository.findBankQuestionById(questionId).map(this::loadBankChildren);
     }
 
     @Override

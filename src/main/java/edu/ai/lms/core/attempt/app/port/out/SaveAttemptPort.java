@@ -9,6 +9,8 @@ public interface SaveAttemptPort {
 
     Attempt save(Attempt attempt);
 
+    boolean finalizeIfStillFinalizing(UUID attemptId, Double score);
+
     boolean closeIfStarted(
             UUID attemptId,
             Attempt.AttemptStatus status,

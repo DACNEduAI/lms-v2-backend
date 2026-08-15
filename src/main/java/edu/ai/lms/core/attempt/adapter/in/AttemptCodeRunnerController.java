@@ -1,9 +1,10 @@
 package edu.ai.lms.core.attempt.adapter.in;
 
 import edu.ai.lms.core.attempt.adapter.in.request.ExecuteCodeRequest;
+import edu.ai.lms.core.attempt.adapter.in.response.CodeRunnerAcceptedResponse;
+import edu.ai.lms.core.attempt.app.service.AttemptCodeRunnerService;
 import edu.ai.lms.core.attempt.app.domain.AttemptCodeRunnerQuestion;
 import edu.ai.lms.core.attempt.app.domain.AttemptCodeSubmission;
-import edu.ai.lms.core.attempt.app.service.AttemptCodeRunnerService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -33,21 +34,27 @@ public class AttemptCodeRunnerController {
         return service.getQuestion(courseId, attemptId, questionId);
     }
 
+    @GetMapping("/submissions/{submissionId}")
+    public AttemptCodeSubmission getSubmission(@PathVariable UUID courseId, @PathVariable UUID attemptId,
+                                                @PathVariable UUID questionId, @PathVariable UUID submissionId) {
+        return service.getSubmission(courseId, attemptId, questionId, submissionId);
+    }
+
     @PostMapping("/runs")
-    @ResponseStatus(HttpStatus.CREATED)
-    public AttemptCodeSubmission run(@PathVariable UUID courseId, @PathVariable UUID attemptId,
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public CodeRunnerAcceptedResponse run(@PathVariable UUID courseId, @PathVariable UUID attemptId,
                                       @PathVariable UUID questionId,
                                       @RequestHeader("Idempotency-Key") @NotBlank String idempotencyKey,
                                       @Valid @RequestBody ExecuteCodeRequest request) {
-        return service.run(courseId, attemptId, questionId, request.sourceCode(), idempotencyKey, "RUN");
+        return new CodeRunnerAcceptedResponse(service.run(courseId, attemptId, questionId, request.sourceCode(), idempotencyKey, "RUN"));
     }
 
     @PostMapping("/submissions")
-    @ResponseStatus(HttpStatus.CREATED)
-    public AttemptCodeSubmission submit(@PathVariable UUID courseId, @PathVariable UUID attemptId,
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public CodeRunnerAcceptedResponse submit(@PathVariable UUID courseId, @PathVariable UUID attemptId,
                                          @PathVariable UUID questionId,
                                          @RequestHeader("Idempotency-Key") @NotBlank String idempotencyKey,
                                          @Valid @RequestBody ExecuteCodeRequest request) {
-        return service.run(courseId, attemptId, questionId, request.sourceCode(), idempotencyKey, "SUBMIT");
+        return new CodeRunnerAcceptedResponse(service.run(courseId, attemptId, questionId, request.sourceCode(), idempotencyKey, "SUBMIT"));
     }
 }

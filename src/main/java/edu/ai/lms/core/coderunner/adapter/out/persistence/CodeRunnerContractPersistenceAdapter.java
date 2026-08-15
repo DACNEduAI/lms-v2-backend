@@ -84,8 +84,23 @@ public class CodeRunnerContractPersistenceAdapter
                 record.stdout(),
                 record.stderr(),
                 record.timeMs(),
-                record.memoryKb()
+                record.memoryKb(),
+                record.wallTimeLimitMs(),
+                record.memoryLimitKb()
         );
+
+        for (var testCase : record.testCaseResults()) {
+            repository.insertVerificationCase(
+                    UUID.randomUUID(),
+                    record.id(),
+                    testCase.externalTestId(),
+                    testCase.visibility(),
+                    testCase.verdict(),
+                    testCase.timeMs(),
+                    testCase.memoryKb(),
+                    testCase.diagnostic()
+            );
+        }
     }
 
     private void insertTestCase(UUID configId, ExecutableAssessmentContract.TestCase testCase, int ordinal) {
@@ -114,6 +129,11 @@ public class CodeRunnerContractPersistenceAdapter
     @Override
     public Optional<StoredCodeRunnerContract> findReleasedForAttempt(UUID attemptId, UUID questionId) {
         return repository.findReleasedConfigForAttempt(attemptId, questionId).map(this::storedContract);
+    }
+
+    @Override
+    public Optional<StoredCodeRunnerContract> findStoredByConfigId(UUID configId) {
+        return repository.findConfigById(configId).map(this::storedContract);
     }
 
     private StoredCodeRunnerContract storedContract(CodeRunnerConfigRow row) {

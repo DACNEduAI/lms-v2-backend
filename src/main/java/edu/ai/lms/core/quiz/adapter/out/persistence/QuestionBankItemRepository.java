@@ -20,6 +20,8 @@ interface QuestionBankItemRepository {
             @Param("courseId") UUID courseId,
             @Param("itemId") UUID itemId);
 
+    Optional<QuestionDraft> findDraftById(@Param("itemId") UUID itemId);
+
     Optional<QuestionDraft> findDraftByCourseIdAndIdForUpdate(
             @Param("courseId") UUID courseId,
             @Param("itemId") UUID itemId);
@@ -27,6 +29,8 @@ interface QuestionBankItemRepository {
     Optional<QuestionBankQuestion> findBankByCourseIdAndId(
             @Param("courseId") UUID courseId,
             @Param("itemId") UUID itemId);
+
+    Optional<QuestionBankQuestion> findBankQuestionById(@Param("questionId") UUID questionId);
 
     List<QuestionBankAnswer> findDraftAnswers(@Param("itemId") UUID itemId);
 

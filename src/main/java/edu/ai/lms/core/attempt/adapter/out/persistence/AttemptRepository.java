@@ -16,6 +16,8 @@ interface AttemptRepository {
 
     int update(Attempt entity);
 
+    int finalizeIfStillFinalizing(@Param("attemptId") UUID attemptId, @Param("score") Double score);
+
     default Attempt save(Attempt entity) {
         if (entity.getId() == null) {
             entity.setId(UUID.randomUUID());

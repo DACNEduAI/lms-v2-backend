@@ -83,6 +83,17 @@
     LIMIT 1
   </select>
 
+  <select id="findConfigById" resultMap="ConfigRowMap">
+    SELECT id, schema_version, contract_id, contract_version, contract_status,
+           title, statement, execution_profile_id, execution_profile_version,
+           archetype_id, archetype_version, comparator_id, comparator_version,
+           entry_point, signature_json::text AS signature_json, starter_code,
+           banned_api_patterns_json::text AS banned_api_patterns_json,
+           reference_solution, revision
+    FROM edu.code_runner_configs
+    WHERE id = #{id}
+  </select>
+
   <select id="findReleasedConfigForAttempt" resultMap="ConfigRowMap">
     SELECT c.id, c.schema_version, c.contract_id, c.contract_version, c.contract_status,
            c.title, c.statement, c.execution_profile_id, c.execution_profile_version,
@@ -123,16 +134,27 @@
     )
   </update>
 
-  <insert id="insertVerification">
-    INSERT INTO edu.code_runner_verifications (
-      id, revision_id, verified_by, verified_at,
-      execution_profile, judge0_submission_id, verdict,
-      stdout, stderr, time_ms, memory_kb
-    ) VALUES (
-      #{id}, #{revisionId}, #{verifiedBy}, #{verifiedAt},
-      CAST(#{executionProfile} AS jsonb), #{judge0SubmissionId}, #{verdict},
-      #{stdout}, #{stderr}, #{timeMs}, #{memoryKb}
-    )
-  </insert>
+    <insert id="insertVerification">
+        INSERT INTO edu.code_runner_verifications (
+            id, revision_id, verified_by, verified_at,
+            execution_profile, judge0_submission_id, verdict,
+            stdout, stderr, time_ms, memory_kb,
+            wall_time_limit_ms, memory_limit_kb
+        ) VALUES (
+            #{id}, #{revisionId}, #{verifiedBy}, #{verifiedAt},
+            CAST(#{executionProfile} AS jsonb), #{judge0SubmissionId}, #{verdict},
+            #{stdout}, #{stderr}, #{timeMs}, #{memoryKb},
+            #{wallTimeLimitMs}, #{memoryLimitKb}
+        )
+    </insert>
 
+    <insert id="insertVerificationCase">
+        INSERT INTO edu.code_runner_verification_cases (
+            id, verification_id, external_test_id, visibility,
+            verdict, time_ms, memory_kb, diagnostic
+        ) VALUES (
+            #{id}, #{verificationId}, #{externalTestId}, #{visibility},
+            #{verdict}, #{timeMs}, #{memoryKb}, #{diagnostic}
+        )
+    </insert>
 </mapper>

@@ -48,8 +48,9 @@ class UTCodeRunnerContractService {
 
     @BeforeEach
     void setUp() {
+        com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
         service = new CodeRunnerContractService(
-                actorPort, questionContextPort, courseAccessPort, saveContractPort, loadContractPort, verificationService);
+                actorPort, questionContextPort, courseAccessPort, saveContractPort, loadContractPort, verificationService, objectMapper);
         teacherId = UUID.randomUUID();
         courseId = UUID.randomUUID();
         quizId = UUID.randomUUID();
@@ -57,7 +58,7 @@ class UTCodeRunnerContractService {
         when(actorPort.loadCurrentActor()).thenReturn(Optional.of(new CodeRunnerActor(teacherId, Roles.TEACHER)));
         when(questionContextPort.findQuestionContext(questionId)).thenReturn(Optional.of(
                 new CodeRunnerQuestionContext(questionId, quizId, courseId, teacherId,
-                        "CODE_RUNNER", "APPROVED", "DRAFT", 1)));
+                        "CODE_RUNNER", "APPROVED", "DRAFT", 1L, null)));
         when(courseAccessPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
     }
 

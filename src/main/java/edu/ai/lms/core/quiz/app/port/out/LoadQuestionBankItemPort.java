@@ -14,9 +14,13 @@ import edu.ai.lms.core.quiz.app.domain.questionbank.QuestionDraft;
 public interface LoadQuestionBankItemPort {
     Optional<QuestionDraft> findDraftByCourseIdAndId(UUID courseId, UUID draftId);
 
+    Optional<QuestionDraft> findDraftById(UUID draftId);
+
     Optional<QuestionDraft> findDraftByCourseIdAndIdForUpdate(UUID courseId, UUID draftId);
 
     Optional<QuestionBankQuestion> findBankByCourseIdAndId(UUID courseId, UUID questionId);
+
+    Optional<QuestionBankQuestion> findBankQuestionById(UUID questionId);
 
     QuestionBankPage<QuestionDraft> findDraftPage(QuestionBankSearchCriteria criteria);
 

@@ -33,7 +33,13 @@ public class AttemptCodeRunnerService {
         return codeRunnerPort.getQuestion(attemptId, context.attempt().getQuizId(), questionId);
     }
 
-    public AttemptCodeSubmission run(UUID courseId, UUID attemptId, UUID questionId,
+    public AttemptCodeSubmission getSubmission(UUID courseId, UUID attemptId, UUID questionId, UUID submissionId) {
+        Context context = requireAttemptAccess(courseId, attemptId);
+        boolean isFinished = context.attempt().getStatus() == Attempt.AttemptStatus.FINISHED;
+        return codeRunnerPort.getSubmission(context.actor().getId(), submissionId, !isFinished);
+    }
+
+    public UUID run(UUID courseId, UUID attemptId, UUID questionId,
                                      String sourceCode, String idempotencyKey, String mode) {
         if (!"RUN".equals(mode) && !"SUBMIT".equals(mode)) {
             throw new IllegalArgumentException("mode must be RUN or SUBMIT");
@@ -61,6 +67,22 @@ public class AttemptCodeRunnerService {
                 && LocalDateTime.now().isAfter(attempt.getDueTime().plusSeconds(GRACE_SECONDS))) {
             throw new InvalidAttemptSubmissionException("Attempt due time has passed");
         }
+        quizPolicyPort.getQuizAttemptPolicy(courseId, attempt.getQuizId())
+                .orElseThrow(() -> new InvalidAttemptSubmissionException("Attempt quiz is not in this course"));
+        return new Context(actor, attempt);
+    }
+
+    private Context requireAttemptAccess(UUID courseId, UUID attemptId) {
+        CurrentActor actor = actorPort.getAuthenticatedUser()
+                .orElseThrow(() -> new UserNotAuthenticatedForAttemptException("User not authenticated"));
+        if (actor.getRole() != Roles.STUDENT) {
+            throw new InvalidAttemptSubmissionException("Only students can execute attempt code");
+        }
+        if (!quizPolicyPort.isStudentInCourse(actor.getId(), courseId)) {
+            throw new InvalidAttemptSubmissionException("Student is not enrolled in this course");
+        }
+        Attempt attempt = attemptPort.getByIdAndStudentId(attemptId, actor.getId())
+                .orElseThrow(() -> new AttemptNotFoundException("Attempt not found"));
         quizPolicyPort.getQuizAttemptPolicy(courseId, attempt.getQuizId())
                 .orElseThrow(() -> new InvalidAttemptSubmissionException("Attempt quiz is not in this course"));
         return new Context(actor, attempt);

@@ -71,6 +71,13 @@
     WHERE item.course_id = #{courseId} AND item.id = #{itemId}
   </select>
 
+  <select id="findDraftById" resultMap="QuestionDraftResultMap">
+    SELECT <include refid="QuestionColumns" />
+    FROM edu.question_drafts item
+    LEFT JOIN edu.cognitive_levels level ON level.id = item.cognitive_level_id
+    WHERE item.id = #{itemId}
+  </select>
+
   <select id="findDraftByCourseIdAndIdForUpdate" resultMap="QuestionDraftResultMap">
     SELECT <include refid="QuestionColumns" />
     FROM edu.question_drafts item
@@ -85,6 +92,15 @@
     FROM edu.question_bank_questions item
     JOIN edu.cognitive_levels level ON level.id = item.cognitive_level_id
     WHERE item.course_id = #{courseId} AND item.id = #{itemId}
+  </select>
+
+  <select id="findBankQuestionById" resultMap="QuestionBankQuestionResultMap">
+    SELECT <include refid="QuestionColumns" />, item.origin_draft_id,
+           item.validated_by, item.validated_at
+    FROM edu.question_bank_questions item
+    LEFT JOIN edu.cognitive_levels level ON level.id = item.cognitive_level_id
+    WHERE item.id = #{questionId} OR item.origin_draft_id = #{questionId}
+    LIMIT 1
   </select>
 
   <select id="findDraftAnswers" resultMap="QuestionBankAnswerResultMap">

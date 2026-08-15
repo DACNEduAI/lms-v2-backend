@@ -33,6 +33,13 @@ public class CodeRunnerExceptionHandler {
         return response(HttpStatus.BAD_REQUEST, "INVALID_CODE_RUNNER_CONTRACT", exception.getMessage());
     }
 
+    @ExceptionHandler(edu.ai.lms.core.coderunner.app.exception.CodeRunnerRateLimitException.class)
+    public ResponseEntity<Map<String, String>> handleRateLimit(edu.ai.lms.core.coderunner.app.exception.CodeRunnerRateLimitException ex) {
+        return ResponseEntity.status(429)
+            .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+            .body(Map.of("error", "Vui lòng đợi " + ex.getRetryAfterSeconds() + " giây trước khi thử lại."));
+    }
+
     private ResponseEntity<Map<String, String>> response(HttpStatus status, String code, String message) {
         return ResponseEntity.status(status).body(Map.of("code", code, "message", message));
     }

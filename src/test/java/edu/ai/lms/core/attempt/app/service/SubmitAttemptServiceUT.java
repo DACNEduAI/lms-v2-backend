@@ -83,18 +83,19 @@ class SubmitAttemptServiceUT {
         when(loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)).thenReturn(Optional.of(policy));
         when(loadAttemptPort.getLatestStartedAttempt(studentId, quizId)).thenReturn(Optional.of(startedAttempt));
         when(loadQuizAttemptPolicyPort.getQuestionAnswerKeys(quizId)).thenReturn(List.of(QuestionAnswerKey.builder().build()));
-        when(attemptScoringService.calculateScore(any(), any(), any(), any())).thenReturn(8.0);
+        when(attemptScoringService.calculateScore(any(), any(), any(), any()))
+            .thenReturn(new AttemptScoringService.ScoringResult(10.0, false));
         when(saveAttemptPort.save(any(Attempt.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = submitAttemptService.submitAttempt(command);
 
         assertEquals("FINISHED", response.getStatus());
-        assertEquals(8.0, response.getScore());
+        assertEquals(10.0, response.getScore());
 
         ArgumentCaptor<Attempt> captor = ArgumentCaptor.forClass(Attempt.class);
         verify(saveAttemptPort).save(captor.capture());
         assertEquals(Attempt.AttemptStatus.FINISHED, captor.getValue().getStatus());
-        assertEquals(8.0, captor.getValue().getScore());
+        assertEquals(10.0, captor.getValue().getScore());
         verify(unscheduleAttemptAutoClosePort).unschedule(eq(startedAttempt.getId()));
     }
 

@@ -23,6 +23,11 @@ class AttemptPersistenceAdapter implements SaveAttemptPort, LoadAttemptPort {
     }
 
     @Override
+    public boolean finalizeIfStillFinalizing(UUID attemptId, Double score) {
+        return attemptRepository.finalizeIfStillFinalizing(attemptId, score) > 0;
+    }
+
+    @Override
     public boolean closeIfStarted(
             UUID attemptId,
             Attempt.AttemptStatus status,

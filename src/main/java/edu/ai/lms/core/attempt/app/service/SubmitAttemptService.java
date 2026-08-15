@@ -65,7 +65,7 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
             return saveLateSubmission(startedAttempt, policy, command.timeSpentSeconds(), now);
         }
 
-        double score = attemptScoringService.calculateScore(
+        AttemptScoringService.ScoringResult scoringResult = attemptScoringService.calculateScore(
                 loadQuizAttemptPolicyPort.getQuestionAnswerKeys(command.quizId()),
                 command.submittedAnswers(),
                 startedAttempt.getId(),
@@ -74,8 +74,13 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
 
         startedAttempt.setSubmittedTime(now);
         startedAttempt.setTimeSpentSeconds(command.timeSpentSeconds());
-        startedAttempt.setScore(score);
-        startedAttempt.setStatus(Attempt.AttemptStatus.FINISHED);
+        startedAttempt.setScore(scoringResult.score());
+        
+        if (scoringResult.hasPendingSubmissions()) {
+            startedAttempt.setStatus(Attempt.AttemptStatus.FINALIZING);
+        } else {
+            startedAttempt.setStatus(Attempt.AttemptStatus.FINISHED);
+        }
         startedAttempt.setErrorReason(null);
 
         Attempt saved = saveAttemptPort.save(startedAttempt);

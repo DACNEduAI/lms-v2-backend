@@ -1273,17 +1273,24 @@ CREATE TABLE IF NOT EXISTS code_submissions
     source_code           TEXT         NOT NULL CHECK (btrim(source_code) <> ''),
     idempotency_key       VARCHAR(255) NOT NULL,
     submission_mode       VARCHAR(10)  NOT NULL CHECK (submission_mode IN ('RUN', 'SUBMIT')),
-    status                VARCHAR(40)  NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')),
+    status                VARCHAR(40)  NOT NULL CHECK (status IN ('PENDING', 'CLAIMED', 'PROCESSING', 'COMPLETED', 'FAILED', 'FAILED_SYSTEM')),
     verdict               VARCHAR(40),
     score                 DOUBLE PRECISION NOT NULL DEFAULT 0 CHECK (score >= 0),
     max_score             DOUBLE PRECISION NOT NULL DEFAULT 0 CHECK (max_score >= 0),
+    worker_id             UUID,
+    lease_until           TIMESTAMP WITH TIME ZONE,
+    accepted_at           TIMESTAMP,
     created_at            TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     completed_at          TIMESTAMP,
+    attempt_count         INTEGER      NOT NULL DEFAULT 0,
+    next_attempt_at       TIMESTAMP,
     CONSTRAINT uq_code_submission_idempotency UNIQUE (student_id, idempotency_key)
 );
 
 CREATE INDEX IF NOT EXISTS idx_code_submissions_attempt_question
     ON code_submissions (attempt_id, question_id, submission_mode, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_code_submissions_cooldown_lookup
+    ON code_submissions (attempt_id, question_id, submission_mode, accepted_at DESC);
 CREATE INDEX IF NOT EXISTS idx_code_submissions_processing
     ON code_submissions (status, created_at) WHERE status IN ('PENDING', 'PROCESSING');
 
@@ -1549,8 +1556,6 @@ CREATE TABLE IF NOT EXISTS question_ai_change_sets (
 
 ALTER TABLE rich_content_assets ADD COLUMN IF NOT EXISTS ai_artifact_id UUID
     REFERENCES question_ai_artifacts(id) ON DELETE SET NULL;
-CREATE INDEX IF NOT EXISTS idx_rich_content_assets_ai_artifact ON rich_content_assets(ai_artifact_id)
-    WHERE ai_artifact_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS code_runner_verifications ( id UUID PRIMARY KEY, revision_id UUID NOT NULL, verified_by UUID NOT NULL, verified_at TIMESTAMP WITH TIME ZONE NOT NULL, execution_profile JSONB NOT NULL, judge0_submission_id VARCHAR(255) NOT NULL, verdict VARCHAR(50) NOT NULL, stdout TEXT, stderr TEXT, time_ms DOUBLE PRECISION, memory_kb BIGINT );
 
 -- Quiz3 is an additive Matrix2 workflow. It deliberately does not reference
@@ -1659,3 +1664,38 @@ CREATE TABLE IF NOT EXISTS quiz3_question_ai_change_sets (
     artifact_revisions JSONB NOT NULL DEFAULT '[]'::jsonb,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(question_id,change_index)
 );
 >>>>>>> origin/feature/quiz2
+=======
+CREATE TABLE IF NOT EXISTS code_runner_verifications
+(
+    id                    UUID PRIMARY KEY,
+    revision_id           UUID        NOT NULL,
+    verified_by           UUID        NOT NULL,
+    verified_at           TIMESTAMP WITH TIME ZONE NOT NULL,
+    execution_profile     JSONB       NOT NULL,
+    judge0_submission_id  VARCHAR(255),
+    verdict               VARCHAR(50) NOT NULL,
+    stdout                TEXT,
+    stderr                TEXT,
+    time_ms               DOUBLE PRECISION,
+    memory_kb             BIGINT,
+    wall_time_limit_ms    INT,
+    memory_limit_kb       INT
+);
+
+CREATE INDEX IF NOT EXISTS idx_code_runner_verifications_revision
+    ON code_runner_verifications (revision_id);
+
+CREATE TABLE IF NOT EXISTS code_runner_verification_cases
+(
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    verification_id  UUID        NOT NULL REFERENCES code_runner_verifications (id) ON DELETE CASCADE,
+    external_test_id VARCHAR(255) NOT NULL,
+    visibility       VARCHAR(10) NOT NULL,
+    verdict          VARCHAR(40) NOT NULL,
+    time_ms          DOUBLE PRECISION,
+    memory_kb        BIGINT,
+    diagnostic       TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_code_runner_verification_cases_verification
+    ON code_runner_verification_cases (verification_id);

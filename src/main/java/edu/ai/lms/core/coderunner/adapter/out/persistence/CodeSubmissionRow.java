@@ -4,7 +4,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter @Setter @NoArgsConstructor
@@ -21,6 +20,11 @@ class CodeSubmissionRow {
     private String verdict;
     private double score;
     private double maxScore;
-    private LocalDateTime createdAt;
-    private LocalDateTime completedAt;
+    private UUID workerId;
+    private java.time.Instant leaseUntil;
+    private java.time.Instant acceptedAt;
+    private java.time.Instant createdAt;
+    private java.time.Instant completedAt;
+    private int attemptCount;
+    private java.time.Instant nextAttemptAt;
 }

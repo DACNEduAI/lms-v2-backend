@@ -6,6 +6,7 @@ import edu.ai.lms.core.coderunner.api.CodeRunnerExecutionRequest;
 import edu.ai.lms.core.coderunner.api.CodeRunnerStudentQuestionView;
 import edu.ai.lms.core.coderunner.api.CodeRunnerSubmissionScoreView;
 import edu.ai.lms.core.coderunner.api.CodeRunnerSubmissionView;
+import edu.ai.lms.core.coderunner.api.CodeRunnerAcceptedView;
 import edu.ai.lms.core.coderunner.app.domain.CodeSubmission;
 import edu.ai.lms.core.coderunner.app.exception.CodeRunnerConflictException;
 import edu.ai.lms.core.coderunner.app.exception.CodeRunnerNotFoundException;
@@ -29,7 +30,7 @@ class AttemptCodeRunnerApiAdapter implements AttemptCodeRunnerApi {
         }
     }
 
-    @Override public CodeRunnerSubmissionView execute(CodeRunnerExecutionRequest request) {
+    @Override public CodeRunnerAcceptedView execute(CodeRunnerExecutionRequest request) {
         try {
             return service.execute(request.attemptId(), request.studentId(), request.quizId(), request.questionId(),
                     request.sourceCode(), request.idempotencyKey(), CodeSubmission.Mode.valueOf(request.mode().name()));
@@ -38,9 +39,25 @@ class AttemptCodeRunnerApiAdapter implements AttemptCodeRunnerApi {
         }
     }
 
+    @Override public CodeRunnerSubmissionView getSubmission(UUID studentId, UUID submissionId, boolean hidesPrivateGrading) {
+        try {
+            return service.getSubmission(studentId, submissionId, hidesPrivateGrading);
+        } catch (RuntimeException exception) {
+            throw apiException(exception);
+        }
+    }
+
     @Override public Optional<CodeRunnerSubmissionScoreView> findCompletedSubmit(
             UUID submissionId, UUID attemptId, UUID studentId, UUID questionId) {
         return service.findCompletedSubmit(submissionId, attemptId, studentId, questionId);
+    }
+
+    @Override public java.util.OptionalDouble findLatestCompletedSubmitRatio(UUID attemptId, UUID questionId) {
+        return service.findLatestCompletedSubmitRatio(attemptId, questionId);
+    }
+
+    @Override public boolean hasPendingSubmissions(UUID attemptId) {
+        return service.hasPendingSubmissions(attemptId);
     }
 
     private CodeRunnerApiException apiException(RuntimeException exception) {

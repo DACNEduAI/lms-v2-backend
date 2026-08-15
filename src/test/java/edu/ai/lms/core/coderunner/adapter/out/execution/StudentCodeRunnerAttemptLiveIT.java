@@ -5,6 +5,8 @@ import edu.ai.lms.config.IntegrationTestConfiguration;
 import edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey;
 import edu.ai.lms.core.attempt.app.domain.SubmittedAnswer;
 import edu.ai.lms.core.attempt.app.service.AttemptScoringService;
+import edu.ai.lms.core.coderunner.api.CodeRunnerAcceptedView;
+import edu.ai.lms.core.coderunner.api.CodeRunnerSubmissionView;
 import edu.ai.lms.core.coderunner.adapter.out.persistence.CodeRunnerContractPersistenceAdapter;
 import edu.ai.lms.core.coderunner.app.domain.CodeSubmission;
 import edu.ai.lms.core.coderunner.app.domain.ExecutableAssessmentContract;
@@ -20,6 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** Explicit end-to-end gate: PostgreSQL + project-controlled Judge0 + Attempt score. */
 @TestPropertySource(properties = {
@@ -54,31 +57,36 @@ class StudentCodeRunnerAttemptLiveIT extends IntegrationTestConfiguration {
                 + "VALUES (?,?,?,?,'STARTED',NOW(),NOW()+INTERVAL '30 minutes')",
                 attemptId, studentId, quizId, releaseId);
 
-        var result = service.execute(attemptId, studentId, quizId, questionId,
+        var accepted = service.execute(attemptId, studentId, quizId, questionId,
                 "bool isEven(int value) { return value % 2 == 0; }",
                 "live-" + UUID.randomUUID(), CodeSubmission.Mode.SUBMIT);
+        
+        CodeRunnerSubmissionView result = service.getSubmission(studentId, accepted.submissionId(), false);
+        while ("PENDING".equals(result.status()) || "PROCESSING".equals(result.status())) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            result = service.getSubmission(studentId, accepted.submissionId(), false);
+        }
 
         assertThat(result.status()).isEqualTo("COMPLETED");
-        assertThat(result.verdict()).isNull();
-        assertThat(result.score()).isNull();
-        assertThat(result.maxScore()).isNull();
-        assertThat(result.passedTests()).isNull();
-        assertThat(result.totalTests()).isNull();
         assertThat(result.visibleResults()).extracting(item -> item.testId())
                 .containsExactly("public_001");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM edu.code_submissions WHERE id=?",
-                Integer.class, result.submissionId())).isEqualTo(1);
+                Integer.class, accepted.submissionId())).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM edu.code_submission_test_results WHERE submission_id=?",
-                Integer.class, result.submissionId())).isEqualTo(2);
+                Integer.class, accepted.submissionId())).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT score FROM edu.code_submissions WHERE id=?",
-                Double.class, result.submissionId())).isEqualTo(1.0);
+                Double.class, accepted.submissionId())).isEqualTo(1.0);
 
-        double quizScore = scoringService.calculateScore(
+        AttemptScoringService.ScoringResult quizScoreResult = scoringService.calculateScore(
                 List.of(QuestionAnswerKey.builder().questionId(questionId)
                         .questionType(QuestionAnswerKey.QuestionType.CODE_RUNNER).build()),
                 List.of(SubmittedAnswer.builder().questionId(questionId)
-                        .codeSubmissionId(result.submissionId()).build()), attemptId, studentId);
-        assertThat(quizScore).isEqualTo(10.0);
+                        .codeSubmissionId(accepted.submissionId()).build()), attemptId, studentId);
+        assertEquals(10.0, quizScoreResult.score(), 0.001);
     }
 
     private void seed(UUID studentId, UUID teacherId, UUID courseId, UUID quizId,

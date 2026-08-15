@@ -1,6 +1,5 @@
 package edu.ai.lms.core.coderunner.app.domain;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record CodeSubmission(
@@ -16,9 +15,12 @@ public record CodeSubmission(
         String verdict,
         double score,
         double maxScore,
-        LocalDateTime createdAt,
-        LocalDateTime completedAt) {
+        java.time.Instant acceptedAt,
+        java.time.Instant createdAt,
+        java.time.Instant completedAt,
+        int attemptCount,
+        java.time.Instant nextAttemptAt) {
 
     public enum Mode { RUN, SUBMIT }
-    public enum Status { PENDING, PROCESSING, COMPLETED, FAILED }
+    public enum Status { PENDING, CLAIMED, PROCESSING, COMPLETED, FAILED, FAILED_SYSTEM, REQUIRES_REVIEW }
 }

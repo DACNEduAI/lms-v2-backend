@@ -2,6 +2,7 @@ package edu.ai.lms.core.attempt.adapter.out.integration;
 
 import edu.ai.lms.core.attempt.app.domain.AttemptCodeRunnerQuestion;
 import edu.ai.lms.core.attempt.app.domain.AttemptCodeSubmission;
+
 import edu.ai.lms.core.attempt.app.port.out.AttemptCodeRunnerPort;
 import edu.ai.lms.core.coderunner.api.AttemptCodeRunnerApi;
 import edu.ai.lms.core.coderunner.api.CodeRunnerExecutionRequest;
@@ -12,6 +13,7 @@ import java.util.OptionalDouble;
 import java.util.UUID;
 
 @Component
+
 @RequiredArgsConstructor
 class AttemptCodeRunnerAdapter implements AttemptCodeRunnerPort {
     private final AttemptCodeRunnerApi api;
@@ -19,15 +21,20 @@ class AttemptCodeRunnerAdapter implements AttemptCodeRunnerPort {
     @Override public AttemptCodeRunnerQuestion getQuestion(UUID attemptId, UUID quizId, UUID questionId) {
         var view = api.getQuestion(attemptId, quizId, questionId);
         return new AttemptCodeRunnerQuestion(view.questionId(), view.title(), view.statement(), view.starterCode(),
-                view.entryPoint(), view.executionProfile(), view.publicTests().stream()
+                view.entryPoint(), view.executionProfile(), view.activeSubmissionId(), view.publicTests().stream()
                 .map(test -> new AttemptCodeRunnerQuestion.PublicTest(test.id(), test.category(),
                         test.argumentsJson(), test.expectedOutputJson())).toList());
     }
 
-    @Override public AttemptCodeSubmission execute(UUID attemptId, UUID studentId, UUID quizId, UUID questionId,
+    @Override public UUID execute(UUID attemptId, UUID studentId, UUID quizId, UUID questionId,
                                                     String source, String key, String mode) {
         var view = api.execute(new CodeRunnerExecutionRequest(attemptId, studentId, quizId, questionId,
                 source, key, CodeRunnerExecutionRequest.Mode.valueOf(mode)));
+        return view.submissionId();
+    }
+
+    @Override public AttemptCodeSubmission getSubmission(UUID studentId, UUID submissionId, boolean hidesPrivateGrading) {
+        var view = api.getSubmission(studentId, submissionId, hidesPrivateGrading);
         return new AttemptCodeSubmission(view.submissionId(), view.questionId(), view.mode(), view.status(),
                 view.verdict(), view.score(), view.maxScore(), view.passedTests(), view.totalTests(),
                 view.visibleResults().stream().map(result -> new AttemptCodeSubmission.VisibleTestResult(
@@ -39,5 +46,13 @@ class AttemptCodeRunnerAdapter implements AttemptCodeRunnerPort {
                                                               UUID studentId, UUID questionId) {
         return api.findCompletedSubmit(submissionId, attemptId, studentId, questionId)
                 .map(score -> OptionalDouble.of(score.ratio())).orElseGet(OptionalDouble::empty);
+    }
+
+    @Override public OptionalDouble findLatestCompletedSubmitRatio(UUID attemptId, UUID questionId) {
+        return api.findLatestCompletedSubmitRatio(attemptId, questionId);
+    }
+
+    @Override public boolean hasPendingSubmissions(UUID attemptId) {
+        return api.hasPendingSubmissions(attemptId);
     }
 }

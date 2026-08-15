@@ -25,6 +25,7 @@ class CodeRunnerQuestionContextAdapter implements LoadCodeRunnerQuestionContextP
                 context.questionType(),
                 context.questionReviewStatus(),
                 context.quizLifecycleStatus(),
-                context.questionVersion()));
+                context.questionVersion(),
+                context.draftContractJson()));
     }
 }

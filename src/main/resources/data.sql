@@ -25,7 +25,7 @@ VALUES
 -- 4. Insert Courses
 INSERT INTO courses (id, course_name, description, course_code, active, cover_image, start_date, end_date)
 VALUES
-    ('c1111111-1111-1111-1111-111111111111', 'Cấu trúc dữ liệu và giải thuật', 'Cấu trúc dữ liệu cốt lõi, kỹ thuật thiết kế giải thuật, phân tích độ phức tạp, sắp xếp, tìm kiếm, cây, đồ thị, băm và quy hoạch động.', 'CO2003', true, 'https://example.com/covers/cs201-dsa.jpg', TO_TIMESTAMP('01-09-2025 08:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-12-2025 17:00:00', 'DD-MM-YYYY HH24:MI:SS'));
+    ('c1111111-1111-1111-1111-111111111111', 'Data Structures and Algorithms', 'Cấu trúc dữ liệu cốt lõi, kỹ thuật thiết kế giải thuật, phân tích độ phức tạp, sắp xếp, tìm kiếm, cây, đồ thị, băm và quy hoạch động.', 'CO2003', true, 'https://example.com/covers/cs201-dsa.jpg', TO_TIMESTAMP('01-09-2025 08:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-12-2025 17:00:00', 'DD-MM-YYYY HH24:MI:SS'));
 
 -- 5. Insert Enrollments
 INSERT INTO enrollments (course_id, user_id, enrolled_date)
@@ -104,7 +104,7 @@ VALUES
 -- 10. Insert Exam Matrix
 INSERT INTO exam_matrices (id, course_id, title, description, created_at, updated_at)
 VALUES
-    ('b1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', 'Ma trận đề thi cuối kỳ môn DSA', 'Bản thiết kế bài thi cuối kỳ cân bằng cho môn Cấu trúc dữ liệu và giải thuật bao gồm phân tích độ phức tạp, các cấu trúc dữ liệu cốt lõi, cây, đồ thị, giải thuật tham lam và quy hoạch động.', '2026-07-19 06:37:47.516609', '2026-07-19 07:44:49.120831');
+    ('b1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', 'Ma trận đề thi cuối kỳ môn DSA', 'Bản thiết kế bài thi cuối kỳ cân bằng cho môn Data Structures and Algorithms bao gồm phân tích độ phức tạp, các cấu trúc dữ liệu cốt lõi, cây, đồ thị, giải thuật tham lam và quy hoạch động.', '2026-07-19 06:37:47.516609', '2026-07-19 07:44:49.120831');
 
 -- 11. Insert Exam Matrix Rows
 INSERT INTO exam_matrix_rows (id, matrix_id, chapter_id, topic, order_index)
@@ -333,11 +333,11 @@ VALUES
 -- 12. Insert Quizzes
 INSERT INTO quizzes (id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, teacher_id, display)
 VALUES
-    ('91111111-1111-1111-1111-111111111111', 'DSA Bài kiểm tra 1: Độ phức tạp và Cấu trúc tuyến tính', false, 60, 70.0, TO_TIMESTAMP('15-10-2025 09:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2025 11:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
-    ('92222222-2222-2222-2222-222222222222', 'DSA Thi giữa kỳ: Sắp xếp và Tìm kiếm', false, 120, 75.0, TO_TIMESTAMP('10-11-2025 13:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('10-11-2025 15:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
-    ('93333333-3333-3333-3333-333333333333', 'DSA Bài kiểm tra 2: Heaps và Hàng đợi ưu tiên', false, 45, 70.0, TO_TIMESTAMP('20-11-2025 10:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('20-11-2025 11:00:00', 'DD-MM-YYYY HH24:MI:SS'), 2, 'c1111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', true),
-    ('94444444-4444-4444-4444-444444444444', 'DSA Bài kiểm tra 3: Cây và Đồ thị', false, 75, 80.0, TO_TIMESTAMP('01-12-2025 09:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('01-12-2025 10:30:00', 'DD-MM-YYYY HH24:MI:SS'), 2, 'c1111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', true),
-    ('95555555-5555-5555-5555-555555555555', 'DSA Thi cuối kỳ: Sắp xếp, Tìm kiếm, và Đồ thị', false, 120, 85.0, TO_TIMESTAMP('12-12-2025 14:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('12-12-2025 16:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'c1111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', true);
+    ('91111111-1111-1111-1111-111111111111', 'DSA Quiz 1: Complexity and Linear Structures', false, 60, 70.0, TO_TIMESTAMP('15-10-2025 09:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2025 11:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
+    ('92222222-2222-2222-2222-222222222222', 'DSA Midterm: Sorting and Searching', false, 120, 75.0, TO_TIMESTAMP('10-11-2025 13:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('10-11-2025 15:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', true),
+    ('93333333-3333-3333-3333-333333333333', 'DSA Quiz 2: Heaps and Priority Queues', false, 45, 70.0, TO_TIMESTAMP('20-11-2025 10:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('20-11-2025 11:00:00', 'DD-MM-YYYY HH24:MI:SS'), 2, 'c1111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', true),
+    ('94444444-4444-4444-4444-444444444444', 'DSA Quiz 3: Trees and Graphs', false, 75, 80.0, TO_TIMESTAMP('01-12-2025 09:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('01-12-2025 10:30:00', 'DD-MM-YYYY HH24:MI:SS'), 2, 'c1111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', true),
+    ('95555555-5555-5555-5555-555555555555', 'DSA Final Exam: Sorting, Searching, and Graphs', false, 120, 85.0, TO_TIMESTAMP('12-12-2025 14:00:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('12-12-2025 16:00:00', 'DD-MM-YYYY HH24:MI:SS'), 1, 'c1111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', true);
 
 -- 13. Insert Questions
 INSERT INTO questions (id, content, type, quiz_id)
@@ -357,35 +357,43 @@ VALUES
 -- 14. Insert Answers
 INSERT INTO answers (content, is_correct, explanation, question_id)
 VALUES
-    ('Đúng', true, 'Tìm kiếm nhị phân chia đôi khoảng tìm kiếm ở mỗi bước, do đó mất thời gian logarit.', 'd1111111-1111-1111-1111-111111111111'),
-    ('Sai', false, 'Tìm kiếm tuyến tính là O(n), nhưng tìm kiếm nhị phân trên dữ liệu đã sắp xếp là O(log n).', 'd1111111-1111-1111-1111-111111111111'),
-    ('Hàng đợi (Queue)', false, 'Hàng đợi cung cấp truy cập FIFO: vào trước, ra trước.', 'd2222222-2222-2222-2222-222222222222'),
-    ('Ngăn xếp (Stack)', true, 'Ngăn xếp cung cấp truy cập LIFO: vào sau, ra trước.', 'd2222222-2222-2222-2222-222222222222'),
-    ('Bảng băm (Hash Table)', false, 'Bảng băm ánh xạ khóa với giá trị và không áp đặt hành vi LIFO.', 'd2222222-2222-2222-2222-222222222222'),
-    ('Đúng', true, 'Sắp xếp trộn phân tách đầu vào một cách đệ quy và gộp các nửa đã sắp xếp trong thời gian O(n log n).', 'd4444444-4444-4444-4444-444444444444'),
-    ('Sai', false, 'Sắp xếp trộn có thời gian trường hợp xấu nhất là O(n log n), không phải hành vi bậc hai.', 'd4444444-4444-4444-4444-444444444444'),
-    ('Đúng', true, 'Một binary heap kết hợp thuộc tính cấu trúc cây hoàn chỉnh với thứ tự min-heap hoặc max-heap.', 'd5555555-5555-5555-5555-555555555555'),
-    ('Sai', false, 'Binary heaps phải thỏa mãn cả thuộc tính cấu trúc cây hoàn chỉnh và thuộc tính thứ tự heap thích hợp.', 'd5555555-5555-5555-5555-555555555555'),
-    ('Binary Heap', true, 'Một binary heap hỗ trợ việc chèn và loại bỏ một cách hiệu quả các phần tử có mức ưu tiên cao nhất hoặc thấp nhất.', 'd6666666-6666-6666-6666-666666666666'),
-    ('Danh sách liên kết (Linked List)', false, 'Danh sách liên kết tự nó không duy trì thứ tự ưu tiên một cách hiệu quả.', 'd6666666-6666-6666-6666-666666666666'),
-    ('Ngăn xếp (Stack)', false, 'Ngăn xếp hữu ích cho xử lý LIFO, không phải để truy xuất dựa trên độ ưu tiên.', 'd6666666-6666-6666-6666-666666666666'),
-    ('Tìm kiếm theo chiều sâu (DFS)', false, 'DFS khám phá theo chiều sâu và không đảm bảo tìm được đường đi ngắn nhất theo số cạnh.', 'd7777777-7777-7777-7777-777777777777'),
-    ('Tìm kiếm theo chiều rộng (BFS)', true, 'BFS khám phá đồ thị theo từng mức, đưa ra các đường đi ngắn nhất trong các đồ thị không trọng số.', 'd7777777-7777-7777-7777-777777777777'),
-    ('Sắp xếp tô pô (Topological Sort)', false, 'Sắp xếp tô pô sắp xếp các đỉnh của DAG theo sự phụ thuộc, nhưng không phải là phương pháp duyệt tìm đường đi ngắn nhất.', 'd7777777-7777-7777-7777-777777777777'),
-    ('Đúng', true, 'Duyệt in-order truy cập theo thứ tự cây con trái, nút gốc, sau đó đến cây con phải, điều này tạo ra các khóa đã sắp xếp trong một BST.', 'd8888888-8888-8888-8888-888888888888'),
-    ('Sai', false, 'Pre-order và post-order có thứ tự truy cập khác nhau; in-order là cách duyệt đã sắp xếp cho các BST.', 'd8888888-8888-8888-8888-888888888888'),
-    ('Sắp xếp trộn (Merge Sort)', true, 'Sắp xếp trộn đảm bảo thời gian O(n log n) trong trường hợp tốt nhất, trung bình và xấu nhất.', 'd9999999-9999-9999-9999-999999999999'),
+    ('True', true, 'Binary search halves the search space at each step, thus taking logarithmic time.', 'd1111111-1111-1111-1111-111111111111'),
+    ('False', false, 'Linear search is O(n), but binary search on sorted data is O(log n).', 'd1111111-1111-1111-1111-111111111111'),
+    ('Queue', false, 'A queue provides FIFO access: first-in, first-out.', 'd2222222-2222-2222-2222-222222222222'),
+    ('Stack', true, 'A stack provides LIFO access: last-in, first-out.', 'd2222222-2222-2222-2222-222222222222'),
+    ('Hash Table', false, 'A hash table maps keys to values and doesn''t enforce LIFO behavior.', 'd2222222-2222-2222-2222-222222222222'),
+    ('True', true, 'Merge sort recursively divides the input and merges the sorted halves in O(n log n) time.', 'd4444444-4444-4444-4444-444444444444'),
+    ('False', false, 'Merge sort has a worst-case time of O(n log n), not quadratic behavior.', 'd4444444-4444-4444-4444-444444444444'),
+    ('True', true, 'A binary heap combines a complete tree structure property with min-heap or max-heap ordering.', 'd5555555-5555-5555-5555-555555555555'),
+    ('False', false, 'Binary heaps must satisfy both the complete tree structure property and the heap order property.', 'd5555555-5555-5555-5555-555555555555'),
+    ('Binary Heap', true, 'A binary heap efficiently supports insertion and removal of the highest or lowest priority elements.', 'd6666666-6666-6666-6666-666666666666'),
+    ('Danh sách liên kết (Linked List)', false, 'A linked list itself doesn''t maintain priority order efficiently.', 'd6666666-6666-6666-6666-666666666666'),
+    ('Stack', false, 'A stack is useful for LIFO processing, not for priority-based retrieval.', 'd6666666-6666-6666-6666-666666666666'),
+    ('Depth-First Search (DFS)', false, 'DFS explores as deep as possible and doesn''t guarantee finding the shortest path in terms of edges.', 'd7777777-7777-7777-7777-777777777777'),
+    ('Breadth-First Search (BFS)', true, 'BFS explores the graph level by level, yielding the shortest path in unweighted graphs.', 'd7777777-7777-7777-7777-777777777777'),
+    ('Topological Sort', false, 'Topological sort orders DAG vertices by dependencies, but it''s not a traversal method for finding shortest paths.', 'd7777777-7777-7777-7777-777777777777'),
+    ('True', true, 'In-order traversal visits the left subtree, root, then right subtree, which produces sorted keys in a BST.', 'd8888888-8888-8888-8888-888888888888'),
+    ('False', false, 'Pre-order and post-order visit nodes differently; in-order is the sorted traversal for BSTs.', 'd8888888-8888-8888-8888-888888888888'),
+    ('Merge Sort', true, 'Merge sort guarantees O(n log n) time in the best, average, and worst cases.', 'd9999999-9999-9999-9999-999999999999'),
     ('Sắp xếp nổi bọt (Bubble Sort)', false, 'Sắp xếp nổi bọt có thời gian trường hợp xấu nhất là O(n^2).', 'd9999999-9999-9999-9999-999999999999'),
-    ('Sắp xếp chèn (Insertion Sort)', false, 'Sắp xếp chèn có thời gian trường hợp xấu nhất là O(n^2).', 'd9999999-9999-9999-9999-999999999999'),
-    ('Đúng', false, 'Giải thuật Dijkstra giả định các trọng số cạnh không âm.', 'daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
-    ('Sai', true, 'Các đồ thị có trọng số âm yêu cầu các thuật toán như Bellman-Ford hoặc cần điều chỉnh trọng số cẩn thận.', 'daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+    ('Insertion Sort', false, 'Insertion sort has a worst-case time complexity of O(n^2).', 'd9999999-9999-9999-9999-999999999999'),
+    ('True', false, 'Dijkstra''s algorithm assumes non-negative edge weights.', 'daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+    ('False', true, 'Graphs with negative weights require algorithms like Bellman-Ford or careful weight adjustments.', 'daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
--- 15. Insert Attempts (Giữ nguyên)
-INSERT INTO attempts (id, student_id, quiz_id, score, start_time, due_time, submitted_time, time_spent_seconds, status, error_reason)
+
+-- 14.5. Insert Quiz Releases
+INSERT INTO quiz_releases (id, quiz_id, release_number, quiz_version, active, published_at)
 VALUES
-    ('e1111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444444', '91111111-1111-1111-1111-111111111111', 85.0, TO_TIMESTAMP('15-10-2025 09:10:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2025 10:10:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2025 10:05:00', 'DD-MM-YYYY HH24:MI:SS'), 3300, 'FINISHED', NULL),
-    ('e2222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555', '93333333-3333-3333-3333-333333333333', 90.0, TO_TIMESTAMP('20-11-2025 10:05:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('20-11-2025 10:50:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('20-11-2025 10:43:00', 'DD-MM-YYYY HH24:MI:SS'), 2280, 'FINISHED', NULL),
-    ('e3333333-3333-3333-3333-333333333333', '66666666-6666-6666-6666-666666666666', '95555555-5555-5555-5555-555555555555', NULL, TO_TIMESTAMP('12-12-2025 14:15:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('12-12-2025 16:15:00', 'DD-MM-YYYY HH24:MI:SS'), NULL, NULL, 'STARTED', NULL);
+    ('c1111111-1111-1111-1111-111111111111', '91111111-1111-1111-1111-111111111111', 1, 1, true, CURRENT_TIMESTAMP),
+    ('c2222222-2222-2222-2222-222222222222', '93333333-3333-3333-3333-333333333333', 1, 1, true, CURRENT_TIMESTAMP),
+    ('c3333333-3333-3333-3333-333333333333', '95555555-5555-5555-5555-555555555555', 1, 1, true, CURRENT_TIMESTAMP);
+
+-- 15. Insert Attempts
+INSERT INTO attempts (id, student_id, quiz_id, quiz_release_id, score, start_time, due_time, submitted_time, time_spent_seconds, status, error_reason)
+VALUES
+    ('e1111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444444', '91111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', 85.0, TO_TIMESTAMP('15-10-2025 09:10:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2025 10:10:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('15-10-2025 10:05:00', 'DD-MM-YYYY HH24:MI:SS'), 3300, 'FINISHED', NULL),
+    ('e2222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555', '93333333-3333-3333-3333-333333333333', 'c2222222-2222-2222-2222-222222222222', 90.0, TO_TIMESTAMP('20-11-2025 10:05:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('20-11-2025 10:50:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('20-11-2025 10:43:00', 'DD-MM-YYYY HH24:MI:SS'), 2280, 'FINISHED', NULL),
+    ('e3333333-3333-3333-3333-333333333333', '66666666-6666-6666-6666-666666666666', '95555555-5555-5555-5555-555555555555', 'c3333333-3333-3333-3333-333333333333', NULL, TO_TIMESTAMP('12-12-2025 14:15:00', 'DD-MM-YYYY HH24:MI:SS'), TO_TIMESTAMP('12-12-2025 16:15:00', 'DD-MM-YYYY HH24:MI:SS'), NULL, NULL, 'STARTED', NULL);
 
 -- 16. Insert Junction Tables (Giữ nguyên)
 INSERT INTO quiz_chapters (quiz_id, chapter_id)
@@ -429,8 +437,6 @@ VALUES
     ('d8888888-8888-8888-8888-888888888888', '85555555-5555-5555-5555-555555555555'),
     ('d9999999-9999-9999-9999-999999999999', '87777777-7777-7777-7777-777777777777'),
     ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '86666666-6666-6666-6666-666666666666'),
-    ('dbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '8854781e-efc8-4130-9451-3b0391a32419');
-
 -- 17. Persistent CCCT seed profiles for the DSA course.
 -- schema.sql recreates the development database at every BE startup, then this
 -- script restores these selectable DRAFT profiles with stable UUIDs.
@@ -554,3 +560,53 @@ VALUES
      'INGEST', 'f2000001-0000-4000-8000-000000000002',
      'courses/c1111111-1111-1111-1111-111111111111/DSABook_1.pdf',
      'PENDING', 0, NOW());
+=======
+-- 17. Mock Code Runner Question for Testing
+INSERT INTO questions (id, content, type, quiz_id)
+VALUES ('d0000000-0000-0000-0000-000000000000', 'Write a function to return the sum of two integers a and b.', 'CODE_RUNNER', '91111111-1111-1111-1111-111111111111');
+
+INSERT INTO code_runner_configs (id, question_id, schema_version, contract_id, contract_version, contract_status, title, statement, execution_profile_id, execution_profile_version, archetype_id, archetype_version, comparator_id, comparator_version, entry_point, signature_json, starter_code, reference_solution, revision)
+VALUES ('f0000000-0000-0000-0000-000000000000', 'd0000000-0000-0000-0000-000000000000', '2.0.0', 'con_001', '1.0.0', 'VERIFIED', 'Sum of two integers', 'Write a function that takes two integers a and b and returns their sum.', 'cpp17', 'v1', 'algo', 'v1', 'exact', 'v1', 'sum_ab', '{"return_type": "int", "parameters": [{"name": "a", "type": "int"}, {"name": "b", "type": "int"}]}'::jsonb, 'int sum_ab(int a, int b) {\n    // Write your code here\n    return 0;\n}', 'int sum_ab(int a, int b) {\n    return a + b;\n}', 1);
+
+INSERT INTO code_runner_test_cases (id, code_runner_config_id, external_test_id, category, visibility, arguments_json, expected_output_json, points, ordinal)
+VALUES 
+('a0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000000', 'ext_01', 'basic', 'PUBLIC', '[{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]'::jsonb, '"3"'::jsonb, 0.0, 1),
+('a0000000-0000-0000-0000-000000000002', 'f0000000-0000-0000-0000-000000000000', 'ext_02', 'hidden', 'HIDDEN', '[{"name": "a", "value": "5"}, {"name": "b", "value": "-1"}]'::jsonb, '"4"'::jsonb, 2.0, 2);
+
+INSERT INTO quiz_release_code_runner_bindings (quiz_release_id, question_id, code_runner_config_id)
+VALUES ('c1111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000000', 'f0000000-0000-0000-0000-000000000000');
+
+-- 18. Seed Assessment & Draft for Quiz2 Code Runner Testing
+INSERT INTO assessments (id, course_id, title, description, unlimited, variant_count, option_count, allow_recently_used_questions, lifecycle_status, current_step, version, created_at, updated_at)
+VALUES ('a0000000-0000-0000-0000-000000000000', 'c1111111-1111-1111-1111-111111111111', 'Code Runner Test Assessment', 'Testing Code Runner Verify Button', false, 1, 4, true, 'REVIEW_PENDING', 6, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO assessment_generation_batches (id, assessment_id, status, option_count, total_cells, completed_cells, generated_questions, request_snapshot, idempotency_key, created_at, updated_at)
+VALUES ('b0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-000000000000', 'COMPLETED', 4, 1, 1, 1, '{}', 'seed-batch-coderunner', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO question_drafts (id, course_id, content, question_type, code_runner_contract, assessment_id, generation_batch_id, chapter_id, cognitive_level_id, created_by)
+VALUES (
+    'd1111111-0000-0000-0000-000000000000',
+    'c1111111-1111-1111-1111-111111111111',
+    'Write a function to return the sum of two integers a and b.',
+    'CODE_RUNNER',
+    '{"schema_version":"2.0.0","contract_id":"sum_two_integers","contract_version":"1.0.0","status":"READY_FOR_REVIEW","title":"Sum Two Integers","statement":"Write a function to return the sum of two integers a and b.","runtime":{"execution_profile":{"id":"dsa_cpp17","version":"1.0.0"},"archetype":{"id":"scalar_function","version":"1.0.0"},"comparator":{"id":"exact_typed","version":"1.0.0"},"entry_point":"sum","signature":{"return_fixture":{"id":"integer","version":"1.0.0"},"arguments":[{"name":"a","fixture":{"id":"integer","version":"1.0.0"}},{"name":"b","fixture":{"id":"integer","version":"1.0.0"}}]},"starter_code":"int sum(int a, int b) {\n    return 0;\n}","public_tests":[{"id":"t1","category":"Basic","visibility":"PUBLIC","arguments":{"a":1,"b":2},"expected_output":3,"points":0}],"banned_api_patterns":[]},"private_grading":{"reference_solution":"int sum(int a, int b) {\n    return a + b;\n}","hidden_tests":[{"id":"h1","category":"Hidden","visibility":"HIDDEN","arguments":{"a":10,"b":20},"expected_output":30,"points":10}]}}'::jsonb,
+    'a0000000-0000-0000-0000-000000000000',
+    'b0000000-0000-0000-0000-000000000000',
+    '8a01575f-a418-4107-b1b1-5eef75c5b72d',
+    'a81d3ff0-5373-4d0c-b576-b6352ef4f564',
+    '11111111-1111-1111-1111-111111111111'
+)
+ON CONFLICT (id) DO UPDATE SET 
+    code_runner_contract = EXCLUDED.code_runner_contract,
+    chapter_id = EXCLUDED.chapter_id,
+    cognitive_level_id = EXCLUDED.cognitive_level_id,
+    created_by = EXCLUDED.created_by;
+
+INSERT INTO question_draft_learning_outcomes (question_draft_id, learning_outcome_id)
+VALUES (
+    'd1111111-0000-0000-0000-000000000000',
+    '81111111-1111-1111-1111-111111111111'
+)
+ON CONFLICT DO NOTHING;

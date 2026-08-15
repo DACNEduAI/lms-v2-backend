@@ -47,6 +47,8 @@ interface CodeRunnerContractRepository {
 
     Optional<CodeRunnerConfigRow> findLatestConfig(@Param("questionId") UUID questionId);
 
+    Optional<CodeRunnerConfigRow> findConfigById(@Param("id") UUID id);
+
     Optional<CodeRunnerConfigRow> findReleasedConfigForAttempt(
             @Param("attemptId") UUID attemptId,
             @Param("questionId") UUID questionId);
@@ -68,5 +70,17 @@ interface CodeRunnerContractRepository {
             @Param("stdout") String stdout,
             @Param("stderr") String stderr,
             @Param("timeMs") Integer timeMs,
-            @Param("memoryKb") Integer memoryKb);
+            @Param("memoryKb") Integer memoryKb,
+            @Param("wallTimeLimitMs") Integer wallTimeLimitMs,
+            @Param("memoryLimitKb") Integer memoryLimitKb);
+
+    void insertVerificationCase(
+            @Param("id") UUID id,
+            @Param("verificationId") UUID verificationId,
+            @Param("externalTestId") String externalTestId,
+            @Param("visibility") String visibility,
+            @Param("verdict") String verdict,
+            @Param("timeMs") Double timeMs,
+            @Param("memoryKb") Long memoryKb,
+            @Param("diagnostic") String diagnostic);
 }
