@@ -527,14 +527,12 @@ public class Quiz3AssessmentService {
     private void validateQuiz(UUID quizId){
         Integer invalid=jdbc.queryForObject("""
                 SELECT COUNT(*) FROM edu.questions q WHERE q.quiz_id=? AND (btrim(COALESCE(q.content,''))='' OR
-                    (SELECT COUNT(*) FROM edu.answers a WHERE a.question_id=q.id AND btrim(COALESCE(a.content,''))<>'')<2 OR
                     (SELECT COUNT(*) FROM edu.answers a WHERE a.question_id=q.id AND a.is_correct)=1 IS NOT TRUE)
                 """,Integer.class,quizId);
-        if(invalid!=null&&invalid>0) throw conflict("Every question needs content, at least two non-empty answers, and exactly one correct answer");
+        if(invalid!=null&&invalid>0) throw conflict("Every question needs content and exactly one correct answer");
     }
-    private void validateAnswers(List<AnswerInput> answers){if(answers==null||answers.size()<2)throw badRequest("At least two answers are required");
-        if(answers.stream().anyMatch(a->a.content()==null||a.content().isBlank()))throw badRequest("Answers cannot be blank");
-        if(answers.stream().filter(AnswerInput::correct).count()!=1)throw badRequest("Exactly one answer must be correct");}
+    static void validateAnswers(List<AnswerInput> answers){if(answers==null||answers.stream().filter(AnswerInput::correct).count()!=1)throw badRequest("Exactly one answer must be correct");
+        if(answers.stream().anyMatch(a->a.content()==null||a.content().isBlank()))throw badRequest("Answers cannot be blank");}
     private void validateGeneratedAnswers(List<GeneratedAnswer> answers){if(answers==null||answers.size()!=4)throw badRequest("Quiz3 AI must return exactly four initial answers");
         if(answers.stream().filter(GeneratedAnswer::isCorrect).count()!=1)throw badRequest("Quiz3 AI must return exactly one correct answer");}
     private UUID baseQuiz(UUID assessmentId){UUID id=jdbc.query("SELECT quiz_id FROM edu.quiz3_assessment_variants WHERE assessment_id=? AND variant_kind='BASE'",rs->rs.next()?rs.getObject(1,UUID.class):null,assessmentId);
