@@ -45,6 +45,10 @@ DROP TABLE IF EXISTS
     ai_chat_sessions,
     notifications,
     user_chat_messages,
+    exam_matrix_2_cell_counts,
+    exam_matrix_2_rows,
+    exam_matrix_2_custom_learning_levels,
+    exam_matrices_2,
     exam_matrix_row_learning_level_counts,
     exam_matrix_row_learning_outcomes,
     custom_learning_level_learning_outcomes,
@@ -348,6 +352,46 @@ CREATE INDEX idx_ccct_items_topic_status
     ON ccct_items (topic_id, coverage_status);
 
 -- Exam Matrices
+-- Matrix 2 is deliberately independent from the existing Exam Matrix/Quiz2
+-- tables. It is a teacher-authored planning surface and is not consumed by AI.
+CREATE TABLE IF NOT EXISTS exam_matrices_2
+(
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id   UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+    title       VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
+    description TEXT,
+    created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS exam_matrix_2_custom_learning_levels
+(
+    id          UUID PRIMARY KEY,
+    matrix_id   UUID         NOT NULL REFERENCES exam_matrices_2 (id) ON DELETE CASCADE,
+    name        VARCHAR(255) NOT NULL CHECK (btrim(name) <> ''),
+    sort_order  INTEGER      NOT NULL CHECK (sort_order >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS exam_matrix_2_rows
+(
+    id                         UUID PRIMARY KEY,
+    matrix_id                  UUID NOT NULL REFERENCES exam_matrices_2 (id) ON DELETE CASCADE,
+    chapter_id                 UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
+    mapped_learning_outcome_id UUID REFERENCES learning_outcomes (id) ON DELETE SET NULL,
+    sort_order                 INTEGER NOT NULL CHECK (sort_order >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS exam_matrix_2_cell_counts
+(
+    row_id                     UUID NOT NULL REFERENCES exam_matrix_2_rows (id) ON DELETE CASCADE,
+    custom_learning_level_id   UUID NOT NULL REFERENCES exam_matrix_2_custom_learning_levels (id) ON DELETE CASCADE,
+    question_count             INTEGER NOT NULL DEFAULT 0 CHECK (question_count >= 0),
+    PRIMARY KEY (row_id, custom_learning_level_id)
+);
+
+CREATE INDEX IF NOT EXISTS exam_matrices_2_course_idx ON exam_matrices_2 (course_id);
+CREATE INDEX IF NOT EXISTS exam_matrix_2_rows_matrix_idx ON exam_matrix_2_rows (matrix_id, sort_order);
+
 CREATE TABLE IF NOT EXISTS exam_matrices
 (
     id              uuid                        not null default gen_random_uuid(),
