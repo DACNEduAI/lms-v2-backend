@@ -59,12 +59,11 @@ class ModifyMaterialServiceUT {
     }
 
     @Test
-    @DisplayName("Should modify material with new fileKey and return presigned upload URL")
-    void testModify_FileKeyChanged_ShouldReturnPresignedUrl() {
+    @DisplayName("Should throw IllegalStateException when trying to change fileKey")
+    void testModify_ChangeFileKey_ShouldThrowException() {
         // Arrange
         String oldFileKey = "courses/" + courseId + "/old.pdf";
         String newFileKey = "courses/" + courseId + "/new.pdf";
-        String presignedUploadUrl = "https://s3.example.com/presigned-upload-url";
 
         Material existing = Material.builder()
                 .id(materialId)
@@ -93,21 +92,13 @@ class ModifyMaterialServiceUT {
 
         when(getMaterialPort.findByIdAndCourseId(materialId, courseId))
                 .thenReturn(Optional.of(existing));
-        when(modifyMaterialPort.update(any(Material.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(createUploadLinkPort.createUploadLink(eq(newFileKey), eq("application/pdf"), isNull()))
-                .thenReturn(presignedUploadUrl);
 
-        // Act
-        ModifyMaterialResponse response = modifyMaterialService.modifyMaterial(command);
-
-        // Assert
-        assertNotNull(response);
-        assertEquals("New Title", response.getTitle());
-        assertEquals(newFileKey, response.getFileKey());
-        assertEquals("PENDING", response.getStatus()); // reset to PENDING
-        assertFalse(response.getIsDownloadable());
-        assertEquals(presignedUploadUrl, response.getPresignedUploadUrl());
-        verify(createUploadLinkPort, times(1)).createUploadLink(newFileKey, "application/pdf", null);
+        // Act & Assert
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> modifyMaterialService.modifyMaterial(command));
+        assertTrue(exception.getMessage().contains("immutable"));
+        verify(modifyMaterialPort, never()).update(any());
+        verify(createUploadLinkPort, never()).createUploadLink(any(), any(), any());
     }
 
     @Test
@@ -155,53 +146,7 @@ class ModifyMaterialServiceUT {
         verify(createUploadLinkPort, never()).createUploadLink(any(), any(), any());
     }
 
-    @Test
-    @DisplayName("Should modify material with VIDEO type and resolve content type to video/mp4")
-    void testModify_VideoType_ShouldResolveContentType() {
-        // Arrange
-        String oldFileKey = "courses/" + courseId + "/old.mp4";
-        String newFileKey = "courses/" + courseId + "/new.mp4";
-        String presignedUploadUrl = "https://s3.example.com/presigned-upload-url";
 
-        Material existing = Material.builder()
-                .id(materialId)
-                .title("Old Video")
-                .type(MaterialType.VIDEO)
-                .fileKey(oldFileKey)
-                .downloadable(true)
-                .status(MaterialStatus.UPLOADED)
-                .courseId(courseId)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        Material patch = Material.builder()
-                .title("New Video")
-                .type(MaterialType.VIDEO)
-                .fileKey(newFileKey)
-                .downloadable(true)
-                .build();
-
-        ModifyMaterialCommand command = ModifyMaterialCommand.builder()
-                .courseId(courseId)
-                .materialId(materialId)
-                .material(patch)
-                .build();
-
-        when(getMaterialPort.findByIdAndCourseId(materialId, courseId))
-                .thenReturn(Optional.of(existing));
-        when(modifyMaterialPort.update(any(Material.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(createUploadLinkPort.createUploadLink(eq(newFileKey), eq("video/mp4"), isNull()))
-                .thenReturn(presignedUploadUrl);
-
-        // Act
-        ModifyMaterialResponse response = modifyMaterialService.modifyMaterial(command);
-
-        // Assert
-        assertNotNull(response);
-        assertEquals(presignedUploadUrl, response.getPresignedUploadUrl());
-        verify(createUploadLinkPort, times(1)).createUploadLink(newFileKey, "video/mp4", null);
-    }
 
     @Test
     @DisplayName("Should throw RuntimeException when material not found")

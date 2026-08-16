@@ -388,7 +388,7 @@ public class QuizWebhookProcessingService {
             String outcomeId = row.path("learningOutcomeId").asText();
             addExpected(expectedDistribution, outcomeId, "MULTIPLE_CHOICE", row.path("hieu").asInt());
             addExpected(expectedDistribution, outcomeId, "SHORT_ANSWER", row.path("van_dung").asInt());
-            addExpected(expectedDistribution, outcomeId, "CODE_RUNNER", row.path("vdc").asInt());
+            // addExpected(expectedDistribution, outcomeId, "CODE_RUNNER", row.path("vdc").asInt());
         });
         Map<String, Integer> actualDistribution = new HashMap<>();
         for (QuizWebhookRequest.QuestionPayload question : questions) {
@@ -421,14 +421,14 @@ public class QuizWebhookProcessingService {
                     "Every generated question must identify matrix outcomes and original type");
         }
         String originalType = question.getOriginalType().toUpperCase();
-        if (!Set.of("MULTIPLE_CHOICE", "SHORT_ANSWER", "CODE_RUNNER").contains(originalType)) {
+        if (!Set.of("MULTIPLE_CHOICE", "SHORT_ANSWER"/*, "CODE_RUNNER"*/).contains(originalType)) {
             throw new IllegalArgumentException("Generated question type is unsupported");
         }
         boolean multipleChoice = "MULTIPLE_CHOICE".equals(originalType);
         Question.QuestionType expectedLmsType = multipleChoice
                 ? Question.QuestionType.MULTIPLE_CHOICE
-                : "CODE_RUNNER".equals(originalType)
-                        ? Question.QuestionType.CODE_RUNNER
+                /* : "CODE_RUNNER".equals(originalType)
+                        ? Question.QuestionType.CODE_RUNNER */
                         : Question.QuestionType.ESSAY;
         if (question.getType() != expectedLmsType) {
             throw new IllegalArgumentException("Generated question type conversion is invalid");

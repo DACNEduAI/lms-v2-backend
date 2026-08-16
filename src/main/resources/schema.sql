@@ -23,72 +23,7 @@ CREATE TABLE IF NOT EXISTS ai_index.document_indexes
 CREATE INDEX IF NOT EXISTS idx_document_indexes_ready
     ON ai_index.document_indexes (status, index_profile);
 
--- Drop existing tables to start fresh on every application boot
-DROP TABLE IF EXISTS
-    users,
-    students,
-    teachers,
-    courses,
-    chapters,
-    materials,
-    material_index_jobs,
-    chapter_materials,
-    chapter_learning_outcomes,
-    learning_outcomes,
-    group_learning_outcomes,
-    enrollments,
-    quizzes,
-    code_submission_test_results,
-    code_submissions,
-    quiz_release_code_runner_bindings,
-    quiz_releases,
-    code_runner_test_cases,
-    code_runner_configs,
-    questions,
-    rich_content_assets,
-    question_generation_provenance,
-    question_images,
-    answers,
-    question_draft_learning_outcomes,
-    question_bank_question_learning_outcomes,
-    question_draft_answers,
-    question_bank_answers,
-    question_drafts,
-    question_bank_questions,
-    cognitive_levels,
-    question_bank_item_learning_outcomes,
-    question_bank_items,
-    attempts,
-    question_image_generation_jobs,
-    quiz_generation_jobs,
-    quiz_chapters,
-    quiz_learning_outcomes,
-    question_learning_outcomes,
-    activity_logs,
-    course_announcements,
-    event_publication,
-    ai_course_chat_messages,
-    ai_chat_sessions,
-    notifications,
-    user_chat_messages,
-    exam_matrix_2_cell_counts,
-    exam_matrix_2_rows,
-    exam_matrix_2_custom_learning_levels,
-    exam_matrices_2,
-    exam_matrix_row_learning_level_counts,
-    exam_matrix_row_learning_outcomes,
-    custom_learning_level_learning_outcomes,
-    custom_learning_levels,
-    exam_matrix_rows,
-    exam_matrices,
-    ccct_ai_jobs,
-    ccct_items,
-    ccct_topics,
-    ccct_chapters,
-    ccct_profiles
-    CASCADE;
 
--- Below is the actual schema of the code
 
 CREATE TABLE IF NOT EXISTS users
 (
@@ -1556,7 +1491,7 @@ CREATE TABLE IF NOT EXISTS question_ai_change_sets (
 
 ALTER TABLE rich_content_assets ADD COLUMN IF NOT EXISTS ai_artifact_id UUID
     REFERENCES question_ai_artifacts(id) ON DELETE SET NULL;
-CREATE TABLE IF NOT EXISTS code_runner_verifications ( id UUID PRIMARY KEY, revision_id UUID NOT NULL, verified_by UUID NOT NULL, verified_at TIMESTAMP WITH TIME ZONE NOT NULL, execution_profile JSONB NOT NULL, judge0_submission_id VARCHAR(255) NOT NULL, verdict VARCHAR(50) NOT NULL, stdout TEXT, stderr TEXT, time_ms DOUBLE PRECISION, memory_kb BIGINT );
+
 
 -- Quiz3 is an additive Matrix2 workflow. It deliberately does not reference
 -- Quiz2 assessments, generation batches, drafts, or Question Bank allocation.
@@ -1663,8 +1598,7 @@ CREATE TABLE IF NOT EXISTS quiz3_question_ai_change_sets (
     before_content TEXT NOT NULL,before_content_format VARCHAR(30) NOT NULL,after_content TEXT NOT NULL,after_content_format VARCHAR(30) NOT NULL,
     artifact_revisions JSONB NOT NULL DEFAULT '[]'::jsonb,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(question_id,change_index)
 );
->>>>>>> origin/feature/quiz2
-=======
+
 CREATE TABLE IF NOT EXISTS code_runner_verifications
 (
     id                    UUID PRIMARY KEY,

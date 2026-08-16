@@ -993,17 +993,22 @@ public class AssessmentWorkflowRepository {
         if (assessment.examMatrixId() == null) throw new IllegalStateException("Select an Exam Matrix first");
         return jdbc.query("""
                 SELECT r.id AS matrix_row_id, counts.custom_learning_level_id,
+                       r.chapter_id, l.code AS level_code, counts.question_type,
                        SUM(counts.question_count) AS question_count
                 FROM edu.exam_matrix_row_learning_level_counts counts
                 JOIN edu.exam_matrix_rows r ON r.id = counts.exam_matrix_row_id
+                JOIN edu.custom_learning_levels l ON l.id = counts.custom_learning_level_id
                 WHERE r.matrix_id = :matrixId AND counts.question_count > 0
-                GROUP BY r.id, r.order_index, counts.custom_learning_level_id
+                GROUP BY r.id, r.order_index, counts.custom_learning_level_id, r.chapter_id, l.code, counts.question_type
                 ORDER BY r.order_index, r.id, counts.custom_learning_level_id
                 """, Map.of("matrixId", assessment.examMatrixId()), (rs, rowNum) -> {
             UUID rowId = rs.getObject("matrix_row_id", UUID.class);
             UUID levelId = rs.getObject("custom_learning_level_id", UUID.class);
             return new MatrixRequirement(rowId, levelId, cellOutcomeIds(rowId, levelId),
-                    rs.getInt("question_count"));
+                    rs.getInt("question_count"),
+                    rs.getObject("chapter_id", UUID.class),
+                    rs.getString("level_code"),
+                    rs.getString("question_type"));
         });
     }
 
@@ -1038,6 +1043,19 @@ public class AssessmentWorkflowRepository {
             throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED", "questions", null, null,
                     "Every variant must contain exactly " + progress.requiredPerVariant() + " Matrix questions before publishing");
         }
+        Integer unverifiedCodeRunner = jdbc.queryForObject("""
+                SELECT COUNT(q.id) FROM edu.questions q
+                JOIN edu.assessment_variants v ON v.quiz_id = q.quiz_id
+                LEFT JOIN edu.code_runner_configs c ON c.question_id = q.id 
+                     AND c.revision = (SELECT MAX(revision) FROM edu.code_runner_configs WHERE question_id = q.id)
+                WHERE v.assessment_id = :assessmentId
+                  AND q.type = 'CODE_RUNNER'
+                  AND COALESCE(c.contract_status, 'DRAFT') != 'VERIFIED_EXECUTION_GOLD'
+                """, Map.of("assessmentId", assessment.id()), Integer.class);
+        if (unverifiedCodeRunner != null && unverifiedCodeRunner > 0) {
+            throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED", "questions", null, null,
+                    "All Code Runner questions must be verified successfully (VERIFIED_EXECUTION_GOLD) before publishing");
+        }
         List<VariantView> variants = variants(assessment.id());
         if (assessment.variantCount() == null || variants.size() != assessment.variantCount()) {
             throw new AssessmentValidationException("ASSESSMENT_PUBLISH_VALIDATION_FAILED", "variants", null, null,
@@ -1061,7 +1079,7 @@ public class AssessmentWorkflowRepository {
                   AND q.lifecycle_status = 'READY_TO_PUBLISH'
                 """, Map.of("actorId", actorId, "publishedAt", publishedAt, "assessmentId", assessment.id()));
         if (publishedVariants != variants.size()) throw new IllegalStateException("One or more variants changed before publish");
-<<<<<<< HEAD
+
         for (VariantView variant : variants) {
             quizReleases.publishRelease(variant.quizId(), 1, actorId, publishedAt);
         }
@@ -1665,6 +1683,6 @@ public class AssessmentWorkflowRepository {
     }
 
     private record MatrixRequirement(UUID matrixRowId, UUID customLearningLevelId,
-            List<UUID> learningOutcomeIds, int required) {
+            List<UUID> learningOutcomeIds, int required, UUID chapterId, String levelCode, String questionType) {
     }
 }

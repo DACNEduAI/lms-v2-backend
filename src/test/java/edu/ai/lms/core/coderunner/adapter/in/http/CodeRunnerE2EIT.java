@@ -236,7 +236,7 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
                         {"sourceCode":"bool isEven(int value) { return value % 2 == 0; }"}
                         """)
                 .post("/api/{courseId}/attempt/{attemptId}/questions/{questionId}/code-runner/submissions", courseId, attemptId, quizQuestionId)
-                .then().log().all().statusCode(201);
+                .then().log().all().statusCode(202);
 
         // Submit attempt
         given().contentType(ContentType.JSON)

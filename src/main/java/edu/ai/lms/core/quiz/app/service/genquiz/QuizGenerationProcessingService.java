@@ -42,6 +42,8 @@ public class QuizGenerationProcessingService {
 
     @Value("${quiz.generation.webhook.base-url}")
     private String webhookBaseUrl;
+    @Value("${quiz.generation.webhook.secret}")
+    private String webhookSecret;
     @Value("${quiz.generation.timeout-minutes:20}")
     private long timeoutMinutes;
     @Value("${quiz.generation.max-attempts:3}")

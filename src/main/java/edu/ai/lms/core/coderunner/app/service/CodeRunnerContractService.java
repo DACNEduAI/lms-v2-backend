@@ -65,44 +65,10 @@ public class CodeRunnerContractService {
         CodeRunnerQuestionContext context = requireContext(courseId, quizId, questionId);
         requireCourseAccess(actor, context);
         return loadContractPort.findLatestStoredByQuestionId(questionId)
-                .orElseGet(() -> createDefaultContract());
+                .orElseThrow(() -> new CodeRunnerNotFoundException("Code Runner contract not configured"));
     }
 
-    private StoredCodeRunnerContract createDefaultContract() {
-        ExecutableAssessmentContract.FunctionSignature signature = new ExecutableAssessmentContract.FunctionSignature(
-                new ExecutableAssessmentContract.VersionedRef("integer", "1.0.0"),
-                java.util.List.of()
-        );
-        
-        ExecutableAssessmentContract.RuntimeContract runtime = new ExecutableAssessmentContract.RuntimeContract(
-                new ExecutableAssessmentContract.VersionedRef("dsa_cpp17", "1.0.0"),
-                new ExecutableAssessmentContract.VersionedRef("scalar_function", "1.0.0"),
-                new ExecutableAssessmentContract.VersionedRef("exact_typed", "1.0.0"),
-                "main",
-                signature,
-                "// write your code here",
-                java.util.List.of(new ExecutableAssessmentContract.TestCase("t1", "example", "PUBLIC", new java.util.HashMap<>(), objectMapper.getNodeFactory().textNode(""), 0)),
-                java.util.List.of()
-        );
 
-        ExecutableAssessmentContract.PrivateGrading grading = new ExecutableAssessmentContract.PrivateGrading(
-                "// write your reference solution here",
-                java.util.List.of(new ExecutableAssessmentContract.TestCase("h1", "hidden", "HIDDEN", new java.util.HashMap<>(), objectMapper.getNodeFactory().textNode(""), 10))
-        );
-
-        ExecutableAssessmentContract contract = new ExecutableAssessmentContract(
-                "2.0.0",
-                "default_contract",
-                "1.0.0",
-                "DRAFT",
-                "Untitled",
-                "No statement",
-                runtime,
-                grading
-        );
-        
-        return new StoredCodeRunnerContract(null, contract, java.util.Collections.emptyMap());
-    }
 
     public CodeRunnerVerificationResponse verify(UUID courseId, UUID quizId, UUID questionId) {
         CodeRunnerActor actor = requireTeacher();
@@ -112,14 +78,14 @@ public class CodeRunnerContractService {
         if (context.draftContractJson() != null && !context.draftContractJson().isBlank()) {
             try {
                 ExecutableAssessmentContract contract = objectMapper.readValue(context.draftContractJson(), ExecutableAssessmentContract.class);
-                return verificationService.verifyReference(null, questionId, actor.userId(), contract);
+                this.save(courseId, quizId, questionId, contract);
             } catch (JsonProcessingException e) {
                 throw new CodeRunnerConflictException("Invalid draft contract JSON: " + e.getMessage());
             }
         }
         
         StoredCodeRunnerContract stored = loadContractPort.findLatestStoredByQuestionId(questionId)
-                .orElseGet(this::createDefaultContract);
+                .orElseThrow(() -> new CodeRunnerNotFoundException("Code Runner contract not configured"));
                 
         return verificationService.verifyReference(stored.configId(), questionId, actor.userId(), stored.contract());
     }

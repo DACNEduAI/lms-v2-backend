@@ -313,9 +313,9 @@
 				<artifactId>maven-failsafe-plugin</artifactId>
 				<configuration>
 					<includes>
-						<!-- Include all test classes in adapter/in directories across all modules -->
-						<include>**/adapter/in/**/*IT.java</include>
-						<include>**/adapter/in/**/IT*.java</include>
+						<!-- Include all test classes across all modules -->
+						<include>**/*IT.java</include>
+						<include>**/IT*.java</include>
 					</includes>
 					<classesDirectory>${project.build.outputDirectory}</classesDirectory>
 					<testClassesDirectory>${project.build.testOutputDirectory}</testClassesDirectory>

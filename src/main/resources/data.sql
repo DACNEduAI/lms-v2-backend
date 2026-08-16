@@ -1,3 +1,5 @@
+SET search_path TO edu, public;
+
 -- 1. Insert Users (Giữ nguyên thông tin người dùng cơ bản)
 INSERT INTO users (id, email, password, first_name, last_name, avatar_url, role)
 VALUES
@@ -291,6 +293,48 @@ VALUES
     ('b2000023-0000-4000-8000-000000000001', 'b2000013-0000-4000-8000-000000000001',
      'b2000001-0000-4000-8000-000000000001', 'MULTIPLE_CHOICE', 1);
 
+
+-- 11f. Exam Matrix for Code Runner
+INSERT INTO exam_matrices
+    (id, course_id, title, description, lifecycle_status, version, published_by, published_at, created_at, updated_at)
+VALUES
+    ('b4000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
+     'Exam Matrix – Code Runner',
+     'Matrix cho bai tap Code Runner.',
+     'PUBLISHED', 1, '11111111-1111-1111-1111-111111111111',
+     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO exam_matrix_rows (id, matrix_id, chapter_id, topic, order_index)
+VALUES
+    ('b4000021-0000-4000-8000-000000000001', 'b4000001-0000-4000-8000-000000000001',
+     '5e055691-371a-4de5-b61a-f6d06712c36a', 'Co ban', 0)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO custom_learning_levels (id, matrix_id, code, name, description, sort_order)
+VALUES
+    ('b4000011-0000-4000-8000-000000000001', 'b4000001-0000-4000-8000-000000000001',
+     'CLL_CR', 'Thuc hanh', 'Ap dung code.', 1)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO exam_matrix_row_learning_outcomes (exam_matrix_row_id, learning_outcome_id, is_selected)
+VALUES
+    ('b4000021-0000-4000-8000-000000000001', '81111111-1111-1111-1111-111111111111', TRUE)
+ON CONFLICT (exam_matrix_row_id, learning_outcome_id) DO NOTHING;
+
+INSERT INTO custom_learning_level_learning_outcomes
+    (custom_learning_level_id, learning_outcome_id, is_selected)
+VALUES
+    ('b4000011-0000-4000-8000-000000000001', '81111111-1111-1111-1111-111111111111', TRUE)
+ON CONFLICT (custom_learning_level_id, learning_outcome_id) DO NOTHING;
+
+INSERT INTO exam_matrix_row_learning_level_counts
+    (exam_matrix_row_id, custom_learning_level_id, matrix_id, question_type, question_count)
+VALUES
+    ('b4000021-0000-4000-8000-000000000001', 'b4000011-0000-4000-8000-000000000001',
+     'b4000001-0000-4000-8000-000000000001', 'CODE_RUNNER', 1)
+ON CONFLICT (exam_matrix_row_id, custom_learning_level_id) DO NOTHING;
+
 -- 11e. Matrix 2 seed data. These records are intentionally separate from the
 -- existing Exam Matrix seed and are not available to Quiz2 or the AI pipeline.
 INSERT INTO exam_matrices_2 (id, course_id, title, description)
@@ -436,7 +480,7 @@ VALUES
     ('d7777777-7777-7777-7777-777777777777', '86666666-6666-6666-6666-666666666666'),
     ('d8888888-8888-8888-8888-888888888888', '85555555-5555-5555-5555-555555555555'),
     ('d9999999-9999-9999-9999-999999999999', '87777777-7777-7777-7777-777777777777'),
-    ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '86666666-6666-6666-6666-666666666666'),
+    ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '86666666-6666-6666-6666-666666666666') ON CONFLICT (question_id, learning_outcome_id) DO NOTHING;
 -- 17. Persistent CCCT seed profiles for the DSA course.
 -- schema.sql recreates the development database at every BE startup, then this
 -- script restores these selectable DRAFT profiles with stable UUIDs.
@@ -560,29 +604,67 @@ VALUES
      'INGEST', 'f2000001-0000-4000-8000-000000000002',
      'courses/c1111111-1111-1111-1111-111111111111/DSABook_1.pdf',
      'PENDING', 0, NOW());
-=======
 -- 17. Mock Code Runner Question for Testing
 INSERT INTO questions (id, content, type, quiz_id)
 VALUES ('d0000000-0000-0000-0000-000000000000', 'Write a function to return the sum of two integers a and b.', 'CODE_RUNNER', '91111111-1111-1111-1111-111111111111');
 
 INSERT INTO code_runner_configs (id, question_id, schema_version, contract_id, contract_version, contract_status, title, statement, execution_profile_id, execution_profile_version, archetype_id, archetype_version, comparator_id, comparator_version, entry_point, signature_json, starter_code, reference_solution, revision)
-VALUES ('f0000000-0000-0000-0000-000000000000', 'd0000000-0000-0000-0000-000000000000', '2.0.0', 'con_001', '1.0.0', 'VERIFIED', 'Sum of two integers', 'Write a function that takes two integers a and b and returns their sum.', 'cpp17', 'v1', 'algo', 'v1', 'exact', 'v1', 'sum_ab', '{"return_type": "int", "parameters": [{"name": "a", "type": "int"}, {"name": "b", "type": "int"}]}'::jsonb, 'int sum_ab(int a, int b) {\n    // Write your code here\n    return 0;\n}', 'int sum_ab(int a, int b) {\n    return a + b;\n}', 1);
+VALUES (
+    'f0000000-0000-0000-0000-000000000000',
+    'd0000000-0000-0000-0000-000000000000',
+    '2.0.0', 'sum_two_integers', '1.0.0', 'READY_FOR_REVIEW',
+    'Sum of two integers',
+    'Write a function that takes two integers a and b and returns their sum.',
+    'dsa_cpp17', '1.0.0',
+    'scalar_function', '1.0.0',
+    'exact_typed', '1.0.0',
+    'sum',
+    '{"return_fixture":{"id":"integer","version":"1.0.0"},"arguments":[{"name":"a","fixture":{"id":"integer","version":"1.0.0"},"constraints":{}},{"name":"b","fixture":{"id":"integer","version":"1.0.0"},"constraints":{}}]}'::jsonb,
+    'int sum(int a, int b) {\n    // Write your code here\n    return 0;\n}',
+    'int sum(int a, int b) {\n    return a + b;\n}',
+    1
+)
+ON CONFLICT (id) DO UPDATE SET
+    contract_status = EXCLUDED.contract_status,
+    execution_profile_id = EXCLUDED.execution_profile_id,
+    execution_profile_version = EXCLUDED.execution_profile_version,
+    archetype_id = EXCLUDED.archetype_id,
+    archetype_version = EXCLUDED.archetype_version,
+    comparator_id = EXCLUDED.comparator_id,
+    comparator_version = EXCLUDED.comparator_version,
+    entry_point = EXCLUDED.entry_point,
+    signature_json = EXCLUDED.signature_json,
+    starter_code = EXCLUDED.starter_code,
+    reference_solution = EXCLUDED.reference_solution,
+    updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO code_runner_test_cases (id, code_runner_config_id, external_test_id, category, visibility, arguments_json, expected_output_json, points, ordinal)
 VALUES 
-('a0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000000', 'ext_01', 'basic', 'PUBLIC', '[{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]'::jsonb, '"3"'::jsonb, 0.0, 1),
-('a0000000-0000-0000-0000-000000000002', 'f0000000-0000-0000-0000-000000000000', 'ext_02', 'hidden', 'HIDDEN', '[{"name": "a", "value": "5"}, {"name": "b", "value": "-1"}]'::jsonb, '"4"'::jsonb, 2.0, 2);
+('a0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000000', 'public_1', 'basic', 'PUBLIC', '{"a":1,"b":2}'::jsonb, '3'::jsonb, 0.0, 1),
+('a0000000-0000-0000-0000-000000000002', 'f0000000-0000-0000-0000-000000000000', 'hidden_1', 'hidden', 'HIDDEN', '{"a":5,"b":-1}'::jsonb, '4'::jsonb, 2.0, 2)
+ON CONFLICT (id) DO UPDATE SET
+    external_test_id = EXCLUDED.external_test_id,
+    category = EXCLUDED.category,
+    visibility = EXCLUDED.visibility,
+    arguments_json = EXCLUDED.arguments_json,
+    expected_output_json = EXCLUDED.expected_output_json,
+    points = EXCLUDED.points,
+    ordinal = EXCLUDED.ordinal;
 
 INSERT INTO quiz_release_code_runner_bindings (quiz_release_id, question_id, code_runner_config_id)
-VALUES ('c1111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000000', 'f0000000-0000-0000-0000-000000000000');
+VALUES ('c1111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000000', 'f0000000-0000-0000-0000-000000000000') ON CONFLICT (quiz_release_id, question_id) DO NOTHING;
 
 -- 18. Seed Assessment & Draft for Quiz2 Code Runner Testing
-INSERT INTO assessments (id, course_id, title, description, unlimited, variant_count, option_count, allow_recently_used_questions, lifecycle_status, current_step, version, created_at, updated_at)
-VALUES ('a0000000-0000-0000-0000-000000000000', 'c1111111-1111-1111-1111-111111111111', 'Code Runner Test Assessment', 'Testing Code Runner Verify Button', false, 1, 4, true, 'REVIEW_PENDING', 6, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+INSERT INTO assessments (id, course_id, title, description, unlimited, variant_count, option_count, allow_recently_used_questions, lifecycle_status, current_step, version, exam_matrix_id, ccct_profile_id, created_at, updated_at)
+VALUES ('a0000000-0000-0000-0000-000000000000', 'c1111111-1111-1111-1111-111111111111', 'Code Runner Test Assessment', 'Testing Code Runner Verify Button', false, 1, 4, true, 'REVIEW_PENDING', 6, 1, 'b4000001-0000-4000-8000-000000000001', 'e1000001-0000-4000-8000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO assessment_generation_batches (id, assessment_id, status, option_count, total_cells, completed_cells, generated_questions, request_snapshot, idempotency_key, created_at, updated_at)
 VALUES ('b0000000-0000-0000-0000-000000000000', 'a0000000-0000-0000-0000-000000000000', 'COMPLETED', 4, 1, 1, 1, '{}', 'seed-batch-coderunner', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO assessment_generation_batch_items (id, batch_id, matrix_row_id, custom_learning_level_id, question_type, required_count, generated_count, status, updated_at)
+VALUES ('c0000000-0000-0000-0000-000000000000', 'b0000000-0000-0000-0000-000000000000', 'b4000021-0000-4000-8000-000000000001', 'b4000011-0000-4000-8000-000000000001', 'CODE_RUNNER', 1, 1, 'COMPLETED', CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO question_drafts (id, course_id, content, question_type, code_runner_contract, assessment_id, generation_batch_id, chapter_id, cognitive_level_id, created_by)
@@ -595,7 +677,7 @@ VALUES (
     'a0000000-0000-0000-0000-000000000000',
     'b0000000-0000-0000-0000-000000000000',
     '8a01575f-a418-4107-b1b1-5eef75c5b72d',
-    'a81d3ff0-5373-4d0c-b576-b6352ef4f564',
+    (SELECT id FROM cognitive_levels WHERE code = 'APPLY' LIMIT 1),
     '11111111-1111-1111-1111-111111111111'
 )
 ON CONFLICT (id) DO UPDATE SET 

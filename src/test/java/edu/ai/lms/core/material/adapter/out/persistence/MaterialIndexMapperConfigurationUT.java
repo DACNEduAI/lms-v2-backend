@@ -1,8 +1,8 @@
 package edu.ai.lms.core.material.adapter.out.persistence;
 
-import edu.ai.lms.config.mybatis.DocumentIndexStatusTypeHandler;
-import edu.ai.lms.config.mybatis.MaterialIndexJobOperationTypeHandler;
-import edu.ai.lms.config.mybatis.MaterialIndexJobStatusTypeHandler;
+import edu.ai.lms.core.material.adapter.out.persistence.mybatis.DocumentIndexStatusTypeHandler;
+import edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialIndexJobOperationTypeHandler;
+import edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialIndexJobStatusTypeHandler;
 import edu.ai.lms.config.mybatis.UuidTypeHandler;
 import org.apache.ibatis.builder.xml.XMLMapperBuilder;
 import org.apache.ibatis.io.Resources;
