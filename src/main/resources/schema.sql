@@ -1511,15 +1511,15 @@ CREATE TABLE IF NOT EXISTS quiz3_question_ai_jobs (
     status VARCHAR(40) NOT NULL CHECK(status IN('QUEUED','RUNNING','NEEDS_CLARIFICATION','APPLIED_TO_WORKING_DRAFT','FAILED','CANCELLED','TIMED_OUT')),
     phase VARCHAR(30) NOT NULL DEFAULT 'QUEUED',prompt TEXT NOT NULL DEFAULT '',request_payload JSONB NOT NULL,action_plan JSONB,
     base_question_version BIGINT NOT NULL,clarification_question TEXT,clarification_answer TEXT,error_code VARCHAR(80),error_message TEXT,
-    warning_message TEXT,attempt_count INTEGER NOT NULL DEFAULT 0,action_count INTEGER NOT NULL DEFAULT 0,lease_until TIMESTAMP,
-    clarification_expires_at TIMESTAMP,started_at TIMESTAMP,completed_at TIMESTAMP,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    warning_message TEXT,attempt_count INTEGER NOT NULL DEFAULT 0,action_count INTEGER NOT NULL DEFAULT 0,lease_until TIMESTAMPTZ,
+    clarification_expires_at TIMESTAMPTZ,started_at TIMESTAMPTZ,completed_at TIMESTAMPTZ,created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz3_question_ai_active_job ON quiz3_question_ai_jobs(question_id) WHERE status IN('QUEUED','RUNNING','NEEDS_CLARIFICATION');
 CREATE TABLE IF NOT EXISTS quiz3_question_ai_job_steps (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),job_id UUID NOT NULL REFERENCES quiz3_question_ai_jobs(id) ON DELETE CASCADE,
     action_id VARCHAR(64),step_order INTEGER NOT NULL,specialist VARCHAR(30) NOT NULL,status VARCHAR(20) NOT NULL,attempt INTEGER NOT NULL DEFAULT 1,
-    input_payload JSONB,output_payload JSONB,error_message TEXT,started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,completed_at TIMESTAMP
+    input_payload JSONB,output_payload JSONB,error_message TEXT,started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,completed_at TIMESTAMPTZ
 );
 CREATE TABLE IF NOT EXISTS quiz3_question_ai_artifacts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,

@@ -51,9 +51,14 @@ public final class Quiz3Models {
     public record GeneratedAnswer(String content, boolean isCorrect, String explanation) { }
     public record ProgressPayload(UUID jobId, UUID assessmentId, int attempt,
             int generatedQuestionCount) { }
+    public record AiAnchor(String kind, Integer offset) { }
     public record AiRequest(String mode, String prompt, long expectedQuestionVersion, String currentContent,
-            String currentContentFormat) { }
+            String currentContentFormat, AiAnchor anchor) { }
     public record AiDraft(UUID questionId, long baseQuestionVersion, String content,
             String contentFormat, int appliedChangeIndex, int latestChangeIndex,
             boolean canUndo, boolean canRedo) { }
+    public record AiStep(String actionId, String specialist, String status, String errorCode, String errorMessage) { }
+    public record AiJobView(UUID id, String status, String phase, String errorCode, String errorMessage,
+            String warningMessage, List<AiStep> steps) { }
+    public record AiStartResult(AiJobView job, boolean existing) { }
 }
