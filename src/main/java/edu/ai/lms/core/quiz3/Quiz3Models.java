@@ -8,20 +8,21 @@ public final class Quiz3Models {
     private Quiz3Models() { }
 
     public enum SourceMode { USE_EXISTING, COPY_AS_DRAFT, CREATE_NEW_DRAFT }
+    public enum MatrixSourceType { MATRIX2, MATRIX3 }
     public record Configuration(String title, String description, Boolean unlimited,
             Integer timeLimitMinutes, Double passScore, LocalDateTime startTime,
             LocalDateTime dueTime, Integer attemptLimited, Integer variantCount) { }
     public record AssessmentView(UUID id, UUID courseId, String title, String description,
             boolean unlimited, Integer timeLimitMinutes, Double passScore, LocalDateTime startTime,
             LocalDateTime dueTime, Integer attemptLimited, int variantCount, String lifecycleStatus,
-            int currentStep, UUID ccctProfileId, Long ccctProfileVersion, UUID matrix2Id,
-            Long matrix2Version, UUID baseGenerationJobId, long version,
+            int currentStep, UUID ccctProfileId, Long ccctProfileVersion, MatrixSourceType matrixSourceType,
+            UUID matrix2Id, Long matrix2Version, UUID matrix3Id, Long matrix3Version, UUID baseGenerationJobId, long version,
             LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt) { }
-    public record SourceOption(UUID id, String name, String lifecycleStatus, long version) { }
+    public record SourceOption(UUID id, String name, String lifecycleStatus, long version, MatrixSourceType matrixSourceType) { }
     public record ContextView(AssessmentView assessment, List<SourceOption> ccctProfiles,
-            List<SourceOption> matrices) { }
-    public record SourceSelection(SourceMode mode, UUID sourceId, String draftName) { }
-    public record ContextSelection(SourceSelection ccct, SourceSelection matrix2) { }
+            List<SourceOption> matrix2s, List<SourceOption> matrix3s) { }
+    public record SourceSelection(SourceMode mode, UUID sourceId, String draftName, MatrixSourceType matrixSourceType) { }
+    public record ContextSelection(SourceSelection ccct, SourceSelection matrix) { }
     public record SourceVersion(long version) { }
     public record VersionedConfiguration(long version, Configuration configuration) { }
     public record GenerationView(UUID jobId, String status, String phase, int attemptCount,
