@@ -2,6 +2,7 @@ package edu.ai.lms.core.quiz3;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public final class Quiz3Models {
@@ -33,7 +34,8 @@ public final class Quiz3Models {
             String explanation, String explanationFormat, List<AnswerInput> answers) { }
     public record AnswerView(long number, String content, String contentFormat, boolean correct) { }
     public record QuestionMetadata(UUID matrixRowId, String chapter, UUID learningOutcomeId,
-            String learningOutcome, UUID customLearningLevelId, String customLearningLevelName) { }
+            String learningOutcome, UUID customLearningLevelId, String customLearningLevelName,
+            String qbank2SelectionMode, List<String> contentGroupIds, List<UUID> exampleIds) { }
     public record QuestionView(UUID id, String content, String contentFormat, String explanation,
             String explanationFormat, String type, int orderIndex, long version,
             QuestionMetadata metadata, List<AnswerView> answers) { }
@@ -47,7 +49,8 @@ public final class Quiz3Models {
             QuizPayload quiz, String errorCode, String errorMessage) { }
     public record QuizPayload(String quizName, List<GeneratedQuestion> questions) { }
     public record GeneratedQuestion(String content, String type, UUID matrixRowId,
-            UUID customLearningLevelId, UUID learningOutcomeId, List<GeneratedAnswer> answers) { }
+            UUID customLearningLevelId, UUID learningOutcomeId, List<GeneratedAnswer> answers,
+            Map<String, Object> qbank2Reference) { }
     public record GeneratedAnswer(String content, boolean isCorrect, String explanation) { }
     public record ProgressPayload(UUID jobId, UUID assessmentId, int attempt,
             int generatedQuestionCount) { }
@@ -61,4 +64,10 @@ public final class Quiz3Models {
     public record AiJobView(UUID id, String status, String phase, String errorCode, String errorMessage,
             String warningMessage, List<AiStep> steps) { }
     public record AiStartResult(AiJobView job, boolean existing) { }
+    public record QBank2RegenerateRequest(List<UUID> exampleIds) { }
+    public record QBank2RegenerationJobView(UUID id, String status, String phase, String errorCode, String errorMessage) { }
+    public record QBank2RegenerationStartResult(QBank2RegenerationJobView job, boolean existing) { }
+    public record QBank2RegenerationDraft(UUID questionId, long baseQuestionVersion, String content, String contentFormat,
+            String explanation, String explanationFormat, List<AnswerInput> answers, List<String> contentGroupIds,
+            List<UUID> exampleIds) { }
 }

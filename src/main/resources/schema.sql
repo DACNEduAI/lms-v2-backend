@@ -58,6 +58,21 @@ DROP TABLE IF EXISTS
     quiz_chapters,
     quiz_learning_outcomes,
     question_learning_outcomes,
+    -- Quiz3 runtime state must be explicitly reset. Dropping its referenced
+    -- parent tables alone only removes foreign-key constraints in PostgreSQL;
+    -- it leaves these tables with an obsolete shape behind.
+    quiz3_question_ai_artifact_revisions,
+    quiz3_question_ai_artifacts,
+    quiz3_question_ai_change_sets,
+    quiz3_question_ai_job_steps,
+    quiz3_question_ai_jobs,
+    quiz3_question_ai_working_drafts,
+    quiz3_qbank2_regeneration_drafts,
+    quiz3_qbank2_regeneration_jobs,
+    quiz3_question_provenance,
+    quiz3_assessment_variants,
+    quiz3_generation_jobs,
+    quiz3_assessments,
     activity_logs,
     course_announcements,
     event_publication,
@@ -447,6 +462,32 @@ CREATE TABLE IF NOT EXISTS exam_matrix_3_cell_relations
 );
 CREATE INDEX IF NOT EXISTS exam_matrices_3_course_idx ON exam_matrices_3(course_id);
 CREATE INDEX IF NOT EXISTS exam_matrix_3_rows_matrix_idx ON exam_matrix_3_rows(matrix_id,sort_order);
+
+-- QBank2 is an independent, course-owned collection of plain-text content groups and examples.
+-- This development/reset schema is executed with sql.init.mode=always.  Reset
+-- QBank2 explicitly so the fixed fixtures in data.sql remain repeatable.
+DROP TABLE IF EXISTS question_bank_2_examples;
+DROP TABLE IF EXISTS question_bank_2_groups;
+DROP TABLE IF EXISTS question_bank_2_code_counters;
+CREATE TABLE IF NOT EXISTS question_bank_2_code_counters (
+    course_id UUID PRIMARY KEY REFERENCES courses(id) ON DELETE CASCADE,
+    next_value INTEGER NOT NULL CHECK(next_value > 0)
+);
+CREATE TABLE IF NOT EXISTS question_bank_2_groups (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    code VARCHAR(64) NOT NULL, code_sequence INTEGER NOT NULL CHECK(code_sequence > 0),
+    name VARCHAR(255) NOT NULL CHECK(btrim(name)<>''), description TEXT NOT NULL CHECK(btrim(description)<>''),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(course_id,code), UNIQUE(course_id,code_sequence)
+);
+CREATE TABLE IF NOT EXISTS question_bank_2_examples (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), group_id UUID NOT NULL REFERENCES question_bank_2_groups(id) ON DELETE CASCADE,
+    content TEXT NOT NULL CHECK(btrim(content)<>''), sequence INTEGER NOT NULL CHECK(sequence > 0),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(group_id,sequence)
+);
+CREATE INDEX IF NOT EXISTS question_bank_2_groups_course_idx ON question_bank_2_groups(course_id,code_sequence);
+CREATE INDEX IF NOT EXISTS question_bank_2_examples_group_idx ON question_bank_2_examples(group_id,sequence);
 
 ALTER TABLE exam_matrices_2
     ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT'
@@ -1495,6 +1536,55 @@ CREATE TABLE IF NOT EXISTS quiz3_question_provenance (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_quiz3_provenance_allocation ON quiz3_question_provenance(matrix2_row_id,matrix2_custom_learning_level_id,learning_outcome_id);
+
+-- Reset-only Quiz3/QBank2 manual override provenance.  The original matrix
+-- allocation remains immutable; these columns identify the optional few-shot
+-- examples that were committed with a teacher's explicit Save question.
+ALTER TABLE quiz3_question_provenance
+    ADD COLUMN IF NOT EXISTS qbank2_selection_mode VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS qbank2_content_group_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    ADD COLUMN IF NOT EXISTS qbank2_content_group_codes JSONB NOT NULL DEFAULT '[]'::jsonb,
+    ADD COLUMN IF NOT EXISTS qbank2_example_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    ADD COLUMN IF NOT EXISTS qbank2_reference_snapshot JSONB;
+ALTER TABLE quiz3_question_provenance DROP CONSTRAINT IF EXISTS quiz3_question_provenance_qbank2_selection_mode_check;
+ALTER TABLE quiz3_question_provenance ADD CONSTRAINT quiz3_question_provenance_qbank2_selection_mode_check
+    CHECK(qbank2_selection_mode IS NULL OR qbank2_selection_mode IN('AUTO_SELECTED','RAG_FALLBACK','MANUAL_OVERRIDE'));
+
+CREATE TABLE IF NOT EXISTS quiz3_qbank2_regeneration_jobs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
+    variant_id UUID NOT NULL REFERENCES quiz3_assessment_variants(id) ON DELETE CASCADE,
+    question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+    requested_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    example_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    reference_snapshot JSONB,
+    request_payload JSONB NOT NULL,
+    base_question_version BIGINT NOT NULL CHECK(base_question_version >= 0),
+    status VARCHAR(40) NOT NULL CHECK(status IN('QUEUED','RUNNING','APPLIED_TO_WORKING_DRAFT','FAILED','CANCELLED','TIMED_OUT')),
+    phase VARCHAR(30) NOT NULL DEFAULT 'QUEUED' CHECK(phase IN('QUEUED','GENERATING','APPLYING','DONE')),
+    error_code VARCHAR(80), error_message TEXT, lease_until TIMESTAMPTZ,
+    started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz3_qbank2_regeneration_active_job
+    ON quiz3_qbank2_regeneration_jobs(question_id) WHERE status IN('QUEUED','RUNNING');
+CREATE INDEX IF NOT EXISTS idx_quiz3_qbank2_regeneration_queue ON quiz3_qbank2_regeneration_jobs(status,created_at);
+
+CREATE TABLE IF NOT EXISTS quiz3_qbank2_regeneration_drafts (
+    question_id UUID PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
+    assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
+    variant_id UUID NOT NULL REFERENCES quiz3_assessment_variants(id) ON DELETE CASCADE,
+    job_id UUID NOT NULL REFERENCES quiz3_qbank2_regeneration_jobs(id) ON DELETE CASCADE,
+    base_question_version BIGINT NOT NULL CHECK(base_question_version >= 0),
+    content TEXT NOT NULL, content_format VARCHAR(30) NOT NULL,
+    explanation TEXT, explanation_format VARCHAR(30) NOT NULL,
+    answers JSONB NOT NULL,
+    content_group_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    content_group_codes JSONB NOT NULL DEFAULT '[]'::jsonb,
+    example_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    reference_snapshot JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS quiz3_question_ai_working_drafts (
     question_id UUID PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,

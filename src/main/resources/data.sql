@@ -322,11 +322,11 @@ VALUES
 
 INSERT INTO exam_matrix_2_cell_counts (row_id, custom_learning_level_id, question_count)
 VALUES
-    ('b3000021-0000-4000-8000-000000000001', 'b3000011-0000-4000-8000-000000000001', 2),
+    ('b3000021-0000-4000-8000-000000000001', 'b3000011-0000-4000-8000-000000000001', 0),
     ('b3000021-0000-4000-8000-000000000001', 'b3000011-0000-4000-8000-000000000002', 1),
-    ('b3000021-0000-4000-8000-000000000002', 'b3000011-0000-4000-8000-000000000001', 1),
+    ('b3000021-0000-4000-8000-000000000002', 'b3000011-0000-4000-8000-000000000001', 0),
     ('b3000021-0000-4000-8000-000000000002', 'b3000011-0000-4000-8000-000000000003', 2),
-    ('b3000021-0000-4000-8000-000000000011', 'b3000011-0000-4000-8000-000000000011', 2),
+    ('b3000021-0000-4000-8000-000000000011', 'b3000011-0000-4000-8000-000000000011', 1),
     ('b3000021-0000-4000-8000-000000000011', 'b3000011-0000-4000-8000-000000000012', 2),
     ('b3000021-0000-4000-8000-000000000012', 'b3000011-0000-4000-8000-000000000012', 3);
 
@@ -441,35 +441,35 @@ VALUES
     ('e1000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
      'CCCT – Độ phức tạp giải thuật', 'CCCT – Độ phức tạp giải thuật', 'DRAFT', 0, 2,
      true, 'STRUCTURED',
-     $$# CCCT – Độ phức tạp giải thuật
+     '# CCCT – Độ phức tạp giải thuật
 
 ## Độ phức tạp giải thuật
 
 ### Phân tích độ phức tạp tiệm cận
 - Big-O (Cận trên / Upper bound) — Learn and exam
-- Big-Ω (Cận dưới / Lower bound) — Learn and exam$$,
+- Big-Ω (Cận dưới / Lower bound) — Learn and exam',
      '11111111-1111-1111-1111-111111111111'),
     ('e1000001-0000-4000-8000-000000000002', 'c1111111-1111-1111-1111-111111111111',
      'CCCT – Heap', 'CCCT – Heap', 'DRAFT', 0, 2,
      true, 'STRUCTURED',
-     $$# CCCT – Heap
+     '# CCCT – Heap
 
 ## Heap
 
 ### Các loại Heap
 - Max-Heap — Learn and exam
-- Min-Heap — Learn and exam$$,
+- Min-Heap — Learn and exam',
      '11111111-1111-1111-1111-111111111111'),
     ('e1000001-0000-4000-8000-000000000003', 'c1111111-1111-1111-1111-111111111111',
      'CCCT – Đồ thị', 'CCCT – Đồ thị', 'DRAFT', 0, 2,
      true, 'STRUCTURED',
-     $$# CCCT – Đồ thị
+     '# CCCT – Đồ thị
 
 ## Đồ thị
 
 ### Duyệt đồ thị
 - BFS (Duyệt theo chiều rộng) — Learn and exam
-- DFS (Duyệt theo chiều sâu) — Learn and exam$$,
+- DFS (Duyệt theo chiều sâu) — Learn and exam',
      '11111111-1111-1111-1111-111111111111');
 
 -- Format v2 requires every Course Chapter in its persisted order. Only the
@@ -600,3 +600,52 @@ VALUES
     ('d5200001-0000-4000-8000-000000000004', 'd5100001-0000-4000-8000-000000000004'),
     ('d5200001-0000-4000-8000-000000000004', 'd5100001-0000-4000-8000-000000000005'),
     ('d5200001-0000-4000-8000-000000000004', 'd5100001-0000-4000-8000-000000000006');
+
+-- QBank2 reset fixtures for CO2003.  They are deliberately plain-text and
+-- self-contained so teachers can exercise manual Quiz3 few-shot selection.
+INSERT INTO question_bank_2_groups (id, course_id, code, code_sequence, name, description)
+VALUES
+    ('a1000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111', 'QBG-001', 1, 'Stack implementation', 'Push, pop, and peek operations on a stack.'),
+    ('a1000001-0000-4000-8000-000000000002', 'c1111111-1111-1111-1111-111111111111', 'QBG-002', 2, 'Queue/FIFO operations', 'Enqueue, dequeue, and FIFO behavior of a queue.'),
+    ('a1000001-0000-4000-8000-000000000003', 'c1111111-1111-1111-1111-111111111111', 'QBG-003', 3, 'Binary search', 'Binary search over a sorted array.'),
+    ('a1000001-0000-4000-8000-000000000004', 'c1111111-1111-1111-1111-111111111111', 'QBG-004', 4, 'Sorting trace', 'Trace the steps of a sorting algorithm.'),
+    ('a1000001-0000-4000-8000-000000000005', 'c1111111-1111-1111-1111-111111111111', 'QBG-005', 5, 'BigO - Quicksort worst case', 'Kiểm tra trình độ hiểu biết về độ phức tạp giải thuật qua trường hợp xấu nhất của Quicksort.'),
+    ('a1000001-0000-4000-8000-000000000006', 'c1111111-1111-1111-1111-111111111111', 'QBG-006', 6, 'BigO - Phân tích độ phức tạp', 'Kiểm tra trình độ hiểu biết về độ phức tạp giải thuật BigO.');
+
+INSERT INTO question_bank_2_examples (id, group_id, content, sequence)
+VALUES
+    ('a1100001-0000-4000-8000-000000000001','a1000001-0000-4000-8000-000000000001','Question: after push(10), push(20), pop(), what is returned? Correct: 20. Distractors: 10, null, 0.',1),
+    ('a1100001-0000-4000-8000-000000000002','a1000001-0000-4000-8000-000000000001','Question: which operation reads the top of a stack without removing it? Correct: peek. Distractors: pop, push, enqueue.',2),
+    ('a1100001-0000-4000-8000-000000000003','a1000001-0000-4000-8000-000000000001','Question: what condition occurs when popping an empty stack? Correct: underflow. Distractors: overflow, collision, recursion.',3),
+    ('a1100001-0000-4000-8000-000000000004','a1000001-0000-4000-8000-000000000001','Question: why is a stack suitable for matching parentheses? Correct: last in, first out. Distractors: FIFO, random access, automatic sorting.',4),
+    ('a1100001-0000-4000-8000-000000000005','a1000001-0000-4000-8000-000000000002','Question: empty queue; enqueue A, enqueue B, dequeue(). What is returned? Correct: A. Distractors: B, null, 0.',1),
+    ('a1100001-0000-4000-8000-000000000006','a1000001-0000-4000-8000-000000000002','Question: what does FIFO mean for a queue? Correct: first in, first out. Distractors: last in, first out, top first, random.',2),
+    ('a1100001-0000-4000-8000-000000000007','a1000001-0000-4000-8000-000000000002','Question: which operation appends an item to the rear of a queue? Correct: enqueue. Distractors: dequeue, pop, peek.',3),
+    ('a1100001-0000-4000-8000-000000000008','a1000001-0000-4000-8000-000000000003','Question: what property is required before binary search? Correct: sorted input. Distractors: unique values, even length, positive integers.',1),
+    ('a1100001-0000-4000-8000-000000000009','a1000001-0000-4000-8000-000000000003','Question: each binary-search step discards approximately what portion of the search interval? Correct: one half. Distractors: one quarter, one third, none.',2),
+    ('a1100001-0000-4000-8000-000000000010','a1000001-0000-4000-8000-000000000004','Question: after one Bubble Sort pass, which value moves to the end of the unsorted region? Correct: largest value. Distractors: smallest value, first value, pivot.',1),
+    ('a1100001-0000-4000-8000-000000000011','a1000001-0000-4000-8000-000000000005','Sự lặp lại trong trường hợp xấu nhất của Quicksort là gì và độ phức tạp thời gian trong trường hợp xấu nhất là gì?
+A. T(n) = T(n - 2) + O(n) và O(n²)
+B. T(n) = T(n - 1) + O(n) và O(n²)
+C. T(n) = 2T(n / 2) + O(n) và O(n log n)
+D. T(n) = T(n / 10) + T(9n / 10) + O(n) và O(n log n)
+Đáp án đúng: B.',1),
+    ('a1100001-0000-4000-8000-000000000012','a1000001-0000-4000-8000-000000000006','Độ phức tạp thời gian của đoạn lệnh sau là gì?
+for (int i = 1; i < n; i *= 2) { ... }
+A. O(1)
+B. O(log n)
+C. O(n)
+D. O(n log n)
+Đáp án đúng: B.',1),
+    ('a1100001-0000-4000-8000-000000000013','a1000001-0000-4000-8000-000000000006','Độ phức tạp thời gian của đoạn lệnh sau là gì?
+for (int i = 0; i < n; i++) {
+    for (int j = 1; j < n; j *= 2) { ... }
+}
+A. O(log n)
+B. O(n)
+C. O(n log n)
+D. O(n²)
+Đáp án đúng: C.',2);
+
+INSERT INTO question_bank_2_code_counters (course_id, next_value)
+VALUES ('c1111111-1111-1111-1111-111111111111', 7);

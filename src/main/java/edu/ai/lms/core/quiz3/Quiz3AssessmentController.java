@@ -36,6 +36,7 @@ public class Quiz3AssessmentController {
     private final Quiz3RichContentService richContent;
     private final ObjectMapper objectMapper;
     private final Quiz3QuestionAiService questionAi;
+    private final Quiz3QBank2RegenerationService qbank2Regeneration;
 
     @GetMapping public List<AssessmentView> list(@PathVariable UUID courseId){return service.list(courseId);}
     @PostMapping public ResponseEntity<AssessmentView> create(@PathVariable UUID courseId,@RequestBody Configuration request){return ResponseEntity.status(201).body(service.create(courseId,request));}
@@ -72,4 +73,8 @@ public class Quiz3AssessmentController {
     @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-draft/undo") public AiDraft aiUndo(@PathVariable UUID courseId,@PathVariable UUID assessmentId,@PathVariable UUID variantId,@PathVariable UUID questionId){return questionAi.move(courseId,assessmentId,variantId,questionId,false);}
     @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-draft/redo") public AiDraft aiRedo(@PathVariable UUID courseId,@PathVariable UUID assessmentId,@PathVariable UUID variantId,@PathVariable UUID questionId){return questionAi.move(courseId,assessmentId,variantId,questionId,true);}
     @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/ai-draft/discard") public ResponseEntity<Void> aiDiscard(@PathVariable UUID courseId,@PathVariable UUID assessmentId,@PathVariable UUID variantId,@PathVariable UUID questionId){questionAi.discard(courseId,assessmentId,variantId,questionId);return ResponseEntity.noContent().build();}
+    @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/qbank2-regenerate") public ResponseEntity<QBank2RegenerationJobView> qbank2Regenerate(@PathVariable UUID courseId,@PathVariable UUID assessmentId,@PathVariable UUID variantId,@PathVariable UUID questionId,@RequestBody QBank2RegenerateRequest request){var result=qbank2Regeneration.start(courseId,assessmentId,variantId,questionId,request);return ResponseEntity.status(result.existing()?409:202).body(result.job());}
+    @GetMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/qbank2-regeneration-jobs/{jobId}") public QBank2RegenerationJobView qbank2RegenerationJob(@PathVariable UUID courseId,@PathVariable UUID assessmentId,@PathVariable UUID variantId,@PathVariable UUID questionId,@PathVariable UUID jobId){return qbank2Regeneration.job(courseId,assessmentId,variantId,questionId,jobId);}
+    @GetMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/qbank2-regeneration-draft") public QBank2RegenerationDraft qbank2RegenerationDraft(@PathVariable UUID courseId,@PathVariable UUID assessmentId,@PathVariable UUID variantId,@PathVariable UUID questionId){return qbank2Regeneration.draft(courseId,assessmentId,variantId,questionId);}
+    @PostMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}/qbank2-regeneration-draft/discard") public ResponseEntity<Void> qbank2RegenerationDiscard(@PathVariable UUID courseId,@PathVariable UUID assessmentId,@PathVariable UUID variantId,@PathVariable UUID questionId){qbank2Regeneration.discard(courseId,assessmentId,variantId,questionId);return ResponseEntity.noContent().build();}
 }

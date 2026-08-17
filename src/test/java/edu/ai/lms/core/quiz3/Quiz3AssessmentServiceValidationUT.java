@@ -52,8 +52,8 @@ class Quiz3AssessmentServiceValidationUT {
                 """.formatted(rowId, outcomeId, levelId));
         var answers = List.of(new Quiz3Models.GeneratedAnswer("A", true, ""), new Quiz3Models.GeneratedAnswer("B", false, ""),
                 new Quiz3Models.GeneratedAnswer("C", false, ""), new Quiz3Models.GeneratedAnswer("D", false, ""));
-        var questions = List.of(new Quiz3Models.GeneratedQuestion("Q1", "MULTIPLE_CHOICE", rowId, levelId, outcomeId, answers),
-                new Quiz3Models.GeneratedQuestion("Q2", "MULTIPLE_CHOICE", rowId, levelId, outcomeId, answers));
+        var questions = List.of(new Quiz3Models.GeneratedQuestion("Q1", "MULTIPLE_CHOICE", rowId, levelId, outcomeId, answers, null),
+                new Quiz3Models.GeneratedQuestion("Q2", "MULTIPLE_CHOICE", rowId, levelId, outcomeId, answers, null));
         assertDoesNotThrow(() -> Quiz3AssessmentService.validateCallback(snapshot, questions, 2));
         assertThrows(ResponseStatusException.class, () -> Quiz3AssessmentService.validateCallback(snapshot, questions.subList(0, 1), 1));
         assertEquals(List.of(), Quiz3AssessmentService.coverageDifferences(Map.of("row/level/lo", 2), Map.of("row/level/lo", 2)));
