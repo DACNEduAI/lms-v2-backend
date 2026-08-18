@@ -8,18 +8,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import edu.ai.lms.core.quiz.adapter.out.persistence.RichContentAssetRepository;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichTextValue;
-import edu.ai.lms.core.quiz.app.service.richcontent.RichContentUploadService;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class Quiz3RichContentService {
     private final Quiz3AssessmentService assessments;
-    private final RichContentAssetRepository assets;
-    private final RichContentUploadService uploads;
+    private final Quiz3RichContentAssetRepository assets;
+    private final Quiz3RichContentUploadService uploads;
 
     @Transactional
     public List<Quiz3Models.VariantView> update(UUID courseId, UUID assessmentId, UUID variantId,

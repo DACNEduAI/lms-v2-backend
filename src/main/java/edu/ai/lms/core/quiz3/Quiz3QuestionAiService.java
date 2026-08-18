@@ -28,16 +28,14 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import edu.ai.lms.core.course.app.domain.CurrentActor;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.service.exammatrix.ExamMatrixAccess;
-import edu.ai.lms.core.quiz.adapter.out.persistence.RichContentAssetRepository;
 import edu.ai.lms.core.quiz.app.domain.assessment.QuestionAiModels.Anchor;
-import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentAsset;
 import edu.ai.lms.core.quiz.app.port.out.RichContentAssetStoragePort;
 import edu.ai.lms.core.quiz.app.service.assessment.QuestionAiDocumentService;
-import edu.ai.lms.core.quiz.app.service.richcontent.RichContentUploadService;
 import lombok.RequiredArgsConstructor;
 
 /** Durable, question-stem-only AI jobs for Quiz3. External AI calls never hold a DB transaction open. */
@@ -52,8 +50,8 @@ public class Quiz3QuestionAiService {
     private final ObjectMapper objectMapper;
     private final ExamMatrixAccess access;
     private final LoadSignedInUserPort actors;
-    private final RichContentUploadService uploads;
-    private final RichContentAssetRepository richAssets;
+    private final Quiz3RichContentUploadService uploads;
+    private final Quiz3RichContentAssetRepository richAssets;
     private final RichContentAssetStoragePort storage;
     private final QuestionAiDocumentService documents;
     private final Quiz3QuestionAiSseService sse;
@@ -169,12 +167,12 @@ public class Quiz3QuestionAiService {
                 UUID stepId = startStep(jobId, action, order++);
                 notifyJob(jobId);
                 try {
-                    working = execute(action, working, artifacts, job.questionId(), job.assessmentId(), job.actorId(), jobId);
-                    completeStep(stepId, "SUCCEEDED", null, null);
+                    working = execute(action, working, artifacts, job.questionId(), job.assessmentId(), job.actorId(), jobId, stepId);
+                    completeStep(stepId, "SUCCEEDED", null, null, null);
                     notifyJob(jobId);
                 } catch (Exception ex) {
                     JobFailure failure = failure(ex);
-                    completeStep(stepId, "FAILED", failure.code(), failure.getMessage());
+                    completeStep(stepId, "FAILED", failure.code(), failure.getMessage(), failure.diagnostics());
                     throw failure;
                 }
             }
@@ -263,11 +261,11 @@ public class Quiz3QuestionAiService {
     }
 
     private Working execute(Action action, Working working, List<PendingArtifact> artifacts, UUID questionId,
-            UUID assessmentId, UUID actorId, UUID jobId) {
+            UUID assessmentId, UUID actorId, UUID jobId, UUID stepId) {
         return switch (action.specialist()) {
             case "TEXT" -> executeText(action, working);
             case "LATEX" -> executeLatex(action, working, artifacts);
-            case "SVG" -> executeSvg(action, working, artifacts);
+            case "SVG" -> executeSvg(action, working, artifacts, jobId, stepId);
             default -> throw new JobFailure("UNSUPPORTED_ACTION", "Unsupported Quiz3 AI specialist");
         };
     }
@@ -292,12 +290,18 @@ public class Quiz3QuestionAiService {
         return new Working(documents.insertLatex(asHtml(working), artifactId, source, latexMode, action.anchor()), "TIPTAP_HTML");
     }
 
-    private Working executeSvg(Action action, Working working, List<PendingArtifact> artifacts) {
-        JsonNode response = requestAi("/quiz-gen/questions/svg/generate", Map.of("operation", "CREATE", "prompt", action.instruction(),
-                "questionContent", working.content(), "altText", action.instruction()));
+    private Working executeSvg(Action action, Working working, List<PendingArtifact> artifacts, UUID jobId, UUID stepId) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("operation", "CREATE");
+        payload.put("prompt", action.instruction());
+        payload.put("questionContent", working.content());
+        payload.put("altText", action.instruction());
+        payload.put("jobId", jobId);
+        JsonNode response = requestAi("/quiz-gen/questions/svg/generate", payload);
         String source = response.path("sourceCode").asText();
         if (source.isBlank()) throw new JobFailure("EMPTY_SVG_RESULT", "Question-AI returned an empty SVG artifact");
-        RichContentUploadService.UploadedAsset uploaded = uploads.uploadAiSvg(source);
+        saveSvgStepOutput(stepId, jobId, response);
+        Quiz3RichContentUploadService.UploadedAsset uploaded = uploads.uploadAiSvg(source);
         UUID artifactId = UUID.randomUUID();
         artifacts.add(PendingArtifact.svg(artifactId, source, action.instruction(), uploaded,
                 response.path("visualKind").asText(null), response.path("generatorUsed").asText(null),
@@ -315,8 +319,9 @@ public class Quiz3QuestionAiService {
                     VALUES (?,1,?,?,?,?,?,?,CAST(? AS jsonb),?,CAST(? AS jsonb),?)
                     """, artifact.id(), jobId, artifact.source(), sha256(artifact.source()), artifact.latexMode(), artifact.visualKind(), artifact.generator(),
                     artifact.spec(), artifact.prompt(), artifact.critic(), artifact.uploaded() == null ? null : artifact.uploaded().storageKey());
-            if (artifact.uploaded() != null) richAssets.save(new RichContentAsset(UUID.randomUUID(), null, null, questionId,
-                    artifact.uploaded().storageKey(), artifact.uploaded().mediaType(), artifact.uploaded().byteSize(), artifact.uploaded().sha256(), artifact.id(), null, null));
+            if (artifact.uploaded() != null) richAssets.save(new Quiz3RichContentAsset(UUID.randomUUID(), questionId,
+                    artifact.uploaded().storageKey(), artifact.uploaded().mediaType(), artifact.uploaded().byteSize(),
+                    artifact.uploaded().sha256(), artifact.id(), null, null));
         }
     }
 
@@ -346,9 +351,23 @@ public class Quiz3QuestionAiService {
         return id;
     }
 
-    private void completeStep(UUID stepId, String status, String code, String message) {
-        jdbc.update("UPDATE edu.quiz3_question_ai_job_steps SET status=?,error_message=?,completed_at=CURRENT_TIMESTAMP WHERE id=?", status,
-                code == null ? null : code + ": " + message, stepId);
+    private void completeStep(UUID stepId, String status, String code, String message, JsonNode outputPayload) {
+        jdbc.update("UPDATE edu.quiz3_question_ai_job_steps SET status=?,error_message=?,output_payload=COALESCE(CAST(? AS jsonb),output_payload),completed_at=CURRENT_TIMESTAMP WHERE id=?", status,
+                code == null ? null : code + ": " + message, outputPayload == null ? null : outputPayload.toString(), stepId);
+    }
+
+    private void saveSvgStepOutput(UUID stepId, UUID jobId, JsonNode response) {
+        ObjectNode output = objectMapper.createObjectNode();
+        if (response.has("diagnostics")) output.set("diagnostics", response.path("diagnostics"));
+        if (response.has("warnings")) output.set("warnings", response.path("warnings"));
+        jdbc.update("UPDATE edu.quiz3_question_ai_job_steps SET output_payload=CAST(? AS jsonb) WHERE id=?",
+                output.toString(), stepId);
+        if (response.path("warnings").isArray() && !response.path("warnings").isEmpty()) {
+            List<String> warnings = new ArrayList<>();
+            for (JsonNode warning : response.path("warnings")) warnings.add(warning.asText());
+            jdbc.update("UPDATE edu.quiz3_question_ai_jobs SET warning_message=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='RUNNING'",
+                    trim(String.join("; ", warnings)), jobId);
+        }
     }
 
     private JsonNode requestAi(String path, Map<String, Object> payload) {
@@ -356,20 +375,32 @@ public class Quiz3QuestionAiService {
             return aiWebClient.post().uri(path).contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(objectMapper.readTree(json(payload))).retrieve().bodyToMono(JsonNode.class).block(ACTION_TIMEOUT);
         } catch (WebClientResponseException ex) {
-            throw new JobFailure("UPSTREAM_" + ex.getStatusCode().value(), upstreamDetail(ex));
+            JsonNode error = upstreamError(ex);
+            throw new JobFailure("UPSTREAM_" + ex.getStatusCode().value(), upstreamDetail(ex, error), diagnostics(error));
         } catch (Exception ex) {
             throw new JobFailure("UPSTREAM_REQUEST_FAILED", "Question-AI specialist failed: " + safeMessage(ex));
         }
     }
 
-    private String upstreamDetail(WebClientResponseException ex) {
+    private JsonNode upstreamError(WebClientResponseException ex) {
+        try { return objectMapper.readTree(ex.getResponseBodyAsString()); }
+        catch (Exception ignored) { return objectMapper.createObjectNode(); }
+    }
+
+    private String upstreamDetail(WebClientResponseException ex, JsonNode parsed) {
         String body = ex.getResponseBodyAsString();
-        try {
-            JsonNode parsed = objectMapper.readTree(body);
-            JsonNode detail = parsed.path("detail");
-            if (!detail.isMissingNode() && !detail.isNull()) body = detail.isTextual() ? detail.asText() : detail.toString();
-        } catch (Exception ignored) { }
+        JsonNode detail = parsed.path("detail");
+        if (!detail.isMissingNode() && !detail.isNull()) {
+            body = detail.isTextual() ? detail.asText() : detail.path("message").asText(detail.toString());
+        }
         return "AI Pipeline HTTP " + ex.getStatusCode().value() + ": " + trim(body == null || body.isBlank() ? ex.getStatusText() : body);
+    }
+
+    private static JsonNode diagnostics(JsonNode error) {
+        JsonNode detail = error.path("detail");
+        JsonNode diagnostics = detail.path("diagnostics");
+        if (diagnostics.isMissingNode() || diagnostics.isNull()) diagnostics = error.path("diagnostics");
+        return diagnostics.isMissingNode() || diagnostics.isNull() ? null : diagnostics;
     }
 
     private void ensureRunning(UUID jobId) {
@@ -448,11 +479,13 @@ public class Quiz3QuestionAiService {
         authorize(courseId, assessmentId, variantId, questionId);
         Long baseVersion = jdbc.query("SELECT base_question_version FROM edu.quiz3_question_ai_working_drafts WHERE question_id=?", rs -> rs.next() ? rs.getLong(1) : null, questionId);
         if (baseVersion == null) return;
-        List<String> keys = jdbc.query("""
-                SELECT DISTINCT r.storage_key FROM edu.quiz3_question_ai_artifact_revisions r JOIN edu.quiz3_question_ai_jobs j ON j.id=r.job_id
-                WHERE j.question_id=? AND j.base_question_version=? AND r.storage_key IS NOT NULL
-                """, (rs, row) -> rs.getString(1), questionId, baseVersion);
-        jdbc.update("DELETE FROM edu.rich_content_assets WHERE question_id=? AND ai_artifact_id IN (SELECT a.id FROM edu.quiz3_question_ai_artifacts a JOIN edu.quiz3_question_ai_artifact_revisions r ON r.artifact_id=a.id JOIN edu.quiz3_question_ai_jobs j ON j.id=r.job_id WHERE a.question_id=? AND j.base_question_version=?)", questionId, questionId, baseVersion);
+        List<UUID> artifactIds = jdbc.query("""
+                SELECT DISTINCT a.id FROM edu.quiz3_question_ai_artifacts a
+                JOIN edu.quiz3_question_ai_artifact_revisions r ON r.artifact_id=a.id
+                JOIN edu.quiz3_question_ai_jobs j ON j.id=r.job_id
+                WHERE a.question_id=? AND j.base_question_version=?
+                """, (rs, row) -> rs.getObject(1, UUID.class), questionId, baseVersion);
+        List<String> keys = richAssets.storageKeysForArtifactIds(artifactIds);
         jdbc.update("DELETE FROM edu.quiz3_question_ai_artifacts WHERE id IN (SELECT a.id FROM edu.quiz3_question_ai_artifacts a JOIN edu.quiz3_question_ai_artifact_revisions r ON r.artifact_id=a.id JOIN edu.quiz3_question_ai_jobs j ON j.id=r.job_id WHERE a.question_id=? AND j.base_question_version=?)", questionId, baseVersion);
         jdbc.update("DELETE FROM edu.quiz3_question_ai_change_sets WHERE question_id=? AND job_id IN (SELECT id FROM edu.quiz3_question_ai_jobs WHERE question_id=? AND base_question_version=?)", questionId, questionId, baseVersion);
         jdbc.update("DELETE FROM edu.quiz3_question_ai_working_drafts WHERE question_id=?", questionId);
@@ -488,10 +521,17 @@ public class Quiz3QuestionAiService {
     private record Working(String content, String format) { }
     private record Execution(UUID id, UUID assessmentId, UUID variantId, UUID questionId, UUID actorId, long version, Quiz3Models.AiRequest request, Working initial, Instant startedAt) { }
     private record Action(String id, String specialist, String instruction, Anchor anchor) { Map<String, Object> payload() { Map<String, Object> value = new LinkedHashMap<>(); value.put("id", id); value.put("specialist", specialist); value.put("instruction", instruction); value.put("anchor", anchorPayload(anchor)); return value; } }
-    private record PendingArtifact(UUID id, String type, String source, String latexMode, String prompt, RichContentUploadService.UploadedAsset uploaded, String visualKind, String generator, String spec, String critic) {
+    private record PendingArtifact(UUID id, String type, String source, String latexMode, String prompt, Quiz3RichContentUploadService.UploadedAsset uploaded, String visualKind, String generator, String spec, String critic) {
         static PendingArtifact latex(UUID id, String source, String mode, String prompt) { return new PendingArtifact(id, "LATEX", source, mode, prompt, null, null, null, null, null); }
-        static PendingArtifact svg(UUID id, String source, String prompt, RichContentUploadService.UploadedAsset uploaded, String visualKind, String generator, String spec, String critic) { return new PendingArtifact(id, "SVG", source, null, prompt, uploaded, visualKind, generator, spec, critic); }
+        static PendingArtifact svg(UUID id, String source, String prompt, Quiz3RichContentUploadService.UploadedAsset uploaded, String visualKind, String generator, String spec, String critic) { return new PendingArtifact(id, "SVG", source, null, prompt, uploaded, visualKind, generator, spec, critic); }
     }
     private static final class JobCancelled extends RuntimeException { }
-    private static final class JobFailure extends RuntimeException { private final String code; JobFailure(String code, String message) { super(message); this.code = code; } String code() { return code; } }
+    private static final class JobFailure extends RuntimeException {
+        private final String code;
+        private final JsonNode diagnostics;
+        JobFailure(String code, String message) { this(code, message, null); }
+        JobFailure(String code, String message, JsonNode diagnostics) { super(message); this.code = code; this.diagnostics = diagnostics; }
+        String code() { return code; }
+        JsonNode diagnostics() { return diagnostics; }
+    }
 }

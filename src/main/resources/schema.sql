@@ -61,6 +61,7 @@ DROP TABLE IF EXISTS
     -- Quiz3 runtime state must be explicitly reset. Dropping its referenced
     -- parent tables alone only removes foreign-key constraints in PostgreSQL;
     -- it leaves these tables with an obsolete shape behind.
+    quiz3_rich_content_assets,
     quiz3_question_ai_artifact_revisions,
     quiz3_question_ai_artifacts,
     quiz3_question_ai_change_sets,
@@ -1623,6 +1624,24 @@ CREATE TABLE IF NOT EXISTS quiz3_question_ai_artifact_revisions (
     critic_result JSONB,fallback_metadata JSONB,storage_key VARCHAR(1024),created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(artifact_id,revision)
 );
+-- Quiz3 rich-content ownership is intentionally isolated from Quiz2's
+-- rich_content_assets and question_ai_artifacts tables.
+CREATE TABLE IF NOT EXISTS quiz3_rich_content_assets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+    storage_key VARCHAR(1024) NOT NULL,
+    media_type VARCHAR(255) NOT NULL,
+    byte_size BIGINT NOT NULL CHECK (byte_size >= 0 AND byte_size <= 10485760),
+    sha256 CHAR(64) NOT NULL,
+    ai_artifact_id UUID REFERENCES quiz3_question_ai_artifacts(id) ON DELETE CASCADE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_quiz3_rich_content_asset_question_key UNIQUE (question_id, storage_key)
+);
+CREATE INDEX IF NOT EXISTS idx_quiz3_rich_content_assets_question
+    ON quiz3_rich_content_assets(question_id);
+CREATE INDEX IF NOT EXISTS idx_quiz3_rich_content_assets_artifact
+    ON quiz3_rich_content_assets(ai_artifact_id) WHERE ai_artifact_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS quiz3_question_ai_change_sets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
     job_id UUID REFERENCES quiz3_question_ai_jobs(id) ON DELETE SET NULL,change_index INTEGER NOT NULL,
