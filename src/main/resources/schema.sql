@@ -1195,6 +1195,9 @@ CREATE TABLE IF NOT EXISTS attempts
 );
 
 CREATE INDEX IF NOT EXISTS idx_attempts_student_quiz_status ON attempts (student_id, quiz_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_attempts_student_quiz_active
+    ON attempts (student_id, quiz_id)
+    WHERE status IN ('STARTED', 'FINALIZING');
 CREATE INDEX IF NOT EXISTS idx_attempts_release ON attempts (quiz_release_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_due_time ON attempts (due_time);
 

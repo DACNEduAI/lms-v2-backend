@@ -94,6 +94,17 @@
     LIMIT 1
   </select>
 
+  <select id="getLatestActiveAttempt" resultMap="AttemptResultMap">
+    SELECT id, student_id, quiz_id, quiz_release_id, score, start_time, due_time, submitted_time,
+           time_spent_seconds, status, error_reason, created_at, updated_at
+    FROM edu.attempts
+    WHERE student_id = #{studentId}
+      AND quiz_id = #{quizId}
+      AND status IN ('STARTED', 'FINALIZING')
+    ORDER BY start_time DESC
+    LIMIT 1
+  </select>
+
   <select id="countFinishedAttempts" resultType="long">
     SELECT COUNT(*)
     FROM edu.attempts

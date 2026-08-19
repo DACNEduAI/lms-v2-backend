@@ -54,6 +54,11 @@ class AttemptPersistenceAdapter implements SaveAttemptPort, LoadAttemptPort {
     }
 
     @Override
+    public Optional<Attempt> getLatestActiveAttempt(UUID studentId, UUID quizId) {
+        return attemptRepository.getLatestActiveAttempt(studentId, quizId);
+    }
+
+    @Override
     public Optional<Attempt> getByIdAndStudentId(UUID attemptId, UUID studentId) {
         return attemptRepository.getByIdAndStudentId(attemptId, studentId);
     }

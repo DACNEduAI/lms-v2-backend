@@ -46,6 +46,8 @@ interface AttemptRepository {
 
     Optional<Attempt> getLatestStartedAttempt(@Param("studentId") UUID studentId, @Param("quizId") UUID quizId);
 
+    Optional<Attempt> getLatestActiveAttempt(@Param("studentId") UUID studentId, @Param("quizId") UUID quizId);
+
     long countFinishedAttempts(@Param("studentId") UUID studentId, @Param("quizId") UUID quizId);
 
     List<Attempt> getByStudentAndQuiz(@Param("studentId") UUID studentId, @Param("quizId") UUID quizId);
