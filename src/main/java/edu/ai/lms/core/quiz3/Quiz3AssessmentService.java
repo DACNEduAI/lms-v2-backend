@@ -52,6 +52,7 @@ public class Quiz3AssessmentService {
     private final Matrix3Service matrix3Service;
     private final Quiz3GenerationDispatcher dispatcher;
     private final Quiz3QBank2RegenerationService qbank2Regeneration;
+    private final Quiz3ReleaseCoordinator releases;
 
     public List<AssessmentView> list(UUID courseId) {
         requireTeacher(courseId);
@@ -380,6 +381,9 @@ public class Quiz3AssessmentService {
     @Transactional
     public PublishResult publish(UUID courseId,UUID assessmentId){
         CurrentActor actor=requireTeacher(courseId); AssessmentView assessment=required(courseId,assessmentId);
+        if(!"READY_TO_PUBLISH".equals(assessment.lifecycleStatus())) {
+            throw conflict("Only a ready Quiz3 assessment can be published");
+        }
         List<VariantView> variants=variants(courseId,assessmentId);
         if(variants.size()!=assessment.variantCount()) throw conflict("Create every configured Quiz3 variant before publish");
         for(VariantView variant:variants){
@@ -387,26 +391,35 @@ public class Quiz3AssessmentService {
             String coverage=jdbc.queryForObject("SELECT coverage_status FROM edu.quiz3_assessment_variants WHERE id=?",String.class,variant.id());
             if(!"COMPLIANT".equals(coverage)) throw conflict("Every Quiz3 variant must be coverage compliant");
         }
+        LocalDateTime publishedAt=LocalDateTime.now();
         jdbc.update("""
-                UPDATE edu.quizzes SET lifecycle_status='PUBLISHED',display=true,published_by=?,published_at=CURRENT_TIMESTAMP,
+                UPDATE edu.quizzes SET lifecycle_status='PUBLISHED',display=true,published_by=?,published_at=?,
                     version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id IN
                     (SELECT quiz_id FROM edu.quiz3_assessment_variants WHERE assessment_id=?)
-                """,actor.id(),assessmentId);
+                """,actor.id(),publishedAt,assessmentId);
+        releases.publish(variants.stream().map(VariantView::quizId).toList(),actor.id(),publishedAt);
         jdbc.update("""
-                UPDATE edu.quiz3_assessments SET lifecycle_status='PUBLISHED',current_step=9,published_by=?,published_at=CURRENT_TIMESTAMP,
+                UPDATE edu.quiz3_assessments SET lifecycle_status='PUBLISHED',current_step=9,published_by=?,published_at=?,
                     version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=?
-                """,actor.id(),assessmentId);
-        return new PublishResult(assessmentId,"PUBLISHED",variants.size(),LocalDateTime.now());
+                """,actor.id(),publishedAt,assessmentId);
+        return new PublishResult(assessmentId,"PUBLISHED",variants.size(),publishedAt);
     }
 
     @Transactional
     public AssessmentView unpublish(UUID courseId,UUID assessmentId){
-        CurrentActor actor=requireTeacher(courseId); required(courseId,assessmentId);
+        CurrentActor actor=requireTeacher(courseId); AssessmentView assessment=required(courseId,assessmentId);
+        if(!"PUBLISHED".equals(assessment.lifecycleStatus())) {
+            throw conflict("Only a published Quiz3 assessment can be unpublished");
+        }
+        List<UUID> quizIds=jdbc.queryForList(
+                "SELECT quiz_id FROM edu.quiz3_assessment_variants WHERE assessment_id=?",
+                UUID.class,assessmentId);
         jdbc.update("""
                 UPDATE edu.quizzes SET lifecycle_status='READY_TO_PUBLISH',display=false,published_by=NULL,published_at=NULL,
                     version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id IN
                     (SELECT quiz_id FROM edu.quiz3_assessment_variants WHERE assessment_id=?)
                 """,assessmentId);
+        releases.deactivate(quizIds);
         jdbc.update("""
                 UPDATE edu.quiz3_assessments SET lifecycle_status='READY_TO_PUBLISH',published_by=NULL,published_at=NULL,
                     last_unpublished_by=?,last_unpublished_at=CURRENT_TIMESTAMP,version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=?
