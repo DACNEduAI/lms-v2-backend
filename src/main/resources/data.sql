@@ -1,5 +1,7 @@
 SET search_path TO edu, public;
 
+BEGIN;
+
 -- 1. Insert Users (Giữ nguyên thông tin người dùng cơ bản)
 INSERT INTO users (id, email, password, first_name, last_name, avatar_url, role)
 VALUES
@@ -903,3 +905,5 @@ VALUES
      'b3000021-0000-4000-8000-000000000002', 'b3000011-0000-4000-8000-000000000003',
      '84444444-4444-4444-4444-444444444444',
      CAST('{"matrixRowId":"b3000021-0000-4000-8000-000000000002","customLearningLevelId":"b3000011-0000-4000-8000-000000000003","learningOutcomeId":"84444444-4444-4444-4444-444444444444"}' AS jsonb));
+
+COMMIT;

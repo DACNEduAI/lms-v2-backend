@@ -106,6 +106,10 @@ class CrashRecoveryIT extends IntegrationTestConfiguration {
 
     @Test
     void concurrentAcquire_noDoubleProcessing() throws Exception {
+        // This class shares the Testcontainers database with other IT classes;
+        // isolate the queue before asserting that exactly these 50 jobs are claimed.
+        jdbc.update("DELETE FROM edu.attempt_code_submission_snapshots");
+        jdbc.update("DELETE FROM edu.code_submissions");
         UUID studentId = UUID.randomUUID();
         UUID attemptId = UUID.randomUUID();
         UUID questionId = UUID.randomUUID();
@@ -159,8 +163,10 @@ class CrashRecoveryIT extends IntegrationTestConfiguration {
         pool.shutdown();
 
         assertThat(doubleAcquireCount.get()).isZero();
-        assertThat(acquiredIds).hasSize(50);
-        Integer completedCount = jdbc.queryForObject("SELECT COUNT(*) FROM edu.code_submissions WHERE status = 'COMPLETED'", Integer.class);
+        assertThat(acquiredIds).containsExactlyInAnyOrderElementsOf(submissionIds);
+        Integer completedCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM edu.code_submissions WHERE attempt_id = ? AND status = 'COMPLETED'",
+                Integer.class, attemptId);
         assertThat(completedCount).isEqualTo(50);
     }
 }

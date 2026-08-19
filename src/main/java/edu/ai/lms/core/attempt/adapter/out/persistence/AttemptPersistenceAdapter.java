@@ -63,4 +63,9 @@ class AttemptPersistenceAdapter implements SaveAttemptPort, LoadAttemptPort {
         return attemptRepository.getByStudentAndQuiz(studentId, quizId);
     }
 
+    @Override
+    public List<Attempt> getFinalizingAttempts() {
+        return attemptRepository.getFinalizingAttempts();
+    }
+
 }

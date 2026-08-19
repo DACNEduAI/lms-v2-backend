@@ -22,5 +22,5 @@ public record CodeSubmission(
         java.time.Instant nextAttemptAt) {
 
     public enum Mode { RUN, SUBMIT }
-    public enum Status { PENDING, CLAIMED, PROCESSING, COMPLETED, FAILED, FAILED_SYSTEM, REQUIRES_REVIEW }
+    public enum Status { PENDING, CLAIMED, PROCESSING, COMPLETED, FAILED, FAILED_SYSTEM }
 }

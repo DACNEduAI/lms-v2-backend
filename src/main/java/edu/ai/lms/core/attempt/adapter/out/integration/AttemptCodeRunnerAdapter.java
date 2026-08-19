@@ -42,6 +42,14 @@ class AttemptCodeRunnerAdapter implements AttemptCodeRunnerPort {
                         .toList());
     }
 
+    @Override public boolean isValidSubmit(UUID submissionId, UUID attemptId, UUID studentId, UUID questionId) {
+        return api.isValidSubmit(submissionId, attemptId, studentId, questionId);
+    }
+
+    @Override public boolean isTerminalSubmit(UUID submissionId, UUID attemptId, UUID studentId, UUID questionId) {
+        return api.isTerminalSubmit(submissionId, attemptId, studentId, questionId);
+    }
+
     @Override public OptionalDouble findCompletedSubmitRatio(UUID submissionId, UUID attemptId,
                                                               UUID studentId, UUID questionId) {
         return api.findCompletedSubmit(submissionId, attemptId, studentId, questionId)

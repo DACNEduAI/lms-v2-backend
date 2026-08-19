@@ -19,6 +19,10 @@ import java.util.HexFormat;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+
+import edu.ai.lms.core.attempt.app.service.AttemptGradingService;
+import edu.ai.lms.core.coderunner.api.CodeSubmissionCompletedEvent;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
@@ -46,6 +50,12 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+
+    @Autowired
+    private AttemptGradingService attemptGradingService;
+
     private static String teacherToken;
     private static String studentToken;
     private static UUID courseId;
@@ -54,6 +64,8 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
     private static UUID questionId;
     private static UUID quizId;
     private static UUID attemptId;
+    private static UUID submissionId;
+    private static UUID recoveryAttemptId;
 
     @Test
     @Order(1)
@@ -216,12 +228,7 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(7)
-    void attemptAndSubmit() {
-        when(codeExecutionEngine.submit(any())).thenReturn(new ExecutionTicket("dummy-token"));
-        when(codeExecutionEngine.getResult(any())).thenReturn(
-                new ExecutionResult(EngineState.FINISHED, Verdict.ACCEPTED, "B:1", "", "", 10.0, 1024L, ""),
-                new ExecutionResult(EngineState.FINISHED, Verdict.ACCEPTED, "B:0", "", "", 10.0, 1024L, ""));
-
+    void pendingSubmissionFinalizesWhenCompletionEventArrives() {
         attemptId = UUID.fromString(given().contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + studentToken)
                 .post("/api/{courseId}/attempt/quiz/{quizId}/start", courseId, quizId)
@@ -229,23 +236,85 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
                 .extract().path("attemptId"));
 
         // Submit answer (Code Runner Submission)
-        given().contentType(ContentType.JSON)
+        submissionId = UUID.fromString(given().contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + studentToken)
                 .header("Idempotency-Key", UUID.randomUUID().toString())
                 .body("""
                         {"sourceCode":"bool isEven(int value) { return value % 2 == 0; }"}
                         """)
                 .post("/api/{courseId}/attempt/{attemptId}/questions/{questionId}/code-runner/submissions", courseId, attemptId, quizQuestionId)
-                .then().log().all().statusCode(202);
+                .then().log().all().statusCode(202)
+                .extract().path("submissionId"));
 
-        // Submit attempt
+        // The selected submission is still PENDING, so Finish must persist the
+        // exact ID and move the attempt to FINALIZING rather than score it now.
         given().contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + studentToken)
                 .body("""
-                        {"quizId":"%s"}
-                        """.formatted(quizId))
+                        {"quizId":"%s","timeSpentSeconds":12,"submittedAnswers":[
+                          {"questionId":"%s","studentAnswerId":null,"codeSubmissionId":"%s"}
+                        ]}
+                        """.formatted(quizId, quizQuestionId, submissionId))
                 .post("/api/{courseId}/attempt/quiz/{quizId}/submit", courseId, quizId)
-                .then().statusCode(200);
+                .then().statusCode(200)
+                .body("status", equalTo("FINALIZING"));
+
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT status FROM edu.attempts WHERE id = ?", String.class, attemptId))
+                .isEqualTo("FINALIZING");
+
+        // Simulate the worker's durable completion and its normal event. The
+        // final score must be calculated only from this selected submission.
+        jdbc.update("UPDATE edu.code_submissions SET status='COMPLETED', verdict='ACCEPTED', score=1, max_score=1 WHERE id=?", submissionId);
+        eventPublisher.publishEvent(new CodeSubmissionCompletedEvent(submissionId, attemptId));
+
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT status FROM edu.attempts WHERE id = ?", String.class, attemptId))
+                .isEqualTo("FINISHED");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT score FROM edu.attempts WHERE id = ?", Double.class, attemptId))
+                .isEqualTo(10.0);
+    }
+
+    @Test
+    @Order(8)
+    void recoveryFinalizesWhenTheCompletionEventWasLost() {
+        recoveryAttemptId = UUID.fromString(given().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + studentToken)
+                .post("/api/{courseId}/attempt/quiz/{quizId}/start", courseId, quizId)
+                .then().statusCode(200)
+                .extract().path("attemptId"));
+
+        UUID recoverySubmissionId = UUID.fromString(given().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + studentToken)
+                .header("Idempotency-Key", UUID.randomUUID().toString())
+                .body("{\"sourceCode\":\"bool isEven(int value) { return value % 2 == 0; }\"}")
+                .post("/api/{courseId}/attempt/{attemptId}/questions/{questionId}/code-runner/submissions", courseId, recoveryAttemptId, quizQuestionId)
+                .then().statusCode(202)
+                .extract().path("submissionId"));
+
+        given().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + studentToken)
+                .body("""
+                        {"quizId":"%s","timeSpentSeconds":9,"submittedAnswers":[
+                          {"questionId":"%s","studentAnswerId":null,"codeSubmissionId":"%s"}
+                        ]}
+                        """.formatted(quizId, quizQuestionId, recoverySubmissionId))
+                .post("/api/{courseId}/attempt/quiz/{quizId}/submit", courseId, quizId)
+                .then().statusCode(200)
+                .body("status", equalTo("FINALIZING"));
+
+        // Deliberately do not publish CodeSubmissionCompletedEvent: this is
+        // the restart/event-loss case that the periodic recovery must repair.
+        jdbc.update("UPDATE edu.code_submissions SET status='COMPLETED', verdict='ACCEPTED', score=1, max_score=1 WHERE id=?", recoverySubmissionId);
+        attemptGradingService.recoverFinalizingAttempts();
+
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT status FROM edu.attempts WHERE id = ?", String.class, recoveryAttemptId))
+                .isEqualTo("FINISHED");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT score FROM edu.attempts WHERE id = ?", Double.class, recoveryAttemptId))
+                .isEqualTo(10.0);
     }
 
     private String registerUser(String first, String last, String email, String password, String role) {

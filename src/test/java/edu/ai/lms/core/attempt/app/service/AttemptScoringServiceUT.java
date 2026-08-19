@@ -30,6 +30,7 @@ class AttemptScoringServiceUT {
         UUID multipleChoiceId = UUID.randomUUID();
         UUID codeQuestionId = UUID.randomUUID();
         UUID codeSubmissionId = UUID.randomUUID();
+        when(codeRunnerPort.isValidSubmit(codeSubmissionId, attemptId, studentId, codeQuestionId)).thenReturn(true);
         when(codeRunnerPort.findCompletedSubmitRatio(
                 codeSubmissionId, attemptId, studentId, codeQuestionId)).thenReturn(OptionalDouble.of(0.5));
 

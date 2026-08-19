@@ -7,6 +7,7 @@ import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
 import edu.ai.lms.core.attempt.app.domain.SubmittedAnswer;
 import edu.ai.lms.core.attempt.app.port.in.command.SubmitAttemptCommand;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
+import edu.ai.lms.core.attempt.app.port.out.AttemptCodeSubmissionSnapshotPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
@@ -48,6 +49,8 @@ class SubmitAttemptServiceUT {
     @Mock
     private AttemptScoringService attemptScoringService;
     @Mock
+    private AttemptCodeSubmissionSnapshotPort codeSubmissionSnapshotPort;
+    @Mock
     private AttemptAutoCloseService attemptAutoCloseService;
 
     @InjectMocks
@@ -84,7 +87,7 @@ class SubmitAttemptServiceUT {
         when(loadAttemptPort.getLatestStartedAttempt(studentId, quizId)).thenReturn(Optional.of(startedAttempt));
         when(loadQuizAttemptPolicyPort.getQuestionAnswerKeys(quizId)).thenReturn(List.of(QuestionAnswerKey.builder().build()));
         when(attemptScoringService.calculateScore(any(), any(), any(), any()))
-            .thenReturn(new AttemptScoringService.ScoringResult(10.0, false));
+            .thenReturn(new AttemptScoringService.ScoringResult(10.0, 0.0, false));
         when(saveAttemptPort.save(any(Attempt.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = submitAttemptService.submitAttempt(command);

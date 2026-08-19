@@ -79,6 +79,10 @@ public abstract class IntegrationTestConfiguration {
         
         registry.add("quiz.generation.webhook.secret", () -> "testwebhooksecrettestwebhooksecret");
 
+        // Integration tests drive worker completion explicitly. This removes
+        // scheduler timing races from lifecycle assertions.
+        registry.add("code-runner.worker.delay-ms", () -> "3600000");
+
         // Storage configuration for S3 DevConfig
         registry.add("dev.storage.endPoint", () -> "http://localhost:4566");
         registry.add("dev.storage.region", () -> "us-east-1");

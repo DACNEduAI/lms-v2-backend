@@ -229,12 +229,12 @@ CREATE TABLE IF NOT EXISTS ccct_profiles
     updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX uq_ccct_profile_name_per_course
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ccct_profile_name_per_course
     ON ccct_profiles (course_id, lower(btrim(name)));
-CREATE UNIQUE INDEX uq_ccct_one_published_per_course
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ccct_one_published_per_course
     ON ccct_profiles (course_id)
     WHERE status = 'PUBLISHED';
-CREATE INDEX idx_ccct_profiles_course_updated
+CREATE INDEX IF NOT EXISTS idx_ccct_profiles_course_updated
     ON ccct_profiles (course_id, updated_at DESC);
 
 CREATE TABLE IF NOT EXISTS ccct_chapters
@@ -248,9 +248,9 @@ CREATE TABLE IF NOT EXISTS ccct_chapters
     CONSTRAINT uq_ccct_chapter_order UNIQUE (profile_id, order_index)
 );
 
-CREATE INDEX idx_ccct_chapters_profile
+CREATE INDEX IF NOT EXISTS idx_ccct_chapters_profile
     ON ccct_chapters (profile_id);
-CREATE INDEX idx_ccct_chapters_course_chapter
+CREATE INDEX IF NOT EXISTS idx_ccct_chapters_course_chapter
     ON ccct_chapters (course_chapter_id);
 
 -- Existing CCCT rows remain format v1 and are intentionally read-only. New
@@ -294,7 +294,7 @@ CREATE TABLE IF NOT EXISTS ccct_topics
     CONSTRAINT uq_ccct_topic_order UNIQUE (chapter_id, order_index)
 );
 
-CREATE INDEX idx_ccct_topics_chapter
+CREATE INDEX IF NOT EXISTS idx_ccct_topics_chapter
     ON ccct_topics (chapter_id);
 
 CREATE TABLE IF NOT EXISTS ccct_items
@@ -309,7 +309,7 @@ CREATE TABLE IF NOT EXISTS ccct_items
     CONSTRAINT uq_ccct_item_order UNIQUE (topic_id, order_index)
 );
 
-CREATE INDEX idx_ccct_items_topic_status
+CREATE INDEX IF NOT EXISTS idx_ccct_items_topic_status
     ON ccct_items (topic_id, coverage_status);
 
 -- Exam Matrices
@@ -417,7 +417,7 @@ CREATE TABLE IF NOT EXISTS custom_learning_levels
     constraint custom_learning_levels_id_matrix_key unique (id, matrix_id)
 );
 
-CREATE UNIQUE INDEX custom_learning_levels_matrix_code_key
+CREATE UNIQUE INDEX IF NOT EXISTS custom_learning_levels_matrix_code_key
     ON custom_learning_levels (matrix_id, lower(btrim(code)));
 
 CREATE TABLE IF NOT EXISTS custom_learning_level_learning_outcomes
@@ -458,13 +458,13 @@ CREATE TABLE IF NOT EXISTS exam_matrix_row_learning_level_counts
             references custom_learning_levels (id, matrix_id) on delete CASCADE
 );
 
-CREATE INDEX exam_matrix_row_learning_outcomes_outcome_idx
+CREATE INDEX IF NOT EXISTS exam_matrix_row_learning_outcomes_outcome_idx
     ON exam_matrix_row_learning_outcomes (learning_outcome_id);
-CREATE INDEX exam_matrix_row_learning_outcomes_selected_idx
+CREATE INDEX IF NOT EXISTS exam_matrix_row_learning_outcomes_selected_idx
     ON exam_matrix_row_learning_outcomes (exam_matrix_row_id, is_selected);
-CREATE INDEX custom_learning_level_outcomes_outcome_idx
+CREATE INDEX IF NOT EXISTS custom_learning_level_outcomes_outcome_idx
     ON custom_learning_level_learning_outcomes (learning_outcome_id);
-CREATE INDEX custom_learning_level_outcomes_selected_idx
+CREATE INDEX IF NOT EXISTS custom_learning_level_outcomes_selected_idx
     ON custom_learning_level_learning_outcomes (custom_learning_level_id, is_selected);
 
 -- Enrollments table
@@ -1185,7 +1185,7 @@ CREATE TABLE IF NOT EXISTS attempts
     due_time           TIMESTAMP,
     submitted_time     TIMESTAMP,
     time_spent_seconds INTEGER,
-    status             VARCHAR(50) NOT NULL CHECK (status IN ('STARTED', 'FINISHED', 'ERROR')),
+    status             VARCHAR(50) NOT NULL CHECK (status IN ('STARTED', 'FINALIZING', 'FINISHED', 'ERROR')),
     error_reason       VARCHAR(255),
     created_at         TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
     updated_at         TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
@@ -1228,6 +1228,21 @@ CREATE INDEX IF NOT EXISTS idx_code_submissions_cooldown_lookup
     ON code_submissions (attempt_id, question_id, submission_mode, accepted_at DESC);
 CREATE INDEX IF NOT EXISTS idx_code_submissions_processing
     ON code_submissions (status, created_at) WHERE status IN ('PENDING', 'PROCESSING');
+
+-- The exact SUBMIT selected when a learner finishes an attempt. Later
+-- submissions must never replace this grading snapshot.
+CREATE TABLE IF NOT EXISTS attempt_code_submission_snapshots
+(
+    attempt_id     UUID NOT NULL REFERENCES attempts (id) ON DELETE CASCADE,
+    question_id    UUID NOT NULL REFERENCES questions (id) ON DELETE RESTRICT,
+    submission_id  UUID NOT NULL REFERENCES code_submissions (id) ON DELETE RESTRICT,
+    created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (attempt_id, question_id),
+    CONSTRAINT uq_attempt_code_submission_snapshot_submission UNIQUE (attempt_id, submission_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_attempt_code_submission_snapshots_submission
+    ON attempt_code_submission_snapshots (submission_id);
 
 CREATE TABLE IF NOT EXISTS code_submission_test_results
 (

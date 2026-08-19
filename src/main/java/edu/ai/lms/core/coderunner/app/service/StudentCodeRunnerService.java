@@ -121,12 +121,33 @@ public class StudentCodeRunnerService {
                         item.id(), item.questionId(), item.score(), item.maxScore()));
     }
 
+    public boolean isValidSubmit(UUID submissionId, UUID attemptId, UUID studentId, UUID questionId) {
+        return submissionPort.findById(submissionId)
+                .filter(item -> ownsSubmit(item, attemptId, studentId, questionId))
+                .isPresent();
+    }
+
+    public boolean isTerminalSubmit(UUID submissionId, UUID attemptId, UUID studentId, UUID questionId) {
+        return submissionPort.findById(submissionId)
+                .filter(item -> ownsSubmit(item, attemptId, studentId, questionId))
+                .map(item -> item.status() == CodeSubmission.Status.COMPLETED
+                        || item.status() == CodeSubmission.Status.FAILED_SYSTEM)
+                .orElse(false);
+    }
+
     public OptionalDouble findLatestCompletedSubmitRatio(UUID attemptId, UUID questionId) {
         return submissionPort.findLatestCompletedSubmitRatio(attemptId, questionId);
     }
 
     public boolean hasPendingSubmissions(UUID attemptId) {
         return submissionPort.hasPendingSubmissions(attemptId);
+    }
+
+    private boolean ownsSubmit(CodeSubmission item, UUID attemptId, UUID studentId, UUID questionId) {
+        return item.attemptId().equals(attemptId)
+                && item.studentId().equals(studentId)
+                && item.questionId().equals(questionId)
+                && item.mode() == CodeSubmission.Mode.SUBMIT;
     }
 
     private void requireQuestion(UUID quizId, UUID questionId) {

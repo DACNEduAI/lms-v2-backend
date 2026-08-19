@@ -47,6 +47,14 @@ class AttemptCodeRunnerApiAdapter implements AttemptCodeRunnerApi {
         }
     }
 
+    @Override public boolean isValidSubmit(UUID submissionId, UUID attemptId, UUID studentId, UUID questionId) {
+        return service.isValidSubmit(submissionId, attemptId, studentId, questionId);
+    }
+
+    @Override public boolean isTerminalSubmit(UUID submissionId, UUID attemptId, UUID studentId, UUID questionId) {
+        return service.isTerminalSubmit(submissionId, attemptId, studentId, questionId);
+    }
+
     @Override public Optional<CodeRunnerSubmissionScoreView> findCompletedSubmit(
             UUID submissionId, UUID attemptId, UUID studentId, UUID questionId) {
         return service.findCompletedSubmit(submissionId, attemptId, studentId, questionId);

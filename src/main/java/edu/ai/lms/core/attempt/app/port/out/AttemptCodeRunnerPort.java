@@ -11,6 +11,8 @@ public interface AttemptCodeRunnerPort {
     UUID execute(UUID attemptId, UUID studentId, UUID quizId, UUID questionId,
                                   String sourceCode, String idempotencyKey, String mode);
     AttemptCodeSubmission getSubmission(UUID studentId, UUID submissionId, boolean hidesPrivateGrading);
+    boolean isValidSubmit(UUID submissionId, UUID attemptId, UUID studentId, UUID questionId);
+    boolean isTerminalSubmit(UUID submissionId, UUID attemptId, UUID studentId, UUID questionId);
     OptionalDouble findCompletedSubmitRatio(UUID submissionId, UUID attemptId, UUID studentId, UUID questionId);
     OptionalDouble findLatestCompletedSubmitRatio(UUID attemptId, UUID questionId);
     boolean hasPendingSubmissions(UUID attemptId);

@@ -17,4 +17,11 @@ public interface LoadAttemptPort {
     Optional<Attempt> getByIdAndStudentId(UUID attemptId, UUID studentId);
 
     List<Attempt> getByStudentAndQuiz(UUID studentId, UUID quizId);
+
+    /**
+     * Bounded recovery scan for attempts whose selected Code Runner submission
+     * completed while the in-process completion event was lost (for example,
+     * during a process restart).
+     */
+    List<Attempt> getFinalizingAttempts();
 }

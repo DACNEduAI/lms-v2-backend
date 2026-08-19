@@ -65,6 +65,16 @@
       AND status = 'STARTED'
   </update>
 
+  <update id="finalizeIfStillFinalizing">
+    UPDATE edu.attempts
+    SET status = 'FINISHED',
+        score = #{score},
+        error_reason = NULL,
+        updated_at = NOW()
+    WHERE id = #{attemptId}
+      AND status = 'FINALIZING'
+  </update>
+
   <select id="getByIdAndStudentId" resultMap="AttemptResultMap">
     SELECT id, student_id, quiz_id, quiz_release_id, score, start_time, due_time, submitted_time,
            time_spent_seconds, status, error_reason, created_at, updated_at
@@ -99,6 +109,15 @@
     WHERE student_id = #{studentId}
       AND quiz_id = #{quizId}
     ORDER BY start_time DESC
+  </select>
+
+  <select id="getFinalizingAttempts" resultMap="AttemptResultMap">
+    SELECT id, student_id, quiz_id, quiz_release_id, score, start_time, due_time, submitted_time,
+           time_spent_seconds, status, error_reason, created_at, updated_at
+    FROM edu.attempts
+    WHERE status = 'FINALIZING'
+    ORDER BY updated_at ASC
+    LIMIT 100
   </select>
 
 </mapper>

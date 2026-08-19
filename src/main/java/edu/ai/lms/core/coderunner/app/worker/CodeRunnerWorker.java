@@ -68,11 +68,7 @@ public class CodeRunnerWorker {
         } catch (Exception e) {
             log.error("Error processing code submission", e);
             if (submission != null) {
-                try {
-                    submissionPort.complete(submission.id(), "FAILED_SYSTEM", "INTERNAL_ERROR", 0);
-                } catch (Exception ex) {
-                    log.error("Failed to mark submission as FAILED_SYSTEM", ex);
-                }
+                markFailedSystemAndNotify(submission);
             }
         }
     }
@@ -124,14 +120,23 @@ public class CodeRunnerWorker {
             int nextAttemptCount = submission.attemptCount() + 1;
             if (nextAttemptCount >= 3) {
                 log.error("Submission {} failed completely after 3 attempts: {}", submission.id(), exception.getMessage());
-                submissionPort.complete(submission.id(), "REQUIRES_REVIEW", "INTERNAL_ERROR", 0);
+                markFailedSystemAndNotify(submission);
             } else {
                 long backoffSeconds = (long) Math.pow(2, nextAttemptCount);
                 java.time.Instant nextAttemptAt = java.time.Instant.now().plusSeconds(backoffSeconds);
                 log.warn("Submission {} failed, will retry at {} (attempt {})", submission.id(), nextAttemptAt, nextAttemptCount);
                 submissionPort.fail(submission.id(), "PENDING", nextAttemptCount, nextAttemptAt);
             }
-            throw exception;
+        }
+    }
+
+    private void markFailedSystemAndNotify(CodeSubmission submission) {
+        try {
+            submissionPort.complete(submission.id(), "FAILED_SYSTEM", "INTERNAL_ERROR", 0);
+            eventPublisher.publishEvent(new edu.ai.lms.core.coderunner.api.CodeSubmissionCompletedEvent(
+                    submission.id(), submission.attemptId()));
+        } catch (Exception exception) {
+            log.error("Failed to mark submission {} as FAILED_SYSTEM", submission.id(), exception);
         }
     }
 

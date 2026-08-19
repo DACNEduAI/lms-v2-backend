@@ -14,6 +14,10 @@ public interface AttemptCodeRunnerApi {
 
     CodeRunnerSubmissionView getSubmission(UUID studentId, UUID submissionId, boolean hidesPrivateGrading);
 
+    boolean isValidSubmit(UUID submissionId, UUID attemptId, UUID studentId, UUID questionId);
+
+    boolean isTerminalSubmit(UUID submissionId, UUID attemptId, UUID studentId, UUID questionId);
+
     Optional<CodeRunnerSubmissionScoreView> findCompletedSubmit(
             UUID submissionId, UUID attemptId, UUID studentId, UUID questionId);
             

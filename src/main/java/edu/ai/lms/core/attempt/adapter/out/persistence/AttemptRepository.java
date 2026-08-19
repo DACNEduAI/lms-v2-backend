@@ -49,4 +49,6 @@ interface AttemptRepository {
     long countFinishedAttempts(@Param("studentId") UUID studentId, @Param("quizId") UUID quizId);
 
     List<Attempt> getByStudentAndQuiz(@Param("studentId") UUID studentId, @Param("quizId") UUID quizId);
+
+    List<Attempt> getFinalizingAttempts();
 }

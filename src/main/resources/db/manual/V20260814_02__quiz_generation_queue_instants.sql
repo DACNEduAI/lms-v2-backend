@@ -18,13 +18,16 @@ BEGIN
     END IF;
 
     SELECT COUNT(*) INTO parent_count FROM edu.quiz_generation_jobs;
-    IF parent_count <> 2 OR EXISTS (
+    -- A database created from the current schema is already TIMESTAMPTZ and
+    -- has no historical queue rows.  Keep the strict history guard for old,
+    -- populated databases, but allow that clean bootstrap path.
+    IF parent_count <> 0 AND (parent_count <> 2 OR EXISTS (
         SELECT 1 FROM edu.quiz_generation_jobs
         WHERE status <> 'TIMED_OUT'
            OR phase <> 'TEXT_GENERATION'
            OR attempt_count <> 0
            OR error_code <> 'GENERATION_TIMEOUT'
-    ) THEN
+    )) THEN
         RAISE EXCEPTION 'Unexpected quiz_generation_jobs history; audit timestamp origins before migration';
     END IF;
 

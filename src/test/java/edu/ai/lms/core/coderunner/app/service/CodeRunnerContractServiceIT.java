@@ -52,11 +52,12 @@ public class CodeRunnerContractServiceIT extends IntegrationTestConfiguration {
 
     @BeforeEach
     void setUp() {
-        jdbc.update("DELETE FROM code_submissions");
-        jdbc.update("DELETE FROM code_runner_configs");
-        jdbc.update("DELETE FROM questions");
-        jdbc.update("DELETE FROM quizzes");
-        jdbc.update("DELETE FROM courses");
+        // Never delete shared Testcontainers fixtures from another IT class.
+        // Each test owns a fresh graph instead.
+        teacherId = UUID.randomUUID();
+        courseId = UUID.randomUUID();
+        quizId = UUID.randomUUID();
+        questionId = UUID.randomUUID();
         
         jdbc.update("INSERT INTO courses (id, course_name, course_code, start_date, end_date) VALUES (?, ?, ?, NOW(), NOW())", courseId, "Test Course", "TEST-" + courseId);
         jdbc.update("INSERT INTO users (id, email, password, role) VALUES (?, ?, 'pwd', 'TEACHER')", teacherId, teacherId + "@test.com");
