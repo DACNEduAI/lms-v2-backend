@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import edu.ai.lms.core.coderunner.app.domain.ExecutableAssessmentContract;
 import edu.ai.lms.core.coderunner.app.port.out.SaveCodeRunnerContractPort;
+import edu.ai.lms.core.coderunner.app.port.out.LoadCodeRunnerContractPort;
 import edu.ai.lms.core.quiz.api.CodeRunnerContractSnapshotApi;
 import lombok.RequiredArgsConstructor;
 
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 public class QuizCodeRunnerContractSnapshotAdapter implements CodeRunnerContractSnapshotApi {
     private final ObjectMapper objectMapper;
     private final SaveCodeRunnerContractPort contracts;
+    private final LoadCodeRunnerContractPort loadedContracts;
 
     @Override
     public String normalizeForReview(String contractJson) {
@@ -42,5 +44,13 @@ public class QuizCodeRunnerContractSnapshotAdapter implements CodeRunnerContract
         } catch (JsonProcessingException ex) {
             throw new IllegalArgumentException("Code Runner contract could not be materialized", ex);
         }
+    }
+
+    @Override
+    public void cloneLatestQuestionRevision(UUID sourceQuestionId, UUID targetQuestionId) {
+        ExecutableAssessmentContract source = loadedContracts.findLatestByQuestionId(sourceQuestionId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Source Code Runner question has no contract revision"));
+        contracts.saveRevision(targetQuestionId, source);
     }
 }

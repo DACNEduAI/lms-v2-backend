@@ -42,6 +42,8 @@ class Judge0CodeRunnerLiveIT {
     void compilesAndExecutesARealCplusplusReferenceAndRejectsAWrongSolution() {
         ExecutableAssessmentContract contract = contract();
         var saveContractPort = org.mockito.Mockito.mock(edu.ai.lms.core.coderunner.app.port.out.SaveCodeRunnerContractPort.class);
+        org.mockito.Mockito.when(saveContractPort.markVerified(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(true);
         var verificationService = new CodeRunnerVerificationService(
                 engine,
                 harnessBuilder,

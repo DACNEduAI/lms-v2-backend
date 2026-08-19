@@ -61,7 +61,8 @@ public class Matrix3Service {
             UUID id = UUID.randomUUID(); levels.put(level.id(), id); return new Matrix3LearningLevelPayload(id, level.name());
         }).toList();
         List<Matrix3RowPayload> copiedRows = source.rows().stream().map(row -> new Matrix3RowPayload(UUID.randomUUID(), row.chapterId(), row.mappedLearningOutcomeId(),
-                row.cellRelations().stream().map(cell -> new Matrix3CellRelation(levels.get(cell.customLearningLevelId()), cell.related())).toList())).toList();
+                row.cellRelations().stream().map(cell -> new Matrix3CellRelation(
+                        levels.get(cell.customLearningLevelId()), cell.related(), cell.questionType())).toList())).toList();
         String title = request == null || trim(request.title()) == null ? source.title()+" (Copy)" : trim(request.title());
         return create(courseId, new Matrix3Payload(title, source.description(), source.totalQuestionCount(), copiedRows, copiedLevels, null));
     }
@@ -118,7 +119,7 @@ public class Matrix3Service {
         if (meta == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrix 3 not found: "+matrixId);
         List<Matrix3LearningLevel> levels = jdbc.query("SELECT id,name,sort_order FROM edu.exam_matrix_3_custom_learning_levels WHERE matrix_id=? ORDER BY sort_order,id",(rs,row)->new Matrix3LearningLevel(rs.getObject(1,UUID.class),rs.getString(2),rs.getInt(3)),matrixId);
         Map<UUID,List<Matrix3CellRelation>> cells=new HashMap<>();
-        jdbc.query("SELECT r.id,c.custom_learning_level_id FROM edu.exam_matrix_3_rows r JOIN edu.exam_matrix_3_cell_relations c ON c.row_id=r.id WHERE r.matrix_id=?",(org.springframework.jdbc.core.RowCallbackHandler)rs->cells.computeIfAbsent(rs.getObject(1,UUID.class), ignored -> new ArrayList<>()).add(new Matrix3CellRelation(rs.getObject(2,UUID.class),true)),matrixId);
+        jdbc.query("SELECT r.id,c.custom_learning_level_id,c.question_type FROM edu.exam_matrix_3_rows r JOIN edu.exam_matrix_3_cell_relations c ON c.row_id=r.id WHERE r.matrix_id=?",(org.springframework.jdbc.core.RowCallbackHandler)rs->cells.computeIfAbsent(rs.getObject(1,UUID.class), ignored -> new ArrayList<>()).add(new Matrix3CellRelation(rs.getObject(2,UUID.class),true,QuestionType.valueOf(rs.getString(3)))),matrixId);
         List<Matrix3Row> rows=jdbc.query("""
                 SELECT r.id,r.chapter_id,c.title,r.mapped_learning_outcome_id,CASE WHEN lo.prefix_number IS NULL THEN lo.description ELSE 'LO'||lo.prefix_number||' - '||lo.description END,r.sort_order
                 FROM edu.exam_matrix_3_rows r LEFT JOIN edu.chapters c ON c.chapter_id=r.chapter_id LEFT JOIN edu.learning_outcomes lo ON lo.id=r.mapped_learning_outcome_id
@@ -129,30 +130,32 @@ public class Matrix3Service {
 
     private void replace(UUID matrixId, Matrix3Payload payload) {
         for(int i=0;i<safe(payload.customLearningLevels()).size();i++){var level=safe(payload.customLearningLevels()).get(i);jdbc.update("INSERT INTO edu.exam_matrix_3_custom_learning_levels(id,matrix_id,name,sort_order) VALUES(?,?,?,?)",level.id(),matrixId,level.name().trim(),i);}
-        for(int i=0;i<safe(payload.rows()).size();i++){var row=safe(payload.rows()).get(i);jdbc.update("INSERT INTO edu.exam_matrix_3_rows(id,matrix_id,chapter_id,mapped_learning_outcome_id,sort_order) VALUES(?,?,?,?,?)",row.id(),matrixId,row.chapterId(),row.mappedLearningOutcomeId(),i);for(var cell:safe(row.cellRelations()))if(cell.related())jdbc.update("INSERT INTO edu.exam_matrix_3_cell_relations(row_id,custom_learning_level_id) VALUES(?,?)",row.id(),cell.customLearningLevelId());}
+        for(int i=0;i<safe(payload.rows()).size();i++){var row=safe(payload.rows()).get(i);jdbc.update("INSERT INTO edu.exam_matrix_3_rows(id,matrix_id,chapter_id,mapped_learning_outcome_id,sort_order) VALUES(?,?,?,?,?)",row.id(),matrixId,row.chapterId(),row.mappedLearningOutcomeId(),i);for(var cell:safe(row.cellRelations()))if(cell.related())jdbc.update("INSERT INTO edu.exam_matrix_3_cell_relations(row_id,custom_learning_level_id,question_type) VALUES(?,?,?)",row.id(),cell.customLearningLevelId(),questionType(cell.questionType()).name());}
     }
 
     private void validate(UUID courseId, Matrix3Payload payload) {
         if(payload==null||trim(payload.title())==null) throw badRequest("Matrix 3 title cannot be blank");
         if(payload.totalQuestionCount()==null||payload.totalQuestionCount()<=0) throw badRequest("Matrix 3 total question count must be greater than zero");
         Set<UUID> levels=new HashSet<>(); for(var level:safe(payload.customLearningLevels())){if(level.id()==null||trim(level.name())==null)throw badRequest("Each Matrix 3 learning level needs an id and a name");if(!levels.add(level.id()))throw badRequest("Duplicate Matrix 3 learning level id");}
-        Set<UUID> rows=new HashSet<>(); for(var row:safe(payload.rows())){if(row.id()==null||!rows.add(row.id()))throw badRequest("Each Matrix 3 row needs a unique id");if(row.chapterId()!=null&&!exists("SELECT 1 FROM edu.chapters WHERE chapter_id=? AND course_id=?",row.chapterId(),courseId))throw badRequest("Chapter does not belong to this course");if(row.mappedLearningOutcomeId()!=null&&!exists("SELECT 1 FROM edu.learning_outcomes WHERE id=? AND course_id=?",row.mappedLearningOutcomeId(),courseId))throw badRequest("Mapped learning outcome does not belong to this course");Set<UUID> seen=new HashSet<>();for(var cell:safe(row.cellRelations())){if(cell.customLearningLevelId()==null||!levels.contains(cell.customLearningLevelId()))throw badRequest("A Matrix 3 relation references an unknown learning level");if(!seen.add(cell.customLearningLevelId()))throw badRequest("Duplicate relation in a Matrix 3 row");}}
+        Set<UUID> rows=new HashSet<>(); for(var row:safe(payload.rows())){if(row.id()==null||!rows.add(row.id()))throw badRequest("Each Matrix 3 row needs a unique id");if(row.chapterId()!=null&&!exists("SELECT 1 FROM edu.chapters WHERE chapter_id=? AND course_id=?",row.chapterId(),courseId))throw badRequest("Chapter does not belong to this course");if(row.mappedLearningOutcomeId()!=null&&!exists("SELECT 1 FROM edu.learning_outcomes WHERE id=? AND course_id=?",row.mappedLearningOutcomeId(),courseId))throw badRequest("Mapped learning outcome does not belong to this course");Set<UUID> seen=new HashSet<>();for(var cell:safe(row.cellRelations())){if(cell.customLearningLevelId()==null||!levels.contains(cell.customLearningLevelId()))throw badRequest("A Matrix 3 relation references an unknown learning level");if(!seen.add(cell.customLearningLevelId()))throw badRequest("Duplicate relation in a Matrix 3 row");questionType(cell.questionType());}}
     }
     private Matrix3Metadata editable(UUID courseId,UUID id){Matrix3Detail detail=load(courseId,id);if(detail.lifecycleStatus()!=LifecycleStatus.DRAFT)throw conflict("Published Matrix 3 is read-only");return new Matrix3Metadata(detail.id(),detail.courseId(),detail.title(),detail.description(),detail.totalQuestionCount(),detail.lifecycleStatus(),detail.version(),detail.publishedBy(),detail.publishedAt(),detail.createdAt(),detail.updatedAt());}
     private boolean exists(String sql,UUID id,UUID courseId){return Boolean.TRUE.equals(jdbc.query(sql,(org.springframework.jdbc.core.ResultSetExtractor<Boolean>)rs->rs.next(),id,courseId));}
     private static <T> List<T> safe(List<T> value){return value==null?List.of():value;}
+    private static QuestionType questionType(QuestionType value){return value==null?QuestionType.MULTIPLE_CHOICE:value;}
     private static String trim(String value){return value==null||value.isBlank()?null:value.trim();}
     private static ResponseStatusException badRequest(String message){return new ResponseStatusException(HttpStatus.BAD_REQUEST,message);}
     private static ResponseStatusException conflict(String message){return new ResponseStatusException(HttpStatus.CONFLICT,message);}
 
     private record Matrix3Metadata(UUID id,UUID courseId,String title,String description,int totalQuestionCount,LifecycleStatus lifecycleStatus,long version,UUID publishedBy,LocalDateTime publishedAt,LocalDateTime createdAt,LocalDateTime updatedAt) { }
     public enum LifecycleStatus { DRAFT, PUBLISHED }
+    public enum QuestionType { MULTIPLE_CHOICE, CODE_RUNNER }
     public record Matrix3List(UUID courseId,List<Matrix3Summary> matrices) { }
     public record Matrix3Summary(UUID id,UUID courseId,String title,String description,int totalQuestionCount,LifecycleStatus lifecycleStatus,long version,UUID publishedBy,LocalDateTime publishedAt,int rowCount,int relationCount,LocalDateTime createdAt,LocalDateTime updatedAt) { }
     public record Matrix3Detail(UUID id,UUID courseId,String title,String description,int totalQuestionCount,LifecycleStatus lifecycleStatus,long version,UUID publishedBy,LocalDateTime publishedAt,List<Matrix3Row> rows,List<Matrix3LearningLevel> customLearningLevels,LocalDateTime createdAt,LocalDateTime updatedAt) { }
     public record Matrix3Row(UUID id,UUID chapterId,String chapterName,UUID mappedLearningOutcomeId,String mappedLearningOutcomeName,int sortOrder,List<Matrix3CellRelation> cellRelations) { }
     public record Matrix3LearningLevel(UUID id,String name,int sortOrder) { }
-    public record Matrix3CellRelation(UUID customLearningLevelId,boolean related) { }
+    public record Matrix3CellRelation(UUID customLearningLevelId,boolean related,QuestionType questionType) { }
     public record Matrix3Payload(String title,String description,Integer totalQuestionCount,List<Matrix3RowPayload> rows,List<Matrix3LearningLevelPayload> customLearningLevels,Long expectedVersion) { }
     public record Matrix3RowPayload(UUID id,UUID chapterId,UUID mappedLearningOutcomeId,List<Matrix3CellRelation> cellRelations) { }
     public record Matrix3LearningLevelPayload(UUID id,String name) { }

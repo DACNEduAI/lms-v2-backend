@@ -347,8 +347,18 @@ CREATE TABLE IF NOT EXISTS exam_matrix_2_cell_counts
     row_id                     UUID NOT NULL REFERENCES exam_matrix_2_rows (id) ON DELETE CASCADE,
     custom_learning_level_id   UUID NOT NULL REFERENCES exam_matrix_2_custom_learning_levels (id) ON DELETE CASCADE,
     question_count             INTEGER NOT NULL DEFAULT 0 CHECK (question_count >= 0),
+    question_type              VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE'
+        CHECK (question_type IN ('MULTIPLE_CHOICE', 'CODE_RUNNER')),
     PRIMARY KEY (row_id, custom_learning_level_id)
 );
+
+ALTER TABLE exam_matrix_2_cell_counts
+    ADD COLUMN IF NOT EXISTS question_type VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE';
+ALTER TABLE exam_matrix_2_cell_counts
+    DROP CONSTRAINT IF EXISTS exam_matrix_2_cell_counts_question_type_check;
+ALTER TABLE exam_matrix_2_cell_counts
+    ADD CONSTRAINT exam_matrix_2_cell_counts_question_type_check
+    CHECK (question_type IN ('MULTIPLE_CHOICE', 'CODE_RUNNER'));
 
 CREATE INDEX IF NOT EXISTS exam_matrices_2_course_idx ON exam_matrices_2 (course_id);
 CREATE INDEX IF NOT EXISTS exam_matrix_2_rows_matrix_idx ON exam_matrix_2_rows (matrix_id, sort_order);
@@ -1572,6 +1582,87 @@ CREATE TABLE IF NOT EXISTS quiz3_question_provenance (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_quiz3_provenance_allocation ON quiz3_question_provenance(matrix2_row_id,matrix2_custom_learning_level_id,learning_outcome_id);
+
+-- Fresh-database companions for the Matrix3 split and Quiz3/QBank2 provenance
+-- migrations. Existing databases receive the same shape from db/manual.
+CREATE TABLE IF NOT EXISTS exam_matrices_3 (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL CHECK (btrim(title)<>''), description TEXT,
+    total_question_count INTEGER NOT NULL CHECK(total_question_count>0),
+    lifecycle_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' CHECK(lifecycle_status IN('DRAFT','PUBLISHED')),
+    version BIGINT NOT NULL DEFAULT 0 CHECK(version>=0), published_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    published_at TIMESTAMP, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS exam_matrix_3_custom_learning_levels (
+    id UUID PRIMARY KEY, matrix_id UUID NOT NULL REFERENCES exam_matrices_3(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL CHECK(btrim(name)<>''), sort_order INTEGER NOT NULL CHECK(sort_order>=0)
+);
+CREATE TABLE IF NOT EXISTS exam_matrix_3_rows (
+    id UUID PRIMARY KEY, matrix_id UUID NOT NULL REFERENCES exam_matrices_3(id) ON DELETE CASCADE,
+    chapter_id UUID REFERENCES chapters(chapter_id) ON DELETE SET NULL,
+    mapped_learning_outcome_id UUID REFERENCES learning_outcomes(id) ON DELETE SET NULL,
+    sort_order INTEGER NOT NULL CHECK(sort_order>=0)
+);
+CREATE TABLE IF NOT EXISTS exam_matrix_3_cell_relations (
+    row_id UUID NOT NULL REFERENCES exam_matrix_3_rows(id) ON DELETE CASCADE,
+    custom_learning_level_id UUID NOT NULL REFERENCES exam_matrix_3_custom_learning_levels(id) ON DELETE CASCADE,
+    question_type VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE'
+        CHECK(question_type IN ('MULTIPLE_CHOICE','CODE_RUNNER')),
+    PRIMARY KEY(row_id,custom_learning_level_id)
+);
+ALTER TABLE exam_matrix_3_cell_relations
+    ADD COLUMN IF NOT EXISTS question_type VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE';
+ALTER TABLE exam_matrix_3_cell_relations
+    DROP CONSTRAINT IF EXISTS exam_matrix_3_cell_relations_question_type_check;
+ALTER TABLE exam_matrix_3_cell_relations
+    ADD CONSTRAINT exam_matrix_3_cell_relations_question_type_check
+    CHECK(question_type IN ('MULTIPLE_CHOICE','CODE_RUNNER'));
+
+ALTER TABLE quiz3_assessments ADD COLUMN IF NOT EXISTS matrix_source_type VARCHAR(20);
+ALTER TABLE quiz3_assessments ADD COLUMN IF NOT EXISTS matrix3_id UUID REFERENCES exam_matrices_3(id) ON DELETE RESTRICT;
+ALTER TABLE quiz3_assessments ADD COLUMN IF NOT EXISTS matrix3_version BIGINT;
+ALTER TABLE quiz3_generation_jobs ADD COLUMN IF NOT EXISTS matrix_source_type VARCHAR(20);
+ALTER TABLE quiz3_generation_jobs ADD COLUMN IF NOT EXISTS matrix3_id UUID REFERENCES exam_matrices_3(id) ON DELETE RESTRICT;
+ALTER TABLE quiz3_generation_jobs ADD COLUMN IF NOT EXISTS matrix3_version BIGINT;
+ALTER TABLE quiz3_question_provenance ADD COLUMN IF NOT EXISTS matrix3_row_id UUID REFERENCES exam_matrix_3_rows(id) ON DELETE SET NULL;
+ALTER TABLE quiz3_question_provenance ADD COLUMN IF NOT EXISTS matrix3_custom_learning_level_id UUID REFERENCES exam_matrix_3_custom_learning_levels(id) ON DELETE SET NULL;
+ALTER TABLE quiz3_question_provenance
+    ADD COLUMN IF NOT EXISTS qbank2_selection_mode VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS qbank2_content_group_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    ADD COLUMN IF NOT EXISTS qbank2_content_group_codes JSONB NOT NULL DEFAULT '[]'::jsonb,
+    ADD COLUMN IF NOT EXISTS qbank2_example_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    ADD COLUMN IF NOT EXISTS qbank2_reference_snapshot JSONB;
+ALTER TABLE quiz3_question_provenance
+    DROP CONSTRAINT IF EXISTS quiz3_question_provenance_qbank2_selection_mode_check;
+ALTER TABLE quiz3_question_provenance
+    ADD CONSTRAINT quiz3_question_provenance_qbank2_selection_mode_check
+    CHECK(qbank2_selection_mode IS NULL OR qbank2_selection_mode IN('AUTO_SELECTED','RAG_FALLBACK','MANUAL_OVERRIDE'));
+
+CREATE TABLE IF NOT EXISTS quiz3_qbank2_regeneration_jobs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
+    variant_id UUID NOT NULL REFERENCES quiz3_assessment_variants(id) ON DELETE CASCADE,
+    question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE, requested_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    example_ids JSONB NOT NULL DEFAULT '[]'::jsonb, request_payload JSONB NOT NULL,
+    base_question_version BIGINT NOT NULL CHECK(base_question_version >= 0),
+    status VARCHAR(40) NOT NULL CHECK(status IN('QUEUED','RUNNING','APPLIED_TO_WORKING_DRAFT','FAILED','CANCELLED','TIMED_OUT')),
+    phase VARCHAR(30) NOT NULL DEFAULT 'QUEUED', error_code VARCHAR(80), error_message TEXT, lease_until TIMESTAMPTZ,
+    started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz3_qbank2_regeneration_active_job
+    ON quiz3_qbank2_regeneration_jobs(question_id) WHERE status IN('QUEUED','RUNNING');
+CREATE TABLE IF NOT EXISTS quiz3_qbank2_regeneration_drafts (
+    question_id UUID PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
+    assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
+    variant_id UUID NOT NULL REFERENCES quiz3_assessment_variants(id) ON DELETE CASCADE,
+    job_id UUID NOT NULL REFERENCES quiz3_qbank2_regeneration_jobs(id) ON DELETE CASCADE,
+    base_question_version BIGINT NOT NULL CHECK(base_question_version >= 0), content TEXT NOT NULL,
+    content_format VARCHAR(30) NOT NULL, explanation TEXT, explanation_format VARCHAR(30) NOT NULL,
+    answers JSONB NOT NULL, content_group_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    content_group_codes JSONB NOT NULL DEFAULT '[]'::jsonb, example_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    reference_snapshot JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS quiz3_question_ai_working_drafts (
     question_id UUID PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,

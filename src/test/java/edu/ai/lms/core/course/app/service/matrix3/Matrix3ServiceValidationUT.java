@@ -18,7 +18,7 @@ class Matrix3ServiceValidationUT {
         var valid = new Matrix3Service.Matrix3Detail(UUID.randomUUID(), UUID.randomUUID(), "Matrix 3", null, 15,
                 Matrix3Service.LifecycleStatus.DRAFT, 0, null, null,
                 List.of(new Matrix3Service.Matrix3Row(row, chapter, "Chapter", outcome, "LO", 0,
-                        List.of(new Matrix3Service.Matrix3CellRelation(level, true)))),
+                        List.of(new Matrix3Service.Matrix3CellRelation(level, true, Matrix3Service.QuestionType.CODE_RUNNER)))),
                 List.of(new Matrix3Service.Matrix3LearningLevel(level, "CLL", 0)), null, null);
         assertDoesNotThrow(() -> service.validateConfirmable(valid));
         var noTotal = new Matrix3Service.Matrix3Detail(valid.id(), valid.courseId(), valid.title(), null, 0,

@@ -12,4 +12,6 @@ public interface CodeRunnerContractSnapshotApi {
     String normalizeForReview(String contractJson);
 
     void createQuestionRevision(UUID questionId, String contractJson);
+
+    void cloneLatestQuestionRevision(UUID sourceQuestionId, UUID targetQuestionId);
 }

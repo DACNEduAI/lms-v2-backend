@@ -37,6 +37,7 @@ import edu.ai.lms.core.course.app.service.exammatrix.ExamMatrixAccess;
 import edu.ai.lms.core.course.app.service.matrix2.Matrix2Service;
 import edu.ai.lms.core.course.app.service.matrix3.Matrix3Service;
 import edu.ai.lms.core.quiz.adapter.out.persistence.AssessmentRepository;
+import edu.ai.lms.core.quiz.api.CodeRunnerContractSnapshotApi;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -53,6 +54,7 @@ public class Quiz3AssessmentService {
     private final Quiz3GenerationDispatcher dispatcher;
     private final Quiz3QBank2RegenerationService qbank2Regeneration;
     private final Quiz3ReleaseCoordinator releases;
+    private final CodeRunnerContractSnapshotApi codeRunnerContracts;
 
     public List<AssessmentView> list(UUID courseId) {
         requireTeacher(courseId);
@@ -355,7 +357,12 @@ public class Quiz3AssessmentService {
     public List<VariantView> updateQuestion(UUID courseId,UUID assessmentId,UUID variantId,UUID questionId,QuestionUpdate input){
         requireTeacher(courseId); required(courseId,assessmentId);
         if(input==null||input.content()==null||input.content().isBlank()) throw badRequest("Question content cannot be blank");
-        validateAnswers(input.answers());
+        String questionType=jdbc.queryForObject("""
+                SELECT q.type FROM edu.questions q JOIN edu.quiz3_assessment_variants v ON v.quiz_id=q.quiz_id
+                WHERE q.id=? AND v.id=? AND v.assessment_id=?
+                """,String.class,questionId,variantId,assessmentId);
+        if("MULTIPLE_CHOICE".equals(questionType)) validateAnswers(input.answers());
+        else if(input.answers()!=null&&!input.answers().isEmpty()) throw badRequest("Code Runner questions cannot contain answer rows");
         int updated=jdbc.update("""
                 UPDATE edu.questions SET content=?,content_format=?,explanation=?,explanation_format=?,version=version+1,
                     updated_at=CURRENT_TIMESTAMP WHERE id=? AND quiz_id=(SELECT quiz_id FROM edu.quiz3_assessment_variants
@@ -364,10 +371,10 @@ public class Quiz3AssessmentService {
                 questionId,variantId,assessmentId,input.expectedQuestionVersion());
         if(updated!=1) throw conflict("Question changed; reload and try again");
         jdbc.update("DELETE FROM edu.answers WHERE question_id=?",questionId);
-        for(AnswerInput answer:input.answers()) jdbc.update("""
+        for(AnswerInput answer:input.answers()==null?List.<AnswerInput>of():input.answers()) jdbc.update("""
                 INSERT INTO edu.answers(content,is_correct,content_format,question_id) VALUES (?,?,?,?)
                 """,answer.content(),answer.correct(),format(answer.contentFormat()),questionId);
-        qbank2Regeneration.applyOnQuestionSave(assessmentId, variantId, questionId, input.expectedQuestionVersion());
+        if("MULTIPLE_CHOICE".equals(questionType)) qbank2Regeneration.applyOnQuestionSave(assessmentId, variantId, questionId, input.expectedQuestionVersion());
         recalculateCoverageInternal(assessmentId,variantId);
         return variants(courseId,assessmentId);
     }
@@ -428,7 +435,7 @@ public class Quiz3AssessmentService {
     }
 
     private ObjectNode buildSnapshot(AssessmentView assessment,UUID jobId,List<UUID> materialIds){
-        ObjectNode root=objectMapper.createObjectNode(); root.put("jobId",jobId.toString()); root.put("assessmentId",assessment.id().toString()); root.put("contractVersion",1);
+        ObjectNode root=objectMapper.createObjectNode(); root.put("jobId",jobId.toString()); root.put("assessmentId",assessment.id().toString()); root.put("contractVersion",2);
         ObjectNode course=root.putObject("course"); course.put("id",assessment.courseId().toString());
         course.put("name",jdbc.queryForObject("SELECT course_name FROM edu.courses WHERE id=?",String.class,assessment.courseId()));
         UUID matrixId=assessment.matrixSourceType()==MatrixSourceType.MATRIX2?assessment.matrix2Id():assessment.matrix3Id();
@@ -444,7 +451,7 @@ public class Quiz3AssessmentService {
         if(assessment.matrixSourceType()==MatrixSourceType.MATRIX2){
             cells=jdbc.queryForList("""
                 SELECT r.id row_id,r.chapter_id,c.title chapter_name,r.mapped_learning_outcome_id lo_id,
-                       lo.prefix_number,lo.description,l.id level_id,l.name level_name,ec.question_count
+                       lo.prefix_number,lo.description,l.id level_id,l.name level_name,ec.question_count,ec.question_type
                 FROM edu.exam_matrix_2_rows r
                 JOIN edu.chapters c ON c.chapter_id=r.chapter_id
                 JOIN edu.learning_outcomes lo ON lo.id=r.mapped_learning_outcome_id
@@ -457,7 +464,7 @@ public class Quiz3AssessmentService {
         }else{
             cells=jdbc.queryForList("""
                 SELECT r.id row_id,r.chapter_id,c.title chapter_name,r.mapped_learning_outcome_id lo_id,
-                       lo.prefix_number,lo.description,l.id level_id,l.name level_name
+                       lo.prefix_number,lo.description,l.id level_id,l.name level_name,ec.question_type
                 FROM edu.exam_matrix_3_rows r
                 JOIN edu.chapters c ON c.chapter_id=r.chapter_id
                 JOIN edu.learning_outcomes lo ON lo.id=r.mapped_learning_outcome_id
@@ -481,6 +488,7 @@ public class Quiz3AssessmentService {
             });
             ObjectNode node=row.withArray("cells").addObject(); node.put("customLearningLevelId",String.valueOf(cell.get("level_id")));
             node.put("customLearningLevelName",String.valueOf(cell.get("level_name"))); node.put("questionCount",count);
+            node.put("questionType",String.valueOf(cell.getOrDefault("question_type","MULTIPLE_CHOICE")));
         }
         ArrayNode materials=root.putArray("materialIds"); materialIds.forEach(id->materials.add(id.toString()));
         root.put("idempotencyKey","quiz3-base-"+assessment.id()+"-"+assessment.matrixSourceType().name()+"-matrix-"+matrixVersion); return root;
@@ -501,21 +509,29 @@ public class Quiz3AssessmentService {
         if(questions.size()!=total) throw badRequest("Quiz3 callback total question count does not match snapshot");
         Map<String,Integer> expected=new HashMap<>(),actual=new HashMap<>();
         for(JsonNode row:snapshot.path("matrix").path("rows")) for(JsonNode cell:row.path("cells"))
-            expected.put(key(row.path("id").asText(),cell.path("customLearningLevelId").asText(),row.path("learningOutcome").path("id").asText()),cell.path("questionCount").asInt());
+            expected.put(allocationKey(row.path("id").asText(),cell.path("customLearningLevelId").asText(),row.path("learningOutcome").path("id").asText(),cell.path("questionType").asText("MULTIPLE_CHOICE")),cell.path("questionCount").asInt());
         for(GeneratedQuestion question:questions){
             if(question.matrixRowId()==null||question.customLearningLevelId()==null||question.learningOutcomeId()==null) throw badRequest("Quiz3 callback provenance is incomplete");
-            if(!"MULTIPLE_CHOICE".equals(question.type())) throw badRequest("Quiz3 v1 accepts MCQ only"); validateGeneratedAnswers(question.answers());
-            actual.merge(key(question.matrixRowId().toString(),question.customLearningLevelId().toString(),question.learningOutcomeId().toString()),1,Integer::sum);
+            if("MULTIPLE_CHOICE".equals(question.type())) validateGeneratedAnswers(question.answers());
+            else if("CODE_RUNNER".equals(question.type())) {
+                if(question.answers()!=null&&!question.answers().isEmpty()) throw badRequest("Quiz3 Code Runner callback cannot contain answers");
+                if(question.codeRunnerContract()==null||question.codeRunnerContract().isNull()) throw badRequest("Quiz3 Code Runner callback needs codeRunnerContract");
+            } else throw badRequest("Quiz3 accepts only MULTIPLE_CHOICE or CODE_RUNNER");
+            actual.merge(allocationKey(question.matrixRowId().toString(),question.customLearningLevelId().toString(),question.learningOutcomeId().toString(),question.type()),1,Integer::sum);
         }
-        if(!expected.equals(actual)) throw badRequest("Quiz3 callback distribution does not match Matrix2 snapshot");
+        if(!expected.equals(actual)) throw badRequest("Quiz3 callback distribution does not match the matrix snapshot");
     }
 
     private void persistQuestion(UUID jobId,UUID quizId,GeneratedQuestion source,int order,UUID sourceQuestionId){
         UUID id=UUID.randomUUID(); jdbc.update("""
                 INSERT INTO edu.questions(id,content,content_format,explanation,explanation_format,type,quiz_id,review_status,source_type,source_question_id,order_index)
-                VALUES (?,?,'PLAIN_TEXT',NULL,'PLAIN_TEXT','MULTIPLE_CHOICE',?,'APPROVED',?,?,?)
-                """,id,source.content(),quizId,sourceQuestionId==null?"AI_GENERATED":"QUIZ_CLONE",sourceQuestionId,order);
-        for(GeneratedAnswer answer:source.answers()) jdbc.update("INSERT INTO edu.answers(content,is_correct,explanation,question_id) VALUES (?,?,?,?)",answer.content(),answer.isCorrect(),answer.explanation(),id);
+                VALUES (?,?,'PLAIN_TEXT',NULL,'PLAIN_TEXT',?,?,'APPROVED',?,?,?)
+                """,id,source.content(),source.type(),quizId,sourceQuestionId==null?"AI_GENERATED":"QUIZ_CLONE",sourceQuestionId,order);
+        for(GeneratedAnswer answer:source.answers()==null?List.<GeneratedAnswer>of():source.answers()) jdbc.update("INSERT INTO edu.answers(content,is_correct,explanation,question_id) VALUES (?,?,?,?)",answer.content(),answer.isCorrect(),answer.explanation(),id);
+        if("CODE_RUNNER".equals(source.type())) {
+            if(sourceQuestionId==null) codeRunnerContracts.createQuestionRevision(id,source.codeRunnerContract().toString());
+            else codeRunnerContracts.cloneLatestQuestionRevision(sourceQuestionId,id);
+        }
         jdbc.update("INSERT INTO edu.question_learning_outcomes(question_id,learning_outcome_id) VALUES (?,?) ON CONFLICT DO NOTHING",id,source.learningOutcomeId());
         String sourceType=jdbc.queryForObject("SELECT matrix_source_type FROM edu.quiz3_generation_jobs WHERE id=?",String.class,jobId);
         boolean matrix3="MATRIX3".equals(sourceType);
@@ -556,8 +572,8 @@ public class Quiz3AssessmentService {
                     """,sourceId);
             List<GeneratedAnswer> answers=jdbc.query("SELECT content,is_correct,explanation FROM edu.answers WHERE question_id=? ORDER BY answer_number",
                     (rs,row)->new GeneratedAnswer(rs.getString(1),rs.getBoolean(2),rs.getString(3)),sourceId); Collections.shuffle(answers,new Random(seed^index));
-            persistQuestion((UUID)q.get("generation_job_id"),quizId,new GeneratedQuestion(String.valueOf(q.get("content")),"MULTIPLE_CHOICE",
-                    (UUID)q.get("matrix_row_id"),(UUID)q.get("level_id"),(UUID)q.get("learning_outcome_id"),answers,null),index,sourceId);
+            persistQuestion((UUID)q.get("generation_job_id"),quizId,new GeneratedQuestion(String.valueOf(q.get("content")),String.valueOf(q.get("type")),
+                    (UUID)q.get("matrix_row_id"),(UUID)q.get("level_id"),(UUID)q.get("learning_outcome_id"),answers,null,null),index,sourceId);
             jdbc.update("""
                     UPDATE edu.quiz3_question_provenance target SET qbank2_selection_mode=source.qbank2_selection_mode,
                         qbank2_content_group_ids=source.qbank2_content_group_ids,qbank2_content_group_codes=source.qbank2_content_group_codes,
@@ -626,14 +642,17 @@ public class Quiz3AssessmentService {
     private void validateQuiz(UUID quizId){
         Integer invalid=jdbc.queryForObject("""
                 SELECT COUNT(*) FROM edu.questions q WHERE q.quiz_id=? AND (btrim(COALESCE(q.content,''))='' OR
-                    (SELECT COUNT(*) FROM edu.answers a WHERE a.question_id=q.id AND a.is_correct)=1 IS NOT TRUE)
+                    (q.type='MULTIPLE_CHOICE' AND (SELECT COUNT(*) FROM edu.answers a WHERE a.question_id=q.id AND a.is_correct)=1 IS NOT TRUE) OR
+                    (q.type='CODE_RUNNER' AND NOT EXISTS (SELECT 1 FROM edu.code_runner_configs c WHERE c.question_id=q.id AND c.contract_status='VERIFIED_EXECUTION_GOLD')))
                 """,Integer.class,quizId);
-        if(invalid!=null&&invalid>0) throw conflict("Every question needs content and exactly one correct answer");
+        if(invalid!=null&&invalid>0) throw conflict(
+                "Every MCQ needs exactly one correct answer and every Code Runner question needs a verified contract");
     }
     static void validateAnswers(List<AnswerInput> answers){if(answers==null||answers.stream().filter(AnswerInput::correct).count()!=1)throw badRequest("Exactly one answer must be correct");
         if(answers.stream().anyMatch(a->a.content()==null||a.content().isBlank()))throw badRequest("Answers cannot be blank");}
     private static void validateGeneratedAnswers(List<GeneratedAnswer> answers){if(answers==null||answers.size()!=4)throw badRequest("Quiz3 AI must return exactly four initial answers");
         if(answers.stream().filter(GeneratedAnswer::isCorrect).count()!=1)throw badRequest("Quiz3 AI must return exactly one correct answer");}
+    private static String allocationKey(String row,String level,String outcome,String type){return key(row,level,outcome)+"/"+type;}
     private UUID baseQuiz(UUID assessmentId){UUID id=jdbc.query("SELECT quiz_id FROM edu.quiz3_assessment_variants WHERE assessment_id=? AND variant_kind='BASE'",rs->rs.next()?rs.getObject(1,UUID.class):null,assessmentId);
         if(id==null)throw conflict("Quiz 001 has not been generated");return id;}
     private UUID resolveCcct(UUID courseId,UUID actor,SourceSelection selection){return switch(selection.mode()){
