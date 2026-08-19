@@ -184,6 +184,9 @@ class GetQuizServiceUT {
                 assertNotNull(response);
                 assertEquals(quizId, response.getQuizId());
                 assertEquals("Midterm Quiz", response.getQuizTitle());
+                assertEquals(false, response.getQuestions().get(0).getAnswers().get(0).isCorrect());
+                assertNull(response.getQuestions().get(0).getAnswers().get(0).getExplanation());
+                assertNull(response.getQuestions().get(0).getAnswers().get(0).getExplanationFormat());
                 verify(loadQuizPort, times(1)).getByIdWithQuestionsAndAnswers(courseId, quizId);
         }
 

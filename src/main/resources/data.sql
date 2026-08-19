@@ -649,3 +649,120 @@ D. O(n²)
 
 INSERT INTO question_bank_2_code_counters (course_id, next_value)
 VALUES ('c1111111-1111-1111-1111-111111111111', 7);
+
+-- Published Quiz3 base fixture for the student attempt flow.  It has no
+-- shuffled variants and remains available after every development reset.
+INSERT INTO quiz3_assessments
+    (id, course_id, title, description, unlimited, time_limit_minutes, pass_score,
+     start_time, due_time, attempt_limited, variant_count, lifecycle_status, current_step,
+     ccct_profile_id, ccct_profile_version, matrix_source_type, matrix2_id, matrix2_version,
+     base_confirmed_by, base_confirmed_at, created_by, version, published_by, published_at)
+VALUES
+    ('f9000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
+     'Quiz3 Student Attempt Demo', 'Published Quiz3 base assessment for student attempt testing.',
+     true, NULL, 5.0, NULL, NULL, NULL, 1, 'PUBLISHED', 9,
+     'e1000001-0000-4000-8000-000000000001', 0, 'MATRIX2',
+     'b3000001-0000-4000-8000-000000000001', 0,
+     '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP,
+     '11111111-1111-1111-1111-111111111111', 1,
+     '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP);
+
+INSERT INTO quiz3_generation_jobs
+    (id, assessment_id, course_id, matrix_source_type, matrix2_id, matrix2_version,
+     requested_by, request_snapshot, payload_hash, idempotency_key, status, phase,
+     attempt_count, generated_question_count, total_question_count, completed_at)
+VALUES
+    ('f9000001-0000-4000-8000-000000000002', 'f9000001-0000-4000-8000-000000000001',
+     'c1111111-1111-1111-1111-111111111111', 'MATRIX2',
+     'b3000001-0000-4000-8000-000000000001', 0,
+     '11111111-1111-1111-1111-111111111111',
+     CAST('{"matrix":{"rows":[{"id":"b3000021-0000-4000-8000-000000000001","learningOutcome":{"id":"81111111-1111-1111-1111-111111111111"},"cells":[{"customLearningLevelId":"b3000011-0000-4000-8000-000000000002","questionCount":1}]},{"id":"b3000021-0000-4000-8000-000000000002","learningOutcome":{"id":"84444444-4444-4444-4444-444444444444"},"cells":[{"customLearningLevelId":"b3000011-0000-4000-8000-000000000003","questionCount":2}]}]}}' AS jsonb),
+     'a333333333333333333333333333333333333333333333333333333333333333',
+     'seed-quiz3-student-attempt-demo-v1', 'COMPLETED', 'DONE', 1, 3, 3, CURRENT_TIMESTAMP);
+
+INSERT INTO quizzes
+    (id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time,
+     attempt_limited, course_id, teacher_id, display, lifecycle_status, source_type,
+     version, published_by, published_at)
+VALUES
+    ('f9000001-0000-4000-8000-000000000003', 'Quiz3 Student Attempt Demo - 001',
+     'Published Quiz3 base assessment for student attempt testing.', true, NULL, 5.0, NULL, NULL,
+     NULL, 'c1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111',
+     true, 'PUBLISHED', 'AI_GENERATED', 1,
+     '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP);
+
+UPDATE quiz3_generation_jobs
+SET quiz_id = 'f9000001-0000-4000-8000-000000000003'
+WHERE id = 'f9000001-0000-4000-8000-000000000002';
+
+UPDATE quiz3_assessments
+SET base_generation_job_id = 'f9000001-0000-4000-8000-000000000002'
+WHERE id = 'f9000001-0000-4000-8000-000000000001';
+
+INSERT INTO quiz3_assessment_variants
+    (id, assessment_id, quiz_id, variant_code, order_index, shuffle_seed, variant_kind,
+     coverage_status, coverage_snapshot)
+VALUES
+    ('f9000001-0000-4000-8000-000000000004', 'f9000001-0000-4000-8000-000000000001',
+     'f9000001-0000-4000-8000-000000000003', '001', 0, 424242, 'BASE', 'COMPLIANT',
+     CAST('{"status":"COMPLIANT","questionCount":3}' AS jsonb));
+
+INSERT INTO questions
+    (id, content, content_format, explanation, explanation_format, type, quiz_id,
+     review_status, source_type, order_index)
+VALUES
+    ('f9000001-0000-4000-8000-000000000011',
+     'What is the time complexity of binary search on a sorted array?', 'PLAIN_TEXT',
+     'Binary search halves the remaining search interval on each step.', 'PLAIN_TEXT',
+     'MULTIPLE_CHOICE', 'f9000001-0000-4000-8000-000000000003', 'APPROVED', 'AI_GENERATED', 0),
+    ('f9000001-0000-4000-8000-000000000012',
+     'Which data structure follows the LIFO principle?', 'PLAIN_TEXT',
+     'LIFO means the last inserted item is the first item removed.', 'PLAIN_TEXT',
+     'MULTIPLE_CHOICE', 'f9000001-0000-4000-8000-000000000003', 'APPROVED', 'AI_GENERATED', 1),
+    ('f9000001-0000-4000-8000-000000000013',
+     'Which operation removes an item from the front of a queue?', 'PLAIN_TEXT',
+     'A queue removes its oldest item with dequeue.', 'PLAIN_TEXT',
+     'MULTIPLE_CHOICE', 'f9000001-0000-4000-8000-000000000003', 'APPROVED', 'AI_GENERATED', 2);
+
+INSERT INTO answers (content, content_format, is_correct, explanation, explanation_format, question_id)
+VALUES
+    ('O(1)', 'PLAIN_TEXT', false, NULL, 'PLAIN_TEXT', 'f9000001-0000-4000-8000-000000000011'),
+    ('O(log n)', 'PLAIN_TEXT', true, NULL, 'PLAIN_TEXT', 'f9000001-0000-4000-8000-000000000011'),
+    ('O(n)', 'PLAIN_TEXT', false, NULL, 'PLAIN_TEXT', 'f9000001-0000-4000-8000-000000000011'),
+    ('O(n log n)', 'PLAIN_TEXT', false, NULL, 'PLAIN_TEXT', 'f9000001-0000-4000-8000-000000000011'),
+    ('Queue', 'PLAIN_TEXT', false, NULL, 'PLAIN_TEXT', 'f9000001-0000-4000-8000-000000000012'),
+    ('Stack', 'PLAIN_TEXT', true, NULL, 'PLAIN_TEXT', 'f9000001-0000-4000-8000-000000000012'),
+    ('Binary heap', 'PLAIN_TEXT', false, NULL, 'PLAIN_TEXT', 'f9000001-0000-4000-8000-000000000012'),
+    ('Hash table', 'PLAIN_TEXT', false, NULL, 'PLAIN_TEXT', 'f9000001-0000-4000-8000-000000000012'),
+    ('enqueue', 'PLAIN_TEXT', false, NULL, 'PLAIN_TEXT', 'f9000001-0000-4000-8000-000000000013'),
+    ('dequeue', 'PLAIN_TEXT', true, NULL, 'PLAIN_TEXT', 'f9000001-0000-4000-8000-000000000013'),
+    ('peek', 'PLAIN_TEXT', false, NULL, 'PLAIN_TEXT', 'f9000001-0000-4000-8000-000000000013'),
+    ('push', 'PLAIN_TEXT', false, NULL, 'PLAIN_TEXT', 'f9000001-0000-4000-8000-000000000013');
+
+INSERT INTO quiz_learning_outcomes (quiz_id, learning_outcome_id)
+VALUES
+    ('f9000001-0000-4000-8000-000000000003', '81111111-1111-1111-1111-111111111111'),
+    ('f9000001-0000-4000-8000-000000000003', '84444444-4444-4444-4444-444444444444');
+
+INSERT INTO question_learning_outcomes (question_id, learning_outcome_id)
+VALUES
+    ('f9000001-0000-4000-8000-000000000011', '81111111-1111-1111-1111-111111111111'),
+    ('f9000001-0000-4000-8000-000000000012', '84444444-4444-4444-4444-444444444444'),
+    ('f9000001-0000-4000-8000-000000000013', '84444444-4444-4444-4444-444444444444');
+
+INSERT INTO quiz3_question_provenance
+    (question_id, generation_job_id, matrix2_row_id, matrix2_custom_learning_level_id,
+     learning_outcome_id, allocation_snapshot)
+VALUES
+    ('f9000001-0000-4000-8000-000000000011', 'f9000001-0000-4000-8000-000000000002',
+     'b3000021-0000-4000-8000-000000000001', 'b3000011-0000-4000-8000-000000000002',
+     '81111111-1111-1111-1111-111111111111',
+     CAST('{"matrixRowId":"b3000021-0000-4000-8000-000000000001","customLearningLevelId":"b3000011-0000-4000-8000-000000000002","learningOutcomeId":"81111111-1111-1111-1111-111111111111"}' AS jsonb)),
+    ('f9000001-0000-4000-8000-000000000012', 'f9000001-0000-4000-8000-000000000002',
+     'b3000021-0000-4000-8000-000000000002', 'b3000011-0000-4000-8000-000000000003',
+     '84444444-4444-4444-4444-444444444444',
+     CAST('{"matrixRowId":"b3000021-0000-4000-8000-000000000002","customLearningLevelId":"b3000011-0000-4000-8000-000000000003","learningOutcomeId":"84444444-4444-4444-4444-444444444444"}' AS jsonb)),
+    ('f9000001-0000-4000-8000-000000000013', 'f9000001-0000-4000-8000-000000000002',
+     'b3000021-0000-4000-8000-000000000002', 'b3000011-0000-4000-8000-000000000003',
+     '84444444-4444-4444-4444-444444444444',
+     CAST('{"matrixRowId":"b3000021-0000-4000-8000-000000000002","customLearningLevelId":"b3000011-0000-4000-8000-000000000003","learningOutcomeId":"84444444-4444-4444-4444-444444444444"}' AS jsonb));

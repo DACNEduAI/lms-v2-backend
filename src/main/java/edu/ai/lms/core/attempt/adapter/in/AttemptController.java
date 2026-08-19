@@ -14,12 +14,14 @@ import org.springframework.web.bind.annotation.RestController;
 import edu.ai.lms.core.attempt.adapter.in.mapper.SubmitAttemptCommandMapper;
 import edu.ai.lms.core.attempt.adapter.in.request.SubmitAttemptRequest;
 import edu.ai.lms.core.attempt.adapter.in.response.GetMyAttemptsResponse;
+import edu.ai.lms.core.attempt.adapter.in.response.GetAttemptQuizSessionResponse;
 import edu.ai.lms.core.attempt.adapter.in.response.StartAttemptResponse;
 import edu.ai.lms.core.attempt.adapter.in.response.SubmitAttemptResponse;
 import edu.ai.lms.core.attempt.app.exception.InvalidAttemptSubmissionException;
 import edu.ai.lms.core.attempt.app.port.in.command.StartAttemptCommand;
 import edu.ai.lms.core.attempt.app.port.in.command.SubmitAttemptCommand;
 import edu.ai.lms.core.attempt.app.port.in.usecase.GetMyAttemptsUseCase;
+import edu.ai.lms.core.attempt.app.port.in.usecase.GetAttemptQuizSessionUseCase;
 import edu.ai.lms.core.attempt.app.port.in.usecase.StartAttemptUseCase;
 import edu.ai.lms.core.attempt.app.port.in.usecase.SubmitAttemptUseCase;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,6 +43,7 @@ public class AttemptController {
     private final StartAttemptUseCase startAttemptUseCase;
     private final SubmitAttemptUseCase submitAttemptUseCase;
     private final GetMyAttemptsUseCase getMyAttemptsUseCase;
+    private final GetAttemptQuizSessionUseCase getAttemptQuizSessionUseCase;
     private final SubmitAttemptCommandMapper submitAttemptCommandMapper;
 
     @Operation(
@@ -79,6 +82,16 @@ public class AttemptController {
 
         StartAttemptResponse response = startAttemptUseCase.startAttempt(command);
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Get the active student quiz session",
+            description = "Returns a delivery-safe question snapshot only when the authenticated student has an active STARTED attempt. Correct answers and explanations are never included.")
+    @PreAuthorize("hasRole('STUDENT')")
+    @GetMapping("/quiz/{quizId}/session")
+    public ResponseEntity<GetAttemptQuizSessionResponse> getAttemptQuizSession(
+            @PathVariable UUID courseId,
+            @PathVariable UUID quizId) {
+        return ResponseEntity.ok(getAttemptQuizSessionUseCase.getSession(courseId, quizId));
     }
 
                 @Operation(
