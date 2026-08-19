@@ -13,14 +13,13 @@ import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.VariantQuesti
 import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.VariantQuestionView;
 import edu.ai.lms.core.quiz.app.domain.assessment.AssessmentModels.VariantView;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
-import edu.ai.lms.core.quiz.app.service.assessment.VariantPdfRenderer;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class Quiz3PdfService {
     private final Quiz3AssessmentService assessments;
-    private final VariantPdfRenderer renderer;
+    private final Quiz3PdfRenderer renderer;
 
     public GeneratedPdf generate(UUID courseId, UUID assessmentId, UUID variantId) {
         var assessment = assessments.get(courseId, assessmentId);

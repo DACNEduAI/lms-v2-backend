@@ -211,7 +211,7 @@ public class Matrix2Service {
                     VALUES (?, ?, ?, ?, ?)
                     """, row.id(), matrixId, row.chapterId(), row.mappedLearningOutcomeId(), index);
             for (Matrix2CellCount count : safe(row.cellCounts())) {
-                if (count.questionCount() == 0) continue;
+                if (count.questionCount() <= 0) continue;
                 jdbcTemplate.update("""
                         INSERT INTO edu.exam_matrix_2_cell_counts (row_id, custom_learning_level_id, question_count)
                         VALUES (?, ?, ?)
@@ -326,8 +326,7 @@ public class Matrix2Service {
     public record Matrix2LearningLevel(UUID id, String name, int sortOrder) { }
     public record Matrix2CellCount(UUID customLearningLevelId, int questionCount) { }
     public record Matrix2Payload(String title, String description, List<Matrix2RowPayload> rows,
-                                 List<Matrix2LearningLevelPayload> customLearningLevels,
-                                 Long expectedVersion) { }
+                                 List<Matrix2LearningLevelPayload> customLearningLevels, Long expectedVersion) { }
     public record Matrix2RowPayload(UUID id, UUID chapterId, UUID mappedLearningOutcomeId,
                                     List<Matrix2CellCount> cellCounts) { }
     public record Matrix2LearningLevelPayload(UUID id, String name) { }

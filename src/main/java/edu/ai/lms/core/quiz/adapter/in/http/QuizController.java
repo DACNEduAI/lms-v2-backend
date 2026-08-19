@@ -102,7 +102,7 @@ public class QuizController {
                         @ApiResponse(responseCode = "200", description = "Quiz retrieved successfully", content = @Content(schema = @Schema(implementation = GetQuizResponse.class))),
                         @ApiResponse(responseCode = "404", description = "Quiz not found")
         })
-        @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+        @PreAuthorize("hasRole('TEACHER')")
         @GetMapping("/{quizId}")
         public ResponseEntity<GetQuizResponse> getQuiz(
                         @PathVariable UUID courseId,

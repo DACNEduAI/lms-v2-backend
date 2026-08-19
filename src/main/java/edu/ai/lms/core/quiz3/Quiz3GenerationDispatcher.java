@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -45,7 +46,7 @@ public class Quiz3GenerationDispatcher {
             aiWebClient.post().uri("/quiz3/generate").contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(request).retrieve().toBodilessEntity().block(Duration.ofMinutes(timeoutMinutes));
         } catch (Exception ex) {
-            String message = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
+            String message = dispatchFailureMessage(ex);
             log.error("event=quiz3.dispatch.failed job_id={} error_type={}", jobId, ex.getClass().getSimpleName(), ex);
             jdbc.update("""
                     UPDATE edu.quiz3_generation_jobs SET status='FAILED', error_code='DISPATCH_FAILED',
@@ -56,6 +57,15 @@ public class Quiz3GenerationDispatcher {
                         updated_at=CURRENT_TIMESTAMP WHERE base_generation_job_id=?
                     """, jobId);
         }
+    }
+
+    static String dispatchFailureMessage(Exception ex) {
+        String message = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
+        if (ex instanceof WebClientResponseException response && response.getStatusCode().value() == 422) {
+            String detail = response.getResponseBodyAsString();
+            if (!detail.isBlank()) return message + " detail=" + detail;
+        }
+        return message;
     }
 
     @Transactional

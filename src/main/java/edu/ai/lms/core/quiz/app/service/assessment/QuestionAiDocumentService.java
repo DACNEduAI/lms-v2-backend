@@ -64,6 +64,14 @@ public class QuestionAiDocumentService {
         return insert(html, node, anchor);
     }
 
+    /** Insert new Quiz3 AI SVGs as an inline Tiptap image so teachers can move and resize them. */
+    public String insertInlineSvg(String html, UUID artifactId, String altText, String sourceUrl, Anchor anchor) {
+        Element node = new Element("img").attr("src", sourceUrl).attr("alt", altText)
+                .attr("data-ai-artifact-id", artifactId.toString()).attr("data-ai-artifact-type", "SVG")
+                .attr("data-image-layout", "inline");
+        return insert(html, node, anchor);
+    }
+
     public String updateLatex(String html, UUID artifactId, String source, String mode) {
         Document document = parse(html);
         Element node = owned(document, artifactId, "LATEX");

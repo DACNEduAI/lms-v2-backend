@@ -56,8 +56,6 @@ public class GetQuizService implements GetQuizUseCase {
             throw new QuizNotVisible("Quiz is not visible for student to view: " + quiz.getId());
         }
 
-        boolean revealAnswerKeys = user.getRole() == Roles.TEACHER;
-
         List<QuestionLearningOutcomeView> allQuestionOutcomes = loadQuestionLearningOutcomePort
                 .findLearningOutcomesByQuizId(quizId);
         Map<UUID, List<QuestionLearningOutcomeView>> outcomesByQuestion = allQuestionOutcomes.stream()
@@ -86,14 +84,7 @@ public class GetQuizService implements GetQuizUseCase {
                             .version(q.getVersion())
                             .learningOutcomes(loSummaries)
                             .answers(q.getAnswers().stream()
-                                    .map(a -> GetQuizResponse.AnswerSummary.builder()
-                                            .answerNumber(a.getAnswerNumber())
-                                            .content(a.getContent())
-                                            .contentFormat(a.getContentFormat())
-                                            .correct(revealAnswerKeys && a.isCorrect())
-                                            .explanation(revealAnswerKeys ? a.getExplanation() : null)
-                                            .explanationFormat(revealAnswerKeys ? a.getExplanationFormat() : null)
-                                            .build())
+                                    .map(a -> toAnswerSummary(a, user.getRole() == Roles.TEACHER))
                                     .collect(Collectors.toList()))
                             .images((q.getImages() == null ? List.<edu.ai.lms.core.quiz.app.domain.Question.Image>of() : q.getImages())
                                     .stream().map(image -> GetQuizResponse.QuestionImageSummary.builder()
@@ -173,6 +164,19 @@ public class GetQuizService implements GetQuizUseCase {
                 .code(learningOutcome.getLearningOutcomeCode())
                 .prefixNumber(learningOutcome.getLearningOutcomePrefixNumber())
                 .description(learningOutcome.getLearningOutcomeDescription())
+                .build();
+    }
+
+    private GetQuizResponse.AnswerSummary toAnswerSummary(
+            edu.ai.lms.core.quiz.app.domain.Answer answer,
+            boolean includeTeacherOnlyFields) {
+        return GetQuizResponse.AnswerSummary.builder()
+                .answerNumber(answer.getAnswerNumber())
+                .content(answer.getContent())
+                .contentFormat(answer.getContentFormat())
+                .correct(includeTeacherOnlyFields && answer.isCorrect())
+                .explanation(includeTeacherOnlyFields ? answer.getExplanation() : null)
+                .explanationFormat(includeTeacherOnlyFields ? answer.getExplanationFormat() : null)
                 .build();
     }
 

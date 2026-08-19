@@ -2,26 +2,28 @@ package edu.ai.lms.core.quiz3;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public final class Quiz3Models {
     private Quiz3Models() { }
 
     public enum SourceMode { USE_EXISTING, COPY_AS_DRAFT, CREATE_NEW_DRAFT }
+    public enum MatrixSourceType { MATRIX2, MATRIX3 }
     public record Configuration(String title, String description, Boolean unlimited,
             Integer timeLimitMinutes, Double passScore, LocalDateTime startTime,
             LocalDateTime dueTime, Integer attemptLimited, Integer variantCount) { }
     public record AssessmentView(UUID id, UUID courseId, String title, String description,
             boolean unlimited, Integer timeLimitMinutes, Double passScore, LocalDateTime startTime,
             LocalDateTime dueTime, Integer attemptLimited, int variantCount, String lifecycleStatus,
-            int currentStep, UUID ccctProfileId, Long ccctProfileVersion, UUID matrix2Id,
-            Long matrix2Version, UUID baseGenerationJobId, long version,
+            int currentStep, UUID ccctProfileId, Long ccctProfileVersion, MatrixSourceType matrixSourceType,
+            UUID matrix2Id, Long matrix2Version, UUID matrix3Id, Long matrix3Version, UUID baseGenerationJobId, long version,
             LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt) { }
-    public record SourceOption(UUID id, String name, String lifecycleStatus, long version) { }
+    public record SourceOption(UUID id, String name, String lifecycleStatus, long version, MatrixSourceType matrixSourceType) { }
     public record ContextView(AssessmentView assessment, List<SourceOption> ccctProfiles,
-            List<SourceOption> matrices) { }
-    public record SourceSelection(SourceMode mode, UUID sourceId, String draftName) { }
-    public record ContextSelection(SourceSelection ccct, SourceSelection matrix2) { }
+            List<SourceOption> matrix2s, List<SourceOption> matrix3s) { }
+    public record SourceSelection(SourceMode mode, UUID sourceId, String draftName, MatrixSourceType matrixSourceType) { }
+    public record ContextSelection(SourceSelection ccct, SourceSelection matrix) { }
     public record SourceVersion(long version) { }
     public record VersionedConfiguration(long version, Configuration configuration) { }
     public record GenerationView(UUID jobId, String status, String phase, int attemptCount,
@@ -32,7 +34,8 @@ public final class Quiz3Models {
             String explanation, String explanationFormat, List<AnswerInput> answers) { }
     public record AnswerView(long number, String content, String contentFormat, boolean correct) { }
     public record QuestionMetadata(UUID matrixRowId, String chapter, UUID learningOutcomeId,
-            String learningOutcome, UUID customLearningLevelId, String customLearningLevelName) { }
+            String learningOutcome, UUID customLearningLevelId, String customLearningLevelName,
+            String qbank2SelectionMode, List<String> contentGroupIds, List<UUID> exampleIds) { }
     public record QuestionView(UUID id, String content, String contentFormat, String explanation,
             String explanationFormat, String type, int orderIndex, long version,
             QuestionMetadata metadata, List<AnswerView> answers) { }
@@ -46,13 +49,25 @@ public final class Quiz3Models {
             QuizPayload quiz, String errorCode, String errorMessage) { }
     public record QuizPayload(String quizName, List<GeneratedQuestion> questions) { }
     public record GeneratedQuestion(String content, String type, UUID matrixRowId,
-            UUID customLearningLevelId, UUID learningOutcomeId, List<GeneratedAnswer> answers) { }
+            UUID customLearningLevelId, UUID learningOutcomeId, List<GeneratedAnswer> answers,
+            Map<String, Object> qbank2Reference) { }
     public record GeneratedAnswer(String content, boolean isCorrect, String explanation) { }
     public record ProgressPayload(UUID jobId, UUID assessmentId, int attempt,
             int generatedQuestionCount) { }
+    public record AiAnchor(String kind, Integer offset) { }
     public record AiRequest(String mode, String prompt, long expectedQuestionVersion, String currentContent,
-            String currentContentFormat) { }
+            String currentContentFormat, AiAnchor anchor) { }
     public record AiDraft(UUID questionId, long baseQuestionVersion, String content,
             String contentFormat, int appliedChangeIndex, int latestChangeIndex,
             boolean canUndo, boolean canRedo) { }
+    public record AiStep(String actionId, String specialist, String status, String errorCode, String errorMessage) { }
+    public record AiJobView(UUID id, String status, String phase, String errorCode, String errorMessage,
+            String warningMessage, List<AiStep> steps) { }
+    public record AiStartResult(AiJobView job, boolean existing) { }
+    public record QBank2RegenerateRequest(List<UUID> exampleIds) { }
+    public record QBank2RegenerationJobView(UUID id, String status, String phase, String errorCode, String errorMessage) { }
+    public record QBank2RegenerationStartResult(QBank2RegenerationJobView job, boolean existing) { }
+    public record QBank2RegenerationDraft(UUID questionId, long baseQuestionVersion, String content, String contentFormat,
+            String explanation, String explanationFormat, List<AnswerInput> answers, List<String> contentGroupIds,
+            List<UUID> exampleIds) { }
 }

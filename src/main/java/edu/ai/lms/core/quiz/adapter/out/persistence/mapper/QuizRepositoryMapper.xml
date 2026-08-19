@@ -120,6 +120,7 @@
     WHERE course_id = #{courseId}
       AND teacher_id IS NOT NULL
       AND NOT EXISTS (SELECT 1 FROM edu.assessment_variants av WHERE av.quiz_id = quizzes.id)
+      AND NOT EXISTS (SELECT 1 FROM edu.quiz3_assessment_variants q3av WHERE q3av.quiz_id = quizzes.id AND q3av.variant_kind = 'SHUFFLED')
     ORDER BY created_at DESC
   </select>
 
