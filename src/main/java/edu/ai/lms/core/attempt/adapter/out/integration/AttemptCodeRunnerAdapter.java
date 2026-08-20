@@ -21,7 +21,7 @@ class AttemptCodeRunnerAdapter implements AttemptCodeRunnerPort {
     @Override public AttemptCodeRunnerQuestion getQuestion(UUID attemptId, UUID quizId, UUID questionId) {
         var view = api.getQuestion(attemptId, quizId, questionId);
         return new AttemptCodeRunnerQuestion(view.questionId(), view.title(), view.statement(), view.starterCode(),
-                view.entryPoint(), view.executionProfile(), view.activeSubmissionId(), view.publicTests().stream()
+                view.entryPoint(), view.executionProfile(), view.activeSubmissionId(), view.latestSubmitId(), view.publicTests().stream()
                 .map(test -> new AttemptCodeRunnerQuestion.PublicTest(test.id(), test.category(),
                         test.argumentsJson(), test.expectedOutputJson())).toList());
     }
@@ -35,8 +35,9 @@ class AttemptCodeRunnerAdapter implements AttemptCodeRunnerPort {
 
     @Override public AttemptCodeSubmission getSubmission(UUID studentId, UUID submissionId, boolean hidesPrivateGrading) {
         var view = api.getSubmission(studentId, submissionId, hidesPrivateGrading);
-        return new AttemptCodeSubmission(view.submissionId(), view.questionId(), view.mode(), view.status(),
+        return new AttemptCodeSubmission(view.submissionId(), view.questionId(), view.mode(), view.sourceCode(), view.status(),
                 view.verdict(), view.score(), view.maxScore(), view.passedTests(), view.totalTests(),
+                view.scoreReleased(), view.hiddenTestPolicy(),
                 view.visibleResults().stream().map(result -> new AttemptCodeSubmission.VisibleTestResult(
                         result.testId(), result.verdict(), result.timeMs(), result.memoryKb(), result.diagnostic()))
                         .toList());

@@ -29,4 +29,6 @@ interface CodeSubmissionRepository {
     long countPendingSubmissions(@Param("attemptId") UUID attemptId);
     Double findLatestCompletedSubmitRatio(@Param("attemptId") UUID attemptId, @Param("questionId") UUID questionId);
     UUID findLatestSubmissionId(@Param("attemptId") UUID attemptId, @Param("questionId") UUID questionId);
+
+    UUID findLatestSubmitId(@Param("attemptId") UUID attemptId, @Param("questionId") UUID questionId);
 }

@@ -36,6 +36,7 @@ import io.restassured.http.ContentType;
 class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
 
     @MockBean private CodeExecutionEngine engine;
+    @MockBean private Quiz3GenerationDispatcher generationDispatcher;
     @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired private ApplicationEventPublisher events;
     @Value("${quiz.generation.webhook.secret}") private String webhookSecret;
@@ -189,6 +190,91 @@ class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
         events.publishEvent(new CodeSubmissionCompletedEvent(submissionId, attemptId));
         assertThat(jdbc.queryForObject("SELECT status FROM edu.attempts WHERE id=?", String.class, attemptId))
                 .isEqualTo("FINISHED");
+    }
+
+    @Test
+    void invalidAiContractFailsCleanlyAndTeacherCanStartANewGenerationJob() throws Exception {
+        String teacherToken = register("Retry", "Teacher", "quiz3.cr.retry.teacher@ai.edu", "teacher");
+        UUID teacherId = jdbc.queryForObject(
+                "SELECT id FROM edu.users WHERE email='quiz3.cr.retry.teacher@ai.edu'", UUID.class);
+        UUID courseId = UUID.fromString(given().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body("""
+                        {"courseName":"Quiz3 invalid AI recovery","courseCode":"Q3CRR","active":true,
+                         "startDate":"%s","endDate":"%s","learningOutcomes":[]}
+                        """.formatted(date(1), date(60)))
+                .post("/api/course").then().statusCode(201).extract().path("courseId"));
+
+        UUID chapterId = UUID.randomUUID(), outcomeId = UUID.randomUUID();
+        UUID matrixId = UUID.randomUUID(), rowId = UUID.randomUUID(), levelId = UUID.randomUUID();
+        jdbc.update("INSERT INTO edu.chapters(chapter_id,title,course_id) VALUES(?,?,?)",
+                chapterId, "Recovery", courseId);
+        jdbc.update("INSERT INTO edu.learning_outcomes(id,prefix_number,description,course_id) VALUES(?,1,?,?)",
+                outcomeId, "Recover invalid generation", courseId);
+        jdbc.update("INSERT INTO edu.exam_matrices_2(id,course_id,title,lifecycle_status) VALUES(?,?,?,'PUBLISHED')",
+                matrixId, courseId, "Recovery matrix");
+        jdbc.update("INSERT INTO edu.exam_matrix_2_custom_learning_levels(id,matrix_id,name,sort_order) VALUES(?,?,?,0)",
+                levelId, matrixId, "Apply");
+        jdbc.update("INSERT INTO edu.exam_matrix_2_rows(id,matrix_id,chapter_id,mapped_learning_outcome_id,sort_order) VALUES(?,?,?,?,0)",
+                rowId, matrixId, chapterId, outcomeId);
+        jdbc.update("INSERT INTO edu.exam_matrix_2_cell_counts(row_id,custom_learning_level_id,question_count,question_type) VALUES(?,?,1,'CODE_RUNNER')",
+                rowId, levelId);
+        jdbc.update("""
+                INSERT INTO edu.materials(id,title,type,file_key,status,ingestion_status,course_id)
+                VALUES (?,?, 'PDF', ?, 'UPLOADED', 'READY', ?)
+                """, UUID.randomUUID(), "Ready source", "quiz3-retry-" + UUID.randomUUID(), courseId);
+
+        UUID assessmentId = UUID.randomUUID(), failedJobId = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO edu.quiz3_assessments
+                  (id,course_id,title,unlimited,variant_count,lifecycle_status,current_step,matrix_source_type,
+                   matrix2_id,matrix2_version,created_by)
+                VALUES (?,?,?,true,1,'GENERATING',5,'MATRIX2',?,0,?)
+                """, assessmentId, courseId, "Retry invalid AI", matrixId, teacherId);
+        String snapshot = """
+                {"jobId":"%s","assessmentId":"%s","contractVersion":2,
+                 "course":{"id":"%s","name":"Recovery"},"quizName":"Retry invalid AI - 001",
+                 "matrix":{"id":"%s","name":"Recovery matrix","rows":[{
+                   "id":"%s","chapter":{"id":"%s","name":"Recovery"},
+                   "learningOutcome":{"id":"%s","name":"LO1"},"cells":[{
+                     "customLearningLevelId":"%s","customLearningLevelName":"Apply",
+                     "questionCount":1,"questionType":"CODE_RUNNER"}]}]},"materialIds":[]}
+                """.formatted(failedJobId, assessmentId, courseId, matrixId, rowId, chapterId, outcomeId, levelId);
+        jdbc.update("""
+                INSERT INTO edu.quiz3_generation_jobs
+                  (id,assessment_id,course_id,matrix_source_type,matrix2_id,matrix2_version,requested_by,
+                   request_snapshot,payload_hash,idempotency_key,status,attempt_count,total_question_count)
+                VALUES (?,?,?,'MATRIX2',?,0,?,CAST(? AS jsonb),'hash',?,'PROCESSING',1,1)
+                """, failedJobId, assessmentId, courseId, matrixId, teacherId, snapshot, "invalid-" + failedJobId);
+        jdbc.update("UPDATE edu.quiz3_assessments SET base_generation_job_id=? WHERE id=?", failedJobId, assessmentId);
+
+        String callback = """
+                {"eventId":"%s","jobId":"%s","assessmentId":"%s","status":"COMPLETED",
+                 "quiz":{"quizName":"Retry invalid AI - 001","questions":[{
+                   "content":"Broken contract","type":"CODE_RUNNER","matrixRowId":"%s",
+                   "customLearningLevelId":"%s","learningOutcomeId":"%s","answers":[],
+                   "codeRunnerContract":{}}]}}
+                """.formatted(UUID.randomUUID(), failedJobId, assessmentId, rowId, levelId, outcomeId);
+        String timestamp = String.valueOf(Instant.now().getEpochSecond());
+        given().contentType(ContentType.JSON).header("X-Webhook-Timestamp", timestamp)
+                .header("X-Webhook-Signature", "v1=" + sign(timestamp, callback)).body(callback)
+                .post("/api/internal/webhooks/quiz3-generation").then().statusCode(200);
+
+        assertThat(jdbc.queryForObject(
+                "SELECT status FROM edu.quiz3_generation_jobs WHERE id=?", String.class, failedJobId))
+                .isEqualTo("FAILED");
+        assertThat(jdbc.queryForObject(
+                "SELECT error_code FROM edu.quiz3_generation_jobs WHERE id=?", String.class, failedJobId))
+                .isEqualTo("INVALID_AI_OUTPUT");
+        assertThat(jdbc.queryForObject(
+                "SELECT lifecycle_status FROM edu.quiz3_assessments WHERE id=?", String.class, assessmentId))
+                .isEqualTo("DRAFT");
+
+        UUID retryJobId = UUID.fromString(given().header("Authorization", "Bearer " + teacherToken)
+                .post("/api/courses/{courseId}/quiz3/assessments/{assessmentId}/base-quiz/generation",
+                        courseId, assessmentId)
+                .then().statusCode(202).body("status", equalTo("PENDING")).extract().path("jobId"));
+        assertThat(retryJobId).isNotEqualTo(failedJobId);
     }
 
     private String register(String first, String last, String email, String role) {

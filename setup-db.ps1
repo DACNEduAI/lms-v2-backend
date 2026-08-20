@@ -61,10 +61,33 @@ if ($SeedData) {
     }
     if ($fixturePresent.Trim() -eq 't') {
         Write-Host "Seed fixture already exists; no changes made. Use -RecreateFixture to replace it."
-        exit
+    } else {
+        Write-Host "Seeding data fixture..."
+        Invoke-Psql "src/main/resources/data.sql"
     }
-    Write-Host "Seeding data fixture..."
-    Invoke-Psql "src/main/resources/data.sql"
+
+    $invalidPublishedCodeRunner = psql -v ON_ERROR_STOP=1 $DbUrl -tAc @"
+SELECT COUNT(*)
+FROM edu.questions q
+JOIN edu.quizzes quiz ON quiz.id = q.quiz_id
+LEFT JOIN edu.quiz_releases release ON release.quiz_id = quiz.id AND release.active
+LEFT JOIN edu.quiz_release_code_runner_bindings binding
+       ON binding.quiz_release_id = release.id AND binding.question_id = q.id
+LEFT JOIN edu.code_runner_configs config ON config.id = binding.code_runner_config_id
+WHERE q.type = 'CODE_RUNNER'
+  AND quiz.lifecycle_status = 'PUBLISHED'
+  AND (release.id IS NULL OR binding.code_runner_config_id IS NULL
+       OR config.contract_status <> 'VERIFIED_EXECUTION_GOLD');
+"@
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Could not validate the Code Runner fixture. Setup aborted."
+        exit $LASTEXITCODE
+    }
+    if ([int]$invalidPublishedCodeRunner.Trim() -ne 0) {
+        Write-Error "Fixture contains a published Code Runner question without an active VERIFIED_EXECUTION_GOLD binding."
+        exit 1
+    }
+    Write-Host "Code Runner fixture validation passed."
 }
 
 Write-Host "Setup complete!"

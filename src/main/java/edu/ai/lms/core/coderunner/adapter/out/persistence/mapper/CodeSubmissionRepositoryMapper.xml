@@ -74,6 +74,11 @@
       verdict, points_earned, time_ms, memory_kb, diagnostic, engine_submission_id, created_at)
     VALUES (#{id},#{submissionId},#{testCaseId},#{executionStatus},#{verdict},#{pointsEarned},
       #{timeMs},#{memoryKb},#{diagnostic},#{engineSubmissionId},NOW())
+    ON CONFLICT (submission_id, test_case_id) DO UPDATE SET
+      execution_status=EXCLUDED.execution_status, verdict=EXCLUDED.verdict,
+      points_earned=EXCLUDED.points_earned, time_ms=EXCLUDED.time_ms,
+      memory_kb=EXCLUDED.memory_kb, diagnostic=EXCLUDED.diagnostic,
+      engine_submission_id=EXCLUDED.engine_submission_id, created_at=NOW()
   </insert>
   <select id="findTestResults" resultMap="TestResultMap">
     SELECT r.id,r.submission_id,r.test_case_id,t.external_test_id,t.visibility,r.execution_status,
@@ -96,6 +101,11 @@
   <select id="findLatestSubmissionId" resultType="java.util.UUID">
     SELECT id FROM edu.code_submissions
     WHERE attempt_id = #{attemptId} AND question_id = #{questionId}
+    ORDER BY created_at DESC LIMIT 1
+  </select>
+  <select id="findLatestSubmitId" resultType="java.util.UUID">
+    SELECT id FROM edu.code_submissions
+    WHERE attempt_id = #{attemptId} AND question_id = #{questionId} AND submission_mode = 'SUBMIT'
     ORDER BY created_at DESC LIMIT 1
   </select>
 </mapper>

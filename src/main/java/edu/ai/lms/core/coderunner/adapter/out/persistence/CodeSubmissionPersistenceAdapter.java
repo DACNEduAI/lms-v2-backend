@@ -80,6 +80,11 @@ class CodeSubmissionPersistenceAdapter implements CodeSubmissionPersistencePort 
         return Optional.ofNullable(repository.findLatestSubmissionId(attemptId, questionId));
     }
 
+    @Override
+    public Optional<UUID> findLatestSubmitId(UUID attemptId, UUID questionId) {
+        return Optional.ofNullable(repository.findLatestSubmitId(attemptId, questionId));
+    }
+
     private CodeSubmission mapToDomain(CodeSubmissionRow row) {
         return new CodeSubmission(row.getId(), row.getQuestionId(), row.getConfigId(), row.getAttemptId(),
                 row.getStudentId(), row.getSourceCode(), row.getIdempotencyKey(),

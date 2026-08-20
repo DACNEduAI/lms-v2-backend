@@ -53,6 +53,7 @@ public class StudentCodeRunnerService {
                 contract.runtime().starterCode(), contract.runtime().entryPoint(),
                 contract.runtime().executionProfile().id() + ":" + contract.runtime().executionProfile().version(),
                 submissionPort.findLatestSubmissionId(attemptId, questionId).orElse(null),
+                submissionPort.findLatestSubmitId(attemptId, questionId).orElse(null),
                 tests);
     }
 
@@ -201,11 +202,13 @@ public class StudentCodeRunnerService {
                 .filter(result -> "ACCEPTED".equals(result.verdict()))
                 .count();
         return new CodeRunnerSubmissionView(submission.id(), submission.questionId(), submission.mode().name(),
+                submission.sourceCode(),
                 submission.status().name(), hidesPrivateGrading ? null : submission.verdict(),
                 hidesPrivateGrading ? null : submission.score(),
                 hidesPrivateGrading ? null : submission.maxScore(),
                 hidesPrivateGrading ? null : visiblePassed,
-                hidesPrivateGrading ? null : visible.size(), visible);
+                hidesPrivateGrading ? null : visible.size(), !hidesPrivateGrading,
+                "HIDDEN_DETAILS_NEVER_RELEASED", visible);
     }
 
     private String json(Object value) {

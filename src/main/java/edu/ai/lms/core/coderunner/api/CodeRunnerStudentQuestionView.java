@@ -11,6 +11,7 @@ public record CodeRunnerStudentQuestionView(
         String entryPoint,
         String executionProfile,
         UUID activeSubmissionId,
+        UUID latestSubmitId,
         List<PublicTestView> publicTests) {
 
     public record PublicTestView(String id, String category, String argumentsJson, String expectedOutputJson) { }

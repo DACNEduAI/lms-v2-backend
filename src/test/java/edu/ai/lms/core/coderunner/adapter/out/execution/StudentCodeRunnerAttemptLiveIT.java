@@ -11,6 +11,7 @@ import edu.ai.lms.core.coderunner.adapter.out.persistence.CodeRunnerContractPers
 import edu.ai.lms.core.coderunner.app.domain.CodeSubmission;
 import edu.ai.lms.core.coderunner.app.domain.ExecutableAssessmentContract;
 import edu.ai.lms.core.coderunner.app.service.StudentCodeRunnerService;
+import edu.ai.lms.core.coderunner.app.worker.CodeRunnerWorker;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,6 +36,7 @@ class StudentCodeRunnerAttemptLiveIT extends IntegrationTestConfiguration {
     @Autowired private StudentCodeRunnerService service;
     @Autowired private CodeRunnerContractPersistenceAdapter contracts;
     @Autowired private AttemptScoringService scoringService;
+    @Autowired private CodeRunnerWorker worker;
     @Autowired private JdbcTemplate jdbc;
 
     @Test
@@ -60,13 +63,20 @@ class StudentCodeRunnerAttemptLiveIT extends IntegrationTestConfiguration {
         var accepted = service.execute(attemptId, studentId, quizId, questionId,
                 "bool isEven(int value) { return value % 2 == 0; }",
                 "live-" + UUID.randomUUID(), CodeSubmission.Mode.SUBMIT);
-        
+
         CodeRunnerSubmissionView result = service.getSubmission(studentId, accepted.submissionId(), false);
-        while ("PENDING".equals(result.status()) || "PROCESSING".equals(result.status())) {
+        Instant deadline = Instant.now().plusSeconds(90);
+        while (("PENDING".equals(result.status()) || "PROCESSING".equals(result.status()))
+                && Instant.now().isBefore(deadline)) {
+            // IntegrationTestConfiguration intentionally disables fast
+            // scheduling. Drive the real worker explicitly so this gate is
+            // deterministic and can never poll forever.
+            worker.processNextSubmission();
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                throw new IllegalStateException(e);
             }
             result = service.getSubmission(studentId, accepted.submissionId(), false);
         }

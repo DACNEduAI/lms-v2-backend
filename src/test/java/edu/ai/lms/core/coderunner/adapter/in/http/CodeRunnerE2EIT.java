@@ -246,6 +246,22 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
                 .then().log().all().statusCode(202)
                 .extract().path("submissionId"));
 
+        // Reload/re-login can reconstruct both the editor source and the
+        // selected SUBMIT entirely from backend state.
+        given().header("Authorization", "Bearer " + studentToken)
+                .get("/api/{courseId}/attempt/{attemptId}/questions/{questionId}/code-runner",
+                        courseId, attemptId, quizQuestionId)
+                .then().statusCode(200)
+                .body("activeSubmissionId", equalTo(submissionId.toString()))
+                .body("latestSubmitId", equalTo(submissionId.toString()));
+        given().header("Authorization", "Bearer " + studentToken)
+                .get("/api/{courseId}/attempt/{attemptId}/questions/{questionId}/code-runner/submissions/{submissionId}",
+                        courseId, attemptId, quizQuestionId, submissionId)
+                .then().statusCode(200)
+                .body("sourceCode", equalTo("bool isEven(int value) { return value % 2 == 0; }"))
+                .body("scoreReleased", equalTo(false))
+                .body("hiddenTestPolicy", equalTo("HIDDEN_DETAILS_NEVER_RELEASED"));
+
         // The selected submission is still PENDING, so Finish must persist the
         // exact ID and move the attempt to FINALIZING rather than score it now.
         given().contentType(ContentType.JSON)
@@ -274,10 +290,57 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
         org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
                 "SELECT score FROM edu.attempts WHERE id = ?", Double.class, attemptId))
                 .isEqualTo(10.0);
+        given().header("Authorization", "Bearer " + studentToken)
+                .get("/api/{courseId}/attempt/{attemptId}/questions/{questionId}/code-runner/submissions/{submissionId}",
+                        courseId, attemptId, quizQuestionId, submissionId)
+                .then().statusCode(200)
+                .body("scoreReleased", equalTo(true))
+                .body("hiddenTestPolicy", equalTo("HIDDEN_DETAILS_NEVER_RELEASED"));
     }
 
     @Test
     @Order(8)
+    void teacherCanInspectAndRegradeTheSelectedSubmissionWithoutDoubleScoring() {
+        given().header("Authorization", "Bearer " + teacherToken)
+                .get("/api/courses/{courseId}/quizzes/{quizId}/questions/{questionId}/code-runner/submissions",
+                        courseId, quizId, quizQuestionId)
+                .then().statusCode(200)
+                .body("[0].submissionId", equalTo(submissionId.toString()))
+                .body("[0].status", equalTo("COMPLETED"))
+                .body("[0].selectedForGrading", equalTo(true));
+
+        given().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body("{\"reason\":\"Judge runtime was upgraded\"}")
+                .post("/api/courses/{courseId}/quizzes/{quizId}/questions/{questionId}/code-runner/submissions/{submissionId}/regrade",
+                        courseId, quizId, quizQuestionId, submissionId)
+                .then().statusCode(202)
+                .body("status", equalTo("PENDING"))
+                .body("selectedForGrading", equalTo(true));
+
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT status FROM edu.attempts WHERE id = ?", String.class, attemptId))
+                .isEqualTo("FINALIZING");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT score FROM edu.attempts WHERE id = ?", Double.class, attemptId))
+                .isEqualTo(0.0);
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM edu.code_runner_submission_actions WHERE submission_id = ? AND action = 'REGRADE'",
+                Integer.class, submissionId)).isEqualTo(1);
+
+        jdbc.update("UPDATE edu.code_submissions SET status='COMPLETED', verdict='ACCEPTED', score=1, max_score=1 WHERE id=?", submissionId);
+        eventPublisher.publishEvent(new CodeSubmissionCompletedEvent(submissionId, attemptId));
+
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT status FROM edu.attempts WHERE id = ?", String.class, attemptId))
+                .isEqualTo("FINISHED");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT score FROM edu.attempts WHERE id = ?", Double.class, attemptId))
+                .isEqualTo(10.0);
+    }
+
+    @Test
+    @Order(9)
     void recoveryFinalizesWhenTheCompletionEventWasLost() {
         recoveryAttemptId = UUID.fromString(given().contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + studentToken)

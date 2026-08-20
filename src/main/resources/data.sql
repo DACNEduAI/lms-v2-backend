@@ -614,7 +614,7 @@ INSERT INTO code_runner_configs (id, question_id, schema_version, contract_id, c
 VALUES (
     'f0000000-0000-0000-0000-000000000000',
     'd0000000-0000-0000-0000-000000000000',
-    '2.0.0', 'sum_two_integers', '1.0.0', 'READY_FOR_REVIEW',
+    '2.0.0', 'sum_two_integers', '1.0.0', 'VERIFIED_EXECUTION_GOLD',
     'Sum of two integers',
     'Write a function that takes two integers a and b and returns their sum.',
     'dsa_cpp17', '1.0.0',
@@ -652,6 +652,37 @@ ON CONFLICT (id) DO UPDATE SET
     expected_output_json = EXCLUDED.expected_output_json,
     points = EXCLUDED.points,
     ordinal = EXCLUDED.ordinal;
+
+-- This deterministic verification evidence belongs only to the local demo
+-- fixture. Student RUN/SUBMIT requests still execute through Judge0; the seed
+-- merely keeps the already-published quiz consistent with the publish gate.
+INSERT INTO code_runner_verifications
+    (id, revision_id, verified_by, verified_at, execution_profile,
+     judge0_submission_id, verdict, stdout, stderr, time_ms, memory_kb,
+     wall_time_limit_ms, memory_limit_kb)
+VALUES
+    ('f4000000-0000-0000-0000-000000000000',
+     'f0000000-0000-0000-0000-000000000000',
+     '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP,
+     '{"id":"dsa_cpp17","version":"1.0.0"}'::jsonb,
+     'seed-fixture-reference', 'ACCEPTED', '3\n4', '', 1.0, 1024, 5000, 131072)
+ON CONFLICT (id) DO UPDATE SET
+    verdict = EXCLUDED.verdict,
+    verified_at = EXCLUDED.verified_at,
+    execution_profile = EXCLUDED.execution_profile;
+
+INSERT INTO code_runner_verification_cases
+    (id, verification_id, external_test_id, visibility, verdict, time_ms, memory_kb, diagnostic)
+VALUES
+    ('f4100000-0000-0000-0000-000000000001', 'f4000000-0000-0000-0000-000000000000',
+     'public_1', 'PUBLIC', 'ACCEPTED', 1.0, 1024, ''),
+    ('f4100000-0000-0000-0000-000000000002', 'f4000000-0000-0000-0000-000000000000',
+     'hidden_1', 'HIDDEN', 'ACCEPTED', 1.0, 1024, '')
+ON CONFLICT (id) DO UPDATE SET
+    verdict = EXCLUDED.verdict,
+    time_ms = EXCLUDED.time_ms,
+    memory_kb = EXCLUDED.memory_kb,
+    diagnostic = EXCLUDED.diagnostic;
 
 INSERT INTO quiz_release_code_runner_bindings (quiz_release_id, question_id, code_runner_config_id)
 VALUES ('c1111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-000000000000', 'f0000000-0000-0000-0000-000000000000') ON CONFLICT (quiz_release_id, question_id) DO NOTHING;

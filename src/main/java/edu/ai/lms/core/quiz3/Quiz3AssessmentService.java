@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -197,7 +198,10 @@ public class Quiz3AssessmentService {
         if (assessment.currentStep() < 5 || assessment.matrixSourceType() == null) {
             throw badRequest("Confirm CCCT and Matrix before creating Quiz 001");
         }
-        if (assessment.baseGenerationJobId() != null) return generation(courseId, assessmentId);
+        if (assessment.baseGenerationJobId() != null) {
+            GenerationView current = generation(courseId, assessmentId);
+            if (!"FAILED".equals(current.status()) && !"TIMED_OUT".equals(current.status())) return current;
+        }
         List<String> unready = jdbc.query("""
                 SELECT title FROM edu.materials WHERE course_id=?
                   AND (status<>'UPLOADED' OR ingestion_status<>'READY') ORDER BY title
@@ -261,7 +265,7 @@ public class Quiz3AssessmentService {
                 SELECT assessment_id,course_id,request_snapshot::text,status,total_question_count
                 FROM edu.quiz3_generation_jobs WHERE id=? FOR UPDATE
                 """, payload.jobId());
-        if ("COMPLETED".equals(job.get("status"))) return;
+        if (Set.of("COMPLETED", "FAILED", "TIMED_OUT").contains(String.valueOf(job.get("status")))) return;
         UUID assessmentId = (UUID) job.get("assessment_id");
         if (!assessmentId.equals(payload.assessmentId())) throw badRequest("assessmentId does not match Quiz3 job");
         if ("FAILED".equalsIgnoreCase(payload.status())) {
@@ -275,7 +279,21 @@ public class Quiz3AssessmentService {
         if (!"COMPLETED".equalsIgnoreCase(payload.status()) || payload.quiz() == null) throw badRequest("Invalid Quiz3 webhook status");
         JsonNode snapshot = readJson(String.valueOf(job.get("request_snapshot")));
         List<GeneratedQuestion> questions = payload.quiz().questions() == null ? List.of() : payload.quiz().questions();
-        validateCallback(snapshot, questions, ((Number) job.get("total_question_count")).intValue());
+        try {
+            validateCallback(snapshot, questions, ((Number) job.get("total_question_count")).intValue());
+            questions.stream().filter(question -> "CODE_RUNNER".equals(question.type()))
+                    .forEach(question -> codeRunnerContracts.normalizeForReview(question.codeRunnerContract().toString()));
+        } catch (RuntimeException invalidOutput) {
+            String message = invalidOutput.getMessage() == null
+                    ? "AI returned an invalid Quiz3 payload" : invalidOutput.getMessage();
+            jdbc.update("""
+                    UPDATE edu.quiz3_generation_jobs SET status='FAILED',phase='DONE',error_code='INVALID_AI_OUTPUT',
+                        error_message=?,callback_event_id=?,lease_until=NULL,completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP
+                    WHERE id=?
+                    """, message.substring(0, Math.min(1000, message.length())), payload.eventId(), payload.jobId());
+            jdbc.update("UPDATE edu.quiz3_assessments SET lifecycle_status='DRAFT',version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=?", assessmentId);
+            return;
+        }
         AssessmentView assessment = required((UUID) job.get("course_id"), assessmentId);
         UUID quizId = UUID.randomUUID();
         UUID teacherId = jdbc.queryForObject("SELECT created_by FROM edu.quiz3_assessments WHERE id=?", UUID.class, assessmentId);
@@ -491,7 +509,7 @@ public class Quiz3AssessmentService {
             node.put("questionType",String.valueOf(cell.getOrDefault("question_type","MULTIPLE_CHOICE")));
         }
         ArrayNode materials=root.putArray("materialIds"); materialIds.forEach(id->materials.add(id.toString()));
-        root.put("idempotencyKey","quiz3-base-"+assessment.id()+"-"+assessment.matrixSourceType().name()+"-matrix-"+matrixVersion); return root;
+        root.put("idempotencyKey","quiz3-base-"+assessment.id()+"-"+assessment.matrixSourceType().name()+"-matrix-"+matrixVersion+"-job-"+jobId); return root;
     }
 
     static ObjectNode createGenerationMatrix(ObjectMapper objectMapper,UUID matrixId,String matrixName){

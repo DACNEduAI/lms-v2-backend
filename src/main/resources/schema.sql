@@ -1257,6 +1257,21 @@ CREATE TABLE IF NOT EXISTS attempt_code_submission_snapshots
 CREATE INDEX IF NOT EXISTS idx_attempt_code_submission_snapshots_submission
     ON attempt_code_submission_snapshots (submission_id);
 
+CREATE TABLE IF NOT EXISTS code_runner_submission_actions
+(
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    submission_id   UUID NOT NULL REFERENCES code_submissions(id) ON DELETE CASCADE,
+    attempt_id      UUID NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+    question_id     UUID NOT NULL REFERENCES questions(id) ON DELETE RESTRICT,
+    actor_id        UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    action          VARCHAR(30) NOT NULL CHECK(action IN('REGRADE')),
+    previous_status VARCHAR(30) NOT NULL,
+    reason          VARCHAR(500),
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_code_runner_submission_actions_submission
+    ON code_runner_submission_actions(submission_id,created_at DESC);
+
 CREATE TABLE IF NOT EXISTS code_submission_test_results
 (
     id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -35,4 +35,6 @@ public interface CodeSubmissionPersistencePort {
     OptionalDouble findLatestCompletedSubmitRatio(UUID attemptId, UUID questionId);
 
     Optional<UUID> findLatestSubmissionId(UUID attemptId, UUID questionId);
+
+    Optional<UUID> findLatestSubmitId(UUID attemptId, UUID questionId);
 }
