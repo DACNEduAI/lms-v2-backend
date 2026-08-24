@@ -72,4 +72,17 @@ class QuestionAiDocumentServiceUT {
         assertThat(image.attr("data-ai-artifact-id")).isEqualTo(id.toString());
         assertThat(image.attr("src")).isEqualTo("https://assets.test/old.svg");
     }
+
+    @Test
+    void insertsNewQuiz3SvgWithTheProvidedDisplayDimensions() {
+        UUID id = UUID.fromString("55555555-5555-5555-5555-555555555555");
+
+        String inserted = documents.insertInlineSvg("<p>Question</p>", id, "Queue", "https://assets.test/queue.svg",
+                new Anchor("END", null, null), 512, 96);
+
+        var image = Jsoup.parseBodyFragment(inserted).selectFirst("img");
+        assertThat(image.attr("data-image-layout")).isEqualTo("inline");
+        assertThat(image.attr("width")).isEqualTo("512");
+        assertThat(image.attr("height")).isEqualTo("96");
+    }
 }
