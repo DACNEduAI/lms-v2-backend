@@ -90,7 +90,9 @@ public class QuestionBank2Service {
                 WHERE id=? AND group_id=?
                 """, input.content().trim(), exampleId, groupId) != 1) throw notFound("QBank2 example");
         ExampleView example = loadExample(groupId, exampleId);
-        vectors.upsert(courseId, loadGroup(courseId, groupId), example);
+        GroupView group = loadGroup(courseId, groupId);
+        vectors.delete(example.id());
+        vectors.upsert(courseId, group, example);
         return example;
     }
 
@@ -102,12 +104,21 @@ public class QuestionBank2Service {
         vectors.delete(exampleId);
     }
 
-    private int nextGroupSequence(UUID courseId) {
+    int nextGroupSequence(UUID courseId) {
         return jdbc.queryForObject("""
-                INSERT INTO edu.question_bank_2_code_counters(course_id,next_value) VALUES(?,2)
-                ON CONFLICT(course_id) DO UPDATE SET next_value=edu.question_bank_2_code_counters.next_value+1
+                WITH group_max AS (
+                    SELECT COALESCE(MAX(code_sequence),0) AS value
+                    FROM edu.question_bank_2_groups
+                    WHERE course_id=?
+                )
+                INSERT INTO edu.question_bank_2_code_counters(course_id,next_value)
+                SELECT ?, value + 2 FROM group_max
+                ON CONFLICT(course_id) DO UPDATE SET next_value=GREATEST(
+                    edu.question_bank_2_code_counters.next_value + 1,
+                    (SELECT value + 2 FROM group_max)
+                )
                 RETURNING next_value-1
-                """, Integer.class, courseId);
+                """, Integer.class, courseId, courseId);
     }
 
     private GroupView loadGroup(UUID courseId, UUID groupId) {
