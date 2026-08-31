@@ -50,7 +50,7 @@ public class Quiz3QBank2RegenerationService {
         CurrentActor actor = requireReviewQuestion(courseId, assessmentId, variantId, questionId);
         List<UUID> exampleIds = normalizeExampleIds(input == null ? null : input.exampleIds());
         List<Example> examples = examplesForCourse(courseId, exampleIds);
-        if (examples.size() != exampleIds.size()) throw badRequest("Every QBank2 example must belong to this course");
+        if (examples.size() != exampleIds.size()) throw badRequest("Every QBank2 example must belong to this course and be published");
         long version = jdbc.queryForObject("SELECT version FROM edu.questions WHERE id=?", Long.class, questionId);
         Map<String, Object> payload = requestPayload(courseId, assessmentId, questionId, examples);
         UUID jobId = UUID.randomUUID();
@@ -219,7 +219,8 @@ public class Quiz3QBank2RegenerationService {
         for (UUID id : ids) {
             Example example = jdbc.query("""
                     SELECT e.id,g.id,g.code,g.description,e.content FROM edu.question_bank_2_examples e
-                    JOIN edu.question_bank_2_groups g ON g.id=e.group_id WHERE e.id=? AND g.course_id=?
+                    JOIN edu.question_bank_2_groups g ON g.id=e.group_id
+                    WHERE e.id=? AND g.course_id=? AND g.published=TRUE AND e.published=TRUE
                     """, rs -> rs.next() ? new Example(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class),
                     rs.getString(3), rs.getString(4), rs.getString(5)) : null, id, courseId);
             if (example != null) value.add(example);

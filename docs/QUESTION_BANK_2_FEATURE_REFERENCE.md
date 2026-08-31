@@ -75,6 +75,7 @@ The panel contains:
 - A group list ordered by backend `codeSequence`.
 - Automatic selection of the first group when the panel opens.
 - A group create/edit form.
+- Independent publication switches for the selected group and every example.
 - A read-only generated group-code display.
 - Group deletion with browser confirmation.
 - An example list with preserved line breaks.
@@ -105,7 +106,7 @@ Group `name` is displayed in the panel but is not part of the search match.
 The regeneration action is displayed on non-read-only Quiz 3 question cards. The modal:
 
 - Reuses the QBank2 course query cache and group search helper.
-- Displays matching groups and their examples.
+- Displays only published groups that contain at least one published example, and only their published examples.
 - Enforces zero-or-one example selection in the UI; selecting another example replaces the previous selection.
 - Allows regeneration with no selected example.
 - Polls the job endpoint every 1.2 seconds while status is `QUEUED` or `RUNNING`.
@@ -134,9 +135,11 @@ Base path: `/api/courses/{courseId}/qbank2/groups`
 | `GET` | `/` | List all groups and nested examples for the course | `200 QuestionBank2View` |
 | `POST` | `/` | Create a group and generate its code | `201 GroupView` |
 | `PUT` | `/{groupId}` | Update group name and description | `200 GroupView` |
+| `PATCH` | `/{groupId}/publication` | Set the independent group publication flag | `200 GroupView` |
 | `DELETE` | `/{groupId}` | Delete a group and its examples | `204` |
 | `POST` | `/{groupId}/examples` | Append an example to a group | `201 ExampleView` |
 | `PUT` | `/{groupId}/examples/{exampleId}` | Update example content | `200 ExampleView` |
+| `PATCH` | `/{groupId}/examples/{exampleId}/publication` | Set the independent example publication flag | `200 ExampleView` |
 | `DELETE` | `/{groupId}/examples/{exampleId}` | Delete an example | `204` |
 
 Group input:
@@ -156,6 +159,14 @@ Example input:
 }
 ```
 
+Publication input:
+
+```json
+{
+  "published": false
+}
+```
+
 List response shape:
 
 ```json
@@ -168,11 +179,13 @@ List response shape:
       "name": "Stack",
       "description": "Stack operations",
       "codeSequence": 1,
+      "published": true,
       "examples": [
         {
           "id": "uuid",
           "content": "Question: ...",
           "sequence": 1,
+          "published": true,
           "createdAt": "date-time",
           "updatedAt": "date-time"
         }
@@ -250,7 +263,7 @@ Excel parsing uses the frontend's existing `exceljs` dependency. Every normalize
 - QBank2 CRUD calls `ExamMatrixAccess.requireCourseTeacher(courseId)`.
 - Group reads and writes include `course_id` in their SQL predicates.
 - Example writes first load the parent group within the course.
-- Manual regeneration verifies every requested example belongs to the same course.
+- Manual regeneration verifies every requested example belongs to the same course and that both it and its group are published.
 
 ### 4.2 Group rules
 
@@ -261,6 +274,7 @@ Excel parsing uses the frontend's existing `exceljs` dependency. Every normalize
 - Code sequences are allocated atomically per course through an upserted counter row.
 - Existing codes and sequences are not reused after deletion.
 - Group updates do not change the generated code or sequence.
+- Group publication does not cascade to example publication.
 
 ### 4.3 Example rules
 
@@ -269,6 +283,7 @@ Excel parsing uses the frontend's existing `exceljs` dependency. Every normalize
 - Sequence is `MAX(sequence) + 1` within the group.
 - Existing sequences are not compacted or reordered after deletion.
 - Examples are returned in sequence order, then ID order.
+- Example publication remains unchanged when its group is unpublished and later republished.
 
 ### 4.4 Manual Quiz 3 regeneration rules
 
@@ -277,7 +292,7 @@ Excel parsing uses the frontend's existing `exceljs` dependency. Every normalize
 - The question must belong to that assessment and variant.
 - The original question must have exactly four answers.
 - Zero or one QBank2 example may be supplied.
-- A selected example must belong to the assessment's course.
+- A selected example must belong to the assessment's course and both it and its group must be published.
 - Only one active regeneration job may exist per question.
 - AI output must contain nonblank question content, exactly four answers, and exactly one correct answer.
 - Draft output uses `PLAIN_TEXT` content and explanation formats.
@@ -309,6 +324,7 @@ edu.courses
 - UUID primary key.
 - Course foreign key with cascade delete.
 - Required `code`, `code_sequence`, `name`, and `description`.
+- `published` is a required boolean and defaults to `TRUE` for existing and new groups.
 - Created and updated timestamps.
 - Unique `(course_id, code)` and `(course_id, code_sequence)` constraints.
 - Index on `(course_id, code_sequence)`.
@@ -318,11 +334,14 @@ edu.courses
 - UUID primary key.
 - Group foreign key with cascade delete.
 - Required plain-text `content` and positive `sequence`.
+- `published` is a required boolean and defaults to `TRUE` for existing and new examples.
 - Created and updated timestamps.
 - Unique `(group_id, sequence)` constraint.
 - Index on `(group_id, sequence)`.
 
 Deleting a course cascades to its QBank2 counter, groups, and examples. Deleting a group cascades to its relational examples; Spring separately removes the corresponding vectors.
+
+Group and example publication are independent. Effective selection eligibility is `group.published AND example.published`. Turning a group off and back on never changes its examples' stored publication values. Published records remain editable, deletable, and importable; publication controls future selection rather than content locking or historical provenance.
 
 ### 5.2 Quiz 3 provenance fields
 
@@ -355,17 +374,21 @@ Committed relational state and the QBank2 vector index are synchronized as follo
 | Relational operation | Vector operation |
 | --- | --- |
 | Create group | None; a group has no vector without examples |
-| Update group | Synchronously upsert every example because group metadata is embedded/indexed |
+| Update group | Synchronously upsert every effectively published example because group metadata is embedded/indexed |
 | Delete group | Synchronously delete the captured example vectors |
-| Create example | Synchronously index the new example |
-| Update example | Delete the old vector and index the updated example |
+| Publish group | Index its examples whose own publication toggle is on |
+| Unpublish group | Delete all of its example vectors without changing example publication values |
+| Create example | Index the new default-published example only when its group is published |
+| Update example | Delete the old vector and reindex only when effectively published |
+| Publish example | Index it only when its group is published |
+| Unpublish example | Delete its vector |
 | Delete example | Synchronously delete the captured example vector |
 
 CRUD and Excel imports use `QBank2VectorSyncService` before their Spring transaction returns. Existing-group imports delete removed vectors, delete and reindex modified examples, index new examples, and skip unchanged examples. A vector failure propagates and rolls back PostgreSQL changes; startup bootstrap repairs rare partial external writes that PostgreSQL cannot roll back.
 
 ### 6.2 Startup/backfill synchronization
 
-`QBank2VectorBootstrap` starts after a default five-second delay and retries every 30 seconds until one full pass succeeds. It reads every group/example row and upserts each example. A failed pass is logged and retried without preventing backend startup.
+`QBank2VectorBootstrap` starts after a default five-second delay and retries every 30 seconds until one full pass succeeds. It reads every group/example row, upserts effectively published examples, and deletes ineligible points so stale vectors are reconciled. A failed pass is logged and retried without preventing backend startup.
 
 Once a pass succeeds, the component marks itself complete in memory and does not run another full pass until the application restarts.
 
@@ -449,7 +472,7 @@ These are data resources rather than runtime Java classes. Their execution mecha
 
 | File | Responsibility |
 | --- | --- |
-| `src/main/java/edu/ai/lms/core/course/adapter/in/QuestionBank2Controller.java` | Teacher-only REST endpoints for group/example CRUD |
+| `src/main/java/edu/ai/lms/core/course/adapter/in/QuestionBank2Controller.java` | Teacher-only REST endpoints for group/example CRUD and publication toggles |
 | `src/main/java/edu/ai/lms/core/course/app/service/qbank2/QuestionBank2Service.java` | Authorization, validation, SQL CRUD, sequence/code generation, response records, and synchronous vector updates |
 | `src/main/java/edu/ai/lms/core/course/adapter/in/QuestionBank2ImportController.java` | Teacher-only POST create and PUT replacement preview/commit endpoints |
 | `src/main/java/edu/ai/lms/core/course/app/service/qbank2/QBank2ImportService.java` | Authoritative diff validation, direct-table transactional replacement, QBG allocation, and synchronous vector updates |
@@ -464,6 +487,7 @@ These are data resources rather than runtime Java classes. Their execution mecha
 | `src/main/java/edu/ai/lms/core/quiz3/InternalQuiz3WebhookController.java` | Receives signed base-generation callbacks containing QBank2 references |
 | `src/main/resources/db/manual/V20260817_01__qbank2.sql` | Core QBank2 tables, constraints, and indexes |
 | `src/main/resources/db/manual/V20260817_02__quiz3_qbank2_auto_reference_snapshot.sql` | Quiz 3 provenance columns and regeneration job/draft tables |
+| `src/main/resources/db/manual/V20260831_01__qbank2_publication.sql` | Default-published group and example eligibility flags |
 | `src/main/resources/question-bank-data/**/*.questions.sql` | Course-specific QBank2 seed content |
 
 Backend tests:

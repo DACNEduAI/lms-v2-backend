@@ -37,6 +37,6 @@ class S3StorageAdapterUT {
         when(config.s3Presigner()).thenReturn(mock(S3Presigner.class));
         when(config.getBucketName()).thenReturn("lms-materials");
         when(config.getEndPoint()).thenReturn(endpoint);
-        return new S3StorageAdapter(config, mock(Environment.class));
+        return new S3StorageAdapter(config, mock(Environment.class), 300);
     }
 }

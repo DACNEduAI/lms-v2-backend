@@ -1,0 +1,9 @@
+BEGIN;
+
+ALTER TABLE edu.question_bank_2_groups
+    ADD COLUMN IF NOT EXISTS published BOOLEAN NOT NULL DEFAULT TRUE;
+
+ALTER TABLE edu.question_bank_2_examples
+    ADD COLUMN IF NOT EXISTS published BOOLEAN NOT NULL DEFAULT TRUE;
+
+COMMIT;
