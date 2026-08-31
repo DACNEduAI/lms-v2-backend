@@ -75,16 +75,19 @@ public class CodeRunnerContractService {
         CodeRunnerQuestionContext context = requireContext(courseId, quizId, questionId);
         requireCourseAccess(actor, context);
         
-        if (context.draftContractJson() != null && !context.draftContractJson().isBlank()) {
+        var existing = loadContractPort.findLatestStoredByQuestionId(questionId);
+
+        if (existing.isEmpty() && context.draftContractJson() != null && !context.draftContractJson().isBlank()) {
             try {
                 ExecutableAssessmentContract contract = objectMapper.readValue(context.draftContractJson(), ExecutableAssessmentContract.class);
                 this.save(courseId, quizId, questionId, contract);
+                existing = loadContractPort.findLatestStoredByQuestionId(questionId);
             } catch (JsonProcessingException e) {
                 throw new CodeRunnerConflictException("Invalid draft contract JSON: " + e.getMessage());
             }
         }
         
-        StoredCodeRunnerContract stored = loadContractPort.findLatestStoredByQuestionId(questionId)
+        StoredCodeRunnerContract stored = existing
                 .orElseThrow(() -> new CodeRunnerNotFoundException("Code Runner contract not configured"));
                 
         return verificationService.verifyReference(stored.configId(), questionId, actor.userId(), stored.contract());

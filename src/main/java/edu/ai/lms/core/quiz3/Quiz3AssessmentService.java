@@ -360,6 +360,14 @@ public class Quiz3AssessmentService {
     }
 
     @Transactional
+    public AssessmentView confirmVariantPreview(UUID courseId, UUID assessmentId) {
+        requireTeacher(courseId);
+        AssessmentView assessment = required(courseId, assessmentId);
+        jdbc.update("UPDATE edu.quiz3_assessments SET current_step=GREATEST(current_step, 9), version=version+1, updated_at=CURRENT_TIMESTAMP WHERE id=?", assessmentId);
+        return required(courseId, assessmentId);
+    }
+
+    @Transactional
     public List<VariantView> reopenBase(UUID courseId, UUID assessmentId) {
         requireTeacher(courseId); required(courseId,assessmentId);
         jdbc.update("DELETE FROM edu.quiz3_assessment_variants WHERE assessment_id=? AND variant_kind='SHUFFLED'",assessmentId);

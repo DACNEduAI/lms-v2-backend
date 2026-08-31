@@ -125,7 +125,7 @@
     SET contract_status = 'VERIFIED_EXECUTION_GOLD', updated_at = NOW()
     WHERE id = #{configId}
       AND question_id = #{questionId}
-      AND contract_status = 'READY_FOR_REVIEW'
+      AND contract_status IN ('READY_FOR_REVIEW', 'VERIFIED_EXECUTION_GOLD')
       AND id = (
       SELECT id FROM edu.code_runner_configs
       WHERE question_id = #{questionId}
