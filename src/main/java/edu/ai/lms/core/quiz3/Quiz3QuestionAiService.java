@@ -11,6 +11,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.task.TaskRejectedException;
@@ -44,6 +46,9 @@ import lombok.RequiredArgsConstructor;
 public class Quiz3QuestionAiService {
     private static final Duration ACTION_TIMEOUT = Duration.ofSeconds(60);
     private static final Duration JOB_TIMEOUT = Duration.ofMinutes(3);
+    private static final int SVG_DISPLAY_LONGEST_SIDE = 512;
+    private static final Pattern SVG_ROOT = Pattern.compile("<svg\\b([^>]*)>", Pattern.CASE_INSENSITIVE);
+    private static final Pattern VIEW_BOX = Pattern.compile("\\bviewBox\\s*=\\s*['\"]([^'\"]+)['\"]", Pattern.CASE_INSENSITIVE);
 
     private final JdbcTemplate jdbc;
     private final WebClient aiWebClient;
@@ -300,6 +305,7 @@ public class Quiz3QuestionAiService {
         JsonNode response = requestAi("/quiz-gen/questions/svg/generate", payload);
         String source = response.path("sourceCode").asText();
         if (source.isBlank()) throw new JobFailure("EMPTY_SVG_RESULT", "Question-AI returned an empty SVG artifact");
+        SvgDisplaySize displaySize = svgDisplaySize(source);
         saveSvgStepOutput(stepId, jobId, response);
         Quiz3RichContentUploadService.UploadedAsset uploaded = uploads.uploadAiSvg(source);
         UUID artifactId = UUID.randomUUID();
@@ -307,7 +313,36 @@ public class Quiz3QuestionAiService {
                 response.path("visualKind").asText(null), response.path("generatorUsed").asText(null),
                 response.path("spec").isMissingNode() || response.path("spec").isNull() ? null : response.path("spec").toString(),
                 response.path("critic").isMissingNode() || response.path("critic").isNull() ? null : response.path("critic").toString()));
-        return new Working(documents.insertInlineSvg(asHtml(working), artifactId, response.path("altText").asText(action.instruction()), uploaded.publicUrl(), action.anchor()), "TIPTAP_HTML");
+        return new Working(documents.insertInlineSvg(asHtml(working), artifactId,
+                response.path("altText").asText(action.instruction()), uploaded.publicUrl(), action.anchor(),
+                displaySize.width(), displaySize.height()), "TIPTAP_HTML");
+    }
+
+    /**
+     * The Tiptap resize node view measures an unloaded SVG as a square. Seed its
+     * dimensions from the generated SVG viewBox so the first render and later
+     * teacher resizing use the real visual aspect ratio.
+     */
+    static SvgDisplaySize svgDisplaySize(String source) {
+        Matcher root = SVG_ROOT.matcher(source == null ? "" : source);
+        if (!root.find()) throw new IllegalArgumentException("Generated SVG root is missing");
+        Matcher viewBox = VIEW_BOX.matcher(root.group(1));
+        if (!viewBox.find()) throw new IllegalArgumentException("Generated SVG viewBox is missing");
+        String[] values = viewBox.group(1).trim().split("[\\s,]+");
+        if (values.length != 4) throw new IllegalArgumentException("Generated SVG viewBox is invalid");
+        try {
+            double width = Double.parseDouble(values[2]);
+            double height = Double.parseDouble(values[3]);
+            if (!Double.isFinite(width) || !Double.isFinite(height) || width <= 0 || height <= 0) {
+                throw new IllegalArgumentException("Generated SVG viewBox is invalid");
+            }
+            double longestSide = Math.max(width, height);
+            return new SvgDisplaySize(
+                    Math.max(1, (int) Math.round(width / longestSide * SVG_DISPLAY_LONGEST_SIDE)),
+                    Math.max(1, (int) Math.round(height / longestSide * SVG_DISPLAY_LONGEST_SIDE)));
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Generated SVG viewBox is invalid", ex);
+        }
     }
 
     private void persistArtifacts(List<PendingArtifact> artifacts, UUID assessmentId, UUID questionId, UUID actorId, UUID jobId) {
@@ -519,6 +554,7 @@ public class Quiz3QuestionAiService {
     private static JobFailure failure(Exception value) { return value instanceof JobFailure known ? known : value instanceof JobCancelled ? new JobFailure("CANCELLED_BY_USER", "Question-AI job was cancelled") : new JobFailure("UNEXPECTED_ERROR", safeMessage(value)); }
 
     private record Working(String content, String format) { }
+    record SvgDisplaySize(int width, int height) { }
     private record Execution(UUID id, UUID assessmentId, UUID variantId, UUID questionId, UUID actorId, long version, Quiz3Models.AiRequest request, Working initial, Instant startedAt) { }
     private record Action(String id, String specialist, String instruction, Anchor anchor) { Map<String, Object> payload() { Map<String, Object> value = new LinkedHashMap<>(); value.put("id", id); value.put("specialist", specialist); value.put("instruction", instruction); value.put("anchor", anchorPayload(anchor)); return value; } }
     private record PendingArtifact(UUID id, String type, String source, String latexMode, String prompt, Quiz3RichContentUploadService.UploadedAsset uploaded, String visualKind, String generator, String spec, String critic) {

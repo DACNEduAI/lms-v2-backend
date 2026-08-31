@@ -19,6 +19,7 @@ import software.amazon.awssdk.services.s3.model.CORSConfiguration;
 import software.amazon.awssdk.services.s3.model.CORSRule;
 import software.amazon.awssdk.services.s3.model.PutBucketCorsRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 
 @Slf4j
 @Profile("prod")
@@ -32,6 +33,7 @@ public class DigitalOceanConfig implements StorageConfig {
     public String secretKey;
     public String endPoint;
     public String bucketName;
+    public boolean forcePathStyle;
 
     public S3Client s3Client() {
         AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
@@ -40,6 +42,8 @@ public class DigitalOceanConfig implements StorageConfig {
                 .region(Region.of(region))
                 .endpointOverride(URI.create(endPoint))
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
+                .forcePathStyle(forcePathStyle)
+                .httpClient(UrlConnectionHttpClient.builder().build())
                 .build();
     }
 
