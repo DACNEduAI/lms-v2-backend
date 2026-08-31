@@ -53,4 +53,18 @@ public class QuizCodeRunnerContractSnapshotAdapter implements CodeRunnerContract
                         "Source Code Runner question has no contract revision"));
         contracts.saveRevision(targetQuestionId, source);
     }
+
+    @Override
+    public java.util.Optional<PrintableContract> findPrintableByQuestionId(UUID questionId) {
+        return loadedContracts.findLatestByQuestionId(questionId).map(contract -> new PrintableContract(
+                contract.statement(),
+                contract.runtime().entryPoint(),
+                contract.runtime().starterCode(),
+                contract.runtime().publicTests().stream()
+                        .map(test -> new PublicExample(test.arguments(), test.expectedOutput()))
+                        .toList(),
+                contract.privateGrading().hiddenTests().stream()
+                        .mapToDouble(ExecutableAssessmentContract.TestCase::points)
+                        .sum()));
+    }
 }

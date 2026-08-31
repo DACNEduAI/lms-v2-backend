@@ -5,6 +5,9 @@ import edu.ai.lms.core.coderunner.adapter.in.http.response.CodeRunnerVerificatio
 import edu.ai.lms.core.coderunner.app.service.CodeRunnerContractService;
 import edu.ai.lms.core.coderunner.app.service.TeacherCodeSubmissionService;
 import edu.ai.lms.core.coderunner.app.domain.TeacherCodeSubmissionView;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -57,6 +60,22 @@ public class CodeRunnerContractController {
         return service.verify(courseId, quizId, questionId);
     }
 
+    @PostMapping("/try")
+    @PreAuthorize("hasRole('TEACHER')")
+    public CodeRunnerVerificationResponse tryCandidate(
+            @PathVariable UUID courseId,
+            @PathVariable UUID quizId,
+            @PathVariable UUID questionId,
+            @Valid @RequestBody TeacherTryRequest request) {
+        return service.tryCandidate(
+                courseId,
+                quizId,
+                questionId,
+                request.contract(),
+                request.sourceCode(),
+                request.includeHidden());
+    }
+
     @GetMapping("/submissions")
     @PreAuthorize("hasRole('TEACHER')")
     public List<TeacherCodeSubmissionView> submissions(
@@ -75,4 +94,9 @@ public class CodeRunnerContractController {
     }
 
     public record RegradeRequest(String reason) { }
+
+    public record TeacherTryRequest(
+            @NotNull ExecutableAssessmentContract contract,
+            @NotBlank @Size(max = 256_000) String sourceCode,
+            boolean includeHidden) { }
 }

@@ -90,6 +90,29 @@ public class CodeRunnerContractService {
         return verificationService.verifyReference(stored.configId(), questionId, actor.userId(), stored.contract());
     }
 
+    /**
+     * Runs a teacher-provided candidate against an in-memory contract snapshot.
+     * It intentionally creates no revision, submission, or verification record.
+     */
+    public CodeRunnerVerificationResponse tryCandidate(
+            UUID courseId,
+            UUID quizId,
+            UUID questionId,
+            ExecutableAssessmentContract contract,
+            String sourceCode,
+            boolean includeHidden) {
+        CodeRunnerActor actor = requireTeacher();
+        CodeRunnerQuestionContext context = requireContext(courseId, quizId, questionId);
+        requireCourseAccess(actor, context);
+        if (!MUTABLE_QUIZ_STATUSES.contains(context.quizLifecycleStatus())) {
+            throw new CodeRunnerConflictException(
+                    "Code Runner contract is locked because the quiz status is " + context.quizLifecycleStatus());
+        }
+        ExecutableAssessmentContract reviewContract = contract.withStatus("READY_FOR_REVIEW");
+        reviewContract.validateForPersistence();
+        return verificationService.tryCandidate(reviewContract, sourceCode, includeHidden);
+    }
+
     private CodeRunnerActor requireTeacher() {
         CodeRunnerActor actor = actorPort.loadCurrentActor()
                 .orElseThrow(() -> new CodeRunnerAccessDeniedException("User is not authenticated"));

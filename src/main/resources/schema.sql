@@ -1,4 +1,8 @@
-CREATE SCHEMA IF NOT EXISTS edu;
+-- Local development uses spring.sql.init.mode=always. Rebuild only the LMS
+-- schema so every backend restart starts from the schema and fixtures in this
+-- repository. ai_index deliberately lives outside edu and survives.
+DROP SCHEMA IF EXISTS edu CASCADE;
+CREATE SCHEMA edu;
 
 -- Set the default schema for the rest of this script!
 SET search_path TO edu;
@@ -1653,6 +1657,38 @@ ALTER TABLE quiz3_question_provenance
     ADD CONSTRAINT quiz3_question_provenance_qbank2_selection_mode_check
     CHECK(qbank2_selection_mode IS NULL OR qbank2_selection_mode IN('AUTO_SELECTED','RAG_FALLBACK','MANUAL_OVERRIDE'));
 
+-- Question Bank 2 is part of the current baseline because data.sql seeds it
+-- and Quiz3 uses it as a source for regeneration references.
+CREATE TABLE IF NOT EXISTS question_bank_2_code_counters (
+    course_id UUID PRIMARY KEY REFERENCES courses(id) ON DELETE CASCADE,
+    next_value INTEGER NOT NULL CHECK(next_value > 0)
+);
+CREATE TABLE IF NOT EXISTS question_bank_2_groups (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    code VARCHAR(64) NOT NULL,
+    code_sequence INTEGER NOT NULL CHECK(code_sequence > 0),
+    name VARCHAR(255) NOT NULL CHECK(btrim(name)<>''),
+    description TEXT NOT NULL CHECK(btrim(description)<>''),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(course_id, code),
+    UNIQUE(course_id, code_sequence)
+);
+CREATE TABLE IF NOT EXISTS question_bank_2_examples (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id UUID NOT NULL REFERENCES question_bank_2_groups(id) ON DELETE CASCADE,
+    content TEXT NOT NULL CHECK(btrim(content)<>''),
+    sequence INTEGER NOT NULL CHECK(sequence > 0),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(group_id, sequence)
+);
+CREATE INDEX IF NOT EXISTS question_bank_2_groups_course_idx
+    ON question_bank_2_groups(course_id, code_sequence);
+CREATE INDEX IF NOT EXISTS question_bank_2_examples_group_idx
+    ON question_bank_2_examples(group_id, sequence);
+
 CREATE TABLE IF NOT EXISTS quiz3_qbank2_regeneration_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
     variant_id UUID NOT NULL REFERENCES quiz3_assessment_variants(id) ON DELETE CASCADE,
@@ -1722,6 +1758,25 @@ CREATE TABLE IF NOT EXISTS quiz3_question_ai_change_sets (
     before_content TEXT NOT NULL,before_content_format VARCHAR(30) NOT NULL,after_content TEXT NOT NULL,after_content_format VARCHAR(30) NOT NULL,
     artifact_revisions JSONB NOT NULL DEFAULT '[]'::jsonb,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(question_id,change_index)
 );
+
+-- Quiz3 keeps its embedded-image ownership separate from the legacy Quiz2
+-- assets.  PDF export reads this table even for questions without images, so
+-- it must exist for every Quiz3 installation.
+CREATE TABLE IF NOT EXISTS quiz3_rich_content_assets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+    storage_key VARCHAR(1024) NOT NULL,
+    media_type VARCHAR(255) NOT NULL,
+    byte_size BIGINT NOT NULL CHECK (byte_size >= 0 AND byte_size <= 10485760),
+    sha256 CHAR(64) NOT NULL,
+    ai_artifact_id UUID REFERENCES quiz3_question_ai_artifacts(id) ON DELETE SET NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_quiz3_rich_content_assets_question
+    ON quiz3_rich_content_assets(question_id);
+CREATE INDEX IF NOT EXISTS idx_quiz3_rich_content_assets_ai_artifact
+    ON quiz3_rich_content_assets(ai_artifact_id) WHERE ai_artifact_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS code_runner_verifications
 (

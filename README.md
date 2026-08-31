@@ -28,18 +28,32 @@ hoặc gửi token này. Giá trị phải trùng với `AI_Pipeline/.env`.
 
 Các key chỉ dùng ở backend, không đưa vào frontend hoặc log.
 
-Database đã có dữ liệu phải dùng `DATABASE_INITIALIZATION_OPTION=never`.
-Giá trị `always` chỉ dành cho database development có thể xóa toàn bộ, vì
-`schema.sql` drop và tạo lại schema ứng dụng khi backend khởi động.
+## Database local
+
+Mặc định development dùng `DATABASE_INITIALIZATION_OPTION=always`. Mỗi lần
+backend khởi động, `schema.sql` sẽ xoá và tạo lại schema `edu`, sau đó Spring
+nạp `data.sql`. Vì vậy cấu trúc bảng luôn khớp code hiện tại (bao gồm
+`quiz3_assessments.matrix_source_type`, `matrix3_id`, `matrix3_version`) và dữ
+liệu test trong `edu` sẽ được reset.
+
+`spring.quartz.jdbc.initialize-schema=always` cũng reset các bảng scheduler
+trong `quartz_schema`; nó không liên quan đến bảng LMS trong `edu`. Schema
+`ai_index` không bị reset. Ở production cả SQL initialization lẫn Quartz
+initialization đều là `never` để bảo toàn dữ liệu.
+
+Nếu cần giữ nguyên database local để điều tra dữ liệu, đổi tạm
+`DATABASE_INITIALIZATION_OPTION=never`. Khi đó backend sẽ không tự cập nhật
+schema; chỉ áp dụng migration đã được review trong `src/main/resources/db/manual`
+cho database đó, rồi khởi động lại backend.
 
 Với database có `material_index_jobs` cũ, dừng backend và chạy một lần
 `src/main/resources/db/manual/V20260811_01__material_index_jobs_utc.sql` trước
 khi khởi động lại.
 
-Các database đã có dữ liệu không tự chạy migration trong `db/manual`. Khi đổi
-checkout, áp các migration chưa chạy theo thứ tự tên file trong
-`src/main/resources/db/manual`, mỗi file trong một transaction, rồi mới khởi
-động backend. Riêng Quiz2 Question AI yêu cầu:
+Các migration trong `db/manual` là lịch sử nâng cấp dành cho database đã có dữ
+liệu; chúng không phải file Spring tự đọc khi chạy ứng dụng. Với local reset
+mode (`always`), `schema.sql` là nguồn cấu trúc duy nhất cần dùng. Riêng Quiz2
+Question AI của một database được giữ lại yêu cầu:
 
 ```text
 src/main/resources/db/manual/V20260813_02__quiz2_question_ai_jobs.sql
@@ -52,7 +66,7 @@ liệt kê object thiếu thay vì tiếp tục chạy scheduler và lặp lỗi
 ## Chạy backend
 
 ```powershell
-.\mvnw.cmd spring-boot:run "-Dspring-boot.run.arguments=--spring.config.import=optional:file:.env.dev[.properties]"
+.\mvnw.cmd spring-boot:run
 ```
 
 Backend chạy tại `http://localhost:8080`.

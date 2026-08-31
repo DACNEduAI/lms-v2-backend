@@ -376,6 +376,31 @@ VALUES
     ('b3000021-0000-4000-8000-000000000011', 'b3000011-0000-4000-8000-000000000012', 2),
     ('b3000021-0000-4000-8000-000000000012', 'b3000011-0000-4000-8000-000000000012', 3);
 
+-- Matrix 2 dedicated to Quiz3 Code Runner. Both allocated cells use
+-- CODE_RUNNER, so a new assessment produces two C++17 questions by default.
+INSERT INTO exam_matrices_2 (id, course_id, title, description)
+VALUES
+    ('b3000001-0000-4000-8000-000000000003', 'c1111111-1111-1111-1111-111111111111',
+     'Matrix 2 - DSA Code Runner', 'Two C++17 Code Runner questions: heap construction and insertion sort.');
+
+INSERT INTO exam_matrix_2_custom_learning_levels (id, matrix_id, name, sort_order)
+VALUES
+    ('b3000011-0000-4000-8000-000000000021', 'b3000001-0000-4000-8000-000000000003', 'Implementation', 0);
+
+INSERT INTO exam_matrix_2_rows
+    (id, matrix_id, chapter_id, mapped_learning_outcome_id, sort_order)
+VALUES
+    ('b3000021-0000-4000-8000-000000000021', 'b3000001-0000-4000-8000-000000000003',
+     '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', '85555555-5555-5555-5555-555555555555', 0),
+    ('b3000021-0000-4000-8000-000000000022', 'b3000001-0000-4000-8000-000000000003',
+     'a8c06712-6aa5-4993-901b-77008af766d3', '85555555-5555-5555-5555-555555555555', 1);
+
+INSERT INTO exam_matrix_2_cell_counts
+    (row_id, custom_learning_level_id, question_count, question_type)
+VALUES
+    ('b3000021-0000-4000-8000-000000000021', 'b3000011-0000-4000-8000-000000000021', 1, 'CODE_RUNNER'),
+    ('b3000021-0000-4000-8000-000000000022', 'b3000011-0000-4000-8000-000000000021', 1, 'CODE_RUNNER');
+
 -- 12. Insert Quizzes
 INSERT INTO quizzes (id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, teacher_id, display)
 VALUES
@@ -573,6 +598,46 @@ VALUES
     ('e4000001-0000-4000-8000-000000000004', 'e3000001-0000-4000-8000-000000000002', 'Min-Heap', 'LEARN_AND_EXAM', '', 1),
     ('e4000001-0000-4000-8000-000000000005', 'e3000001-0000-4000-8000-000000000003', 'BFS (Duyệt theo chiều rộng)', 'LEARN_AND_EXAM', '', 0),
     ('e4000001-0000-4000-8000-000000000006', 'e3000001-0000-4000-8000-000000000003', 'DFS (Duyệt theo chiều sâu)', 'LEARN_AND_EXAM', '', 1);
+
+-- Persistent CCCT paired with the dedicated Code Runner matrix above.
+INSERT INTO ccct_profiles
+    (id, course_id, name, template_title, status, version, format_version,
+     structured_current, last_mode, markdown_content, created_by)
+VALUES
+    ('e1000001-0000-4000-8000-000000000004', 'c1111111-1111-1111-1111-111111111111',
+     'CCCT - DSA Code Runner', 'CCCT - DSA Code Runner', 'DRAFT', 0, 2,
+     true, 'STRUCTURED',
+     '# CCCT - DSA Code Runner
+
+## Heap and sorting
+
+### C++17 function implementation
+- Build a min-heap from an array - Learn and exam
+- Implement insertion sort - Learn and exam',
+     '11111111-1111-1111-1111-111111111111');
+
+INSERT INTO ccct_chapters (id, profile_id, course_chapter_id, title, custom_content, order_index)
+VALUES
+    ('e2000001-0000-4000-8000-000000000031', 'e1000001-0000-4000-8000-000000000004', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'Binary trees', '', 0),
+    ('e2000001-0000-4000-8000-000000000032', 'e1000001-0000-4000-8000-000000000004', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Algorithm complexity', '', 1),
+    ('e2000001-0000-4000-8000-000000000033', 'e1000001-0000-4000-8000-000000000004', '6967be86-ae45-4e55-8faa-71318f50bbf6', 'Graphs', '', 2),
+    ('e2000001-0000-4000-8000-000000000034', 'e1000001-0000-4000-8000-000000000004', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'Heap', '', 3),
+    ('e2000001-0000-4000-8000-000000000035', 'e1000001-0000-4000-8000-000000000004', '8a01575f-a418-4107-b1b1-5eef75c5b72d', 'Introduction', '', 4),
+    ('e2000001-0000-4000-8000-000000000036', 'e1000001-0000-4000-8000-000000000004', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Sorting', '', 5),
+    ('e2000001-0000-4000-8000-000000000037', 'e1000001-0000-4000-8000-000000000004', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Stack and queue', '', 6),
+    ('e2000001-0000-4000-8000-000000000038', 'e1000001-0000-4000-8000-000000000004', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Searching', '', 7),
+    ('e2000001-0000-4000-8000-000000000039', 'e1000001-0000-4000-8000-000000000004', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'Advanced trees', '', 8),
+    ('e2000001-0000-4000-8000-000000000040', 'e1000001-0000-4000-8000-000000000004', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Lists', '', 9);
+
+INSERT INTO ccct_topics (id, chapter_id, title, order_index)
+VALUES
+    ('e3000001-0000-4000-8000-000000000004', 'e2000001-0000-4000-8000-000000000034', 'Min-heap implementation', 0),
+    ('e3000001-0000-4000-8000-000000000005', 'e2000001-0000-4000-8000-000000000036', 'Insertion sort', 0);
+
+INSERT INTO ccct_items (id, topic_id, content, coverage_status, note, order_index)
+VALUES
+    ('e4000001-0000-4000-8000-000000000007', 'e3000001-0000-4000-8000-000000000004', 'Build a min-heap from an array using sift-down', 'LEARN_AND_EXAM', '', 0),
+    ('e4000001-0000-4000-8000-000000000008', 'e3000001-0000-4000-8000-000000000005', 'Insertion sort in ascending order', 'LEARN_AND_EXAM', '', 0);
 
 -- Reset fixtures: the original PDFs remain in the private Supabase bucket.
 -- Each boot recreates their LMS metadata and queues fresh AI ingestion instead

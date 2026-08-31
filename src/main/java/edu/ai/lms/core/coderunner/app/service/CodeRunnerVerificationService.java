@@ -148,6 +148,49 @@ public class CodeRunnerVerificationService {
                 List.copyOf(results));
     }
 
+    /** Executes a teacher's draft code without persisting a verification result. */
+    public CodeRunnerVerificationResponse tryCandidate(
+            ExecutableAssessmentContract contract,
+            String sourceCode,
+            boolean includeHidden) {
+        contract.validateForPersistence();
+        List<ExecutableAssessmentContract.TestCase> tests = new ArrayList<>(contract.runtime().publicTests());
+        if (includeHidden) {
+            tests.addAll(contract.privateGrading().hiddenTests());
+        }
+
+        List<CodeRunnerVerificationResponse.TestResult> results = new ArrayList<>();
+        CodeExecutionEngine.Verdict overallVerdict = CodeExecutionEngine.Verdict.ACCEPTED;
+        int passed = 0;
+        for (var test : tests) {
+            String harness = harnessBuilder.buildCase(contract, sourceCode, test);
+            CodeExecutionEngine.ExecutionTicket ticket = executionEngine.submit(
+                    new CodeExecutionEngine.ExecutionRequest(
+                            harness, cpp17LanguageId, null,
+                            2_000, 5_000, 131_072, 64, 16));
+            CodeExecutionEngine.ExecutionResult result = await(ticket.engineSubmissionId());
+            CodeExecutionEngine.Verdict verdict = effectiveVerdict(
+                    result, harnessBuilder.expectedOutput(contract, test));
+            if (verdict == CodeExecutionEngine.Verdict.ACCEPTED) {
+                passed++;
+            } else {
+                overallVerdict = verdict;
+            }
+            results.add(new CodeRunnerVerificationResponse.TestResult(
+                    test.id(),
+                    test.visibility(),
+                    verdict.name(),
+                    result.timeMs(),
+                    result.memoryKb(),
+                    diagnostic(result)));
+        }
+        return new CodeRunnerVerificationResponse(
+                overallVerdict == CodeExecutionEngine.Verdict.ACCEPTED,
+                passed,
+                tests.size(),
+                List.copyOf(results));
+    }
+
     private CodeExecutionEngine.Verdict effectiveVerdict(
             CodeExecutionEngine.ExecutionResult result,
             String expectedOutput) {

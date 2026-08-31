@@ -6,6 +6,7 @@ import edu.ai.lms.core.coderunner.app.domain.CodeRunnerActor;
 import edu.ai.lms.core.coderunner.app.domain.CodeRunnerQuestionContext;
 import edu.ai.lms.core.coderunner.app.domain.ExecutableAssessmentContract;
 import edu.ai.lms.core.coderunner.app.exception.CodeRunnerConflictException;
+import edu.ai.lms.core.coderunner.adapter.in.http.response.CodeRunnerVerificationResponse;
 import edu.ai.lms.core.coderunner.app.port.out.CheckCodeRunnerCourseAccessPort;
 import edu.ai.lms.core.coderunner.app.port.out.LoadCodeRunnerActorPort;
 import edu.ai.lms.core.coderunner.app.port.out.LoadCodeRunnerContractPort;
@@ -28,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -76,6 +78,29 @@ class UTCodeRunnerContractService {
         verify(saveContractPort).saveRevision(org.mockito.ArgumentMatchers.eq(questionId), saved.capture());
         assertThat(saved.getValue().status()).isEqualTo("READY_FOR_REVIEW");
         assertThat(response.status()).isEqualTo("READY_FOR_REVIEW");
+    }
+
+    @Test
+    void teacherCanTryAnUnsavedCandidateWithoutCreatingAContractRevision() {
+        ExecutableAssessmentContract submitted = contract("VERIFIED_EXECUTION_GOLD");
+        CodeRunnerVerificationResponse expected = new CodeRunnerVerificationResponse(
+                true, 2, 2, List.of());
+        when(verificationService.tryCandidate(any(), any(), org.mockito.ArgumentMatchers.eq(true)))
+                .thenReturn(expected);
+
+        CodeRunnerVerificationResponse response = service.tryCandidate(
+                courseId, quizId, questionId, submitted,
+                "bool isEven(int value) { return value % 2 == 0; }", true);
+
+        ArgumentCaptor<ExecutableAssessmentContract> contract =
+                ArgumentCaptor.forClass(ExecutableAssessmentContract.class);
+        verify(verificationService).tryCandidate(
+                contract.capture(),
+                org.mockito.ArgumentMatchers.eq("bool isEven(int value) { return value % 2 == 0; }"),
+                org.mockito.ArgumentMatchers.eq(true));
+        verify(saveContractPort, never()).saveRevision(any(), any());
+        assertThat(contract.getValue().status()).isEqualTo("READY_FOR_REVIEW");
+        assertThat(response).isSameAs(expected);
     }
 
 

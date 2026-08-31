@@ -46,6 +46,7 @@ public class WebClientConfig {
                 .filter(aiRequestLoggingFilter());
         if (aiServiceToken != null && !aiServiceToken.isBlank()) {
             builder.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + aiServiceToken);
+            log.info("event=ai.service.authentication.configured");
         } else {
             log.warn("AI_SERVICE_TOKEN is not configured; protected AI service calls will be rejected");
         }
