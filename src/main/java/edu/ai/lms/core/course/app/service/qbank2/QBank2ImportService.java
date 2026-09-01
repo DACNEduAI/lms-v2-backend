@@ -96,7 +96,8 @@ public class QBank2ImportService {
         GroupView finalGroup = loadGroup(courseId, groupId);
         updatedIds.forEach(vectors::delete);
         for (ExampleView example : finalGroup.examples()) {
-            if (updatedIds.contains(example.id()) || createdIds.contains(example.id())) {
+            if ((updatedIds.contains(example.id()) || createdIds.contains(example.id()))
+                    && QuestionBank2Service.effectivelyPublished(finalGroup, example)) {
                 vectors.upsert(courseId, finalGroup, example);
             }
         }
@@ -113,9 +114,9 @@ public class QBank2ImportService {
             List<ImportExample> currentExamples) {
         Map<UUID, ExampleState> examples = new LinkedHashMap<>();
         for (ImportExample example : currentExamples) {
-            examples.put(example.id(), new ExampleState(example.id(), groupId, trim(example.content()), example.order()));
+            examples.put(example.id(), new ExampleState(example.id(), groupId, trim(example.content()), example.order(), true));
         }
-        GroupState group = new GroupState(groupId, code, "Existing", "Existing", examples);
+        GroupState group = new GroupState(groupId, code, "Existing", "Existing", true, examples);
         return evaluate(request, Map.of(code, group)).preview();
     }
 
@@ -218,36 +219,36 @@ public class QBank2ImportService {
     private Map<String, GroupState> loadGroups(UUID courseId) {
         Map<String, GroupState> groups = new LinkedHashMap<>();
         Map<UUID, GroupState> groupsById = new LinkedHashMap<>();
-        jdbc.query("SELECT id,code,name,description FROM edu.question_bank_2_groups WHERE course_id=?", rs -> {
+        jdbc.query("SELECT id,code,name,description,published FROM edu.question_bank_2_groups WHERE course_id=?", rs -> {
             UUID id = rs.getObject(1, UUID.class);
-            GroupState group = new GroupState(id, rs.getString(2), rs.getString(3), rs.getString(4), new LinkedHashMap<>());
+            GroupState group = new GroupState(id, rs.getString(2), rs.getString(3), rs.getString(4), rs.getBoolean(5), new LinkedHashMap<>());
             groups.put(group.code(), group);
             groupsById.put(group.id(), group);
         }, courseId);
         jdbc.query("""
-                SELECT e.id,e.group_id,e.content,e.sequence FROM edu.question_bank_2_examples e
+                SELECT e.id,e.group_id,e.content,e.sequence,e.published FROM edu.question_bank_2_examples e
                 JOIN edu.question_bank_2_groups g ON g.id=e.group_id WHERE g.course_id=?
                 """, rs -> {
             UUID id = rs.getObject(1, UUID.class);
             UUID groupId = rs.getObject(2, UUID.class);
             GroupState group = groupsById.get(groupId);
-            if (group != null) group.examples().put(id, new ExampleState(id, groupId, rs.getString(3), rs.getInt(4)));
+            if (group != null) group.examples().put(id, new ExampleState(id, groupId, rs.getString(3), rs.getInt(4), rs.getBoolean(5)));
         }, courseId);
         return groups;
     }
 
     private GroupView loadGroup(UUID courseId, UUID groupId) {
         List<ExampleView> examples = jdbc.query("""
-                SELECT id,content,sequence,created_at,updated_at FROM edu.question_bank_2_examples
+                SELECT id,content,sequence,published,created_at,updated_at FROM edu.question_bank_2_examples
                 WHERE group_id=? ORDER BY sequence,id
                 """, (rs, row) -> new ExampleView(rs.getObject(1, UUID.class), rs.getString(2), rs.getInt(3),
-                rs.getObject(4, LocalDateTime.class), rs.getObject(5, LocalDateTime.class)), groupId);
+                rs.getBoolean(4), rs.getObject(5, LocalDateTime.class), rs.getObject(6, LocalDateTime.class)), groupId);
         GroupView group = jdbc.query("""
-                SELECT id,code,name,description,code_sequence,created_at,updated_at
+                SELECT id,code,name,description,code_sequence,published,created_at,updated_at
                 FROM edu.question_bank_2_groups WHERE id=? AND course_id=?
                 """, rs -> rs.next() ? new GroupView(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3),
-                rs.getString(4), rs.getInt(5), examples, rs.getObject(6, LocalDateTime.class),
-                rs.getObject(7, LocalDateTime.class)) : null, groupId, courseId);
+                rs.getString(4), rs.getInt(5), rs.getBoolean(6), examples, rs.getObject(7, LocalDateTime.class),
+                rs.getObject(8, LocalDateTime.class)) : null, groupId, courseId);
         if (group == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "QBank2 group not found");
         return group;
     }
@@ -274,6 +275,6 @@ public class QBank2ImportService {
     private record Evaluation(ImportPreview preview, GroupPlan plan) { }
     private record GroupPlan(ImportGroup input, GroupState existing, List<PlannedExample> examples) { }
     private record PlannedExample(ImportExample input, ExampleAction action) { }
-    private record GroupState(UUID id, String code, String name, String description, Map<UUID, ExampleState> examples) { }
-    private record ExampleState(UUID id, UUID groupId, String content, int sequence) { }
+    private record GroupState(UUID id, String code, String name, String description, boolean published, Map<UUID, ExampleState> examples) { }
+    private record ExampleState(UUID id, UUID groupId, String content, int sequence, boolean published) { }
 }

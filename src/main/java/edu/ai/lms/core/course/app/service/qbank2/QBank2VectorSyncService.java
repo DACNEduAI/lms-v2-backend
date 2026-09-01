@@ -29,7 +29,9 @@ public class QBank2VectorSyncService {
     }
 
     public void upsertAll(UUID courseId, QuestionBank2Service.GroupView group) {
-        for (QuestionBank2Service.ExampleView example : group.examples()) upsert(courseId, group, example);
+        for (QuestionBank2Service.ExampleView example : group.examples()) {
+            if (QuestionBank2Service.effectivelyPublished(group, example)) upsert(courseId, group, example);
+        }
     }
 
     public void deleteAll(List<QuestionBank2Service.ExampleView> examples) {

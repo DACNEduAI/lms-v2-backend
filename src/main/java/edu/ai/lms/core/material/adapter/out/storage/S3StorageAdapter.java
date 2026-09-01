@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
@@ -47,20 +48,25 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLinkPort, DeleteFilePort,
     VerifyFileUploadedPort, UploadFilePort, GetPublicFileUrlPort {
 
-    private static final Duration DEFAULT_PRESIGN_EXPIRY = Duration.ofMinutes(5);
-
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
     private final Environment environment;
     private final String bucketName;
     private final String storageEndpoint;
+    private final Duration defaultPresignExpiry;
 
-    public S3StorageAdapter(StorageConfig storageConfig, Environment environment) {
+    public S3StorageAdapter(StorageConfig storageConfig,
+            Environment environment,
+            @Value("${storage.signed-url-ttl-seconds:300}") long signedUrlTtlSeconds) {
+        if (signedUrlTtlSeconds <= 0) {
+            throw new IllegalArgumentException("Signed URL TTL must be greater than zero seconds");
+        }
         this.s3Client = storageConfig.s3Client();
         this.s3Presigner = storageConfig.s3Presigner();
         this.environment = environment;
         this.bucketName = storageConfig.getBucketName();
         this.storageEndpoint = storageConfig.getEndPoint();
+        this.defaultPresignExpiry = Duration.ofSeconds(signedUrlTtlSeconds);
     }
 
     // Profile helpers
@@ -278,13 +284,13 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
     @Override
     public String createDownloadLink(String fileKey, Duration expiry) {
         return createPresignedDownloadUrl(bucketName, fileKey,
-                expiry != null ? expiry : DEFAULT_PRESIGN_EXPIRY);
+                expiry != null ? expiry : defaultPresignExpiry);
     }
 
     @Override
     public String createUploadLink(String fileKey, String contentType, Duration expiry) {
         return createPresignedUploadUrl(bucketName, fileKey, contentType,
-                expiry != null ? expiry : DEFAULT_PRESIGN_EXPIRY);
+                expiry != null ? expiry : defaultPresignExpiry);
     }
 
     @Override

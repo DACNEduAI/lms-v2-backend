@@ -478,12 +478,14 @@ CREATE TABLE IF NOT EXISTS question_bank_2_groups (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
     code VARCHAR(64) NOT NULL, code_sequence INTEGER NOT NULL CHECK(code_sequence > 0),
     name VARCHAR(255) NOT NULL CHECK(btrim(name)<>''), description TEXT NOT NULL CHECK(btrim(description)<>''),
+    published BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(course_id,code), UNIQUE(course_id,code_sequence)
 );
 CREATE TABLE IF NOT EXISTS question_bank_2_examples (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), group_id UUID NOT NULL REFERENCES question_bank_2_groups(id) ON DELETE CASCADE,
     content TEXT NOT NULL CHECK(btrim(content)<>''), sequence INTEGER NOT NULL CHECK(sequence > 0),
+    published BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(group_id,sequence)
 );

@@ -1,3 +1,5 @@
+name: lms
+
 services:
   localstack:
     container_name: "${LOCALSTACK_DOCKER_NAME:-localstack-main}"
@@ -10,8 +12,21 @@ services:
       # Inject AWS default credentials directly into the container
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
-      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_DEFAULT_REGION=ap-southeast-1
+      - S3_SKIP_SIGNATURE_VALIDATION=0
+      - S3_VALIDATE_SIGNATURES=1
     volumes:
       - "${LOCALSTACK_VOLUME_DIR:-./storage}:/var/lib/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
       - ./init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh
+
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    ports:
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+
+volumes:
+  qdrant_storage:
