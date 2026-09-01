@@ -1123,6 +1123,8 @@ CREATE TABLE IF NOT EXISTS code_runner_configs
     starter_code               TEXT         NOT NULL CHECK (btrim(starter_code) <> ''),
     banned_api_patterns_json   JSONB        NOT NULL DEFAULT '[]'::jsonb,
     reference_solution         TEXT         NOT NULL CHECK (btrim(reference_solution) <> ''),
+    wall_time_limit_ms         INTEGER      NOT NULL DEFAULT 5000 CHECK (wall_time_limit_ms BETWEEN 100 AND 30000),
+    memory_limit_kb            INTEGER      NOT NULL DEFAULT 131072 CHECK (memory_limit_kb BETWEEN 16384 AND 1048576),
     revision                   INTEGER      NOT NULL CHECK (revision > 0),
     created_at                 TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                 TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,

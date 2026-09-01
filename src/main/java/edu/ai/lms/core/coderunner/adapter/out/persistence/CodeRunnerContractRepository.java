@@ -32,6 +32,8 @@ interface CodeRunnerContractRepository {
             @Param("starterCode") String starterCode,
             @Param("bannedApiPatternsJson") String bannedApiPatternsJson,
             @Param("referenceSolution") String referenceSolution,
+            @Param("wallTimeLimitMs") int wallTimeLimitMs,
+            @Param("memoryLimitKb") int memoryLimitKb,
             @Param("revision") int revision);
 
     void insertTestCase(

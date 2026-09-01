@@ -23,6 +23,8 @@
     <result property="starterCode" column="starter_code" />
     <result property="bannedApiPatternsJson" column="banned_api_patterns_json" />
     <result property="referenceSolution" column="reference_solution" />
+    <result property="wallTimeLimitMs" column="wall_time_limit_ms" />
+    <result property="memoryLimitKb" column="memory_limit_kb" />
     <result property="revision" column="revision" />
   </resultMap>
 
@@ -49,13 +51,13 @@
       title, statement, execution_profile_id, execution_profile_version,
       archetype_id, archetype_version, comparator_id, comparator_version,
       entry_point, signature_json, starter_code, banned_api_patterns_json,
-      reference_solution, revision, created_at, updated_at
+      reference_solution, wall_time_limit_ms, memory_limit_kb, revision, created_at, updated_at
     ) VALUES (
       #{id}, #{questionId}, #{schemaVersion}, #{contractId}, #{contractVersion}, #{contractStatus},
       #{title}, #{statement}, #{executionProfileId}, #{executionProfileVersion},
       #{archetypeId}, #{archetypeVersion}, #{comparatorId}, #{comparatorVersion},
       #{entryPoint}, CAST(#{signatureJson} AS jsonb), #{starterCode},
-      CAST(#{bannedApiPatternsJson} AS jsonb), #{referenceSolution}, #{revision}, NOW(), NOW()
+      CAST(#{bannedApiPatternsJson} AS jsonb), #{referenceSolution}, #{wallTimeLimitMs}, #{memoryLimitKb}, #{revision}, NOW(), NOW()
     )
   </insert>
 
@@ -76,7 +78,7 @@
            archetype_id, archetype_version, comparator_id, comparator_version,
            entry_point, signature_json::text AS signature_json, starter_code,
            banned_api_patterns_json::text AS banned_api_patterns_json,
-           reference_solution, revision
+           reference_solution, wall_time_limit_ms, memory_limit_kb, revision
     FROM edu.code_runner_configs
     WHERE question_id = #{questionId}
     ORDER BY revision DESC
@@ -89,7 +91,7 @@
            archetype_id, archetype_version, comparator_id, comparator_version,
            entry_point, signature_json::text AS signature_json, starter_code,
            banned_api_patterns_json::text AS banned_api_patterns_json,
-           reference_solution, revision
+           reference_solution, wall_time_limit_ms, memory_limit_kb, revision
     FROM edu.code_runner_configs
     WHERE id = #{id}
   </select>
@@ -100,7 +102,7 @@
            c.archetype_id, c.archetype_version, c.comparator_id, c.comparator_version,
            c.entry_point, c.signature_json::text AS signature_json, c.starter_code,
            c.banned_api_patterns_json::text AS banned_api_patterns_json,
-           c.reference_solution, c.revision
+           c.reference_solution, c.wall_time_limit_ms, c.memory_limit_kb, c.revision
     FROM edu.attempts a
     JOIN edu.quiz_release_code_runner_bindings binding
       ON binding.quiz_release_id = a.quiz_release_id

@@ -28,5 +28,7 @@ public class CodeRunnerConfigRow {
     private String starterCode;
     private String bannedApiPatternsJson;
     private String referenceSolution;
+    private int wallTimeLimitMs;
+    private int memoryLimitKb;
     private int revision;
 }

@@ -42,6 +42,14 @@ public record ExecutableAssessmentContract(
             "integer", "boolean", "string", "vector_int");
     private static final Set<String> ARCHETYPES = Set.of(
             "scalar_function", "array_function", "sorting_function");
+    private static final ExecutionLimits DEFAULT_EXECUTION_LIMITS = new ExecutionLimits(5_000, 131_072);
+
+    /** Legacy revisions use the former platform defaults; new revisions persist their own limits. */
+    public ExecutionLimits effectiveExecutionLimits() {
+        return runtime != null && runtime.executionLimits() != null
+                ? runtime.executionLimits()
+                : DEFAULT_EXECUTION_LIMITS;
+    }
 
     public void validateForPersistence() {
         require("2.0.0".equals(schemaVersion), "Unsupported executable contract schema");
@@ -80,6 +88,11 @@ public record ExecutableAssessmentContract(
         require(Set.of("1.0.0", "1.1.0").contains(runtime.archetype().version()),
                 "Unknown archetype version");
         require(validFixture(runtime.signature().returnFixture()), "Unknown return fixture");
+        ExecutionLimits limits = effectiveExecutionLimits();
+        require(limits.wallTimeLimitMs() >= 100 && limits.wallTimeLimitMs() <= 30_000,
+                "Wall time limit must be between 100 and 30000 ms");
+        require(limits.memoryLimitKb() >= 16_384 && limits.memoryLimitKb() <= 1_048_576,
+                "Memory limit must be between 16 and 1024 MB");
 
         List<String> argumentNames = runtime.signature().arguments().stream()
                 .map(ArgumentSpec::name)
@@ -155,7 +168,27 @@ public record ExecutableAssessmentContract(
             FunctionSignature signature,
             @JsonProperty("starter_code") String starterCode,
             @JsonProperty("public_tests") List<TestCase> publicTests,
-            @JsonProperty("banned_api_patterns") List<String> bannedApiPatterns) {
+            @JsonProperty("banned_api_patterns") List<String> bannedApiPatterns,
+            @JsonProperty("execution_limits") ExecutionLimits executionLimits) {
+
+        /** Source-compatible constructor for fixtures and legacy in-memory contracts. */
+        public RuntimeContract(
+                VersionedRef executionProfile,
+                VersionedRef archetype,
+                VersionedRef comparator,
+                String entryPoint,
+                FunctionSignature signature,
+                String starterCode,
+                List<TestCase> publicTests,
+                List<String> bannedApiPatterns) {
+            this(executionProfile, archetype, comparator, entryPoint, signature, starterCode,
+                    publicTests, bannedApiPatterns, null);
+        }
+    }
+
+    public record ExecutionLimits(
+            @JsonProperty("wall_time_limit_ms") int wallTimeLimitMs,
+            @JsonProperty("memory_limit_kb") int memoryLimitKb) {
     }
 
     public record PrivateGrading(

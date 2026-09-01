@@ -54,6 +54,8 @@ public class CodeRunnerContractPersistenceAdapter
                 runtime.starterCode(),
                 json(runtime.bannedApiPatterns()),
                 contract.privateGrading().referenceSolution(),
+                contract.effectiveExecutionLimits().wallTimeLimitMs(),
+                contract.effectiveExecutionLimits().memoryLimitKb(),
                 revision);
 
         int ordinal = 0;
@@ -176,7 +178,9 @@ public class CodeRunnerContractPersistenceAdapter
                 signature,
                 row.getStarterCode(),
                 List.copyOf(publicTests),
-                List.copyOf(bannedPatterns));
+                List.copyOf(bannedPatterns),
+                new ExecutableAssessmentContract.ExecutionLimits(
+                        row.getWallTimeLimitMs(), row.getMemoryLimitKb()));
         return new ExecutableAssessmentContract(
                 row.getSchemaVersion(),
                 row.getContractId(),

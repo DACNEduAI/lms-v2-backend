@@ -63,8 +63,9 @@ public class CodeRunnerVerificationService {
         int maxTimeMs = 0;
         int maxMemoryKb = 0;
 
-        int wallTimeLimitMs = 5_000;
-        int memoryLimitKb = 131_072;
+        var limits = contract.effectiveExecutionLimits();
+        int wallTimeLimitMs = limits.wallTimeLimitMs();
+        int memoryLimitKb = limits.memoryLimitKb();
 
         for (var test : tests) {
             String harness = harnessBuilder.buildCase(
@@ -162,12 +163,13 @@ public class CodeRunnerVerificationService {
         List<CodeRunnerVerificationResponse.TestResult> results = new ArrayList<>();
         CodeExecutionEngine.Verdict overallVerdict = CodeExecutionEngine.Verdict.ACCEPTED;
         int passed = 0;
+        var limits = contract.effectiveExecutionLimits();
         for (var test : tests) {
             String harness = harnessBuilder.buildCase(contract, sourceCode, test);
             CodeExecutionEngine.ExecutionTicket ticket = executionEngine.submit(
                     new CodeExecutionEngine.ExecutionRequest(
                             harness, cpp17LanguageId, null,
-                            2_000, 5_000, 131_072, 64, 16));
+                            2_000, limits.wallTimeLimitMs(), limits.memoryLimitKb(), 64, 16));
             CodeExecutionEngine.ExecutionResult result = await(ticket.engineSubmissionId());
             CodeExecutionEngine.Verdict verdict = effectiveVerdict(
                     result, harnessBuilder.expectedOutput(contract, test));
