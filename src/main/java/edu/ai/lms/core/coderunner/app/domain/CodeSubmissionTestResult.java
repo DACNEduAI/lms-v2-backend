@@ -14,5 +14,6 @@ public record CodeSubmissionTestResult(
         Double timeMs,
         Long memoryKb,
         String diagnostic,
+        String receivedOutput,
         String engineSubmissionId) {
 }

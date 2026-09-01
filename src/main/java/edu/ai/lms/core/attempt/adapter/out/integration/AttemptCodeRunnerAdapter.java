@@ -21,7 +21,8 @@ class AttemptCodeRunnerAdapter implements AttemptCodeRunnerPort {
     @Override public AttemptCodeRunnerQuestion getQuestion(UUID attemptId, UUID quizId, UUID questionId) {
         var view = api.getQuestion(attemptId, quizId, questionId);
         return new AttemptCodeRunnerQuestion(view.questionId(), view.title(), view.statement(), view.starterCode(),
-                view.entryPoint(), view.executionProfile(), view.activeSubmissionId(), view.latestSubmitId(), view.publicTests().stream()
+                view.entryPoint(), view.executionProfile(), view.totalPoints(), view.timeLimitMs(), view.memoryLimitKb(),
+                view.activeSubmissionId(), view.latestSubmitId(), view.latestCompletedSubmitId(), view.publicTests().stream()
                 .map(test -> new AttemptCodeRunnerQuestion.PublicTest(test.id(), test.category(),
                         test.argumentsJson(), test.expectedOutputJson())).toList());
     }
@@ -39,7 +40,8 @@ class AttemptCodeRunnerAdapter implements AttemptCodeRunnerPort {
                 view.verdict(), view.score(), view.maxScore(), view.passedTests(), view.totalTests(),
                 view.scoreReleased(), view.hiddenTestPolicy(),
                 view.visibleResults().stream().map(result -> new AttemptCodeSubmission.VisibleTestResult(
-                        result.testId(), result.verdict(), result.timeMs(), result.memoryKb(), result.diagnostic()))
+                        result.testId(), result.verdict(), result.timeMs(), result.memoryKb(), result.diagnostic(),
+                        result.receivedOutput()))
                         .toList());
     }
 

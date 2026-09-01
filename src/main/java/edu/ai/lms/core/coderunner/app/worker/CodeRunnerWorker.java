@@ -102,7 +102,8 @@ public class CodeRunnerWorker {
                 CodeSubmissionTestResult result = new CodeSubmissionTestResult(
                         UUID.randomUUID(), submission.id(), requiredTestId(stored, test.id()), test.id(),
                         test.visibility(), "COMPLETED", verdict, earned, engineResult.timeMs(),
-                        engineResult.memoryKb(), diagnostic(engineResult), ticket.engineSubmissionId());
+                        engineResult.memoryKb(), diagnostic(engineResult),
+                        publicReceivedOutput(test.visibility(), engineResult.stdout()), ticket.engineSubmissionId());
                 
                 results.add(result);
                 submissionPort.insertTestResult(result);
@@ -199,6 +200,11 @@ public class CodeRunnerWorker {
             }
         }
         throw new IllegalStateException("Judge0 did not finish execution before the timeout");
+    }
+
+    private String publicReceivedOutput(String visibility, String stdout) {
+        if (!"PUBLIC".equals(visibility) || stdout == null) return null;
+        return stdout.length() <= 4_096 ? stdout : stdout.substring(0, 4_096) + "\n[output truncated]";
     }
 
     private String diagnostic(CodeExecutionEngine.ExecutionResult result) {

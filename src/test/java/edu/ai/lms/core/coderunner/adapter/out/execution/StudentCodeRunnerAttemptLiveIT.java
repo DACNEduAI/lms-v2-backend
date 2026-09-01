@@ -40,7 +40,7 @@ class StudentCodeRunnerAttemptLiveIT extends IntegrationTestConfiguration {
     @Autowired private JdbcTemplate jdbc;
 
     @Test
-    void persistsRealSubmissionAndContributesToQuizScoreWithoutLeakingHiddenTests() {
+    void persistsRealSubmissionAndContributesToQuizScoreWithoutLeakingHiddenTests() throws Exception {
         UUID studentId = UUID.randomUUID();
         UUID teacherId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
@@ -59,6 +59,12 @@ class StudentCodeRunnerAttemptLiveIT extends IntegrationTestConfiguration {
         jdbc.update("INSERT INTO edu.attempts (id,student_id,quiz_id,quiz_release_id,status,start_time,due_time) "
                 + "VALUES (?,?,?,?,'STARTED',NOW(),NOW()+INTERVAL '30 minutes')",
                 attemptId, studentId, quizId, releaseId);
+
+        String studentQuestionJson = new ObjectMapper().writeValueAsString(
+                service.getQuestion(attemptId, quizId, questionId));
+        assertThat(studentQuestionJson)
+                .contains("\"totalPoints\":1.0", "\"timeLimitMs\":5000", "\"memoryLimitKb\":131072")
+                .doesNotContain("hidden_001", "\"value\":-3", "return value % 2 == 0");
 
         var accepted = service.execute(attemptId, studentId, quizId, questionId,
                 "bool isEven(int value) { return value % 2 == 0; }",
@@ -84,6 +90,9 @@ class StudentCodeRunnerAttemptLiveIT extends IntegrationTestConfiguration {
         assertThat(result.status()).isEqualTo("COMPLETED");
         assertThat(result.visibleResults()).extracting(item -> item.testId())
                 .containsExactly("public_001");
+        assertThat(new ObjectMapper().writeValueAsString(result))
+                .contains("\"receivedOutput\"")
+                .doesNotContain("hidden_001", "\"value\":-3");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM edu.code_submissions WHERE id=?",
                 Integer.class, accepted.submissionId())).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM edu.code_submission_test_results WHERE submission_id=?",

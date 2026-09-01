@@ -19,5 +19,6 @@ class CodeSubmissionTestResultRow {
     private Double timeMs;
     private Long memoryKb;
     private String diagnostic;
+    private String receivedOutput;
     private String engineSubmissionId;
 }

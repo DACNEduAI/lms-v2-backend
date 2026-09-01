@@ -31,4 +31,5 @@ interface CodeSubmissionRepository {
     UUID findLatestSubmissionId(@Param("attemptId") UUID attemptId, @Param("questionId") UUID questionId);
 
     UUID findLatestSubmitId(@Param("attemptId") UUID attemptId, @Param("questionId") UUID questionId);
+    UUID findLatestCompletedSubmitId(@Param("attemptId") UUID attemptId, @Param("questionId") UUID questionId);
 }

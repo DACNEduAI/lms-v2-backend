@@ -49,11 +49,16 @@ public class StudentCodeRunnerService {
                 .map(test -> new CodeRunnerStudentQuestionView.PublicTestView(
                         test.id(), test.category(), json(test.arguments()), json(test.expectedOutput())))
                 .toList();
+        var limits = contract.effectiveExecutionLimits();
+        double totalPoints = contract.privateGrading().hiddenTests().stream()
+                .mapToDouble(ExecutableAssessmentContract.TestCase::points).sum();
         return new CodeRunnerStudentQuestionView(questionId, contract.title(), contract.statement(),
                 contract.runtime().starterCode(), contract.runtime().entryPoint(),
                 contract.runtime().executionProfile().id() + ":" + contract.runtime().executionProfile().version(),
+                totalPoints, limits.wallTimeLimitMs(), limits.memoryLimitKb(),
                 submissionPort.findLatestSubmissionId(attemptId, questionId).orElse(null),
                 submissionPort.findLatestSubmitId(attemptId, questionId).orElse(null),
+                submissionPort.findLatestCompletedSubmitId(attemptId, questionId).orElse(null),
                 tests);
     }
 
@@ -195,7 +200,8 @@ public class StudentCodeRunnerService {
         List<CodeRunnerSubmissionView.VisibleTestResult> visible = results.stream()
                 .filter(result -> "PUBLIC".equals(result.visibility()))
                 .map(result -> new CodeRunnerSubmissionView.VisibleTestResult(result.externalTestId(),
-                        result.verdict(), result.timeMs(), result.memoryKb(), result.diagnostic())).toList();
+                        result.verdict(), result.timeMs(), result.memoryKb(), result.diagnostic(),
+                        result.receivedOutput())).toList();
         boolean hidesPrivateGrading = forceHidePrivate && submission.mode() == CodeSubmission.Mode.SUBMIT;
         int visiblePassed = (int) results.stream()
                 .filter(result -> "PUBLIC".equals(result.visibility()))

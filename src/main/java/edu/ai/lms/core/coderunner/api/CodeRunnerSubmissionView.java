@@ -19,5 +19,6 @@ public record CodeRunnerSubmissionView(
         List<VisibleTestResult> visibleResults) {
 
     public record VisibleTestResult(
-            String testId, String verdict, Double timeMs, Long memoryKb, String diagnostic) { }
+            String testId, String verdict, Double timeMs, Long memoryKb, String diagnostic,
+            String receivedOutput) { }
 }
