@@ -678,8 +678,8 @@ VALUES
 --      'courses/c1111111-1111-1111-1111-111111111111/DSABook_1.pdf',
 --      'PENDING', 0, NOW());
 -- -- 17. Mock Code Runner Question for Testing
--- INSERT INTO questions (id, content, type, quiz_id)
--- VALUES ('d0000000-0000-0000-0000-000000000000', 'Write a function to return the sum of two integers a and b.', 'CODE_RUNNER', '91111111-1111-1111-1111-111111111111');
+INSERT INTO questions (id, content, type, quiz_id)
+VALUES ('d0000000-0000-0000-0000-000000000000', 'Write a function to return the sum of two integers a and b.', 'CODE_RUNNER', '91111111-1111-1111-1111-111111111111');
 -- >>>>>>> feature/my-code-runner-fixes
 
 INSERT INTO code_runner_configs (id, question_id, schema_version, contract_id, contract_version, contract_status, title, statement, execution_profile_id, execution_profile_version, archetype_id, archetype_version, comparator_id, comparator_version, entry_point, signature_json, starter_code, reference_solution, revision)
