@@ -34,6 +34,7 @@ build/
 
 .fake
 .env.dev
+.env.dev.properties
 .env.prod
 
 ### Local overrides ###

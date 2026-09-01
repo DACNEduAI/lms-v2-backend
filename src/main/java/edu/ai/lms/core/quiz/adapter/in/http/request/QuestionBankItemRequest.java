@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
@@ -22,12 +24,13 @@ public record QuestionBankItemRequest(
         @NotNull Question.QuestionType questionType,
         CognitiveLevelCode cognitiveLevelCode,
         @Size(max = 10) List<@Valid AnswerRequest> answers,
-        Set<UUID> learningOutcomeIds) {
+        Set<UUID> learningOutcomeIds,
+        JsonNode codeRunnerContract) {
 
     public QuestionBankItemRequest(UUID chapterId, String content, Question.QuestionType questionType,
             CognitiveLevelCode cognitiveLevelCode, List<AnswerRequest> answers, Set<UUID> learningOutcomeIds) {
         this(chapterId, content, RichContentFormat.PLAIN_TEXT, null, RichContentFormat.PLAIN_TEXT,
-                questionType, cognitiveLevelCode, answers, learningOutcomeIds);
+                questionType, cognitiveLevelCode, answers, learningOutcomeIds, null);
     }
 
     public QuestionBankItemCommand toCommand() {
@@ -40,7 +43,8 @@ public record QuestionBankItemRequest(
                 questionType,
                 cognitiveLevelCode,
                 answers == null ? List.of() : answers.stream().map(AnswerRequest::toCommand).toList(),
-                learningOutcomeIds == null ? Set.of() : learningOutcomeIds);
+                learningOutcomeIds == null ? Set.of() : learningOutcomeIds,
+                codeRunnerContract);
     }
 
     public record AnswerRequest(

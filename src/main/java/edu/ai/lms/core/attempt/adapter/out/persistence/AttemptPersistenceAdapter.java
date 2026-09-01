@@ -23,6 +23,11 @@ class AttemptPersistenceAdapter implements SaveAttemptPort, LoadAttemptPort {
     }
 
     @Override
+    public boolean finalizeIfStillFinalizing(UUID attemptId, Double score) {
+        return attemptRepository.finalizeIfStillFinalizing(attemptId, score) > 0;
+    }
+
+    @Override
     public boolean closeIfStarted(
             UUID attemptId,
             Attempt.AttemptStatus status,
@@ -49,6 +54,11 @@ class AttemptPersistenceAdapter implements SaveAttemptPort, LoadAttemptPort {
     }
 
     @Override
+    public Optional<Attempt> getLatestActiveAttempt(UUID studentId, UUID quizId) {
+        return attemptRepository.getLatestActiveAttempt(studentId, quizId);
+    }
+
+    @Override
     public Optional<Attempt> getByIdAndStudentId(UUID attemptId, UUID studentId) {
         return attemptRepository.getByIdAndStudentId(attemptId, studentId);
     }
@@ -56,6 +66,11 @@ class AttemptPersistenceAdapter implements SaveAttemptPort, LoadAttemptPort {
     @Override
     public List<Attempt> getByStudentAndQuiz(UUID studentId, UUID quizId) {
         return attemptRepository.getByStudentAndQuiz(studentId, quizId);
+    }
+
+    @Override
+    public List<Attempt> getFinalizingAttempts() {
+        return attemptRepository.getFinalizingAttempts();
     }
 
 }

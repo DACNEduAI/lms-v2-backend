@@ -71,7 +71,7 @@ public class QuestionBankRichContentService {
                 }).toList();
         return new QuestionBankItemRequest(request.chapterId(), content.content(), content.contentFormat(),
                 explanation.content(), explanation.contentFormat(), request.questionType(),
-                request.cognitiveLevelCode(), answers, request.learningOutcomeIds());
+                request.cognitiveLevelCode(), answers, request.learningOutcomeIds(), request.codeRunnerContract());
     }
 
     private RichTextValue value(String content, RichContentFormat format) {

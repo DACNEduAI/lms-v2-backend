@@ -27,9 +27,11 @@ import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.ManageQuizLifecyclePort;
+import edu.ai.lms.core.quiz.app.port.out.ManageQuizReleasePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
+import edu.ai.lms.core.quiz.api.CodeRunnerContractSnapshotApi;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -38,12 +40,14 @@ public class QuizWorkflowService implements QuizWorkflowUseCase {
     private final LoadSignedInUserPort signedInUserPort;
     private final LoadQuizPort loadQuizPort;
     private final ManageQuizLifecyclePort lifecyclePort;
+    private final ManageQuizReleasePort releasePort;
     private final QuizAccessPolicy accessPolicy;
     private final LoadQuestionBankItemPort loadBankItemPort;
     private final LoadQuestionPort loadQuestionPort;
     private final SaveQuestionPort saveQuestionPort;
     private final SaveAnswerPort saveAnswerPort;
     private final SaveQuestionLearningOutcomePort saveQuestionLearningOutcomePort;
+    private final CodeRunnerContractSnapshotApi codeRunnerContracts;
 
     @Override
     @Transactional
@@ -87,10 +91,12 @@ public class QuizWorkflowService implements QuizWorkflowUseCase {
         }
 
         validateQuestions(quiz.getQuestions());
+        LocalDateTime publishedAt = LocalDateTime.now();
         if (!lifecyclePort.transition(courseId, quizId, version, expectedStatus,
-                QuizLifecycleStatus.PUBLISHED, true, actor.id(), LocalDateTime.now())) {
+                QuizLifecycleStatus.PUBLISHED, true, actor.id(), publishedAt)) {
             throw staleConflict();
         }
+        releasePort.publishRelease(quizId, version + 1, actor.id(), publishedAt);
         return loadRequired(courseId, quizId);
     }
 
@@ -113,6 +119,9 @@ public class QuizWorkflowService implements QuizWorkflowUseCase {
         if (!item.getLearningOutcomeIds().isEmpty()) {
             saveQuestionLearningOutcomePort.addLearningOutcomes(
                     question.getId(), List.copyOf(item.getLearningOutcomeIds()));
+        }
+        if (item.getQuestionType() == Question.QuestionType.CODE_RUNNER) {
+            codeRunnerContracts.createQuestionRevision(question.getId(), item.getCodeRunnerContractJson());
         }
         return loadQuestionPort.getById(question.getId())
                 .orElseThrow(() -> new QuizLifecycleConflictException(

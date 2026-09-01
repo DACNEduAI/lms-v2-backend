@@ -3,6 +3,7 @@ set -eu
 
 echo "Initializing LocalStack S3 buckets..."
 
+<<<<<<< HEAD
 for bucket in lms-materials lms-public; do
   # Create buckets only when absent, so container restarts preserve local data.
   if ! awslocal s3api head-bucket --bucket "$bucket" >/dev/null 2>&1; then
@@ -22,6 +23,5 @@ for bucket in lms-materials lms-public; do
       "MaxAgeSeconds": 3600
     }]
   }'
-
   echo "S3 bucket '$bucket' is ready."
 done

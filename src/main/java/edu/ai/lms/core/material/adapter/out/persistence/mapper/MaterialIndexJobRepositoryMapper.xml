@@ -5,10 +5,10 @@
     <id property="id" column="id" />
     <result property="courseId" column="course_id" />
     <result property="materialId" column="material_id" />
-    <result property="operation" column="operation" javaType="edu.ai.lms.core.material.app.domain.MaterialIndexJob$Operation" typeHandler="edu.ai.lms.config.mybatis.MaterialIndexJobOperationTypeHandler" />
+    <result property="operation" column="operation" javaType="edu.ai.lms.core.material.app.domain.MaterialIndexJob$Operation" typeHandler="edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialIndexJobOperationTypeHandler" />
     <result property="revision" column="revision" />
     <result property="fileKey" column="file_key" />
-    <result property="status" column="status" javaType="edu.ai.lms.core.material.app.domain.MaterialIndexJob$Status" typeHandler="edu.ai.lms.config.mybatis.MaterialIndexJobStatusTypeHandler" />
+    <result property="status" column="status" javaType="edu.ai.lms.core.material.app.domain.MaterialIndexJob$Status" typeHandler="edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialIndexJobStatusTypeHandler" />
     <result property="attemptCount" column="attempt_count" />
     <result property="nextAttemptAt" column="next_attempt_at" />
     <result property="leaseUntil" column="lease_until" />

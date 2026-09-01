@@ -31,6 +31,7 @@ import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.quiz.app.port.out.ManageQuizLifecyclePort;
+import edu.ai.lms.core.quiz.app.port.out.ManageQuizReleasePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionLearningOutcomePort;
 import edu.ai.lms.core.quiz.app.port.out.SaveQuestionPort;
@@ -40,6 +41,7 @@ class QuizWorkflowServiceUT {
     @Mock LoadSignedInUserPort signedInUserPort;
     @Mock LoadQuizPort loadQuizPort;
     @Mock ManageQuizLifecyclePort lifecyclePort;
+    @Mock ManageQuizReleasePort releasePort;
     @Mock QuizAccessPolicy accessPolicy;
     @Mock LoadQuestionBankItemPort loadBankItemPort;
     @Mock LoadQuestionPort loadQuestionPort;
@@ -114,6 +116,7 @@ class QuizWorkflowServiceUT {
 
         assertEquals(QuizLifecycleStatus.PUBLISHED, result.getLifecycleStatus());
         verify(accessPolicy).requireCourseTeacher(any(), eq(draft));
+        verify(releasePort).publishRelease(eq(quizId), eq(4L), eq(actorId), any());
     }
 
     @Test

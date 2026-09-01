@@ -340,7 +340,7 @@ public class AssessmentService {
         questionBank.deleteDraft(courseId, draftId, version);
         BankPlanCell replacement = new BankPlanCell(source.matrixRowId(), source.customLearningLevelId(),
                 source.chapterId(), source.chapter(), source.topic(), source.levelCode(), source.levelName(),
-                source.learningOutcomeIds(), 1, 0, 0, 0, 0, 1);
+                source.questionType(), source.learningOutcomeIds(), 1, 0, 0, 0, 0, 1);
         BankPlan replacementPlan = new BankPlan(assessment.id(), assessment.examMatrixId(),
                 assessment.allowRecentlyUsedQuestions(), 1, 0, 0, 0, 0, 1, List.of(replacement));
         String snapshot = generationSnapshot(assessment, replacementPlan, materialIds);
@@ -566,6 +566,7 @@ public class AssessmentService {
             Map<String, Object> value = new LinkedHashMap<>();
             value.put("matrixRowId", cell.matrixRowId());
             value.put("customLearningLevelId", cell.customLearningLevelId());
+            value.put("questionType", cell.questionType());
             value.put("chapterId", cell.chapterId());
             value.put("chapter", cell.chapter());
             value.put("topic", cell.topic());
@@ -581,7 +582,8 @@ public class AssessmentService {
         snapshot.put("courseId", assessment.courseId());
         snapshot.put("courseTitle", assessments.courseTitle(assessment.courseId()));
         snapshot.put("optionCount", assessment.optionCount());
-        snapshot.put("questionType", "MULTIPLE_CHOICE");
+        snapshot.put("questionType", plan.cells().stream().map(BankPlanCell::questionType).distinct().count() == 1
+                ? plan.cells().getFirst().questionType() : "MIXED");
         snapshot.put("materialIds", materialIds);
         snapshot.put("cells", cells);
         try {

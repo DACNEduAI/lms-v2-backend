@@ -308,9 +308,9 @@ public class QuizGenerationService implements GenerateQuizUseCase, GetQuizGenera
         return switch (questionType.trim().toUpperCase(java.util.Locale.ROOT)) {
             case "MULTIPLE_CHOICE" -> "MULTIPLE_CHOICE";
             case "ESSAY" -> "SHORT_ANSWER";
-            case "CODE_RUNNER" -> "CODE_RUNNER";
+            // case "CODE_RUNNER" -> "CODE_RUNNER";
             default -> throw new InvalidQuizGenerationRequestException(
-                    "Question type must be MULTIPLE_CHOICE, ESSAY, or CODE_RUNNER");
+                    "Question type must be MULTIPLE_CHOICE or ESSAY");
         };
     }
 

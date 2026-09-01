@@ -19,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -57,10 +58,12 @@ class StartAttemptServiceUT {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
+        UUID releaseId = UUID.randomUUID();
 
         CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
+                .quizReleaseId(releaseId)
                 .courseId(courseId)
             .unlimited(false)
                 .timeLimitMinutes(30)
@@ -71,7 +74,7 @@ class StartAttemptServiceUT {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(user));
         when(loadQuizAttemptPolicyPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
         when(loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)).thenReturn(Optional.of(policy));
-        when(loadAttemptPort.getLatestStartedAttempt(studentId, quizId)).thenReturn(Optional.empty());
+        when(loadAttemptPort.getLatestActiveAttempt(studentId, quizId)).thenReturn(Optional.empty());
         when(loadAttemptPort.countFinishedAttempts(studentId, quizId)).thenReturn(0L);
         when(saveAttemptPort.save(any(Attempt.class))).thenAnswer(invocation -> {
             Attempt attempt = invocation.getArgument(0);
@@ -92,6 +95,7 @@ class StartAttemptServiceUT {
         ArgumentCaptor<Attempt> captor = ArgumentCaptor.forClass(Attempt.class);
         verify(saveAttemptPort).save(captor.capture());
         assertEquals(Attempt.AttemptStatus.STARTED, captor.getValue().getStatus());
+        assertEquals(releaseId, captor.getValue().getQuizReleaseId());
         verify(scheduleAttemptAutoClosePort).schedule(any(UUID.class), any(LocalDateTime.class));
     }
 
@@ -101,10 +105,12 @@ class StartAttemptServiceUT {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
+        UUID releaseId = UUID.randomUUID();
 
         CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
+                .quizReleaseId(releaseId)
                 .courseId(courseId)
             .unlimited(false)
                 .timeLimitMinutes(30)
@@ -115,7 +121,7 @@ class StartAttemptServiceUT {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(user));
         when(loadQuizAttemptPolicyPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
         when(loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)).thenReturn(Optional.of(policy));
-        when(loadAttemptPort.getLatestStartedAttempt(studentId, quizId)).thenReturn(Optional.empty());
+        when(loadAttemptPort.getLatestActiveAttempt(studentId, quizId)).thenReturn(Optional.empty());
         when(loadAttemptPort.countFinishedAttempts(studentId, quizId)).thenReturn(1L);
 
         assertThrows(AttemptLimitExceededException.class, () -> startAttemptService.startAttempt(StartAttemptCommand.builder()
@@ -130,11 +136,13 @@ class StartAttemptServiceUT {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
+        UUID releaseId = UUID.randomUUID();
         LocalDateTime quizDueTime = LocalDateTime.now().plusHours(2);
 
         CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
+                .quizReleaseId(releaseId)
                 .courseId(courseId)
             .unlimited(false)
                 .timeLimitMinutes(null)
@@ -145,7 +153,7 @@ class StartAttemptServiceUT {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(user));
         when(loadQuizAttemptPolicyPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
         when(loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)).thenReturn(Optional.of(policy));
-        when(loadAttemptPort.getLatestStartedAttempt(studentId, quizId)).thenReturn(Optional.empty());
+        when(loadAttemptPort.getLatestActiveAttempt(studentId, quizId)).thenReturn(Optional.empty());
         when(loadAttemptPort.countFinishedAttempts(studentId, quizId)).thenReturn(0L);
         when(saveAttemptPort.save(any(Attempt.class))).thenAnswer(invocation -> {
             Attempt attempt = invocation.getArgument(0);
@@ -167,10 +175,12 @@ class StartAttemptServiceUT {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
+        UUID releaseId = UUID.randomUUID();
 
         CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
+                .quizReleaseId(releaseId)
                 .courseId(courseId)
             .unlimited(true)
                 .timeLimitMinutes(0)
@@ -181,7 +191,7 @@ class StartAttemptServiceUT {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(user));
         when(loadQuizAttemptPolicyPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
         when(loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)).thenReturn(Optional.of(policy));
-        when(loadAttemptPort.getLatestStartedAttempt(studentId, quizId)).thenReturn(Optional.empty());
+        when(loadAttemptPort.getLatestActiveAttempt(studentId, quizId)).thenReturn(Optional.empty());
         when(loadAttemptPort.countFinishedAttempts(studentId, quizId)).thenReturn(0L);
         when(saveAttemptPort.save(any(Attempt.class))).thenAnswer(invocation -> {
             Attempt attempt = invocation.getArgument(0);
@@ -204,10 +214,12 @@ class StartAttemptServiceUT {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
+        UUID releaseId = UUID.randomUUID();
 
         CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
         QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
                 .quizId(quizId)
+                .quizReleaseId(releaseId)
                 .courseId(courseId)
                 .unlimited(false)
                 .quizStartTime(LocalDateTime.now().plusMinutes(5))
@@ -218,7 +230,7 @@ class StartAttemptServiceUT {
         when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(user));
         when(loadQuizAttemptPolicyPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
         when(loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)).thenReturn(Optional.of(policy));
-        when(loadAttemptPort.getLatestStartedAttempt(studentId, quizId)).thenReturn(Optional.empty());
+        when(loadAttemptPort.getLatestActiveAttempt(studentId, quizId)).thenReturn(Optional.empty());
         when(loadAttemptPort.countFinishedAttempts(studentId, quizId)).thenReturn(0L);
 
         InvalidAttemptSubmissionException exception = assertThrows(InvalidAttemptSubmissionException.class,
@@ -228,5 +240,74 @@ class StartAttemptServiceUT {
                         .build()));
 
         assertEquals("Quiz has not started yet", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Should reject a new attempt while the previous attempt is finalizing")
+    void shouldRejectAttemptWhilePreviousAttemptIsFinalizing() {
+        UUID studentId = UUID.randomUUID();
+        UUID courseId = UUID.randomUUID();
+        UUID quizId = UUID.randomUUID();
+
+        CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
+        QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
+                .quizId(quizId)
+                .quizReleaseId(UUID.randomUUID())
+                .courseId(courseId)
+                .unlimited(true)
+                .build();
+        Attempt finalizing = Attempt.builder()
+                .id(UUID.randomUUID())
+                .studentId(studentId)
+                .quizId(quizId)
+                .status(Attempt.AttemptStatus.FINALIZING)
+                .build();
+
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(user));
+        when(loadQuizAttemptPolicyPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
+        when(loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)).thenReturn(Optional.of(policy));
+        when(loadAttemptPort.getLatestActiveAttempt(studentId, quizId)).thenReturn(Optional.of(finalizing));
+
+        InvalidAttemptSubmissionException exception = assertThrows(
+                InvalidAttemptSubmissionException.class,
+                () -> startAttemptService.startAttempt(StartAttemptCommand.builder()
+                        .courseId(courseId)
+                        .quizId(quizId)
+                        .build()));
+
+        assertEquals("There is already an active or finalizing attempt for this quiz", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Should translate a concurrent active-attempt insert race to conflict")
+    void shouldRejectConcurrentAttemptInsertRace() {
+        UUID studentId = UUID.randomUUID();
+        UUID courseId = UUID.randomUUID();
+        UUID quizId = UUID.randomUUID();
+
+        CurrentActor user = CurrentActor.builder().id(studentId).role(Roles.STUDENT).build();
+        QuizAttemptPolicy policy = QuizAttemptPolicy.builder()
+                .quizId(quizId)
+                .quizReleaseId(UUID.randomUUID())
+                .courseId(courseId)
+                .unlimited(true)
+                .build();
+
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(user));
+        when(loadQuizAttemptPolicyPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
+        when(loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)).thenReturn(Optional.of(policy));
+        when(loadAttemptPort.getLatestActiveAttempt(studentId, quizId)).thenReturn(Optional.empty());
+        when(loadAttemptPort.countFinishedAttempts(studentId, quizId)).thenReturn(0L);
+        when(saveAttemptPort.save(any(Attempt.class)))
+                .thenThrow(new DuplicateKeyException("uq_attempts_student_quiz_active"));
+
+        InvalidAttemptSubmissionException exception = assertThrows(
+                InvalidAttemptSubmissionException.class,
+                () -> startAttemptService.startAttempt(StartAttemptCommand.builder()
+                        .courseId(courseId)
+                        .quizId(quizId)
+                        .build()));
+
+        assertEquals("There is already an active or finalizing attempt for this quiz", exception.getMessage());
     }
 }

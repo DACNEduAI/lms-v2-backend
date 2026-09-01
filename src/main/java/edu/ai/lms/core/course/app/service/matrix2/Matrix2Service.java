@@ -89,7 +89,7 @@ public class Matrix2Service {
         List<Matrix2RowPayload> rows = source.rows().stream().map(row -> new Matrix2RowPayload(
                 UUID.randomUUID(), row.chapterId(), row.mappedLearningOutcomeId(),
                 row.cellCounts().stream().map(cell -> new Matrix2CellCount(
-                        levelIds.get(cell.customLearningLevelId()), cell.questionCount())).toList())).toList();
+                        levelIds.get(cell.customLearningLevelId()), cell.questionCount(), cell.questionType())).toList())).toList();
         String title = request == null || request.title() == null || request.title().isBlank()
                 ? source.title() + " (Copy)" : request.title().trim();
         return create(courseId, new Matrix2Payload(title, source.description(), rows, levels, null));
@@ -167,13 +167,14 @@ public class Matrix2Service {
 
         Map<UUID, List<Matrix2CellCount>> countsByRow = new HashMap<>();
         jdbcTemplate.query("""
-                SELECT r.id AS row_id, c.custom_learning_level_id, c.question_count
+                SELECT r.id AS row_id, c.custom_learning_level_id, c.question_count, c.question_type
                 FROM edu.exam_matrix_2_rows r
                 JOIN edu.exam_matrix_2_cell_counts c ON c.row_id = r.id
                 WHERE r.matrix_id = ?
                 """, (RowCallbackHandler) rs -> countsByRow
                 .computeIfAbsent(rs.getObject("row_id", UUID.class), ignored -> new ArrayList<>())
-                .add(new Matrix2CellCount(rs.getObject("custom_learning_level_id", UUID.class), rs.getInt("question_count"))), matrixId);
+                .add(new Matrix2CellCount(rs.getObject("custom_learning_level_id", UUID.class), rs.getInt("question_count"),
+                        QuestionType.valueOf(rs.getString("question_type")))), matrixId);
 
         List<Matrix2Row> rows = jdbcTemplate.query("""
                 SELECT r.id, r.chapter_id, c.title AS chapter_name, r.mapped_learning_outcome_id,
@@ -213,9 +214,9 @@ public class Matrix2Service {
             for (Matrix2CellCount count : safe(row.cellCounts())) {
                 if (count.questionCount() <= 0) continue;
                 jdbcTemplate.update("""
-                        INSERT INTO edu.exam_matrix_2_cell_counts (row_id, custom_learning_level_id, question_count)
-                        VALUES (?, ?, ?)
-                        """, row.id(), count.customLearningLevelId(), count.questionCount());
+                        INSERT INTO edu.exam_matrix_2_cell_counts (row_id, custom_learning_level_id, question_count, question_type)
+                        VALUES (?, ?, ?, ?)
+                        """, row.id(), count.customLearningLevelId(), count.questionCount(), questionType(count.questionType()).name());
             }
         }
     }
@@ -247,6 +248,7 @@ public class Matrix2Service {
                     throw badRequest("A Matrix 2 count references an unknown learning level");
                 }
                 if (count.questionCount() < 0) throw badRequest("Matrix 2 counts must be zero or greater");
+                questionType(count.questionType());
                 if (!countedLevels.add(count.customLearningLevelId())) throw badRequest("Duplicate count in a Matrix 2 row");
             }
         }
@@ -324,7 +326,8 @@ public class Matrix2Service {
                              String mappedLearningOutcomeName, int sortOrder,
                              List<Matrix2CellCount> cellCounts) { }
     public record Matrix2LearningLevel(UUID id, String name, int sortOrder) { }
-    public record Matrix2CellCount(UUID customLearningLevelId, int questionCount) { }
+    public enum QuestionType { MULTIPLE_CHOICE, CODE_RUNNER }
+    public record Matrix2CellCount(UUID customLearningLevelId, int questionCount, QuestionType questionType) { }
     public record Matrix2Payload(String title, String description, List<Matrix2RowPayload> rows,
                                  List<Matrix2LearningLevelPayload> customLearningLevels, Long expectedVersion) { }
     public record Matrix2RowPayload(UUID id, UUID chapterId, UUID mappedLearningOutcomeId,
@@ -332,4 +335,8 @@ public class Matrix2Service {
     public record Matrix2LearningLevelPayload(UUID id, String name) { }
     public record Matrix2PublishRequest(long expectedVersion) { }
     public record Matrix2CopyRequest(String title) { }
+
+    private static QuestionType questionType(QuestionType value) {
+        return value == null ? QuestionType.MULTIPLE_CHOICE : value;
+    }
 }

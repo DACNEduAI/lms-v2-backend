@@ -7,7 +7,7 @@
     <result property="indexProfile" column="index_profile" />
     <result property="sourceHash" column="source_hash" />
     <result property="collectionName" column="collection_name" />
-    <result property="status" column="status" javaType="edu.ai.lms.core.material.app.domain.DocumentIndex$Status" typeHandler="edu.ai.lms.config.mybatis.DocumentIndexStatusTypeHandler" />
+    <result property="status" column="status" javaType="edu.ai.lms.core.material.app.domain.DocumentIndex$Status" typeHandler="edu.ai.lms.core.material.adapter.out.persistence.mybatis.DocumentIndexStatusTypeHandler" />
     <result property="chunkCount" column="chunk_count" />
     <result property="errorMessage" column="error_message" />
     <result property="indexedAt" column="indexed_at" />

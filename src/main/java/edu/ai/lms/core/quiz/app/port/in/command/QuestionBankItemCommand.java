@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import edu.ai.lms.core.quiz.app.domain.Question;
 import edu.ai.lms.core.quiz.app.domain.questionbank.CognitiveLevelCode;
 import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
@@ -17,12 +19,13 @@ public record QuestionBankItemCommand(
         Question.QuestionType questionType,
         CognitiveLevelCode cognitiveLevelCode,
         List<Answer> answers,
-        Set<UUID> learningOutcomeIds) {
+        Set<UUID> learningOutcomeIds,
+        JsonNode codeRunnerContract) {
 
     public QuestionBankItemCommand(UUID chapterId, String content, Question.QuestionType questionType,
             CognitiveLevelCode cognitiveLevelCode, List<Answer> answers, Set<UUID> learningOutcomeIds) {
         this(chapterId, content, RichContentFormat.PLAIN_TEXT, null, RichContentFormat.PLAIN_TEXT,
-                questionType, cognitiveLevelCode, answers, learningOutcomeIds);
+                questionType, cognitiveLevelCode, answers, learningOutcomeIds, null);
     }
 
     public record Answer(String content, RichContentFormat contentFormat, boolean correct) {

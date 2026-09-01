@@ -76,6 +76,23 @@ public abstract class IntegrationTestConfiguration {
 
         // Disable Spring Modulith JDBC event publication for tests
         registry.add("spring.modulith.events.jdbc.enabled", () -> "false");
+        
+        registry.add("quiz.generation.webhook.secret", () -> "testwebhooksecrettestwebhooksecret");
+
+        // Integration tests drive worker completion explicitly. This removes
+        // scheduler timing races from lifecycle assertions.
+        registry.add("code-runner.worker.delay-ms", () -> "3600000");
+
+        // Storage configuration for S3 DevConfig
+        registry.add("dev.storage.endPoint", () -> "http://localhost:4566");
+        registry.add("dev.storage.region", () -> "us-east-1");
+        registry.add("dev.storage.accessKey", () -> "test");
+        registry.add("dev.storage.secretKey", () -> "test");
+        registry.add("dev.storage.bucketName", () -> "lms-materials");
+        registry.add("dev.storage.forcePathStyle", () -> "true");
+        
+        registry.add("quiz.rich-content.public-bucket", () -> "lms-materials");
+        registry.add("STORAGE_PUBLIC_BUCKET", () -> "lms-materials");
     }
 
     @BeforeEach

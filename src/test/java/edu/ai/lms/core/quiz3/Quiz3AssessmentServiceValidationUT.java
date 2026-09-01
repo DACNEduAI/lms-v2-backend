@@ -52,11 +52,33 @@ class Quiz3AssessmentServiceValidationUT {
                 """.formatted(rowId, outcomeId, levelId));
         var answers = List.of(new Quiz3Models.GeneratedAnswer("A", true, ""), new Quiz3Models.GeneratedAnswer("B", false, ""),
                 new Quiz3Models.GeneratedAnswer("C", false, ""), new Quiz3Models.GeneratedAnswer("D", false, ""));
-        var questions = List.of(new Quiz3Models.GeneratedQuestion("Q1", "MULTIPLE_CHOICE", rowId, levelId, outcomeId, answers, null),
-                new Quiz3Models.GeneratedQuestion("Q2", "MULTIPLE_CHOICE", rowId, levelId, outcomeId, answers, null));
+        var questions = List.of(new Quiz3Models.GeneratedQuestion("Q1", "MULTIPLE_CHOICE", rowId, levelId, outcomeId, answers, null, null),
+                new Quiz3Models.GeneratedQuestion("Q2", "MULTIPLE_CHOICE", rowId, levelId, outcomeId, answers, null, null));
         assertDoesNotThrow(() -> Quiz3AssessmentService.validateCallback(snapshot, questions, 2));
         assertThrows(ResponseStatusException.class, () -> Quiz3AssessmentService.validateCallback(snapshot, questions.subList(0, 1), 1));
         assertEquals(List.of(), Quiz3AssessmentService.coverageDifferences(Map.of("row/level/lo", 2), Map.of("row/level/lo", 2)));
         assertEquals(1, Quiz3AssessmentService.coverageDifferences(Map.of("row/level/lo", 2), Map.of("row/level/lo", 1)).size());
+    }
+
+    @Test
+    void validatesCodeRunnerAgainstTheQuestionTypeAllocatedByTheMatrix() throws Exception {
+        UUID rowId = UUID.randomUUID(), levelId = UUID.randomUUID(), outcomeId = UUID.randomUUID();
+        var mapper = new ObjectMapper();
+        var snapshot = mapper.readTree("""
+                {"matrix":{"rows":[{"id":"%s","learningOutcome":{"id":"%s"},"cells":[{
+                  "customLearningLevelId":"%s","questionCount":1,"questionType":"CODE_RUNNER"}]}]}}
+                """.formatted(rowId, outcomeId, levelId));
+        var contract = mapper.readTree("{\"schema_version\":\"2.0.0\"}");
+        var codeRunner = new Quiz3Models.GeneratedQuestion("Implement sum", "CODE_RUNNER", rowId, levelId,
+                outcomeId, List.of(), null, contract);
+
+        assertDoesNotThrow(() -> Quiz3AssessmentService.validateCallback(snapshot, List.of(codeRunner), 1));
+        var wrongType = new Quiz3Models.GeneratedQuestion("Q", "MULTIPLE_CHOICE", rowId, levelId,
+                outcomeId, List.of(
+                    new Quiz3Models.GeneratedAnswer("A", true, ""), new Quiz3Models.GeneratedAnswer("B", false, ""),
+                    new Quiz3Models.GeneratedAnswer("C", false, ""), new Quiz3Models.GeneratedAnswer("D", false, "")),
+                null, null);
+        assertThrows(ResponseStatusException.class,
+                () -> Quiz3AssessmentService.validateCallback(snapshot, List.of(wrongType), 1));
     }
 }

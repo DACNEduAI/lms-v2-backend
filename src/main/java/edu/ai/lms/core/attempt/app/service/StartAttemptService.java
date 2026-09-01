@@ -17,6 +17,7 @@ import edu.ai.lms.core.attempt.app.port.out.ScheduleAttemptAutoClosePort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
 import edu.ai.lms.core.attempt.app.domain.CurrentActor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,8 +56,8 @@ public class StartAttemptService implements StartAttemptUseCase {
         LocalDateTime now = LocalDateTime.now();
         attemptAutoCloseService.isAlreadyStartedAttemptExpiredValidation(user.getId(), command.courseId(), command.quizId(), now);
 
-        if (loadAttemptPort.getLatestStartedAttempt(user.getId(), command.quizId()).isPresent()) {
-            throw new InvalidAttemptSubmissionException("There is already an active started attempt for this quiz");
+        if (loadAttemptPort.getLatestActiveAttempt(user.getId(), command.quizId()).isPresent()) {
+            throw new InvalidAttemptSubmissionException("There is already an active or finalizing attempt for this quiz");
         }
 
         long finishedAttempts = loadAttemptPort.countFinishedAttempts(user.getId(), command.quizId());
@@ -68,15 +69,27 @@ public class StartAttemptService implements StartAttemptUseCase {
 
         LocalDateTime dueTime = resolveDueTime(policy, now);
 
+        if (policy.getQuizReleaseId() == null) {
+            throw new InvalidAttemptSubmissionException("Quiz does not have an active published release");
+        }
+
         Attempt attempt = Attempt.builder()
                 .studentId(user.getId())
                 .quizId(command.quizId())
+                .quizReleaseId(policy.getQuizReleaseId())
                 .startTime(now)
                 .dueTime(dueTime)
                 .status(Attempt.AttemptStatus.STARTED)
                 .build();
 
-        Attempt saved = saveAttemptPort.save(attempt);
+        Attempt saved;
+        try {
+            saved = saveAttemptPort.save(attempt);
+        } catch (DuplicateKeyException exception) {
+            // The partial unique index is the final guard against two
+            // concurrent start requests passing the read check together.
+            throw new InvalidAttemptSubmissionException("There is already an active or finalizing attempt for this quiz");
+        }
         if (saved.getDueTime() != null) {
             scheduleAttemptAutoClosePort.schedule(saved.getId(), saved.getDueTime().plusSeconds(SUBMISSION_GRACE_SECONDS));
         }

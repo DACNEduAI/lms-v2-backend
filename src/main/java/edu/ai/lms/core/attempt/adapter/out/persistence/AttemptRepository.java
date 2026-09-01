@@ -16,6 +16,8 @@ interface AttemptRepository {
 
     int update(Attempt entity);
 
+    int finalizeIfStillFinalizing(@Param("attemptId") UUID attemptId, @Param("score") Double score);
+
     default Attempt save(Attempt entity) {
         if (entity.getId() == null) {
             entity.setId(UUID.randomUUID());
@@ -44,7 +46,11 @@ interface AttemptRepository {
 
     Optional<Attempt> getLatestStartedAttempt(@Param("studentId") UUID studentId, @Param("quizId") UUID quizId);
 
+    Optional<Attempt> getLatestActiveAttempt(@Param("studentId") UUID studentId, @Param("quizId") UUID quizId);
+
     long countFinishedAttempts(@Param("studentId") UUID studentId, @Param("quizId") UUID quizId);
 
     List<Attempt> getByStudentAndQuiz(@Param("studentId") UUID studentId, @Param("quizId") UUID quizId);
+
+    List<Attempt> getFinalizingAttempts();
 }

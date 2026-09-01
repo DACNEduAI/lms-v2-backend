@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 public final class Quiz3Models {
     private Quiz3Models() { }
 
@@ -50,7 +52,7 @@ public final class Quiz3Models {
     public record QuizPayload(String quizName, List<GeneratedQuestion> questions) { }
     public record GeneratedQuestion(String content, String type, UUID matrixRowId,
             UUID customLearningLevelId, UUID learningOutcomeId, List<GeneratedAnswer> answers,
-            Map<String, Object> qbank2Reference) { }
+            Map<String, Object> qbank2Reference, JsonNode codeRunnerContract) { }
     public record GeneratedAnswer(String content, boolean isCorrect, String explanation) { }
     public record ProgressPayload(UUID jobId, UUID assessmentId, int attempt,
             int generatedQuestionCount) { }

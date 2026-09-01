@@ -18,6 +18,7 @@ public class Attempt {
 
     public enum AttemptStatus {
         STARTED,
+        FINALIZING,
         FINISHED,
         ERROR
     }
@@ -28,6 +29,8 @@ public class Attempt {
 
     private UUID quizId;
 
+    private UUID quizReleaseId;
+
     private Double score;
 
     private LocalDateTime startTime;
@@ -36,13 +39,25 @@ public class Attempt {
 
     private LocalDateTime submittedTime;
 
-    private Integer timeSpentSeconds;
+    private LocalDateTime finishedTime;
 
-    private AttemptStatus status;
+    private Integer timeSpentSeconds;
 
     private String errorReason;
 
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    private AttemptStatus status;
+
+    private Double percentage;
+
+    public void updateScore(Double maxScore) {
+        if (maxScore == null || maxScore == 0.0) {
+            this.percentage = 100.0;
+        } else {
+            this.percentage = (this.score / maxScore) * 100;
+        }
+    }
 }

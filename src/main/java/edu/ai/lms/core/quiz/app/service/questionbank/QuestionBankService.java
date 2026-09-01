@@ -37,6 +37,7 @@ import edu.ai.lms.core.quiz.app.port.out.ValidateLearningOutcomesPort;
 import edu.ai.lms.core.quiz.app.port.out.ValidateQuestionBankReferencesPort;
 import edu.ai.lms.core.quiz.app.service.richcontent.RichContentPolicyService;
 import edu.ai.lms.core.quiz.adapter.out.persistence.RichContentAssetRepository;
+import edu.ai.lms.core.quiz.api.CodeRunnerContractSnapshotApi;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -52,14 +53,15 @@ public class QuestionBankService implements QuestionBankUseCase {
     private final ValidateQuestionBankReferencesPort referencesPort;
     private final RichContentPolicyService richContentPolicy;
     private final RichContentAssetRepository richContentAssets;
+    private final CodeRunnerContractSnapshotApi codeRunnerContracts;
 
     @Override
     @Transactional
     public QuestionDraft createDraft(UUID courseId, QuestionBankItemCommand command) {
         CurrentActor actor = requireTeacher(courseId);
-        validateDraft(courseId, command);
+        String codeRunnerContract = validateDraft(courseId, command);
         return saveItemPort.createDraft(
-                toDraft(courseId, actor.id(), QuestionBankSourceType.MANUAL, command));
+                toDraft(courseId, actor.id(), QuestionBankSourceType.MANUAL, command, codeRunnerContract));
     }
 
     @Override
@@ -101,6 +103,7 @@ public class QuestionBankService implements QuestionBankUseCase {
                 .cognitiveLevelName(source.getCognitiveLevelName()).content(source.getContent())
                 .contentFormat(source.getContentFormat()).explanation(source.getExplanation())
                 .explanationFormat(source.getExplanationFormat()).questionType(source.getQuestionType())
+                .codeRunnerContractJson(source.getCodeRunnerContractJson())
                 .sourceType(source.getSourceType()).createdBy(actor.id()).supersedesBankQuestionId(source.getId())
                 .answers(new ArrayList<>(copyAnswers(source.getAnswers())))
                 .learningOutcomeIds(new LinkedHashSet<>(source.getLearningOutcomeIds())).build();
@@ -115,9 +118,10 @@ public class QuestionBankService implements QuestionBankUseCase {
         requireTeacher(courseId);
         QuestionDraft current = loadDraftRequired(courseId, draftId);
         requireVersion(current, version);
-        validateDraft(courseId, command);
+        String codeRunnerContract = validateDraft(courseId, command);
 
-        QuestionDraft replacement = toDraft(courseId, current.getCreatedBy(), current.getSourceType(), command);
+        QuestionDraft replacement = toDraft(courseId, current.getCreatedBy(), current.getSourceType(), command,
+                codeRunnerContract);
         replacement.setId(draftId);
         if (!saveItemPort.replaceDraft(replacement, version)) throw staleConflict();
         return loadDraftRequired(courseId, draftId);
@@ -143,6 +147,7 @@ public class QuestionBankService implements QuestionBankUseCase {
                 .explanation(draft.getExplanation())
                 .explanationFormat(draft.getExplanationFormat())
                 .questionType(draft.getQuestionType())
+                .codeRunnerContractJson(draft.getCodeRunnerContractJson())
                 .sourceType(draft.getSourceType())
                 .createdBy(draft.getCreatedBy())
                 .supersedesBankQuestionId(draft.getSupersedesBankQuestionId())
@@ -192,26 +197,39 @@ public class QuestionBankService implements QuestionBankUseCase {
                 criteria.sourceType(), page, size);
     }
 
-    private void validateDraft(UUID courseId, QuestionBankItemCommand command) {
+    private String validateDraft(UUID courseId, QuestionBankItemCommand command) {
         if (command == null || !richContentPolicy.hasMeaningfulContent(toRichText(command.content(), command.contentFormat()))) {
             throw new QuestionBankValidationException("Question content is required");
         }
-        if (command.questionType() != Question.QuestionType.MULTIPLE_CHOICE) {
-            throw new QuestionBankValidationException("MVP supports MULTIPLE_CHOICE questions only");
-        }
+        if (command.questionType() == null) throw new QuestionBankValidationException("Question type is required");
         List<QuestionBankItemCommand.Answer> answers = safeAnswers(command.answers());
-        if (!Set.of(4, 5).contains(answers.size())) {
-            throw new QuestionBankValidationException("MVP multiple-choice questions require exactly four or five answers");
-        }
-        if (answers.stream().anyMatch(answer -> !richContentPolicy.hasMeaningfulContent(
-                toRichText(answer.content(), answer.contentFormat())))) {
-            throw new QuestionBankValidationException("Saved answers cannot be blank");
-        }
-        if (answers.stream().filter(QuestionBankItemCommand.Answer::correct).count() > 1) {
-            throw new QuestionBankValidationException("A multiple-choice Draft can have at most one correct answer");
+        String codeRunnerContract = null;
+        if (command.questionType() == Question.QuestionType.MULTIPLE_CHOICE) {
+            if (!Set.of(4, 5).contains(answers.size())) {
+                throw new QuestionBankValidationException("Multiple-choice questions require exactly four or five answers");
+            }
+            if (answers.stream().anyMatch(answer -> !richContentPolicy.hasMeaningfulContent(
+                    toRichText(answer.content(), answer.contentFormat())))) {
+                throw new QuestionBankValidationException("Saved answers cannot be blank");
+            }
+            if (answers.stream().filter(QuestionBankItemCommand.Answer::correct).count() > 1) {
+                throw new QuestionBankValidationException("A multiple-choice Draft can have at most one correct answer");
+            }
+            if (command.codeRunnerContract() != null && !command.codeRunnerContract().isNull()) {
+                throw new QuestionBankValidationException("Only Code Runner questions may contain a Code Runner contract");
+            }
+        } else if (command.questionType() == Question.QuestionType.CODE_RUNNER) {
+            if (!answers.isEmpty()) {
+                throw new QuestionBankValidationException("Code Runner questions cannot contain answer choices");
+            }
+            codeRunnerContract = normalizeCodeRunnerContract(command.codeRunnerContract() == null
+                    ? null : command.codeRunnerContract().toString());
+        } else {
+            throw new QuestionBankValidationException("Quiz2 currently supports MULTIPLE_CHOICE and CODE_RUNNER questions");
         }
         validateReferences(courseId, command.chapterId(), safeOutcomes(command.learningOutcomeIds()));
         resolveCognitiveLevel(command.cognitiveLevelCode());
+        return codeRunnerContract;
     }
 
     private void validateForBank(UUID courseId, QuestionDraft item) {
@@ -224,16 +242,30 @@ public class QuestionBankService implements QuestionBankUseCase {
         if (item.getCognitiveLevelId() == null) {
             throw new QuestionBankValidationException("Cognitive level is required before validation");
         }
-        if (item.getAnswers() == null || !Set.of(4, 5).contains(item.getAnswers().size())) {
-            throw new QuestionBankValidationException("Validated multiple-choice questions require exactly four or five answers");
+        if (!richContentPolicy.hasMeaningfulContent(toRichText(item.getContent(), item.getContentFormat()))) {
+            throw new QuestionBankValidationException("Validated question content cannot be blank");
         }
-        if (!richContentPolicy.hasMeaningfulContent(toRichText(item.getContent(), item.getContentFormat()))
-                || item.getAnswers().stream().anyMatch(answer -> !richContentPolicy.hasMeaningfulContent(
-                        toRichText(answer.getContent(), answer.getContentFormat())))) {
-            throw new QuestionBankValidationException("Validated answers cannot be blank");
-        }
-        if (item.getAnswers().stream().filter(QuestionBankAnswer::isCorrect).count() != 1) {
-            throw new QuestionBankValidationException("Exactly one correct answer is required before validation");
+        if (item.getQuestionType() == Question.QuestionType.MULTIPLE_CHOICE) {
+            if (item.getAnswers() == null || !Set.of(4, 5).contains(item.getAnswers().size())) {
+                throw new QuestionBankValidationException("Validated multiple-choice questions require exactly four or five answers");
+            }
+            if (item.getAnswers().stream().anyMatch(answer -> !richContentPolicy.hasMeaningfulContent(
+                    toRichText(answer.getContent(), answer.getContentFormat())))) {
+                throw new QuestionBankValidationException("Validated answers cannot be blank");
+            }
+            if (item.getAnswers().stream().filter(QuestionBankAnswer::isCorrect).count() != 1) {
+                throw new QuestionBankValidationException("Exactly one correct answer is required before validation");
+            }
+            if (item.getCodeRunnerContractJson() != null) {
+                throw new QuestionBankValidationException("Only Code Runner questions may contain a Code Runner contract");
+            }
+        } else if (item.getQuestionType() == Question.QuestionType.CODE_RUNNER) {
+            if (item.getAnswers() != null && !item.getAnswers().isEmpty()) {
+                throw new QuestionBankValidationException("Code Runner questions cannot contain answer choices");
+            }
+            item.setCodeRunnerContractJson(normalizeCodeRunnerContract(item.getCodeRunnerContractJson()));
+        } else {
+            throw new QuestionBankValidationException("Quiz2 currently supports MULTIPLE_CHOICE and CODE_RUNNER questions");
         }
         validateReferences(courseId, item.getChapterId(), item.getLearningOutcomeIds());
     }
@@ -248,7 +280,7 @@ public class QuestionBankService implements QuestionBankUseCase {
     }
 
     private QuestionDraft toDraft(UUID courseId, UUID creatorId, QuestionBankSourceType sourceType,
-            QuestionBankItemCommand command) {
+            QuestionBankItemCommand command, String codeRunnerContract) {
         CognitiveLevelOption cognitiveLevel = resolveCognitiveLevel(command.cognitiveLevelCode());
         RichTextValue questionContent = sanitizeRequired(command.content(), command.contentFormat(),
                 RichContentPolicyService.MAX_PROMPT_HTML_LENGTH, "Question content is required");
@@ -275,6 +307,7 @@ public class QuestionBankService implements QuestionBankUseCase {
                 .explanation(questionExplanation.content().isBlank() ? null : questionExplanation.content())
                 .explanationFormat(questionExplanation.contentFormat())
                 .questionType(command.questionType())
+                .codeRunnerContractJson(codeRunnerContract)
                 .sourceType(sourceType)
                 .createdBy(creatorId)
                 .answers(new ArrayList<>(answers))
@@ -323,6 +356,14 @@ public class QuestionBankService implements QuestionBankUseCase {
 
     private String trimToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String normalizeCodeRunnerContract(String contractJson) {
+        try {
+            return codeRunnerContracts.normalizeForReview(contractJson);
+        } catch (IllegalArgumentException ex) {
+            throw new QuestionBankValidationException(ex.getMessage());
+        }
     }
 
     private RichTextValue toRichText(String content, RichContentFormat format) {

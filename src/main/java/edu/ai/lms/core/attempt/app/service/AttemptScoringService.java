@@ -2,6 +2,9 @@ package edu.ai.lms.core.attempt.app.service;
 
 import edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey;
 import edu.ai.lms.core.attempt.app.domain.SubmittedAnswer;
+import edu.ai.lms.core.attempt.app.exception.InvalidAttemptSubmissionException;
+import edu.ai.lms.core.attempt.app.port.out.AttemptCodeRunnerPort;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -16,18 +19,25 @@ import java.util.stream.Collectors;
  * <p>
  * Each gradable question (MULTIPLE_CHOICE / TRUE_FALSE) has the same weight.
  * The total score is scaled to {@code DEFAULT_MAX_SCORE} (10 points by default).
- * ESSAY and not-yet-executable CODE_RUNNER questions are excluded from automatic scoring.
+ * ESSAY is excluded; Code Runner contributes the ratio from a completed SUBMIT bound to this attempt.
  */
 @Service
+@RequiredArgsConstructor
 public class AttemptScoringService {
+
+    private final AttemptCodeRunnerPort codeRunnerPort;
 
     /** The maximum possible score for any quiz attempt. */
     public static final double DEFAULT_MAX_SCORE = 10.0;
 
-    public double calculateScore(List<QuestionAnswerKey> answerKeys, List<SubmittedAnswer> submittedAnswers) {
-        if (answerKeys == null || answerKeys.isEmpty() || submittedAnswers == null || submittedAnswers.isEmpty()) {
-            return 0.0;
+    public record ScoringResult(double score, double codeRunnerScore, boolean hasPendingSubmissions) {}
+
+    public ScoringResult calculateScore(List<QuestionAnswerKey> answerKeys, List<SubmittedAnswer> submittedAnswers,
+                                        UUID attemptId, UUID studentId) {
+        if (answerKeys == null || answerKeys.isEmpty()) {
+            return new ScoringResult(0.0, 0.0, false);
         }
+        List<SubmittedAnswer> answers = submittedAnswers == null ? List.of() : submittedAnswers;
 
         // Build lookup maps from the answer key
         Map<UUID, QuestionAnswerKey.QuestionType> questionTypes = answerKeys.stream()
@@ -44,10 +54,10 @@ public class AttemptScoringService {
                         Collectors.mapping(QuestionAnswerKey::getCorrectAnswerNumber, Collectors.toSet())
                 ));
 
-        Map<UUID, Long> submittedByQuestion = submittedAnswers.stream()
+        Map<UUID, SubmittedAnswer> submittedByQuestion = answers.stream()
                 .collect(Collectors.toMap(
                         SubmittedAnswer::getQuestionId,
-                        SubmittedAnswer::getStudentAnswerId,
+                        answer -> answer,
                         (left, right) -> left
                 ));
 
@@ -62,33 +72,49 @@ public class AttemptScoringService {
                 .count();
 
         if (totalGradable == 0) {
-            return 0.0;
+            return new ScoringResult(0.0, 0.0, false);
         }
 
-        // Count correctly answered questions
-        long correct = 0;
-        for (Map.Entry<UUID, Long> entry : submittedByQuestion.entrySet()) {
-            UUID questionId = entry.getKey();
-            QuestionAnswerKey.QuestionType questionType = questionTypes.get(questionId);
-
-            if (!isAutomaticallyGradable(questionType)) {
-                continue;
-            }
-
-            Set<Long> correctAnswers = correctAnswersByQuestion.getOrDefault(questionId, Collections.emptySet());
-            if (correctAnswers.contains(entry.getValue())) {
-                correct++;
+        double earnedRatios = 0;
+        double codeRunnerEarnedRatios = 0;
+        boolean hasPendingSubmissions = false;
+        for (UUID questionId : questionTypes.keySet()) {
+            QuestionAnswerKey.QuestionType type = questionTypes.get(questionId);
+            if (!isAutomaticallyGradable(type)) continue;
+            SubmittedAnswer answer = submittedByQuestion.get(questionId);
+            if (answer == null) continue;
+            if (type == QuestionAnswerKey.QuestionType.CODE_RUNNER) {
+                if (answer.getCodeSubmissionId() == null) continue;
+                if (!codeRunnerPort.isValidSubmit(answer.getCodeSubmissionId(), attemptId, studentId, questionId)) {
+                    throw new InvalidAttemptSubmissionException("Code submission does not belong to this attempt");
+                }
+                var ratio = codeRunnerPort.findCompletedSubmitRatio(
+                        answer.getCodeSubmissionId(), attemptId, studentId, questionId);
+                if (ratio.isEmpty()) {
+                    hasPendingSubmissions = true;
+                    continue;
+                }
+                earnedRatios += ratio.getAsDouble();
+                codeRunnerEarnedRatios += ratio.getAsDouble();
+            } else {
+                Set<Long> correctAnswers = correctAnswersByQuestion.getOrDefault(questionId, Collections.emptySet());
+                if (answer.getStudentAnswerId() != null && correctAnswers.contains(answer.getStudentAnswerId())) {
+                    earnedRatios += 1;
+                }
             }
         }
 
         // Scale to DEFAULT_MAX_SCORE
-        double rawRatio = (double) correct / totalGradable;
+        double rawRatio = earnedRatios / totalGradable;
         double score = Math.round(rawRatio * DEFAULT_MAX_SCORE * 100.0) / 100.0;
-        return score;
+        double codeRunnerScore = Math.round((codeRunnerEarnedRatios / totalGradable)
+                * DEFAULT_MAX_SCORE * 100.0) / 100.0;
+        return new ScoringResult(score, codeRunnerScore, hasPendingSubmissions);
     }
 
     private boolean isAutomaticallyGradable(QuestionAnswerKey.QuestionType type) {
         return type == QuestionAnswerKey.QuestionType.MULTIPLE_CHOICE
-                || type == QuestionAnswerKey.QuestionType.TRUE_FALSE;
+                || type == QuestionAnswerKey.QuestionType.TRUE_FALSE
+                || type == QuestionAnswerKey.QuestionType.CODE_RUNNER;
     }
 }

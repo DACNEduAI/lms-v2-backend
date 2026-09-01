@@ -18,4 +18,6 @@ public class SubmittedAnswer {
     private UUID questionId;
 
     private Long studentAnswerId;
+
+    private UUID codeSubmissionId;
 }

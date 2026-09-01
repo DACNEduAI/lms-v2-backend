@@ -6,6 +6,7 @@ import edu.ai.lms.core.attempt.app.exception.AttemptNotFoundException;
 import edu.ai.lms.core.attempt.app.exception.InvalidAttemptSubmissionException;
 import edu.ai.lms.core.attempt.app.exception.QuizNotFoundForAttemptException;
 import edu.ai.lms.core.attempt.app.exception.UserNotAuthenticatedForAttemptException;
+import edu.ai.lms.core.coderunner.api.CodeRunnerApiException;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -82,6 +83,17 @@ public class AttemptExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(build(HttpStatus.FORBIDDEN, "Access Denied", ex.getMessage()));
+    }
+
+    @ExceptionHandler(CodeRunnerApiException.class)
+    public ResponseEntity<ErrorResponse> handleCodeRunner(CodeRunnerApiException ex) {
+        HttpStatus status = switch (ex.kind()) {
+            case NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case CONFLICT -> HttpStatus.CONFLICT;
+            case INVALID -> HttpStatus.BAD_REQUEST;
+            case EXECUTION_FAILED -> HttpStatus.BAD_GATEWAY;
+        };
+        return ResponseEntity.status(status).body(build(status, "Code Runner " + ex.kind(), ex.getMessage()));
     }
 
     private ErrorResponse build(HttpStatus status, String error, String message) {

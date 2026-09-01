@@ -10,6 +10,7 @@ import edu.ai.lms.core.attempt.app.exception.UserNotAuthenticatedForAttemptExcep
 import edu.ai.lms.core.attempt.app.port.in.command.SubmitAttemptCommand;
 import edu.ai.lms.core.attempt.app.port.in.usecase.SubmitAttemptUseCase;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
+import edu.ai.lms.core.attempt.app.port.out.AttemptCodeSubmissionSnapshotPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
@@ -21,6 +22,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -36,6 +40,7 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
     private final SaveAttemptPort saveAttemptPort;
     private final UnscheduleAttemptAutoClosePort unscheduleAttemptAutoClosePort;
     private final AttemptScoringService attemptScoringService;
+    private final AttemptCodeSubmissionSnapshotPort codeSubmissionSnapshotPort;
     private final AttemptAutoCloseService attemptAutoCloseService;
 
     @Override
@@ -65,15 +70,28 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
             return saveLateSubmission(startedAttempt, policy, command.timeSpentSeconds(), now);
         }
 
-        double score = attemptScoringService.calculateScore(
-                loadQuizAttemptPolicyPort.getQuestionAnswerKeys(command.quizId()),
-                command.submittedAnswers()
+        List<edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey> answerKeys =
+                loadQuizAttemptPolicyPort.getQuestionAnswerKeys(command.quizId());
+        AttemptScoringService.ScoringResult scoringResult = attemptScoringService.calculateScore(
+                answerKeys,
+                command.submittedAnswers(),
+                startedAttempt.getId(),
+                user.getId()
         );
+        codeSubmissionSnapshotPort.replace(startedAttempt.getId(),
+                selectedCodeSubmissions(answerKeys, command.submittedAnswers()));
 
         startedAttempt.setSubmittedTime(now);
         startedAttempt.setTimeSpentSeconds(command.timeSpentSeconds());
-        startedAttempt.setScore(score);
-        startedAttempt.setStatus(Attempt.AttemptStatus.FINISHED);
+        startedAttempt.setScore(scoringResult.hasPendingSubmissions()
+                ? scoringResult.score() - scoringResult.codeRunnerScore()
+                : scoringResult.score());
+        
+        if (scoringResult.hasPendingSubmissions()) {
+            startedAttempt.setStatus(Attempt.AttemptStatus.FINALIZING);
+        } else {
+            startedAttempt.setStatus(Attempt.AttemptStatus.FINISHED);
+        }
         startedAttempt.setErrorReason(null);
 
         Attempt saved = saveAttemptPort.save(startedAttempt);
@@ -119,6 +137,22 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
             return false;
         }
         return now.isAfter(dueTime.plusSeconds(SUBMISSION_GRACE_SECONDS));
+    }
+
+    private Map<UUID, UUID> selectedCodeSubmissions(
+            List<edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey> answerKeys,
+            List<edu.ai.lms.core.attempt.app.domain.SubmittedAnswer> submittedAnswers) {
+        Map<UUID, edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey.QuestionType> types = new LinkedHashMap<>();
+        answerKeys.forEach(key -> types.putIfAbsent(key.getQuestionId(), key.getQuestionType()));
+        Map<UUID, UUID> selected = new LinkedHashMap<>();
+        if (submittedAnswers == null) return selected;
+        submittedAnswers.forEach(answer -> {
+            if (types.get(answer.getQuestionId()) == edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey.QuestionType.CODE_RUNNER
+                    && answer.getCodeSubmissionId() != null) {
+                selected.putIfAbsent(answer.getQuestionId(), answer.getCodeSubmissionId());
+            }
+        });
+        return selected;
     }
 
     private SubmitAttemptResponse toResponse(Attempt attempt) {

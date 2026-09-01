@@ -29,6 +29,8 @@ public class QuizAttemptPolicy {
 
     private UUID quizId;
 
+    private UUID quizReleaseId;
+
     private UUID courseId;
 
     private Boolean unlimited;

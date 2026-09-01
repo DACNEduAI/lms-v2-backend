@@ -25,6 +25,7 @@ class QuizAttemptPolicyAdapter implements LoadQuizAttemptPolicyPort {
                 .filter(policy -> courseId == null || courseId.equals(policy.courseId()))
                 .map(policy -> QuizAttemptPolicy.builder()
                         .quizId(policy.quizId())
+                        .quizReleaseId(policy.quizReleaseId())
                         .courseId(policy.courseId())
                         .unlimited(policy.unlimited())
                         .timeLimitMinutes(policy.timeLimitMinutes())

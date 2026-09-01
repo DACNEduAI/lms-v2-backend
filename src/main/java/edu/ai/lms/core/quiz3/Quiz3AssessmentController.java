@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,6 +53,7 @@ public class Quiz3AssessmentController {
     @PostMapping("/{assessmentId}/variants/reopen-base") public List<VariantView> reopen(@PathVariable UUID courseId,@PathVariable UUID assessmentId){return service.reopenBase(courseId,assessmentId);}
     @GetMapping("/{assessmentId}/variants") public List<VariantView> variants(@PathVariable UUID courseId,@PathVariable UUID assessmentId){return service.variants(courseId,assessmentId);}
     @PostMapping("/{assessmentId}/variants") public ResponseEntity<List<VariantView>> variants(@PathVariable UUID courseId,@PathVariable UUID assessmentId,@RequestBody CreateVariantsRequest request){return ResponseEntity.status(201).body(service.createVariants(courseId,assessmentId,request.variantCount()));}
+    @PostMapping("/{assessmentId}/variants/preview/confirm") public AssessmentView confirmVariantPreview(@PathVariable UUID courseId,@PathVariable UUID assessmentId){return service.confirmVariantPreview(courseId,assessmentId);}
     @PostMapping("/{assessmentId}/variants/{variantId}/coverage/recalculate") public List<VariantView> coverage(@PathVariable UUID courseId,@PathVariable UUID assessmentId,@PathVariable UUID variantId){return service.recalculateCoverage(courseId,assessmentId,variantId);}
     @PutMapping("/{assessmentId}/variants/{variantId}/questions/{questionId}") public List<VariantView> updateQuestion(@PathVariable UUID courseId,@PathVariable UUID assessmentId,@PathVariable UUID variantId,@PathVariable UUID questionId,@RequestBody QuestionUpdate request){return service.updateQuestion(courseId,assessmentId,variantId,questionId,request);}
     @PutMapping(value="/{assessmentId}/variants/{variantId}/questions/{questionId}",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -61,7 +63,8 @@ public class Quiz3AssessmentController {
         return richContent.update(courseId,assessmentId,variantId,questionId,
                 objectMapper.readValue(payload,QuestionUpdate.class),images==null?List.of():images);}
     @GetMapping(value="/{assessmentId}/variants/{variantId}/pdf",produces=MediaType.APPLICATION_PDF_VALUE)
-    public ResponseEntity<byte[]> pdf(@PathVariable UUID courseId,@PathVariable UUID assessmentId,@PathVariable UUID variantId){var pdf=pdfs.generate(courseId,assessmentId,variantId);return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.APPLICATION_PDF)
+    public ResponseEntity<byte[]> pdf(@PathVariable UUID courseId,@PathVariable UUID assessmentId,@PathVariable UUID variantId,
+            @RequestParam(defaultValue="ONLINE_SUBMISSION") Quiz3PdfRenderer.AnswerMode answerMode){var pdf=pdfs.generate(courseId,assessmentId,variantId,answerMode);return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.APPLICATION_PDF)
             .header(HttpHeaders.CONTENT_DISPOSITION,ContentDisposition.attachment().filename(pdf.filename(),StandardCharsets.UTF_8).build().toString()).contentLength(pdf.bytes().length).body(pdf.bytes());}
     @PostMapping("/{assessmentId}/publish") public PublishResult publish(@PathVariable UUID courseId,@PathVariable UUID assessmentId){return service.publish(courseId,assessmentId);}
     @PostMapping("/{assessmentId}/unpublish") public AssessmentView unpublish(@PathVariable UUID courseId,@PathVariable UUID assessmentId){return service.unpublish(courseId,assessmentId);}

@@ -14,7 +14,21 @@ public interface LoadAttemptPort {
 
     Optional<Attempt> getLatestStartedAttempt(UUID studentId, UUID quizId);
 
+    /**
+     * Returns the latest non-terminal attempt. A FINALIZING attempt is still
+     * active because its selected Code Runner submissions have not finished
+     * grading yet.
+     */
+    Optional<Attempt> getLatestActiveAttempt(UUID studentId, UUID quizId);
+
     Optional<Attempt> getByIdAndStudentId(UUID attemptId, UUID studentId);
 
     List<Attempt> getByStudentAndQuiz(UUID studentId, UUID quizId);
+
+    /**
+     * Bounded recovery scan for attempts whose selected Code Runner submission
+     * completed while the in-process completion event was lost (for example,
+     * during a process restart).
+     */
+    List<Attempt> getFinalizingAttempts();
 }

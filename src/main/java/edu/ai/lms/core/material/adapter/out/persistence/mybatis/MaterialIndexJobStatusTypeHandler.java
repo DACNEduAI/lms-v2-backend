@@ -1,4 +1,4 @@
-package edu.ai.lms.config.mybatis;
+package edu.ai.lms.core.material.adapter.out.persistence.mybatis;
 
 import edu.ai.lms.core.material.app.domain.MaterialIndexJob;
 import org.apache.ibatis.type.BaseTypeHandler;

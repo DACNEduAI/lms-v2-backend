@@ -6,6 +6,7 @@ import edu.ai.lms.core.quiz.api.QuestionAnswerKeyView;
 import edu.ai.lms.core.quiz.app.port.out.LoadAnswerPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuestionPort;
 import edu.ai.lms.core.quiz.app.port.out.LoadQuizPort;
+import edu.ai.lms.core.quiz.app.port.out.ManageQuizReleasePort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -21,12 +22,14 @@ class AttemptPolicyApiAdapter implements AttemptPolicyApi {
     private final LoadQuizPort loadQuizPort;
     private final LoadQuestionPort loadQuestionPort;
     private final LoadAnswerPort loadAnswerPort;
+    private final ManageQuizReleasePort releasePort;
 
     @Override
     public Optional<AttemptPolicyView> findPolicy(UUID quizId) {
         return loadQuizPort.getById(quizId)
                 .map(quiz -> new AttemptPolicyView(
                         quiz.getId(),
+                        releasePort.findActiveReleaseId(quiz.getId()).orElse(null),
                         quiz.getCourseId(),
                         Boolean.TRUE.equals(quiz.getUnlimited()),
                         quiz.getTimeLimitMinutes(),

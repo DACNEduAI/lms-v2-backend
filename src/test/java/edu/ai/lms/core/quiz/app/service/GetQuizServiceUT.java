@@ -161,6 +161,8 @@ class GetQuizServiceUT {
         assertEquals(1, response.getQuestions().get(0).getAnswers().size());
         assertEquals("Sample Answer", response.getQuestions().get(0).getAnswers().get(0).getContent());
         assertEquals(RichContentFormat.TIPTAP_HTML, response.getQuestions().get(0).getAnswers().get(0).getContentFormat());
+        assertEquals(true, response.getQuestions().get(0).getAnswers().get(0).isCorrect());
+        assertEquals("Sample Explanation", response.getQuestions().get(0).getAnswers().get(0).getExplanation());
         assertEquals(RichContentFormat.TIPTAP_HTML, response.getQuestions().get(0).getAnswers().get(0).getExplanationFormat());
         assertEquals(1, response.getGroupedLearningOutcomes().size());
         assertEquals(1, response.getUngroupedLearningOutcomes().size());

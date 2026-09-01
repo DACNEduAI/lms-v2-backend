@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.attempt.adapter.out.persistence.AttemptCodeSubmissionSnapshotRepository">
+  <delete id="deleteByAttemptId">
+    DELETE FROM edu.attempt_code_submission_snapshots WHERE attempt_id = #{attemptId}
+  </delete>
+  <insert id="insert">
+    INSERT INTO edu.attempt_code_submission_snapshots (attempt_id, question_id, submission_id)
+    VALUES (#{attemptId}, #{questionId}, #{submissionId})
+  </insert>
+  <select id="findByAttemptId" resultType="edu.ai.lms.core.attempt.adapter.out.persistence.AttemptCodeSubmissionSnapshotRow">
+    SELECT question_id, submission_id
+    FROM edu.attempt_code_submission_snapshots
+    WHERE attempt_id = #{attemptId}
+  </select>
+</mapper>
