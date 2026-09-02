@@ -599,12 +599,12 @@ VALUES
     ('e4000001-0000-4000-8000-000000000005', 'e3000001-0000-4000-8000-000000000003', 'BFS (Duyệt theo chiều rộng)', 'LEARN_AND_EXAM', '', 0),
     ('e4000001-0000-4000-8000-000000000006', 'e3000001-0000-4000-8000-000000000003', 'DFS (Duyệt theo chiều sâu)', 'LEARN_AND_EXAM', '', 1);
 
--- <<<<<<< HEAD
+-- Historical local-storage fixture intentionally disabled.
 -- -- Material rows are intentionally not seeded. A local reset uses LocalStack,
 -- -- while the former fixture keys only exist in the production Supabase bucket.
 -- -- Local PDF metadata and indexing jobs are created through the normal upload
 -- -- and confirm flow after the corresponding object exists in local storage.
--- =======
+-- Historical Code Runner seed proposal intentionally disabled.
 -- -- Persistent CCCT paired with the dedicated Code Runner matrix above.
 -- INSERT INTO ccct_profiles
 --     (id, course_id, name, template_title, status, version, format_version,
@@ -680,7 +680,7 @@ VALUES
 -- -- 17. Mock Code Runner Question for Testing
 INSERT INTO questions (id, content, type, quiz_id)
 VALUES ('d0000000-0000-0000-0000-000000000000', 'Write a function to return the sum of two integers a and b.', 'CODE_RUNNER', '91111111-1111-1111-1111-111111111111');
--- >>>>>>> feature/my-code-runner-fixes
+-- End of disabled historical fixtures.
 
 INSERT INTO code_runner_configs (id, question_id, schema_version, contract_id, contract_version, contract_status, title, statement, execution_profile_id, execution_profile_version, archetype_id, archetype_version, comparator_id, comparator_version, entry_point, signature_json, starter_code, reference_solution, revision)
 VALUES (
@@ -991,6 +991,46 @@ VALUES
     ('f9000001-0000-4000-8000-000000000011', '81111111-1111-1111-1111-111111111111'),
     ('f9000001-0000-4000-8000-000000000012', '84444444-4444-4444-4444-444444444444'),
     ('f9000001-0000-4000-8000-000000000013', '84444444-4444-4444-4444-444444444444');
+
+-- Quiz3 generation demo: select this CCCT and Matrix 2 pair after a local reset,
+-- upload one real DSA PDF, wait for it to become READY, then create Quiz 001.
+-- The "Visual reasoning (SVG required)" cell deliberately requests one SVG MCQ.
+INSERT INTO ccct_profiles
+    (id, course_id, name, template_title, status, version, format_version, structured_current, last_mode, markdown_content, created_by)
+VALUES
+    ('e1000001-0000-4000-8000-000000000005', 'c1111111-1111-1111-1111-111111111111',
+     'DSA Mixed Assessment Demo', 'DSA Mixed Assessment Demo', 'DRAFT', 0, 2, true, 'STRUCTURED',
+     '# DSA mixed assessment demo\n\nGenerate a balanced C++17 assessment with multiple-choice reasoning, one clear SVG diagram, and executable function implementation tasks.',
+     '11111111-1111-1111-1111-111111111111');
+
+INSERT INTO ccct_chapters (id, profile_id, course_chapter_id, title, custom_content, order_index) VALUES
+    ('e2000001-0000-4000-8000-000000000051', 'e1000001-0000-4000-8000-000000000005', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'Heap', '', 0),
+    ('e2000001-0000-4000-8000-000000000052', 'e1000001-0000-4000-8000-000000000005', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'Binary trees', '', 1),
+    ('e2000001-0000-4000-8000-000000000053', 'e1000001-0000-4000-8000-000000000005', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Sorting', '', 2);
+INSERT INTO ccct_topics (id, chapter_id, title, order_index) VALUES
+    ('e3000001-0000-4000-8000-000000000051', 'e2000001-0000-4000-8000-000000000051', 'Heap operations', 0),
+    ('e3000001-0000-4000-8000-000000000052', 'e2000001-0000-4000-8000-000000000052', 'Binary tree structure', 0),
+    ('e3000001-0000-4000-8000-000000000053', 'e2000001-0000-4000-8000-000000000053', 'Sorting algorithms', 0);
+INSERT INTO ccct_items (id, topic_id, content, coverage_status, note, order_index) VALUES
+    ('e4000001-0000-4000-8000-000000000051', 'e3000001-0000-4000-8000-000000000051', 'Implement heap operations as C++17 functions.', 'LEARN_AND_EXAM', '', 0),
+    ('e4000001-0000-4000-8000-000000000052', 'e3000001-0000-4000-8000-000000000052', 'Interpret binary-tree relationships using a diagram.', 'LEARN_AND_EXAM', '', 0),
+    ('e4000001-0000-4000-8000-000000000053', 'e3000001-0000-4000-8000-000000000053', 'Reason about sorting correctness and complexity.', 'LEARN_AND_EXAM', '', 0);
+
+INSERT INTO exam_matrices_2 (id, course_id, title, description) VALUES
+    ('b3000001-0000-4000-8000-000000000004', 'c1111111-1111-1111-1111-111111111111',
+     'Matrix 2 - DSA Mixed Visual and Code Runner Demo', 'Five questions: 2 MCQ, 1 SVG MCQ, and 2 C++17 Code Runner questions.');
+INSERT INTO exam_matrix_2_custom_learning_levels (id, matrix_id, name, sort_order) VALUES
+    ('b3000011-0000-4000-8000-000000000031', 'b3000001-0000-4000-8000-000000000004', 'Understanding', 0),
+    ('b3000011-0000-4000-8000-000000000032', 'b3000001-0000-4000-8000-000000000004', 'Visual reasoning (SVG required)', 1),
+    ('b3000011-0000-4000-8000-000000000033', 'b3000001-0000-4000-8000-000000000004', 'C++17 implementation', 2);
+INSERT INTO exam_matrix_2_rows (id, matrix_id, chapter_id, mapped_learning_outcome_id, sort_order) VALUES
+    ('b3000021-0000-4000-8000-000000000031', 'b3000001-0000-4000-8000-000000000004', 'a8c06712-6aa5-4993-901b-77008af766d3', '86666666-6666-6666-6666-666666666666', 0),
+    ('b3000021-0000-4000-8000-000000000032', 'b3000001-0000-4000-8000-000000000004', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', '84444444-4444-4444-4444-444444444444', 1),
+    ('b3000021-0000-4000-8000-000000000033', 'b3000001-0000-4000-8000-000000000004', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', '85555555-5555-5555-5555-555555555555', 2);
+INSERT INTO exam_matrix_2_cell_counts (row_id, custom_learning_level_id, question_count, question_type) VALUES
+    ('b3000021-0000-4000-8000-000000000031', 'b3000011-0000-4000-8000-000000000031', 2, 'MULTIPLE_CHOICE'),
+    ('b3000021-0000-4000-8000-000000000032', 'b3000011-0000-4000-8000-000000000032', 1, 'MULTIPLE_CHOICE'),
+    ('b3000021-0000-4000-8000-000000000033', 'b3000011-0000-4000-8000-000000000033', 2, 'CODE_RUNNER');
 
 INSERT INTO quiz3_question_provenance
     (question_id, generation_job_id, matrix2_row_id, matrix2_custom_learning_level_id,

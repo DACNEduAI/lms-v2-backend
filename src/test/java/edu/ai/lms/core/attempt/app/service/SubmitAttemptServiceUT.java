@@ -8,11 +8,13 @@ import edu.ai.lms.core.attempt.app.domain.SubmittedAnswer;
 import edu.ai.lms.core.attempt.app.port.in.command.SubmitAttemptCommand;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.AttemptCodeSubmissionSnapshotPort;
+import edu.ai.lms.core.attempt.app.port.out.AttemptQuestionResponsePort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.UnscheduleAttemptAutoClosePort;
 import edu.ai.lms.core.attempt.app.domain.CurrentActor;
+import edu.ai.lms.core.learnermodel.LearnerEvidenceFinalizationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,7 +53,11 @@ class SubmitAttemptServiceUT {
     @Mock
     private AttemptCodeSubmissionSnapshotPort codeSubmissionSnapshotPort;
     @Mock
+    private AttemptQuestionResponsePort attemptQuestionResponsePort;
+    @Mock
     private AttemptAutoCloseService attemptAutoCloseService;
+    @Mock
+    private LearnerEvidenceFinalizationService learnerEvidenceFinalizationService;
 
     @InjectMocks
     private SubmitAttemptService submitAttemptService;

@@ -1,6 +1,7 @@
 package edu.ai.lms.core.attempt.app.service;
 
 import edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey;
+import edu.ai.lms.core.attempt.app.domain.QuestionGradeResult;
 import edu.ai.lms.core.attempt.app.domain.SubmittedAnswer;
 import edu.ai.lms.core.attempt.app.exception.InvalidAttemptSubmissionException;
 import edu.ai.lms.core.attempt.app.port.out.AttemptCodeRunnerPort;
@@ -42,6 +43,24 @@ class AttemptScoringServiceUT {
                                 .codeSubmissionId(codeSubmissionId).build()), attemptId, studentId);
 
         assertThat(result.score()).isEqualTo(7.5);
+    }
+
+    @Test
+    void returnsFinalMcqGradeFactsIncludingSkippedResponses() {
+        UUID answeredQuestionId = UUID.randomUUID();
+        UUID skippedQuestionId = UUID.randomUUID();
+
+        AttemptScoringService.ScoringResult result = service.calculateScore(List.of(
+                        key(answeredQuestionId, QuestionAnswerKey.QuestionType.MULTIPLE_CHOICE, 2L),
+                        key(skippedQuestionId, QuestionAnswerKey.QuestionType.MULTIPLE_CHOICE, 3L)),
+                List.of(SubmittedAnswer.builder().questionId(answeredQuestionId).studentAnswerId(2L).build()),
+                UUID.randomUUID(), UUID.randomUUID());
+
+        assertThat(result.questionResults()).containsExactlyInAnyOrder(
+                new QuestionGradeResult(answeredQuestionId, QuestionAnswerKey.QuestionType.MULTIPLE_CHOICE,
+                        2L, QuestionGradeResult.ResponseStatus.ANSWERED, true, 1.0),
+                new QuestionGradeResult(skippedQuestionId, QuestionAnswerKey.QuestionType.MULTIPLE_CHOICE,
+                        null, QuestionGradeResult.ResponseStatus.SKIPPED, null, null));
     }
 
 

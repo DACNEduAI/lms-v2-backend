@@ -7,6 +7,7 @@ import edu.ai.lms.core.attempt.app.port.out.AttemptCodeSubmissionSnapshotPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
+import edu.ai.lms.core.learnermodel.LearnerEvidenceFinalizationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -30,6 +31,7 @@ class AttemptGradingServiceUT {
     @Mock private LoadQuizAttemptPolicyPort policy;
     @Mock private AttemptCodeRunnerPort codeRunner;
     @Mock private AttemptCodeSubmissionSnapshotPort snapshots;
+    @Mock private LearnerEvidenceFinalizationService learnerEvidenceFinalizationService;
     @InjectMocks private AttemptGradingService service;
 
     @Test

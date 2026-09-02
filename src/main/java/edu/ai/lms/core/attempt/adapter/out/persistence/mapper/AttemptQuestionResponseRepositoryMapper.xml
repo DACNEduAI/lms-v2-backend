@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.attempt.adapter.out.persistence.AttemptQuestionResponseRepository">
+  <delete id="deleteByAttemptId">
+    DELETE FROM edu.attempt_question_responses WHERE attempt_id = #{attemptId}
+  </delete>
+
+  <insert id="insert">
+    INSERT INTO edu.attempt_question_responses (
+      attempt_id, question_id, question_type, selected_answer_number,
+      response_status, is_correct_snapshot, score_ratio, finalized_at,
+      created_at, updated_at
+    ) VALUES (
+      #{attemptId}, #{result.questionId}, 'MULTIPLE_CHOICE', #{result.selectedAnswerNumber},
+      #{result.responseStatus, javaType=edu.ai.lms.core.attempt.app.domain.QuestionGradeResult$ResponseStatus,
+        typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+      #{result.isCorrectSnapshot}, #{result.scoreRatio}, #{finalizedAt}, NOW(), NOW()
+    )
+  </insert>
+</mapper>

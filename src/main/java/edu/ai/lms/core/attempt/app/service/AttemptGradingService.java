@@ -8,6 +8,7 @@ import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
 import edu.ai.lms.core.coderunner.api.CodeSubmissionCompletedEvent;
+import edu.ai.lms.core.learnermodel.LearnerEvidenceFinalizationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -30,6 +31,7 @@ public class AttemptGradingService {
     private final LoadQuizAttemptPolicyPort policyPort;
     private final AttemptCodeRunnerPort codeRunnerPort;
     private final AttemptCodeSubmissionSnapshotPort codeSubmissionSnapshotPort;
+    private final LearnerEvidenceFinalizationService learnerEvidenceFinalizationService;
 
     @EventListener
     @Transactional
@@ -81,7 +83,9 @@ public class AttemptGradingService {
                 .count();
 
         if (totalGradable == 0) {
-            saveAttemptPort.finalizeIfStillFinalizing(attempt.getId(), attempt.getScore() != null ? attempt.getScore() : 0.0);
+            if (saveAttemptPort.finalizeIfStillFinalizing(attempt.getId(), attempt.getScore() != null ? attempt.getScore() : 0.0)) {
+                learnerEvidenceFinalizationService.publishForFinishedAttempt(attempt.getId());
+            }
             return;
         }
 
@@ -102,7 +106,9 @@ public class AttemptGradingService {
                             + (codeRunnerEarnedRatios / totalGradable) * AttemptScoringService.DEFAULT_MAX_SCORE;
         finalScore = Math.round(finalScore * 100.0) / 100.0;
         
-        saveAttemptPort.finalizeIfStillFinalizing(attempt.getId(), finalScore);
-        log.info("Attempt {} finalized with score {}", attempt.getId(), finalScore);
+        if (saveAttemptPort.finalizeIfStillFinalizing(attempt.getId(), finalScore)) {
+            learnerEvidenceFinalizationService.publishForFinishedAttempt(attempt.getId());
+            log.info("Attempt {} finalized with score {}", attempt.getId(), finalScore);
+        }
     }
 }

@@ -1323,6 +1323,86 @@ CREATE TABLE IF NOT EXISTS attempt_code_submission_snapshots
 CREATE INDEX IF NOT EXISTS idx_attempt_code_submission_snapshots_submission
     ON attempt_code_submission_snapshots (submission_id);
 
+-- Final MCQ learner-evidence snapshot. It is written only when an attempt is
+-- submitted; draft selection/autosave intentionally remains outside the MVP.
+CREATE TABLE IF NOT EXISTS attempt_question_responses
+(
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    attempt_id UUID NOT NULL REFERENCES attempts (id) ON DELETE CASCADE,
+    question_id UUID NOT NULL REFERENCES questions (id) ON DELETE RESTRICT,
+    question_type VARCHAR(30) NOT NULL CHECK (question_type = 'MULTIPLE_CHOICE'),
+    selected_answer_number BIGINT,
+    response_status VARCHAR(20) NOT NULL CHECK (response_status IN ('ANSWERED', 'SKIPPED')),
+    is_correct_snapshot BOOLEAN,
+    score_ratio DOUBLE PRECISION CHECK (score_ratio IS NULL OR (score_ratio >= 0 AND score_ratio <= 1)),
+    grading_revision INTEGER NOT NULL DEFAULT 1 CHECK (grading_revision > 0),
+    finalized_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_attempt_question_response UNIQUE (attempt_id, question_id),
+    CONSTRAINT fk_attempt_question_selected_answer
+        FOREIGN KEY (selected_answer_number, question_id) REFERENCES answers (answer_number, question_id),
+    CONSTRAINT ck_attempt_question_response_state CHECK (
+        (response_status = 'ANSWERED' AND selected_answer_number IS NOT NULL
+            AND is_correct_snapshot IS NOT NULL AND score_ratio IS NOT NULL)
+        OR
+        (response_status = 'SKIPPED' AND selected_answer_number IS NULL
+            AND is_correct_snapshot IS NULL AND score_ratio IS NULL)
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_attempt_question_response_attempt
+    ON attempt_question_responses (attempt_id);
+CREATE INDEX IF NOT EXISTS idx_attempt_question_response_question
+    ON attempt_question_responses (question_id);
+
+CREATE TABLE IF NOT EXISTS learning_events
+(
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), observation_key VARCHAR(255) NOT NULL,
+    observation_revision INTEGER NOT NULL CHECK (observation_revision > 0),
+    student_id UUID NOT NULL REFERENCES students(user_id), course_id UUID NOT NULL REFERENCES courses(id),
+    quiz_id UUID NOT NULL REFERENCES quizzes(id), attempt_id UUID NOT NULL REFERENCES attempts(id),
+    question_id UUID NOT NULL REFERENCES questions(id), question_version BIGINT NOT NULL,
+    source_type VARCHAR(30) NOT NULL CHECK (source_type IN ('MULTIPLE_CHOICE', 'CODE_RUNNER')),
+    event_type VARCHAR(40) NOT NULL CHECK (event_type IN ('GRADED_RESPONSE_FINALIZED', 'GRADED_RESPONSE_REGRADED')),
+    occurred_at TIMESTAMP NOT NULL, is_correct BOOLEAN, score_ratio DOUBLE PRECISION,
+    mastery_eligible BOOLEAN NOT NULL, supersedes_event_id UUID REFERENCES learning_events(id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE (observation_key, observation_revision)
+);
+CREATE INDEX IF NOT EXISTS idx_learning_events_student_course_time ON learning_events(student_id, course_id, occurred_at, id);
+CREATE TABLE IF NOT EXISTS learning_event_learning_outcomes
+(
+    learning_event_id UUID NOT NULL REFERENCES learning_events(id) ON DELETE CASCADE,
+    learning_outcome_id UUID NOT NULL REFERENCES learning_outcomes(id) ON DELETE RESTRICT,
+    PRIMARY KEY (learning_event_id, learning_outcome_id)
+);
+CREATE TABLE IF NOT EXISTS learner_model_jobs
+(
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), dedupe_key VARCHAR(255) NOT NULL UNIQUE,
+    job_type VARCHAR(40) NOT NULL CHECK (job_type = 'REBUILD_STUDENT_COURSE'),
+    student_id UUID NOT NULL REFERENCES students(user_id), course_id UUID NOT NULL REFERENCES courses(id),
+    status VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')),
+    attempt_count INTEGER NOT NULL DEFAULT 0, next_attempt_at TIMESTAMPTZ, lease_until TIMESTAMPTZ,
+    worker_id VARCHAR(100), error_message TEXT, completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_learner_model_jobs_queue ON learner_model_jobs(status, next_attempt_at);
+
+CREATE TABLE IF NOT EXISTS learner_model_processed_events
+(
+    learning_event_id UUID NOT NULL REFERENCES learning_events(id) ON DELETE CASCADE,
+    model_name VARCHAR(80) NOT NULL, model_version VARCHAR(40) NOT NULL,
+    processed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (learning_event_id, model_name, model_version)
+);
+CREATE TABLE IF NOT EXISTS learner_model_workers
+(
+    worker_id VARCHAR(100) PRIMARY KEY, worker_version VARCHAR(40) NOT NULL,
+    started_at TIMESTAMPTZ NOT NULL, last_heartbeat_at TIMESTAMPTZ NOT NULL,
+    current_job_id UUID REFERENCES learner_model_jobs(id) ON DELETE SET NULL,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('RUNNING', 'STOPPED'))
+);
+
 CREATE TABLE IF NOT EXISTS code_runner_submission_actions
 (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

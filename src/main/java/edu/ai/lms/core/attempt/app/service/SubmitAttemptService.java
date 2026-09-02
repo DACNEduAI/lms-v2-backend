@@ -11,11 +11,13 @@ import edu.ai.lms.core.attempt.app.port.in.command.SubmitAttemptCommand;
 import edu.ai.lms.core.attempt.app.port.in.usecase.SubmitAttemptUseCase;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.AttemptCodeSubmissionSnapshotPort;
+import edu.ai.lms.core.attempt.app.port.out.AttemptQuestionResponsePort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.UnscheduleAttemptAutoClosePort;
 import edu.ai.lms.core.attempt.app.domain.CurrentActor;
+import edu.ai.lms.core.learnermodel.LearnerEvidenceFinalizationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,7 +43,9 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
     private final UnscheduleAttemptAutoClosePort unscheduleAttemptAutoClosePort;
     private final AttemptScoringService attemptScoringService;
     private final AttemptCodeSubmissionSnapshotPort codeSubmissionSnapshotPort;
+    private final AttemptQuestionResponsePort attemptQuestionResponsePort;
     private final AttemptAutoCloseService attemptAutoCloseService;
+    private final LearnerEvidenceFinalizationService learnerEvidenceFinalizationService;
 
     @Override
     @Transactional
@@ -78,6 +82,8 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
                 startedAttempt.getId(),
                 user.getId()
         );
+        attemptQuestionResponsePort.replaceFinalMultipleChoiceResponses(
+                startedAttempt.getId(), scoringResult.questionResults(), now);
         codeSubmissionSnapshotPort.replace(startedAttempt.getId(),
                 selectedCodeSubmissions(answerKeys, command.submittedAnswers()));
 
@@ -95,6 +101,9 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
         startedAttempt.setErrorReason(null);
 
         Attempt saved = saveAttemptPort.save(startedAttempt);
+        if (saved.getStatus() == Attempt.AttemptStatus.FINISHED) {
+            learnerEvidenceFinalizationService.publishForFinishedAttempt(saved.getId());
+        }
         unscheduleAutoCloseBestEffort(saved.getId());
         return toResponse(saved);
     }

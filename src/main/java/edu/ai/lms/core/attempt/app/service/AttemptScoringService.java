@@ -1,6 +1,7 @@
 package edu.ai.lms.core.attempt.app.service;
 
 import edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey;
+import edu.ai.lms.core.attempt.app.domain.QuestionGradeResult;
 import edu.ai.lms.core.attempt.app.domain.SubmittedAnswer;
 import edu.ai.lms.core.attempt.app.exception.InvalidAttemptSubmissionException;
 import edu.ai.lms.core.attempt.app.port.out.AttemptCodeRunnerPort;
@@ -30,12 +31,21 @@ public class AttemptScoringService {
     /** The maximum possible score for any quiz attempt. */
     public static final double DEFAULT_MAX_SCORE = 10.0;
 
-    public record ScoringResult(double score, double codeRunnerScore, boolean hasPendingSubmissions) {}
+    public record ScoringResult(
+            double score,
+            double codeRunnerScore,
+            boolean hasPendingSubmissions,
+            List<QuestionGradeResult> questionResults
+    ) {
+        public ScoringResult(double score, double codeRunnerScore, boolean hasPendingSubmissions) {
+            this(score, codeRunnerScore, hasPendingSubmissions, List.of());
+        }
+    }
 
     public ScoringResult calculateScore(List<QuestionAnswerKey> answerKeys, List<SubmittedAnswer> submittedAnswers,
                                         UUID attemptId, UUID studentId) {
         if (answerKeys == null || answerKeys.isEmpty()) {
-            return new ScoringResult(0.0, 0.0, false);
+            return new ScoringResult(0.0, 0.0, false, List.of());
         }
         List<SubmittedAnswer> answers = submittedAnswers == null ? List.of() : submittedAnswers;
 
@@ -72,18 +82,19 @@ public class AttemptScoringService {
                 .count();
 
         if (totalGradable == 0) {
-            return new ScoringResult(0.0, 0.0, false);
+            return new ScoringResult(0.0, 0.0, false, List.of());
         }
 
         double earnedRatios = 0;
         double codeRunnerEarnedRatios = 0;
         boolean hasPendingSubmissions = false;
+        List<QuestionGradeResult> questionResults = new java.util.ArrayList<>();
         for (UUID questionId : questionTypes.keySet()) {
             QuestionAnswerKey.QuestionType type = questionTypes.get(questionId);
             if (!isAutomaticallyGradable(type)) continue;
             SubmittedAnswer answer = submittedByQuestion.get(questionId);
-            if (answer == null) continue;
             if (type == QuestionAnswerKey.QuestionType.CODE_RUNNER) {
+                if (answer == null) continue;
                 if (answer.getCodeSubmissionId() == null) continue;
                 if (!codeRunnerPort.isValidSubmit(answer.getCodeSubmissionId(), attemptId, studentId, questionId)) {
                     throw new InvalidAttemptSubmissionException("Code submission does not belong to this attempt");
@@ -98,8 +109,22 @@ public class AttemptScoringService {
                 codeRunnerEarnedRatios += ratio.getAsDouble();
             } else {
                 Set<Long> correctAnswers = correctAnswersByQuestion.getOrDefault(questionId, Collections.emptySet());
-                if (answer.getStudentAnswerId() != null && correctAnswers.contains(answer.getStudentAnswerId())) {
+                Long selectedAnswerNumber = answer == null ? null : answer.getStudentAnswerId();
+                boolean answered = selectedAnswerNumber != null;
+                boolean correct = answered && correctAnswers.contains(selectedAnswerNumber);
+                if (correct) {
                     earnedRatios += 1;
+                }
+                if (type == QuestionAnswerKey.QuestionType.MULTIPLE_CHOICE) {
+                    questionResults.add(new QuestionGradeResult(
+                            questionId,
+                            type,
+                            selectedAnswerNumber,
+                            answered ? QuestionGradeResult.ResponseStatus.ANSWERED
+                                    : QuestionGradeResult.ResponseStatus.SKIPPED,
+                            answered ? correct : null,
+                            answered ? (correct ? 1.0 : 0.0) : null
+                    ));
                 }
             }
         }
@@ -109,7 +134,7 @@ public class AttemptScoringService {
         double score = Math.round(rawRatio * DEFAULT_MAX_SCORE * 100.0) / 100.0;
         double codeRunnerScore = Math.round((codeRunnerEarnedRatios / totalGradable)
                 * DEFAULT_MAX_SCORE * 100.0) / 100.0;
-        return new ScoringResult(score, codeRunnerScore, hasPendingSubmissions);
+        return new ScoringResult(score, codeRunnerScore, hasPendingSubmissions, List.copyOf(questionResults));
     }
 
     private boolean isAutomaticallyGradable(QuestionAnswerKey.QuestionType type) {
