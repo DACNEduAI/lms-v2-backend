@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.attempt.adapter.out.persistence.AttemptQuestionResultRepository">
+
+  <resultMap id="AttemptQuestionResultMap" type="edu.ai.lms.core.attempt.app.domain.AttemptQuestionResult">
+    <id property="attemptId" column="attempt_id" />
+    <id property="questionId" column="question_id" />
+    <result property="quizId" column="quiz_id" />
+    <result property="ktQuestionId" column="kt_question_id" />
+    <result property="interactionOrder" column="interaction_order" />
+    <result property="correct" column="is_correct" />
+    <result property="learningOutcomeId" column="learning_outcome_id" />
+    <result property="ktLearningOutcomeId" column="kt_learning_outcome_id" />
+    <result property="learningOutcomeMappingCount" column="learning_outcome_mapping_count" />
+    <result property="submittedTime" column="submitted_time" />
+  </resultMap>
+
+  <insert id="upsertAll">
+    INSERT INTO edu.attempt_question_results (
+      attempt_id, question_id, kt_question_id, interaction_order, is_correct,
+      learning_outcome_id, kt_learning_outcome_id, learning_outcome_mapping_count,
+      created_at, updated_at
+    ) VALUES
+    <foreach collection="results" item="result" separator=",">
+      (#{result.attemptId}, #{result.questionId}, #{result.ktQuestionId},
+       #{result.interactionOrder}, #{result.correct}, #{result.learningOutcomeId},
+       #{result.ktLearningOutcomeId}, #{result.learningOutcomeMappingCount}, NOW(), NOW())
+    </foreach>
+    ON CONFLICT (attempt_id, question_id) DO UPDATE SET
+      kt_question_id = EXCLUDED.kt_question_id,
+      interaction_order = EXCLUDED.interaction_order,
+      is_correct = EXCLUDED.is_correct,
+      learning_outcome_id = EXCLUDED.learning_outcome_id,
+      kt_learning_outcome_id = EXCLUDED.kt_learning_outcome_id,
+      learning_outcome_mapping_count = EXCLUDED.learning_outcome_mapping_count,
+      updated_at = NOW()
+  </insert>
+
+  <update id="updateCorrectness">
+    UPDATE edu.attempt_question_results
+    SET is_correct = #{correct}, updated_at = NOW()
+    WHERE attempt_id = #{attemptId}
+      AND question_id = #{questionId}
+  </update>
+
+  <select id="findFinishedHistory" resultMap="AttemptQuestionResultMap">
+    SELECT result.attempt_id, attempt.quiz_id, result.question_id,
+           result.kt_question_id, result.interaction_order, result.is_correct,
+           result.learning_outcome_id, result.kt_learning_outcome_id,
+           result.learning_outcome_mapping_count, attempt.submitted_time
+    FROM edu.attempt_question_results result
+    JOIN edu.attempts attempt ON attempt.id = result.attempt_id
+    WHERE attempt.student_id = #{studentId}
+      AND attempt.status = 'FINISHED'
+      AND attempt.submitted_time IS NOT NULL
+      AND result.is_correct IS NOT NULL
+      AND attempt.quiz_id IN
+      <foreach collection="quizIds" item="quizId" open="(" separator="," close=")">
+        #{quizId}
+      </foreach>
+    ORDER BY attempt.submitted_time, attempt.id, result.interaction_order
+  </select>
+
+</mapper>

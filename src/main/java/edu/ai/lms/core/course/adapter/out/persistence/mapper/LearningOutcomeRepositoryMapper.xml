@@ -6,6 +6,7 @@
 
   <resultMap id="LearningOutcomeResultMap" type="edu.ai.lms.core.course.app.domain.LearningOutcome">
     <id property="id" column="id" />
+    <result property="ktLearningOutcomeId" column="kt_learning_outcome_id" />
     <result property="prefixNumber" column="prefix_number" />
     <result property="description" column="description" />
     <result property="sortOrder" column="sort_order" />
@@ -16,7 +17,7 @@
   </resultMap>
 
   <select id="findById" resultMap="LearningOutcomeResultMap">
-    SELECT id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at
+    SELECT id, kt_learning_outcome_id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at
     FROM edu.learning_outcomes
     WHERE id = #{id}
   </select>
@@ -50,21 +51,21 @@
   </delete>
 
   <select id="findByCourseId" resultMap="LearningOutcomeResultMap">
-    SELECT id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at
+    SELECT id, kt_learning_outcome_id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at
     FROM edu.learning_outcomes
     WHERE course_id = #{courseId}
     ORDER BY sort_order, created_at, id
   </select>
 
   <select id="findByGroupLearningOutcomeId" resultMap="LearningOutcomeResultMap">
-    SELECT id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at
+    SELECT id, kt_learning_outcome_id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at
     FROM edu.learning_outcomes
     WHERE group_learning_outcome_id = #{groupId}
     ORDER BY sort_order, created_at, id
   </select>
 
   <select id="findUngroupedByCourseId" resultMap="LearningOutcomeResultMap">
-    SELECT id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at
+    SELECT id, kt_learning_outcome_id, prefix_number, description, sort_order, course_id, group_learning_outcome_id, created_at, updated_at
     FROM edu.learning_outcomes
     WHERE course_id = #{courseId}
       AND group_learning_outcome_id IS NULL

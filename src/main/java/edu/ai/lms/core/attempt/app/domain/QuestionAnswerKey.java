@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.UUID;
+import java.util.List;
 
 @Getter
 @Setter
@@ -24,7 +25,15 @@ public class QuestionAnswerKey {
 
     private UUID questionId;
 
+    private Long ktQuestionId;
+
     private QuestionType questionType;
 
     private Long correctAnswerNumber;
+
+    @Builder.Default
+    private List<LearningOutcomeSnapshot> learningOutcomes = List.of();
+
+    public record LearningOutcomeSnapshot(UUID learningOutcomeId, long ktLearningOutcomeId) {
+    }
 }

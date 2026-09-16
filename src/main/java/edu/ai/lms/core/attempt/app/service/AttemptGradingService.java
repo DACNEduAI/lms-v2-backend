@@ -4,6 +4,7 @@ import edu.ai.lms.core.attempt.app.domain.Attempt;
 import edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey;
 import edu.ai.lms.core.attempt.app.port.out.AttemptCodeRunnerPort;
 import edu.ai.lms.core.attempt.app.port.out.AttemptCodeSubmissionSnapshotPort;
+import edu.ai.lms.core.attempt.app.port.out.AttemptQuestionResultPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
@@ -30,6 +31,7 @@ public class AttemptGradingService {
     private final LoadQuizAttemptPolicyPort policyPort;
     private final AttemptCodeRunnerPort codeRunnerPort;
     private final AttemptCodeSubmissionSnapshotPort codeSubmissionSnapshotPort;
+    private final AttemptQuestionResultPort attemptQuestionResultPort;
 
     @EventListener
     @Transactional
@@ -94,6 +96,8 @@ public class AttemptGradingService {
                         submissionId, attempt.getId(), attempt.getStudentId(), question.getKey());
                 if (ratio.isPresent()) {
                     codeRunnerEarnedRatios += ratio.getAsDouble();
+                    attemptQuestionResultPort.updateCorrectness(
+                            attempt.getId(), question.getKey(), ratio.getAsDouble() >= 1.0d);
                 }
             }
         }

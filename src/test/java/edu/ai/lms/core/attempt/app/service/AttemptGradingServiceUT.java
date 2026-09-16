@@ -4,6 +4,7 @@ import edu.ai.lms.core.attempt.app.domain.Attempt;
 import edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey;
 import edu.ai.lms.core.attempt.app.port.out.AttemptCodeRunnerPort;
 import edu.ai.lms.core.attempt.app.port.out.AttemptCodeSubmissionSnapshotPort;
+import edu.ai.lms.core.attempt.app.port.out.AttemptQuestionResultPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
@@ -30,6 +31,7 @@ class AttemptGradingServiceUT {
     @Mock private LoadQuizAttemptPolicyPort policy;
     @Mock private AttemptCodeRunnerPort codeRunner;
     @Mock private AttemptCodeSubmissionSnapshotPort snapshots;
+    @Mock private AttemptQuestionResultPort questionResults;
     @InjectMocks private AttemptGradingService service;
 
     @Test
@@ -54,6 +56,7 @@ class AttemptGradingServiceUT {
 
         service.recoverFinalizingAttempts();
 
+        verify(questionResults).updateCorrectness(attemptId, questionId, true);
         verify(saveAttempts).finalizeIfStillFinalizing(eq(attemptId), eq(10.0));
     }
 

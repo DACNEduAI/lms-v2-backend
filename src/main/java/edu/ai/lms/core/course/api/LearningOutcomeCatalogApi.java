@@ -13,5 +13,7 @@ public interface LearningOutcomeCatalogApi {
 
     List<LearningOutcomeView> findByIds(UUID courseId, Collection<UUID> learningOutcomeIds);
 
+    List<LearningOutcomeView> findByCourseId(UUID courseId);
+
     List<LearningOutcomeView> findByGroupIds(UUID courseId, Collection<UUID> groupIds);
 }

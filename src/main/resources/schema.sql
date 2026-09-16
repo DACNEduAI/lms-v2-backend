@@ -193,6 +193,7 @@ CREATE TABLE IF NOT EXISTS group_learning_outcomes
 CREATE TABLE IF NOT EXISTS learning_outcomes
 (
     id                        UUID UNIQUE DEFAULT gen_random_uuid(),
+    kt_learning_outcome_id    BIGINT GENERATED ALWAYS AS IDENTITY UNIQUE NOT NULL,
     prefix_number             INTEGER,
     description               TEXT,
     sort_order                INTEGER      NOT NULL DEFAULT 1,
@@ -795,6 +796,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz_generation_requester
 CREATE TABLE IF NOT EXISTS questions
 (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    kt_question_id      BIGINT GENERATED ALWAYS AS IDENTITY UNIQUE NOT NULL,
     content             TEXT,
     content_format      VARCHAR(30) NOT NULL DEFAULT 'PLAIN_TEXT'
         CHECK (content_format IN ('PLAIN_TEXT', 'TIPTAP_HTML')),
@@ -1277,6 +1279,38 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_attempts_student_quiz_active
 CREATE INDEX IF NOT EXISTS idx_attempts_release ON attempts (quiz_release_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_due_time ON attempts (due_time);
 
+-- Question-level grading snapshots used to construct learner-model histories.
+-- UUID and numeric identifiers are deliberately snapshotted so later edits or
+-- deletes do not rewrite the sequence observed when the attempt was submitted.
+CREATE TABLE IF NOT EXISTS attempt_question_results
+(
+    attempt_id                    UUID    NOT NULL REFERENCES attempts (id) ON DELETE CASCADE,
+    question_id                   UUID    NOT NULL,
+    kt_question_id                BIGINT  NOT NULL,
+    interaction_order             INTEGER NOT NULL CHECK (interaction_order >= 0),
+    is_correct                    BOOLEAN,
+    learning_outcome_id           UUID,
+    kt_learning_outcome_id        BIGINT,
+    learning_outcome_mapping_count INTEGER NOT NULL DEFAULT 0
+        CHECK (learning_outcome_mapping_count >= 0),
+    created_at                    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (attempt_id, question_id),
+    CONSTRAINT uq_attempt_question_result_order UNIQUE (attempt_id, interaction_order),
+    CONSTRAINT ck_attempt_question_result_mapping CHECK (
+        (learning_outcome_mapping_count = 1
+            AND learning_outcome_id IS NOT NULL
+            AND kt_learning_outcome_id IS NOT NULL)
+        OR
+        (learning_outcome_mapping_count <> 1
+            AND learning_outcome_id IS NULL
+            AND kt_learning_outcome_id IS NULL)
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_attempt_question_results_attempt_order
+    ON attempt_question_results (attempt_id, interaction_order);
+
 CREATE TABLE IF NOT EXISTS code_submissions
 (
     id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1351,9 +1385,15 @@ CREATE TABLE IF NOT EXISTS code_submission_test_results
     memory_kb            BIGINT,
     diagnostic           TEXT,
     engine_submission_id VARCHAR(255),
+    received_output      TEXT,
     created_at           TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_code_submission_test UNIQUE (submission_id, test_case_id)
 );
+
+-- Keep an existing development schema aligned with
+-- V20260901_02__code_runner_public_received_output.sql.
+ALTER TABLE code_submission_test_results
+    ADD COLUMN IF NOT EXISTS received_output TEXT;
 
 -- Join tables for many-to-many relationships
 CREATE TABLE IF NOT EXISTS quiz_chapters
@@ -1626,8 +1666,8 @@ CREATE INDEX IF NOT EXISTS idx_quiz3_assessments_course_updated ON quiz3_assessm
 
 CREATE TABLE IF NOT EXISTS quiz3_generation_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE, matrix2_id UUID NOT NULL REFERENCES exam_matrices_2(id) ON DELETE RESTRICT,
-    matrix2_version BIGINT NOT NULL, quiz_id UUID REFERENCES quizzes(id) ON DELETE SET NULL,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE, matrix2_id UUID REFERENCES exam_matrices_2(id) ON DELETE RESTRICT,
+    matrix2_version BIGINT, quiz_id UUID REFERENCES quizzes(id) ON DELETE SET NULL,
     requested_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT, request_snapshot JSONB NOT NULL,
     payload_hash VARCHAR(64) NOT NULL, idempotency_key VARCHAR(255) NOT NULL UNIQUE,
     status VARCHAR(30) NOT NULL DEFAULT 'PENDING' CHECK(status IN('PENDING','PROCESSING','COMPLETED','FAILED','TIMED_OUT')),
@@ -1678,6 +1718,9 @@ ALTER TABLE quiz3_assessments ADD COLUMN IF NOT EXISTS matrix3_version BIGINT;
 ALTER TABLE quiz3_generation_jobs ADD COLUMN IF NOT EXISTS matrix_source_type VARCHAR(20);
 ALTER TABLE quiz3_generation_jobs ADD COLUMN IF NOT EXISTS matrix3_id UUID REFERENCES exam_matrices_3(id) ON DELETE RESTRICT;
 ALTER TABLE quiz3_generation_jobs ADD COLUMN IF NOT EXISTS matrix3_version BIGINT;
+-- Matrix2 and Matrix3 are mutually exclusive job sources.
+ALTER TABLE quiz3_generation_jobs ALTER COLUMN matrix2_id DROP NOT NULL;
+ALTER TABLE quiz3_generation_jobs ALTER COLUMN matrix2_version DROP NOT NULL;
 ALTER TABLE quiz3_question_provenance ADD COLUMN IF NOT EXISTS matrix3_row_id UUID REFERENCES exam_matrix_3_rows(id) ON DELETE SET NULL;
 ALTER TABLE quiz3_question_provenance ADD COLUMN IF NOT EXISTS matrix3_custom_learning_level_id UUID REFERENCES exam_matrix_3_custom_learning_levels(id) ON DELETE SET NULL;
 ALTER TABLE quiz3_question_provenance

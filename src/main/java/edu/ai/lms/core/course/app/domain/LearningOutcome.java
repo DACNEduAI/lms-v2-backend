@@ -20,6 +20,8 @@ public class LearningOutcome {
 
     private UUID id;
 
+    private Long ktLearningOutcomeId;
+
     private String code;
     private Integer prefixNumber;
     private String description;

@@ -40,8 +40,13 @@ class QuizAttemptPolicyAdapter implements LoadQuizAttemptPolicyPort {
         return attemptPolicyApi.findAnswerKeys(quizId).stream()
                 .map(key -> QuestionAnswerKey.builder()
                         .questionId(key.questionId())
+                        .ktQuestionId(key.ktQuestionId())
                         .questionType(QuestionAnswerKey.QuestionType.valueOf(key.questionType()))
                         .correctAnswerNumber(key.correctAnswerNumber())
+                        .learningOutcomes(key.learningOutcomes().stream()
+                                .map(outcome -> new QuestionAnswerKey.LearningOutcomeSnapshot(
+                                        outcome.learningOutcomeId(), outcome.ktLearningOutcomeId()))
+                                .toList())
                         .build())
                 .toList();
     }

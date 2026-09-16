@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -116,5 +117,13 @@ public class AttemptScoringService {
         return type == QuestionAnswerKey.QuestionType.MULTIPLE_CHOICE
                 || type == QuestionAnswerKey.QuestionType.TRUE_FALSE
                 || type == QuestionAnswerKey.QuestionType.CODE_RUNNER;
+    }
+
+    OptionalDouble findCompletedCodeRunnerRatio(
+            UUID submissionId,
+            UUID attemptId,
+            UUID studentId,
+            UUID questionId) {
+        return codeRunnerPort.findCompletedSubmitRatio(submissionId, attemptId, studentId, questionId);
     }
 }

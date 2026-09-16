@@ -49,6 +49,8 @@ public class Question {
 
     private UUID id;
 
+    private Long ktQuestionId;
+
     private String content;
 
     @Builder.Default

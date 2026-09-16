@@ -4,6 +4,7 @@ import java.util.UUID;
 
 public record LearningOutcomeView(
         UUID id,
+        long ktLearningOutcomeId,
         String code,
         Integer prefixNumber,
         String description,

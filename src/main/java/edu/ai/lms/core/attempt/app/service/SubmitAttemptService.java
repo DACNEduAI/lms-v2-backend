@@ -15,6 +15,10 @@ import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.UnscheduleAttemptAutoClosePort;
+import edu.ai.lms.core.attempt.app.port.out.AttemptQuestionResultPort;
+import edu.ai.lms.core.attempt.app.domain.AttemptQuestionResult;
+import edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey;
+import edu.ai.lms.core.attempt.app.domain.SubmittedAnswer;
 import edu.ai.lms.core.attempt.app.domain.CurrentActor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +29,9 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.OptionalDouble;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
@@ -42,6 +49,7 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
     private final AttemptScoringService attemptScoringService;
     private final AttemptCodeSubmissionSnapshotPort codeSubmissionSnapshotPort;
     private final AttemptAutoCloseService attemptAutoCloseService;
+    private final AttemptQuestionResultPort attemptQuestionResultPort;
 
     @Override
     @Transactional
@@ -80,6 +88,7 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
         );
         codeSubmissionSnapshotPort.replace(startedAttempt.getId(),
                 selectedCodeSubmissions(answerKeys, command.submittedAnswers()));
+        saveQuestionResults(startedAttempt, answerKeys, command.submittedAnswers());
 
         startedAttempt.setSubmittedTime(now);
         startedAttempt.setTimeSpentSeconds(command.timeSpentSeconds());
@@ -153,6 +162,75 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
             }
         });
         return selected;
+    }
+
+    private void saveQuestionResults(
+            Attempt attempt,
+            List<QuestionAnswerKey> answerKeys,
+            List<SubmittedAnswer> submittedAnswers) {
+        if (submittedAnswers == null || submittedAnswers.isEmpty()) {
+            return;
+        }
+
+        Map<UUID, QuestionAnswerKey> metadata = new LinkedHashMap<>();
+        answerKeys.forEach(key -> metadata.putIfAbsent(key.getQuestionId(), key));
+        Map<UUID, Set<Long>> correctAnswers = answerKeys.stream()
+                .filter(key -> key.getCorrectAnswerNumber() != null)
+                .collect(Collectors.groupingBy(
+                        QuestionAnswerKey::getQuestionId,
+                        LinkedHashMap::new,
+                        Collectors.mapping(QuestionAnswerKey::getCorrectAnswerNumber, Collectors.toSet())));
+        Map<UUID, SubmittedAnswer> submitted = submittedAnswers.stream()
+                .collect(Collectors.toMap(
+                        SubmittedAnswer::getQuestionId,
+                        answer -> answer,
+                        (left, right) -> left,
+                        LinkedHashMap::new));
+
+        List<AttemptQuestionResult> results = new java.util.ArrayList<>();
+        int order = 0;
+        for (QuestionAnswerKey key : metadata.values()) {
+            SubmittedAnswer answer = submitted.get(key.getQuestionId());
+            if (answer == null || key.getQuestionType() == QuestionAnswerKey.QuestionType.ESSAY) {
+                order++;
+                continue;
+            }
+
+            Boolean correct;
+            if (key.getQuestionType() == QuestionAnswerKey.QuestionType.CODE_RUNNER) {
+                if (answer.getCodeSubmissionId() == null) {
+                    order++;
+                    continue;
+                }
+                OptionalDouble ratio = attemptScoringService.findCompletedCodeRunnerRatio(
+                        answer.getCodeSubmissionId(), attempt.getId(), attempt.getStudentId(), key.getQuestionId());
+                correct = ratio.isPresent() ? ratio.getAsDouble() >= 1.0d : null;
+            } else {
+                if (answer.getStudentAnswerId() == null) {
+                    order++;
+                    continue;
+                }
+                correct = correctAnswers.getOrDefault(key.getQuestionId(), Set.of())
+                        .contains(answer.getStudentAnswerId());
+            }
+
+            int mappingCount = key.getLearningOutcomes() == null ? 0 : key.getLearningOutcomes().size();
+            QuestionAnswerKey.LearningOutcomeSnapshot outcome = mappingCount == 1
+                    ? key.getLearningOutcomes().getFirst()
+                    : null;
+            results.add(AttemptQuestionResult.builder()
+                    .attemptId(attempt.getId())
+                    .questionId(key.getQuestionId())
+                    .ktQuestionId(key.getKtQuestionId())
+                    .interactionOrder(order)
+                    .correct(correct)
+                    .learningOutcomeId(outcome == null ? null : outcome.learningOutcomeId())
+                    .ktLearningOutcomeId(outcome == null ? null : outcome.ktLearningOutcomeId())
+                    .learningOutcomeMappingCount(mappingCount)
+                    .build());
+            order++;
+        }
+        attemptQuestionResultPort.upsertAll(results);
     }
 
     private SubmitAttemptResponse toResponse(Attempt attempt) {

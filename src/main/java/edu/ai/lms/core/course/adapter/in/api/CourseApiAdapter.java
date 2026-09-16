@@ -172,6 +172,14 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
     }
 
     @Override
+    public List<LearningOutcomeView> findByCourseId(UUID courseId) {
+        return learningOutcomePort.findByCourseId(courseId).stream()
+                .map(this::toView)
+                .sorted(java.util.Comparator.comparingLong(LearningOutcomeView::ktLearningOutcomeId))
+                .toList();
+    }
+
+    @Override
     public List<LearningOutcomeView> findByGroupIds(UUID courseId, Collection<UUID> groupIds) {
         if (groupIds == null || groupIds.isEmpty()) {
             return List.of();
@@ -193,6 +201,7 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
                 : group.getCode() + "." + outcome.getCode();
         return new LearningOutcomeView(
                 outcome.getId(),
+                outcome.getKtLearningOutcomeId(),
                 code,
                 outcome.getPrefixNumber(),
                 outcome.getDescription(),
