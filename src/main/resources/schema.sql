@@ -1282,22 +1282,34 @@ CREATE INDEX IF NOT EXISTS idx_attempts_due_time ON attempts (due_time);
 -- Question-level grading snapshots used to construct learner-model histories.
 -- UUID and numeric identifiers are deliberately snapshotted so later edits or
 -- deletes do not rewrite the sequence observed when the attempt was submitted.
-CREATE TABLE IF NOT EXISTS attempt_question_results
+CREATE TABLE IF NOT EXISTS attempt_records
 (
     attempt_id                    UUID    NOT NULL REFERENCES attempts (id) ON DELETE CASCADE,
     question_id                   UUID    NOT NULL,
     kt_question_id                BIGINT  NOT NULL,
     interaction_order             INTEGER NOT NULL CHECK (interaction_order >= 0),
-    is_correct                    BOOLEAN,
+    question_type                VARCHAR(40),
+    question_content             TEXT,
+    question_content_format      VARCHAR(40),
+    student_answer_number        BIGINT,
+    student_answer_position      INTEGER,
+    student_answer_content       TEXT,
+    student_answer_content_format VARCHAR(40),
+    correct_answer_number        BIGINT,
+    correct_answer_position      INTEGER,
+    correct_answer_content       TEXT,
+    correct_answer_content_format VARCHAR(40),
+    is_correct                    BOOLEAN NOT NULL,
     learning_outcome_id           UUID,
     kt_learning_outcome_id        BIGINT,
     learning_outcome_mapping_count INTEGER NOT NULL DEFAULT 0
         CHECK (learning_outcome_mapping_count >= 0),
+    snapshot_complete             BOOLEAN NOT NULL DEFAULT FALSE,
     created_at                    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (attempt_id, question_id),
-    CONSTRAINT uq_attempt_question_result_order UNIQUE (attempt_id, interaction_order),
-    CONSTRAINT ck_attempt_question_result_mapping CHECK (
+    CONSTRAINT uq_attempt_record_order UNIQUE (attempt_id, interaction_order),
+    CONSTRAINT ck_attempt_record_mapping CHECK (
         (learning_outcome_mapping_count = 1
             AND learning_outcome_id IS NOT NULL
             AND kt_learning_outcome_id IS NOT NULL)
@@ -1308,8 +1320,8 @@ CREATE TABLE IF NOT EXISTS attempt_question_results
     )
 );
 
-CREATE INDEX IF NOT EXISTS idx_attempt_question_results_attempt_order
-    ON attempt_question_results (attempt_id, interaction_order);
+CREATE INDEX IF NOT EXISTS idx_attempt_records_attempt_order
+    ON attempt_records (attempt_id, interaction_order);
 
 CREATE TABLE IF NOT EXISTS code_submissions
 (

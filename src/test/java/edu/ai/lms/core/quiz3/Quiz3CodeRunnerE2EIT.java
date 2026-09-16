@@ -184,12 +184,14 @@ class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
                           {"questionId":"%s","studentAnswerId":null,"codeSubmissionId":"%s"}]}
                         """.formatted(studentQuizId, studentQuestionId, submissionId))
                 .post("/api/{courseId}/attempt/quiz/{quizId}/submit", courseId, studentQuizId)
-                .then().statusCode(200).body("status", equalTo("FINALIZING"));
+                .then().statusCode(200).body("status", equalTo("FINISHED"));
         jdbc.update("UPDATE edu.code_submissions SET status='COMPLETED',verdict='ACCEPTED',score=2,max_score=2 WHERE id=?",
                 submissionId);
         events.publishEvent(new CodeSubmissionCompletedEvent(submissionId, attemptId));
         assertThat(jdbc.queryForObject("SELECT status FROM edu.attempts WHERE id=?", String.class, attemptId))
                 .isEqualTo("FINISHED");
+        assertThat(jdbc.queryForObject("SELECT score FROM edu.attempts WHERE id=?", Double.class, attemptId))
+                .isEqualTo(0.0);
     }
 
     @Test

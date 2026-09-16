@@ -29,11 +29,19 @@ public class QuestionAnswerKey {
 
     private QuestionType questionType;
 
-    private Long correctAnswerNumber;
+    private String questionContent;
+
+    private String questionContentFormat;
+
+    @Builder.Default
+    private List<AnswerSnapshot> answers = List.of();
 
     @Builder.Default
     private List<LearningOutcomeSnapshot> learningOutcomes = List.of();
 
     public record LearningOutcomeSnapshot(UUID learningOutcomeId, long ktLearningOutcomeId) {
+    }
+
+    public record AnswerSnapshot(long answerNumber, String content, String contentFormat, boolean correct) {
     }
 }

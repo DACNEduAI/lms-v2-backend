@@ -10,39 +10,53 @@
     <result property="quizId" column="quiz_id" />
     <result property="ktQuestionId" column="kt_question_id" />
     <result property="interactionOrder" column="interaction_order" />
+    <result property="questionType" column="question_type" />
+    <result property="questionContent" column="question_content" />
+    <result property="questionContentFormat" column="question_content_format" />
+    <result property="studentAnswerNumber" column="student_answer_number" />
+    <result property="studentAnswerPosition" column="student_answer_position" />
+    <result property="studentAnswerContent" column="student_answer_content" />
+    <result property="studentAnswerContentFormat" column="student_answer_content_format" />
+    <result property="correctAnswerNumber" column="correct_answer_number" />
+    <result property="correctAnswerPosition" column="correct_answer_position" />
+    <result property="correctAnswerContent" column="correct_answer_content" />
+    <result property="correctAnswerContentFormat" column="correct_answer_content_format" />
     <result property="correct" column="is_correct" />
     <result property="learningOutcomeId" column="learning_outcome_id" />
     <result property="ktLearningOutcomeId" column="kt_learning_outcome_id" />
     <result property="learningOutcomeMappingCount" column="learning_outcome_mapping_count" />
+    <result property="snapshotComplete" column="snapshot_complete" />
     <result property="submittedTime" column="submitted_time" />
   </resultMap>
 
   <insert id="upsertAll">
-    INSERT INTO edu.attempt_question_results (
-      attempt_id, question_id, kt_question_id, interaction_order, is_correct,
+    INSERT INTO edu.attempt_records (
+      attempt_id, question_id, kt_question_id, interaction_order,
+      question_type, question_content, question_content_format,
+      student_answer_number, student_answer_position, student_answer_content, student_answer_content_format,
+      correct_answer_number, correct_answer_position, correct_answer_content, correct_answer_content_format,
+      is_correct,
       learning_outcome_id, kt_learning_outcome_id, learning_outcome_mapping_count,
-      created_at, updated_at
+      snapshot_complete, created_at, updated_at
     ) VALUES
     <foreach collection="results" item="result" separator=",">
       (#{result.attemptId}, #{result.questionId}, #{result.ktQuestionId},
-       #{result.interactionOrder}, #{result.correct}, #{result.learningOutcomeId},
-       #{result.ktLearningOutcomeId}, #{result.learningOutcomeMappingCount}, NOW(), NOW())
+       #{result.interactionOrder}, #{result.questionType}, #{result.questionContent}, #{result.questionContentFormat},
+       #{result.studentAnswerNumber}, #{result.studentAnswerPosition}, #{result.studentAnswerContent},
+       #{result.studentAnswerContentFormat}, #{result.correctAnswerNumber}, #{result.correctAnswerPosition},
+       #{result.correctAnswerContent}, #{result.correctAnswerContentFormat}, #{result.correct},
+       #{result.learningOutcomeId}, #{result.ktLearningOutcomeId}, #{result.learningOutcomeMappingCount},
+       #{result.snapshotComplete}, NOW(), NOW())
     </foreach>
-    ON CONFLICT (attempt_id, question_id) DO UPDATE SET
-      kt_question_id = EXCLUDED.kt_question_id,
-      interaction_order = EXCLUDED.interaction_order,
-      is_correct = EXCLUDED.is_correct,
-      learning_outcome_id = EXCLUDED.learning_outcome_id,
-      kt_learning_outcome_id = EXCLUDED.kt_learning_outcome_id,
-      learning_outcome_mapping_count = EXCLUDED.learning_outcome_mapping_count,
-      updated_at = NOW()
+    ON CONFLICT (attempt_id, question_id) DO NOTHING
   </insert>
 
   <update id="updateCorrectness">
-    UPDATE edu.attempt_question_results
+    UPDATE edu.attempt_records
     SET is_correct = #{correct}, updated_at = NOW()
     WHERE attempt_id = #{attemptId}
       AND question_id = #{questionId}
+      AND snapshot_complete = FALSE
   </update>
 
   <select id="findFinishedHistory" resultMap="AttemptQuestionResultMap">
@@ -50,15 +64,28 @@
            result.kt_question_id, result.interaction_order, result.is_correct,
            result.learning_outcome_id, result.kt_learning_outcome_id,
            result.learning_outcome_mapping_count, attempt.submitted_time
-    FROM edu.attempt_question_results result
+    FROM edu.attempt_records result
     JOIN edu.attempts attempt ON attempt.id = result.attempt_id
     WHERE attempt.student_id = #{studentId}
-      AND attempt.status = 'FINISHED'
+      AND attempt.status IN ('FINISHED', 'ERROR')
       AND attempt.submitted_time IS NOT NULL
       AND result.is_correct IS NOT NULL
       AND attempt.quiz_id IN
       <foreach collection="quizIds" item="quizId" open="(" separator="," close=")">
         #{quizId}
+      </foreach>
+    ORDER BY attempt.submitted_time, attempt.id, result.interaction_order
+  </select>
+
+  <select id="findAttemptRecords" resultMap="AttemptQuestionResultMap">
+    SELECT result.*, attempt.quiz_id, attempt.submitted_time
+    FROM edu.attempt_records result
+    JOIN edu.attempts attempt ON attempt.id = result.attempt_id
+    WHERE attempt.student_id = #{studentId}
+      AND attempt.quiz_id = #{quizId}
+      AND result.attempt_id IN
+      <foreach collection="attemptIds" item="attemptId" open="(" separator="," close=")">
+        #{attemptId}
       </foreach>
     ORDER BY attempt.submitted_time, attempt.id, result.interaction_order
   </select>

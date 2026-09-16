@@ -28,6 +28,7 @@ public class SecurityConfig {
 
     private final SseJwtAuthenticationFilter sseJwtAuthenticationFilter;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final SecurityErrorResponseWriter securityErrorResponseWriter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -41,6 +42,13 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, exception) ->
+                                securityErrorResponseWriter.unauthorized(request, response,
+                                        "AUTHENTICATION_REQUIRED", "Authentication is required"))
+                        .accessDeniedHandler((request, response, exception) ->
+                                securityErrorResponseWriter.forbidden(request, response,
+                                        "ACCESS_DENIED", "The authenticated user is not allowed to perform this action")))
                 .authorizeHttpRequests(auth -> auth
                         // An SSE connection is authenticated on its initial REQUEST dispatch.
                         // Tomcat later performs ASYNC redispatches without the original
@@ -85,7 +93,7 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.addAllowedMethod("*");
         configuration.addAllowedHeader("*");
-        configuration.addExposedHeader("Content-Disposition");
+        configuration.setExposedHeaders(List.of("Content-Disposition", "X-Correlation-ID"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

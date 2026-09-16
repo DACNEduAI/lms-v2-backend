@@ -47,6 +47,7 @@ class GetAttemptQuizSessionServiceUT {
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
         UUID questionId = UUID.randomUUID();
+        UUID learningOutcomeId = UUID.randomUUID();
         UUID attemptId = UUID.randomUUID();
         LocalDateTime startedAt = LocalDateTime.now().minusMinutes(2);
 
@@ -57,6 +58,8 @@ class GetAttemptQuizSessionServiceUT {
         when(getQuizUseCase.getQuiz(courseId, quizId)).thenReturn(GetQuizResponse.builder()
                 .quizId(quizId).quizTitle("Quiz3 base")
                 .questions(List.of(GetQuizResponse.QuestionSummary.builder().questionId(questionId).content("Question").contentFormat(RichContentFormat.TIPTAP_HTML).type("MULTIPLE_CHOICE")
+                        .learningOutcomes(List.of(GetQuizResponse.LearningOutcomeSummary.builder()
+                                .id(learningOutcomeId).code("LO1.1").build()))
                         .answers(List.of(GetQuizResponse.AnswerSummary.builder().answerNumber(7L).content("Answer").contentFormat(RichContentFormat.TIPTAP_HTML).correct(true).explanation("Hidden").build()))
                         .build()))
                 .build());
@@ -65,6 +68,8 @@ class GetAttemptQuizSessionServiceUT {
 
         assertEquals(attemptId, response.getAttemptId());
         assertEquals(questionId, response.getQuestions().getFirst().getQuestionId());
+        assertEquals(learningOutcomeId, response.getQuestions().getFirst().getLearningOutcomes().getFirst().getId());
+        assertEquals("LO1.1", response.getQuestions().getFirst().getLearningOutcomes().getFirst().getCode());
         assertEquals(7L, response.getQuestions().getFirst().getAnswers().getFirst().getAnswerNumber());
         assertEquals("Answer", response.getQuestions().getFirst().getAnswers().getFirst().getContent());
         assertNull(response.getDueTime());

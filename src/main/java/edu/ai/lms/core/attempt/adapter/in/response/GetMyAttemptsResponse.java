@@ -1,6 +1,7 @@
 package edu.ai.lms.core.attempt.adapter.in.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import edu.ai.lms.config.DatePatternConstants;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -54,5 +55,42 @@ public class GetMyAttemptsResponse {
         private Integer timeSpentSeconds;
 
         private String errorReason;
+
+        @Builder.Default
+        private List<AttemptRecordItem> attemptRecords = new ArrayList<>();
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class AttemptRecordItem {
+        private UUID questionId;
+        private int interactionOrder;
+        private String questionType;
+        private String questionContent;
+        private String questionContentFormat;
+        private UUID learningOutcomeId;
+        private String learningOutcomeCode;
+        private Integer learningOutcomeMappingCount;
+        private AnswerItem studentAnswer;
+        private AnswerItem correctAnswer;
+        @JsonProperty("isCorrect")
+        private boolean isCorrect;
+        private boolean snapshotComplete;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class AnswerItem {
+        private Long answerNumber;
+        private Integer displayedPosition;
+        private String displayedLabel;
+        private String content;
+        private String contentFormat;
     }
 }

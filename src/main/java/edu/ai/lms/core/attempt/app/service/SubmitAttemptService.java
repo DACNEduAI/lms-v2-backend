@@ -5,6 +5,7 @@ import edu.ai.lms.core.attempt.adapter.in.response.SubmitAttemptResponse;
 import edu.ai.lms.core.attempt.app.domain.Attempt;
 import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
 import edu.ai.lms.core.attempt.app.exception.AttemptNotFoundException;
+import edu.ai.lms.core.attempt.app.exception.AttemptAccessDeniedException;
 import edu.ai.lms.core.attempt.app.exception.QuizNotFoundForAttemptException;
 import edu.ai.lms.core.attempt.app.exception.UserNotAuthenticatedForAttemptException;
 import edu.ai.lms.core.attempt.app.port.in.command.SubmitAttemptCommand;
@@ -29,9 +30,6 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.OptionalDouble;
-import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
@@ -58,11 +56,11 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
                 .orElseThrow(() -> new UserNotAuthenticatedForAttemptException("User not authenticated"));
 
         if (user.getRole() != Roles.STUDENT) {
-            throw new IllegalArgumentException("Only students can submit attempts");
+            throw new AttemptAccessDeniedException("Only students can submit attempts");
         }
 
         if (!loadQuizAttemptPolicyPort.isStudentInCourse(user.getId(), command.courseId())) {
-            throw new IllegalArgumentException("Student is not enrolled in this course");
+            throw new AttemptAccessDeniedException("Student is not enrolled in this course");
         }
 
         QuizAttemptPolicy policy = loadQuizAttemptPolicyPort.getQuizAttemptPolicy(command.courseId(), command.quizId())
@@ -74,12 +72,12 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
         Attempt startedAttempt = loadAttemptPort.getLatestStartedAttempt(user.getId(), command.quizId())
                 .orElseThrow(() -> new AttemptNotFoundException("No active started attempt found for this quiz"));
 
+        List<QuestionAnswerKey> answerKeys = loadQuizAttemptPolicyPort.getQuestionAnswerKeys(command.quizId());
+
         if (isLate(startedAttempt.getDueTime(), now)) {
-            return saveLateSubmission(startedAttempt, policy, command.timeSpentSeconds(), now);
+            return saveLateSubmission(startedAttempt, policy, answerKeys, command.timeSpentSeconds(), now);
         }
 
-        List<edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey> answerKeys =
-                loadQuizAttemptPolicyPort.getQuestionAnswerKeys(command.quizId());
         AttemptScoringService.ScoringResult scoringResult = attemptScoringService.calculateScore(
                 answerKeys,
                 command.submittedAnswers(),
@@ -88,19 +86,13 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
         );
         codeSubmissionSnapshotPort.replace(startedAttempt.getId(),
                 selectedCodeSubmissions(answerKeys, command.submittedAnswers()));
-        saveQuestionResults(startedAttempt, answerKeys, command.submittedAnswers());
+        saveQuestionResults(startedAttempt, answerKeys, command.submittedAnswers(),
+                scoringResult.correctnessByQuestion());
 
         startedAttempt.setSubmittedTime(now);
         startedAttempt.setTimeSpentSeconds(command.timeSpentSeconds());
-        startedAttempt.setScore(scoringResult.hasPendingSubmissions()
-                ? scoringResult.score() - scoringResult.codeRunnerScore()
-                : scoringResult.score());
-        
-        if (scoringResult.hasPendingSubmissions()) {
-            startedAttempt.setStatus(Attempt.AttemptStatus.FINALIZING);
-        } else {
-            startedAttempt.setStatus(Attempt.AttemptStatus.FINISHED);
-        }
+        startedAttempt.setScore(scoringResult.score());
+        startedAttempt.setStatus(Attempt.AttemptStatus.FINISHED);
         startedAttempt.setErrorReason(null);
 
         Attempt saved = saveAttemptPort.save(startedAttempt);
@@ -111,6 +103,7 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
     private SubmitAttemptResponse saveLateSubmission(
             Attempt startedAttempt,
             QuizAttemptPolicy policy,
+            List<QuestionAnswerKey> answerKeys,
             Integer timeSpentSeconds,
             LocalDateTime now
     ) {
@@ -126,6 +119,8 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
             startedAttempt.setScore(0.0);
             startedAttempt.setErrorReason("Submission exceeded due time + 5 seconds");
         }
+
+        saveQuestionResults(startedAttempt, answerKeys, List.of(), allIncorrect(answerKeys));
 
         Attempt saved = saveAttemptPort.save(startedAttempt);
         unscheduleAutoCloseBestEffort(saved.getId());
@@ -167,52 +162,30 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
     private void saveQuestionResults(
             Attempt attempt,
             List<QuestionAnswerKey> answerKeys,
-            List<SubmittedAnswer> submittedAnswers) {
-        if (submittedAnswers == null || submittedAnswers.isEmpty()) {
-            return;
-        }
+            List<SubmittedAnswer> submittedAnswers,
+            Map<UUID, Boolean> correctnessByQuestion) {
 
         Map<UUID, QuestionAnswerKey> metadata = new LinkedHashMap<>();
         answerKeys.forEach(key -> metadata.putIfAbsent(key.getQuestionId(), key));
-        Map<UUID, Set<Long>> correctAnswers = answerKeys.stream()
-                .filter(key -> key.getCorrectAnswerNumber() != null)
-                .collect(Collectors.groupingBy(
-                        QuestionAnswerKey::getQuestionId,
-                        LinkedHashMap::new,
-                        Collectors.mapping(QuestionAnswerKey::getCorrectAnswerNumber, Collectors.toSet())));
-        Map<UUID, SubmittedAnswer> submitted = submittedAnswers.stream()
-                .collect(Collectors.toMap(
-                        SubmittedAnswer::getQuestionId,
-                        answer -> answer,
-                        (left, right) -> left,
-                        LinkedHashMap::new));
+        Map<UUID, SubmittedAnswer> submitted = new LinkedHashMap<>();
+        if (submittedAnswers != null) {
+            submittedAnswers.forEach(answer -> submitted.putIfAbsent(answer.getQuestionId(), answer));
+        }
 
         List<AttemptQuestionResult> results = new java.util.ArrayList<>();
         int order = 0;
         for (QuestionAnswerKey key : metadata.values()) {
             SubmittedAnswer answer = submitted.get(key.getQuestionId());
-            if (answer == null || key.getQuestionType() == QuestionAnswerKey.QuestionType.ESSAY) {
+            if (key.getQuestionType() == QuestionAnswerKey.QuestionType.ESSAY) {
                 order++;
                 continue;
             }
 
-            Boolean correct;
-            if (key.getQuestionType() == QuestionAnswerKey.QuestionType.CODE_RUNNER) {
-                if (answer.getCodeSubmissionId() == null) {
-                    order++;
-                    continue;
-                }
-                OptionalDouble ratio = attemptScoringService.findCompletedCodeRunnerRatio(
-                        answer.getCodeSubmissionId(), attempt.getId(), attempt.getStudentId(), key.getQuestionId());
-                correct = ratio.isPresent() ? ratio.getAsDouble() >= 1.0d : null;
-            } else {
-                if (answer.getStudentAnswerId() == null) {
-                    order++;
-                    continue;
-                }
-                correct = correctAnswers.getOrDefault(key.getQuestionId(), Set.of())
-                        .contains(answer.getStudentAnswerId());
-            }
+            QuestionAnswerKey.AnswerSnapshot studentAnswer = key.getQuestionType() == QuestionAnswerKey.QuestionType.CODE_RUNNER
+                    || answer == null || answer.getStudentAnswerId() == null ? null
+                    : findAnswer(key, answer.getStudentAnswerId());
+            QuestionAnswerKey.AnswerSnapshot correctAnswer = key.getQuestionType() == QuestionAnswerKey.QuestionType.CODE_RUNNER
+                    ? null : key.getAnswers().stream().filter(QuestionAnswerKey.AnswerSnapshot::correct).findFirst().orElse(null);
 
             int mappingCount = key.getLearningOutcomes() == null ? 0 : key.getLearningOutcomes().size();
             QuestionAnswerKey.LearningOutcomeSnapshot outcome = mappingCount == 1
@@ -223,14 +196,46 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
                     .questionId(key.getQuestionId())
                     .ktQuestionId(key.getKtQuestionId())
                     .interactionOrder(order)
-                    .correct(correct)
+                    .questionType(key.getQuestionType().name())
+                    .questionContent(key.getQuestionContent())
+                    .questionContentFormat(key.getQuestionContentFormat())
+                    .studentAnswerNumber(studentAnswer == null ? null : studentAnswer.answerNumber())
+                    .studentAnswerPosition(positionOf(key, studentAnswer))
+                    .studentAnswerContent(studentAnswer == null ? null : studentAnswer.content())
+                    .studentAnswerContentFormat(studentAnswer == null ? null : studentAnswer.contentFormat())
+                    .correctAnswerNumber(correctAnswer == null ? null : correctAnswer.answerNumber())
+                    .correctAnswerPosition(positionOf(key, correctAnswer))
+                    .correctAnswerContent(correctAnswer == null ? null : correctAnswer.content())
+                    .correctAnswerContentFormat(correctAnswer == null ? null : correctAnswer.contentFormat())
+                    .correct(Boolean.TRUE.equals(correctnessByQuestion.get(key.getQuestionId())))
                     .learningOutcomeId(outcome == null ? null : outcome.learningOutcomeId())
                     .ktLearningOutcomeId(outcome == null ? null : outcome.ktLearningOutcomeId())
                     .learningOutcomeMappingCount(mappingCount)
+                    .snapshotComplete(true)
                     .build());
             order++;
         }
         attemptQuestionResultPort.upsertAll(results);
+    }
+
+    private QuestionAnswerKey.AnswerSnapshot findAnswer(QuestionAnswerKey key, long answerNumber) {
+        return key.getAnswers().stream()
+                .filter(answer -> answer.answerNumber() == answerNumber)
+                .findFirst()
+                .orElseThrow(() -> new edu.ai.lms.core.attempt.app.exception.InvalidAttemptSubmissionException(
+                        "Submitted answer does not belong to its question"));
+    }
+
+    private Integer positionOf(QuestionAnswerKey key, QuestionAnswerKey.AnswerSnapshot answer) {
+        return answer == null ? null : key.getAnswers().indexOf(answer);
+    }
+
+    private Map<UUID, Boolean> allIncorrect(List<QuestionAnswerKey> answerKeys) {
+        Map<UUID, Boolean> result = new LinkedHashMap<>();
+        answerKeys.stream()
+                .filter(key -> key.getQuestionType() != QuestionAnswerKey.QuestionType.ESSAY)
+                .forEach(key -> result.putIfAbsent(key.getQuestionId(), false));
+        return result;
     }
 
     private SubmitAttemptResponse toResponse(Attempt attempt) {

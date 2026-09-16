@@ -2,6 +2,9 @@ package edu.ai.lms.core.attempt.app.service;
 
 import edu.ai.lms.core.attempt.app.domain.Attempt;
 import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
+import edu.ai.lms.core.attempt.app.domain.AttemptQuestionResult;
+import edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey;
+import edu.ai.lms.core.attempt.app.port.out.AttemptQuestionResultPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
@@ -12,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -52,6 +56,7 @@ public class AttemptAutoCloseService {
     private final LoadAttemptPort loadAttemptPort;
     private final LoadQuizAttemptPolicyPort loadQuizAttemptPolicyPort;
     private final SaveAttemptPort saveAttemptPort;
+    private final AttemptQuestionResultPort attemptQuestionResultPort;
 
     /**
      * Closes the latest active started attempt for a student and quiz if that attempt is expired.
@@ -154,7 +159,47 @@ public class AttemptAutoCloseService {
             errorReason = "Attempt was not submitted before due time";
         }
 
-        return saveAttemptPort.closeIfStarted(attempt.getId(), status, score, errorReason, now);
+        boolean closed = saveAttemptPort.closeIfStarted(attempt.getId(), status, score, errorReason, now);
+        if (closed) {
+            saveAllWrongRecords(attempt, loadQuizAttemptPolicyPort.getQuestionAnswerKeys(attempt.getQuizId()));
+        }
+        return closed;
+    }
+
+    private void saveAllWrongRecords(Attempt attempt, List<QuestionAnswerKey> answerKeys) {
+        List<AttemptQuestionResult> records = new java.util.ArrayList<>();
+        int order = 0;
+        for (QuestionAnswerKey key : answerKeys) {
+            if (key.getQuestionType() == QuestionAnswerKey.QuestionType.ESSAY) {
+                order++;
+                continue;
+            }
+            QuestionAnswerKey.AnswerSnapshot correctAnswer = key.getQuestionType() == QuestionAnswerKey.QuestionType.CODE_RUNNER
+                    ? null : key.getAnswers().stream().filter(QuestionAnswerKey.AnswerSnapshot::correct).findFirst().orElse(null);
+            int mappingCount = key.getLearningOutcomes() == null ? 0 : key.getLearningOutcomes().size();
+            QuestionAnswerKey.LearningOutcomeSnapshot outcome = mappingCount == 1
+                    ? key.getLearningOutcomes().getFirst() : null;
+            records.add(AttemptQuestionResult.builder()
+                    .attemptId(attempt.getId())
+                    .questionId(key.getQuestionId())
+                    .ktQuestionId(key.getKtQuestionId())
+                    .interactionOrder(order)
+                    .questionType(key.getQuestionType().name())
+                    .questionContent(key.getQuestionContent())
+                    .questionContentFormat(key.getQuestionContentFormat())
+                    .correctAnswerNumber(correctAnswer == null ? null : correctAnswer.answerNumber())
+                    .correctAnswerPosition(correctAnswer == null ? null : key.getAnswers().indexOf(correctAnswer))
+                    .correctAnswerContent(correctAnswer == null ? null : correctAnswer.content())
+                    .correctAnswerContentFormat(correctAnswer == null ? null : correctAnswer.contentFormat())
+                    .correct(false)
+                    .learningOutcomeId(outcome == null ? null : outcome.learningOutcomeId())
+                    .ktLearningOutcomeId(outcome == null ? null : outcome.ktLearningOutcomeId())
+                    .learningOutcomeMappingCount(mappingCount)
+                    .snapshotComplete(true)
+                    .build());
+            order++;
+        }
+        attemptQuestionResultPort.upsertAll(records);
     }
 
     /**

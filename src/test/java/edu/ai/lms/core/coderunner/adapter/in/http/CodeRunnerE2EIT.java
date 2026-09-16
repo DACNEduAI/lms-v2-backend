@@ -262,8 +262,8 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
                 .body("scoreReleased", equalTo(false))
                 .body("hiddenTestPolicy", equalTo("HIDDEN_DETAILS_NEVER_RELEASED"));
 
-        // The selected submission is still PENDING, so Finish must persist the
-        // exact ID and move the attempt to FINALIZING rather than score it now.
+        // A selected submission that is still PENDING is permanently wrong for
+        // this finished attempt; completion does not retroactively change it.
         given().contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + studentToken)
                 .body("""
@@ -273,14 +273,14 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
                         """.formatted(quizId, quizQuestionId, submissionId))
                 .post("/api/{courseId}/attempt/quiz/{quizId}/submit", courseId, quizId)
                 .then().statusCode(200)
-                .body("status", equalTo("FINALIZING"));
+                .body("status", equalTo("FINISHED"))
+                .body("score", equalTo(0.0f));
 
         org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
                 "SELECT status FROM edu.attempts WHERE id = ?", String.class, attemptId))
-                .isEqualTo("FINALIZING");
+                .isEqualTo("FINISHED");
 
-        // Simulate the worker's durable completion and its normal event. The
-        // final score must be calculated only from this selected submission.
+        // Simulate later worker completion. The finalized attempt stays zero.
         jdbc.update("UPDATE edu.code_submissions SET status='COMPLETED', verdict='ACCEPTED', score=1, max_score=1 WHERE id=?", submissionId);
         eventPublisher.publishEvent(new CodeSubmissionCompletedEvent(submissionId, attemptId));
 
@@ -289,7 +289,10 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
                 .isEqualTo("FINISHED");
         org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
                 "SELECT score FROM edu.attempts WHERE id = ?", Double.class, attemptId))
-                .isEqualTo(10.0);
+                .isEqualTo(0.0);
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT is_correct FROM edu.attempt_records WHERE attempt_id = ? AND question_id = ?",
+                Boolean.class, attemptId, quizQuestionId)).isFalse();
         given().header("Authorization", "Bearer " + studentToken)
                 .get("/api/{courseId}/attempt/{attemptId}/questions/{questionId}/code-runner/submissions/{submissionId}",
                         courseId, attemptId, quizQuestionId, submissionId)
@@ -365,7 +368,11 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
                         """.formatted(quizId, quizQuestionId, recoverySubmissionId))
                 .post("/api/{courseId}/attempt/quiz/{quizId}/submit", courseId, quizId)
                 .then().statusCode(200)
-                .body("status", equalTo("FINALIZING"));
+                .body("status", equalTo("FINISHED"));
+
+        // Simulate an incomplete snapshot created by an older deployment.
+        jdbc.update("UPDATE edu.attempts SET status='FINALIZING',score=0 WHERE id=?", recoveryAttemptId);
+        jdbc.update("UPDATE edu.attempt_records SET snapshot_complete=FALSE WHERE attempt_id=?", recoveryAttemptId);
 
         // Deliberately do not publish CodeSubmissionCompletedEvent: this is
         // the restart/event-loss case that the periodic recovery must repair.

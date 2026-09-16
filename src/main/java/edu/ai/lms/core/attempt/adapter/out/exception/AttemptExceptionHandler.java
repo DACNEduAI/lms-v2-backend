@@ -2,6 +2,7 @@ package edu.ai.lms.core.attempt.adapter.out.exception;
 
 import edu.ai.lms.common.api.ErrorResponse;
 import edu.ai.lms.core.attempt.app.exception.AttemptLimitExceededException;
+import edu.ai.lms.core.attempt.app.exception.AttemptAccessDeniedException;
 import edu.ai.lms.core.attempt.app.exception.AttemptNotFoundException;
 import edu.ai.lms.core.attempt.app.exception.InvalidAttemptSubmissionException;
 import edu.ai.lms.core.attempt.app.exception.QuizNotFoundForAttemptException;
@@ -80,9 +81,14 @@ public class AttemptExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(build(HttpStatus.UNAUTHORIZED, "Not Authenticated", ex.getMessage()));
     }
 
+    @ExceptionHandler(AttemptAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AttemptAccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(build(HttpStatus.FORBIDDEN, "Access Denied", ex.getMessage()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(build(HttpStatus.FORBIDDEN, "Access Denied", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(build(HttpStatus.BAD_REQUEST, "Invalid Request", ex.getMessage()));
     }
 
     @ExceptionHandler(CodeRunnerApiException.class)

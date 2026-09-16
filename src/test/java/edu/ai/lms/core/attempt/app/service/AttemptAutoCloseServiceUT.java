@@ -5,6 +5,7 @@ import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
+import edu.ai.lms.core.attempt.app.port.out.AttemptQuestionResultPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +30,8 @@ class AttemptAutoCloseServiceUT {
     private LoadQuizAttemptPolicyPort loadQuizAttemptPolicyPort;
     @Mock
     private SaveAttemptPort saveAttemptPort;
+    @Mock
+    private AttemptQuestionResultPort attemptQuestionResultPort;
 
     @InjectMocks
     private AttemptAutoCloseService attemptAutoCloseService;

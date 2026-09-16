@@ -7,10 +7,16 @@ public record QuestionAnswerKeyView(
         UUID questionId,
         long ktQuestionId,
         String questionType,
-        Long correctAnswerNumber,
+        String questionContent,
+        String questionContentFormat,
+        List<AnswerView> answers,
         List<LearningOutcomeModelView> learningOutcomes
 ) {
     public QuestionAnswerKeyView {
+        answers = answers == null ? List.of() : List.copyOf(answers);
         learningOutcomes = learningOutcomes == null ? List.of() : List.copyOf(learningOutcomes);
+    }
+
+    public record AnswerView(long answerNumber, String content, String contentFormat, boolean correct) {
     }
 }

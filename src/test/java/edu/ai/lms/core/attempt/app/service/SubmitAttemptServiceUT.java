@@ -99,7 +99,11 @@ class SubmitAttemptServiceUT {
                         .questionId(questionId)
                         .ktQuestionId(1L)
                         .questionType(QuestionAnswerKey.QuestionType.MULTIPLE_CHOICE)
-                        .correctAnswerNumber(2L)
+                        .questionContent("Question one")
+                        .questionContentFormat("PLAIN_TEXT")
+                        .answers(List.of(
+                                new QuestionAnswerKey.AnswerSnapshot(1L, "A", "PLAIN_TEXT", false),
+                                new QuestionAnswerKey.AnswerSnapshot(2L, "B", "PLAIN_TEXT", true)))
                         .learningOutcomes(List.of(new QuestionAnswerKey.LearningOutcomeSnapshot(
                                 UUID.randomUUID(), 1L)))
                         .build(),
@@ -107,12 +111,17 @@ class SubmitAttemptServiceUT {
                         .questionId(trueFalseQuestionId)
                         .ktQuestionId(2L)
                         .questionType(QuestionAnswerKey.QuestionType.TRUE_FALSE)
-                        .correctAnswerNumber(2L)
+                        .questionContent("Question two")
+                        .questionContentFormat("PLAIN_TEXT")
+                        .answers(List.of(
+                                new QuestionAnswerKey.AnswerSnapshot(1L, "True", "PLAIN_TEXT", false),
+                                new QuestionAnswerKey.AnswerSnapshot(2L, "False", "PLAIN_TEXT", true)))
                         .learningOutcomes(List.of(new QuestionAnswerKey.LearningOutcomeSnapshot(
                                 UUID.randomUUID(), 2L)))
                         .build()));
         when(attemptScoringService.calculateScore(any(), any(), any(), any()))
-            .thenReturn(new AttemptScoringService.ScoringResult(10.0, 0.0, false));
+            .thenReturn(new AttemptScoringService.ScoringResult(10.0,
+                    java.util.Map.of(questionId, true, trueFalseQuestionId, false)));
         when(saveAttemptPort.save(any(Attempt.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = submitAttemptService.submitAttempt(command);
@@ -133,6 +142,10 @@ class SubmitAttemptServiceUT {
         assertEquals(1L, result.getKtQuestionId());
         assertEquals(0, result.getInteractionOrder());
         assertTrue(result.getCorrect());
+        assertEquals(2L, result.getStudentAnswerNumber());
+        assertEquals("B", result.getStudentAnswerContent());
+        assertEquals(2L, result.getCorrectAnswerNumber());
+        assertTrue(result.getSnapshotComplete());
         assertEquals(1, result.getLearningOutcomeMappingCount());
         AttemptQuestionResult trueFalseResult = resultCaptor.getValue().get(1);
         assertEquals(trueFalseQuestionId, trueFalseResult.getQuestionId());
@@ -180,13 +193,8 @@ class SubmitAttemptServiceUT {
         when(loadAttemptPort.getLatestStartedAttempt(studentId, quizId)).thenReturn(Optional.of(attempt));
         when(loadQuizAttemptPolicyPort.getQuestionAnswerKeys(quizId)).thenReturn(keys);
         when(attemptScoringService.calculateScore(keys, answers, attempt.getId(), studentId))
-                .thenReturn(new AttemptScoringService.ScoringResult(0.0, 0.0, true));
-        when(attemptScoringService.findCompletedCodeRunnerRatio(
-                partialSubmissionId, attempt.getId(), studentId, partialQuestionId))
-                .thenReturn(java.util.OptionalDouble.of(0.5));
-        when(attemptScoringService.findCompletedCodeRunnerRatio(
-                pendingSubmissionId, attempt.getId(), studentId, pendingQuestionId))
-                .thenReturn(java.util.OptionalDouble.empty());
+                .thenReturn(new AttemptScoringService.ScoringResult(0.0,
+                        java.util.Map.of(partialQuestionId, false, pendingQuestionId, false)));
         when(saveAttemptPort.save(any(Attempt.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         submitAttemptService.submitAttempt(SubmitAttemptCommand.builder()
@@ -198,8 +206,10 @@ class SubmitAttemptServiceUT {
         verify(attemptQuestionResultPort).upsertAll(resultCaptor.capture());
         assertEquals(2, resultCaptor.getValue().size());
         assertFalse(resultCaptor.getValue().get(0).getCorrect());
-        assertNull(resultCaptor.getValue().get(1).getCorrect());
-        assertEquals(Attempt.AttemptStatus.FINALIZING, attempt.getStatus());
+        assertFalse(resultCaptor.getValue().get(1).getCorrect());
+        assertNull(resultCaptor.getValue().get(0).getStudentAnswerNumber());
+        assertNull(resultCaptor.getValue().get(0).getCorrectAnswerNumber());
+        assertEquals(Attempt.AttemptStatus.FINISHED, attempt.getStatus());
     }
 
     @Test

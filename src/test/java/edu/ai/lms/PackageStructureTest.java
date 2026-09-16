@@ -44,7 +44,7 @@ public class PackageStructureTest {
             Map.entry("question_learning_outcomes", "quiz"),
             Map.entry("quiz_generation_jobs", "quiz"),
             Map.entry("attempts", "attempt"),
-            Map.entry("attempt_question_results", "attempt"));
+            Map.entry("attempt_records", "attempt"));
 
     @Test
     @org.junit.jupiter.api.Disabled("Temporarily disabled during Quiz3 module migration which introduces intentional module boundary violations")

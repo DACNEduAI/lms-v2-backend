@@ -53,17 +53,16 @@ class AttemptPolicyApiAdapter implements AttemptPolicyApi {
                     .map(outcome -> new LearningOutcomeModelView(
                             outcome.id(), outcome.ktLearningOutcomeId()))
                     .toList();
-            var correctAnswers = loadAnswerPort.getByQuestionId(question.getId()).stream()
-                    .filter(answer -> answer.isCorrect())
+            var answers = loadAnswerPort.getByQuestionId(question.getId()).stream()
+                    .map(answer -> new QuestionAnswerKeyView.AnswerView(
+                            answer.getAnswerNumber(),
+                            answer.getContent(),
+                            answer.getContentFormat().name(),
+                            answer.isCorrect()))
                     .toList();
-            if (correctAnswers.isEmpty()) {
-                keys.add(new QuestionAnswerKeyView(
-                        question.getId(), question.getKtQuestionId(), question.getType().name(), null, outcomes));
-            } else {
-                correctAnswers.forEach(answer -> keys.add(new QuestionAnswerKeyView(
-                        question.getId(), question.getKtQuestionId(), question.getType().name(),
-                        answer.getAnswerNumber(), outcomes)));
-            }
+            keys.add(new QuestionAnswerKeyView(
+                    question.getId(), question.getKtQuestionId(), question.getType().name(),
+                    question.getContent(), question.getContentFormat().name(), answers, outcomes));
         });
         return List.copyOf(keys);
     }

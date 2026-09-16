@@ -55,6 +55,8 @@ class LearnerModelMigrationIT {
                     );
                     """);
 
+            executeAttemptRecordsMigration(connection);
+
             assertEquals(2L, scalarLong(connection,
                     "SELECT kt_question_id FROM edu.questions WHERE id = "
                             + "'10000000-0000-0000-0000-000000000002'"));
@@ -62,7 +64,7 @@ class LearnerModelMigrationIT {
                     "SELECT kt_learning_outcome_id FROM edu.learning_outcomes WHERE id = "
                             + "'20000000-0000-0000-0000-000000000002'"));
             assertEquals(1L, scalarLong(connection,
-                    "SELECT COUNT(*) FROM edu.attempt_question_results"));
+                    "SELECT COUNT(*) FROM edu.attempt_records WHERE snapshot_complete = FALSE"));
 
             assertThrows(SQLException.class, () -> execute(connection, """
                     INSERT INTO edu.questions (id, kt_question_id)
@@ -85,7 +87,20 @@ class LearnerModelMigrationIT {
                     SELECT COUNT(*)
                     FROM information_schema.tables
                     WHERE table_schema = 'edu'
-                      AND table_name = 'attempt_question_results'
+                      AND table_name = 'attempt_records'
+                    """));
+            assertEquals(12L, scalarLong(connection, """
+                    SELECT COUNT(*)
+                    FROM information_schema.columns
+                    WHERE table_schema = 'edu'
+                      AND table_name = 'attempt_records'
+                      AND column_name IN (
+                        'question_type', 'question_content', 'question_content_format',
+                        'student_answer_number', 'student_answer_position',
+                        'student_answer_content', 'student_answer_content_format',
+                        'correct_answer_number', 'correct_answer_position',
+                        'correct_answer_content', 'correct_answer_content_format',
+                        'snapshot_complete')
                     """));
         }
     }
@@ -110,6 +125,13 @@ class LearnerModelMigrationIT {
                 connection,
                 "/db/manual/V20260916_01__learner_model_ids_and_attempt_question_results.sql",
                 "Learner-model migration resource is missing");
+    }
+
+    private static void executeAttemptRecordsMigration(Connection connection) throws SQLException, IOException {
+        executeResource(
+                connection,
+                "/db/manual/V20260916_02__immutable_attempt_records.sql",
+                "Attempt-record migration resource is missing");
     }
 
     private static void executeResource(Connection connection, String path, String missingMessage)

@@ -5,6 +5,7 @@ import edu.ai.lms.core.attempt.adapter.in.response.GetAttemptQuizSessionResponse
 import edu.ai.lms.core.attempt.app.domain.Attempt;
 import edu.ai.lms.core.attempt.app.domain.CurrentActor;
 import edu.ai.lms.core.attempt.app.exception.AttemptNotFoundException;
+import edu.ai.lms.core.attempt.app.exception.AttemptAccessDeniedException;
 import edu.ai.lms.core.attempt.app.exception.QuizNotFoundForAttemptException;
 import edu.ai.lms.core.attempt.app.exception.UserNotAuthenticatedForAttemptException;
 import edu.ai.lms.core.attempt.app.port.in.usecase.GetAttemptQuizSessionUseCase;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /** Returns the delivery-safe question snapshot only while an attempt is active. */
@@ -37,10 +39,10 @@ public class GetAttemptQuizSessionService implements GetAttemptQuizSessionUseCas
         CurrentActor user = loadSignedInUserPort.getAuthenticatedUser()
                 .orElseThrow(() -> new UserNotAuthenticatedForAttemptException("User not authenticated"));
         if (user.getRole() != Roles.STUDENT) {
-            throw new IllegalArgumentException("Only students can view an attempt session");
+            throw new AttemptAccessDeniedException("Only students can view an attempt session");
         }
         if (!loadQuizAttemptPolicyPort.isStudentInCourse(user.getId(), courseId)) {
-            throw new IllegalArgumentException("Student is not enrolled in this course");
+            throw new AttemptAccessDeniedException("Student is not enrolled in this course");
         }
         loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)
                 .orElseThrow(() -> new QuizNotFoundForAttemptException("Quiz not found in course"));
@@ -67,6 +69,12 @@ public class GetAttemptQuizSessionService implements GetAttemptQuizSessionUseCas
                 .content(question.getContent())
                 .contentFormat(question.getContentFormat())
                 .type(question.getType())
+                .learningOutcomes((question.getLearningOutcomes() == null ? List.<GetQuizResponse.LearningOutcomeSummary>of() : question.getLearningOutcomes()).stream()
+                        .map(learningOutcome -> GetAttemptQuizSessionResponse.LearningOutcome.builder()
+                                .id(learningOutcome.getId())
+                                .code(learningOutcome.getCode())
+                                .build())
+                        .toList())
                 .answers(question.getAnswers().stream()
                         .map(answer -> GetAttemptQuizSessionResponse.Answer.builder()
                                 .answerNumber(answer.getAnswerNumber())

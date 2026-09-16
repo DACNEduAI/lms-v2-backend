@@ -33,4 +33,13 @@ class AttemptQuestionResultPersistenceAdapter implements AttemptQuestionResultPo
         }
         return repository.findFinishedHistory(studentId, quizIds);
     }
+
+    @Override
+    public List<AttemptQuestionResult> findAttemptRecords(
+            UUID studentId, UUID quizId, Collection<UUID> attemptIds) {
+        if (attemptIds == null || attemptIds.isEmpty()) {
+            return List.of();
+        }
+        return repository.findAttemptRecords(studentId, quizId, attemptIds);
+    }
 }

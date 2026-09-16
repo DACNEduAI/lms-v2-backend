@@ -20,4 +20,9 @@ interface AttemptQuestionResultRepository {
     List<AttemptQuestionResult> findFinishedHistory(
             @Param("studentId") UUID studentId,
             @Param("quizIds") Collection<UUID> quizIds);
+
+    List<AttemptQuestionResult> findAttemptRecords(
+            @Param("studentId") UUID studentId,
+            @Param("quizId") UUID quizId,
+            @Param("attemptIds") Collection<UUID> attemptIds);
 }

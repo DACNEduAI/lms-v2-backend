@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final TokenAuthenticationApi tokenAuthenticationApi;
+    private final SecurityErrorResponseWriter errorResponseWriter;
 
     @Override
     protected void doFilterInternal(
@@ -52,6 +53,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         } catch (Exception e) {
             logger.error("Could not set user authentication in security context", e);
+            SecurityContextHolder.clearContext();
+            errorResponseWriter.unauthorized(request, response, "INVALID_ACCESS_TOKEN",
+                    "Access token is expired, malformed, or unverifiable");
+            return;
         }
         filterChain.doFilter(request, response);
     }

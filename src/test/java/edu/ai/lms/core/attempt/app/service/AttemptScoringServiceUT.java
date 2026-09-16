@@ -42,11 +42,44 @@ class AttemptScoringServiceUT {
                                 .codeSubmissionId(codeSubmissionId).build()), attemptId, studentId);
 
         assertThat(result.score()).isEqualTo(7.5);
+        assertThat(result.correctnessByQuestion()).containsEntry(multipleChoiceId, true)
+                .containsEntry(codeQuestionId, false);
+    }
+
+    @Test
+    void includesUnansweredObjectiveQuestionsAsIncorrect() {
+        UUID multipleChoiceId = UUID.randomUUID();
+        UUID trueFalseId = UUID.randomUUID();
+
+        var result = service.calculateScore(List.of(
+                        key(multipleChoiceId, QuestionAnswerKey.QuestionType.MULTIPLE_CHOICE, 1L),
+                        key(trueFalseId, QuestionAnswerKey.QuestionType.TRUE_FALSE, 2L)),
+                List.of(), UUID.randomUUID(), UUID.randomUUID());
+
+        assertThat(result.score()).isZero();
+        assertThat(result.correctnessByQuestion())
+                .containsEntry(multipleChoiceId, false)
+                .containsEntry(trueFalseId, false);
+    }
+
+    @Test
+    void rejectsAnAnswerNumberThatDoesNotBelongToItsQuestion() {
+        UUID questionId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> service.calculateScore(
+                List.of(key(questionId, QuestionAnswerKey.QuestionType.MULTIPLE_CHOICE, 1L)),
+                List.of(SubmittedAnswer.builder().questionId(questionId).studentAnswerId(999L).build()),
+                UUID.randomUUID(), UUID.randomUUID()))
+                .isInstanceOf(InvalidAttemptSubmissionException.class)
+                .hasMessageContaining("does not belong");
     }
 
 
 
     private QuestionAnswerKey key(UUID id, QuestionAnswerKey.QuestionType type, Long answer) {
-        return QuestionAnswerKey.builder().questionId(id).questionType(type).correctAnswerNumber(answer).build();
+        return QuestionAnswerKey.builder().questionId(id).questionType(type)
+                .answers(answer == null ? List.of() : List.of(
+                        new QuestionAnswerKey.AnswerSnapshot(answer, "answer", "PLAIN_TEXT", true)))
+                .build();
     }
 }

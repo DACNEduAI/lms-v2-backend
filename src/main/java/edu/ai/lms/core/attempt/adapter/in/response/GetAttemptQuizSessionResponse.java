@@ -47,7 +47,18 @@ public class GetAttemptQuizSessionResponse {
         private String content;
         private RichContentFormat contentFormat;
         private String type;
+        private List<LearningOutcome> learningOutcomes;
         private List<Answer> answers;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class LearningOutcome {
+        private UUID id;
+        private String code;
     }
 
     @Getter

@@ -508,6 +508,157 @@ VALUES
     ('d8888888-8888-8888-8888-888888888888', '85555555-5555-5555-5555-555555555555'),
     ('d9999999-9999-9999-9999-999999999999', '87777777-7777-7777-7777-777777777777'),
     ('daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '86666666-6666-6666-6666-666666666666') ON CONFLICT (question_id, learning_outcome_id) DO NOTHING;
+
+-- 16a. Always-available DSA practice quizzes.
+-- Each quiz has 20 questions.  A staged seed keeps the question, answer, and
+-- learning-outcome mappings derived from the same source of truth: every
+-- question has exactly one learning outcome and every quiz covers all seven.
+CREATE TEMP TABLE dsa_practice_quiz_seed_questions
+(
+    question_id         UUID PRIMARY KEY,
+    quiz_id             UUID NOT NULL,
+    content             TEXT NOT NULL,
+    learning_outcome_id UUID NOT NULL,
+    correct_answer      TEXT NOT NULL,
+    wrong_answer_1      TEXT NOT NULL,
+    wrong_answer_2      TEXT NOT NULL,
+    wrong_answer_3      TEXT NOT NULL
+) ON COMMIT DROP;
+
+INSERT INTO dsa_practice_quiz_seed_questions
+    (question_id, quiz_id, content, learning_outcome_id, correct_answer,
+     wrong_answer_1, wrong_answer_2, wrong_answer_3)
+VALUES
+    -- Practice Quiz A
+    ('f1110001-0000-4000-8000-000000000001', 'f1100001-0000-4000-8000-000000000001', 'Big O ký hiệu điều gì về một giải thuật?', '81111111-1111-1111-1111-111111111111', 'Cận trên tiệm cận của tốc độ tăng thời gian hoặc bộ nhớ', 'Số dòng mã nguồn', 'Giá trị nhỏ nhất của đầu vào', 'Số lần chương trình biên dịch'),
+    ('f1110001-0000-4000-8000-000000000002', 'f1100001-0000-4000-8000-000000000001', 'Khi phân tích Big O, các hằng số nhân dương thường được xử lý như thế nào?', '81111111-1111-1111-1111-111111111111', 'Bỏ qua vì chúng không đổi tốc độ tăng tiệm cận', 'Nhân vào kích thước đầu vào', 'Đổi thành O(1)', 'Cộng vào mọi số mũ'),
+    ('f1110001-0000-4000-8000-000000000003', 'f1100001-0000-4000-8000-000000000001', 'Biểu thức nào mô tả thời gian tuyến tính?', '81111111-1111-1111-1111-111111111111', 'O(n)', 'O(1)', 'O(log n)', 'O(n²)'),
+    ('f1110001-0000-4000-8000-000000000004', 'f1100001-0000-4000-8000-000000000001', 'Hai vòng lặp lồng nhau, mỗi vòng chạy n lần, có độ phức tạp thời gian nào?', '82222222-2222-2222-2222-222222222222', 'O(n²)', 'O(n)', 'O(log n)', 'O(1)'),
+    ('f1110001-0000-4000-8000-000000000005', 'f1100001-0000-4000-8000-000000000001', 'Một vòng lặp tăng i từ 1 lên n với i *= 2 sau mỗi bước có độ phức tạp nào?', '82222222-2222-2222-2222-222222222222', 'O(log n)', 'O(1)', 'O(n)', 'O(n log n)'),
+    ('f1110001-0000-4000-8000-000000000006', 'f1100001-0000-4000-8000-000000000001', 'Nếu một đoạn mã lần lượt chạy O(n) rồi O(n²), độ phức tạp tổng là gì?', '82222222-2222-2222-2222-222222222222', 'O(n²)', 'O(n)', 'O(n³)', 'O(log n)'),
+    ('f1110001-0000-4000-8000-000000000007', 'f1100001-0000-4000-8000-000000000001', 'Mảng lưu các phần tử trong bộ nhớ theo đặc điểm nào?', '84444444-4444-4444-4444-444444444444', 'Các vị trí liên tiếp và truy cập bằng chỉ số', 'Các nút chỉ có liên kết tới phần tử trước', 'Chỉ cho phép thêm ở đầu', 'Luôn được sắp xếp'),
+    ('f1110001-0000-4000-8000-000000000008', 'f1100001-0000-4000-8000-000000000001', 'Nguyên tắc hoạt động của stack là gì?', '84444444-4444-4444-4444-444444444444', 'LIFO, phần tử vào sau ra trước', 'FIFO, phần tử vào trước ra trước', 'Phần tử nhỏ nhất ra trước', 'Truy cập ngẫu nhiên duy nhất'),
+    ('f1110001-0000-4000-8000-000000000009', 'f1100001-0000-4000-8000-000000000001', 'Đồ thị thường được biểu diễn bằng cấu trúc nào để lưu các cạnh kề?', '84444444-4444-4444-4444-444444444444', 'Danh sách kề', 'Ngăn xếp gọi hàm', 'Mảng một chiều duy nhất', 'Hàng đợi ưu tiên bắt buộc'),
+    ('f1110001-0000-4000-8000-000000000010', 'f1100001-0000-4000-8000-000000000001', 'Thao tác nào thêm một phần tử vào đỉnh stack?', '85555555-5555-5555-5555-555555555555', 'push', 'pop', 'dequeue', 'peek'),
+    ('f1110001-0000-4000-8000-000000000011', 'f1100001-0000-4000-8000-000000000001', 'Trong danh sách liên kết đơn, muốn chèn nút mới sau nút p cần cập nhật liên kết nào?', '85555555-5555-5555-5555-555555555555', 'new.next = p.next rồi p.next = new', 'p.next = null', 'head = null', 'Xóa toàn bộ danh sách'),
+    ('f1110001-0000-4000-8000-000000000012', 'f1100001-0000-4000-8000-000000000001', 'Thao tác lấy phần tử đầu của queue thường được gọi là gì?', '85555555-5555-5555-5555-555555555555', 'dequeue', 'push', 'append', 'rotate'),
+    ('f1110001-0000-4000-8000-000000000013', 'f1100001-0000-4000-8000-000000000001', 'Điều kiện cần để dùng tìm kiếm nhị phân trên mảng là gì?', '86666666-6666-6666-6666-666666666666', 'Mảng phải được sắp xếp theo thứ tự xác định', 'Mảng phải có số phần tử chẵn', 'Mảng chỉ chứa số nguyên', 'Mảng phải là mảng hai chiều'),
+    ('f1110001-0000-4000-8000-000000000014', 'f1100001-0000-4000-8000-000000000001', 'Khi BFS duyệt đồ thị, cấu trúc dữ liệu nào được dùng để lưu các đỉnh chờ xử lý?', '86666666-6666-6666-6666-666666666666', 'Queue', 'Stack', 'Binary search tree', 'Hash function'),
+    ('f1110001-0000-4000-8000-000000000015', 'f1100001-0000-4000-8000-000000000001', 'Sau khi so sánh khóa cần tìm nhỏ hơn phần tử giữa trong tìm kiếm nhị phân tăng dần, bước tiếp theo là gì?', '86666666-6666-6666-6666-666666666666', 'Chỉ tiếp tục tìm ở nửa bên trái', 'Chỉ tiếp tục tìm ở nửa bên phải', 'Dừng ngay vì không có khóa', 'Đổi mảng thành stack'),
+    ('f1110001-0000-4000-8000-000000000016', 'f1100001-0000-4000-8000-000000000001', 'Trong bubble sort, một lượt quét đầy đủ chủ yếu làm gì?', '87777777-7777-7777-7777-777777777777', 'Đưa phần tử lớn nhất chưa sắp xếp về cuối đoạn', 'Đưa phần tử nhỏ nhất về đầu bằng chia đôi', 'Chọn một pivot', 'Xây dựng heap'),
+    ('f1110001-0000-4000-8000-000000000017', 'f1100001-0000-4000-8000-000000000001', 'Insertion sort xử lý phần tử kế tiếp bằng cách nào?', '87777777-7777-7777-7777-777777777777', 'Chèn nó vào đúng vị trí trong đoạn đã sắp xếp', 'Đổi chỗ ngẫu nhiên với phần tử đầu', 'Chia mảng thành hai nửa bằng nhau', 'Luôn chuyển nó xuống cuối mảng'),
+    ('f1110001-0000-4000-8000-000000000018', 'f1100001-0000-4000-8000-000000000001', 'Merge sort cần thực hiện bước nào sau khi sắp xếp hai nửa?', '87777777-7777-7777-7777-777777777777', 'Trộn hai nửa đã sắp xếp', 'Bỏ nửa bên phải', 'Chọn phần tử giữa làm pivot', 'Đảo ngược toàn bộ mảng'),
+    ('f1110001-0000-4000-8000-000000000019', 'f1100001-0000-4000-8000-000000000001', 'Để kiểm tra ngoặc cân bằng trong biểu thức, cấu trúc dữ liệu phù hợp nhất là gì?', '8854781e-efc8-4130-9451-3b0391a32419', 'Stack', 'Queue', 'Mảng chỉ đọc', 'Danh sách kề'),
+    ('f1110001-0000-4000-8000-000000000020', 'f1100001-0000-4000-8000-000000000001', 'Để tìm đường đi ngắn nhất theo số cạnh trong đồ thị không trọng số, nên hiện thực giải thuật nào?', '8854781e-efc8-4130-9451-3b0391a32419', 'BFS với queue', 'DFS đệ quy duy nhất', 'Selection sort', 'Tìm kiếm tuyến tính'),
+    -- Practice Quiz B
+    ('f1120001-0000-4000-8000-000000000001', 'f1100002-0000-4000-8000-000000000002', 'Mục đích chính của phân tích độ phức tạp tiệm cận là gì?', '81111111-1111-1111-1111-111111111111', 'So sánh tốc độ tăng tài nguyên khi kích thước đầu vào lớn', 'Đếm số lỗi cú pháp', 'Đo tốc độ mạng', 'Chọn tên biến'),
+    ('f1120001-0000-4000-8000-000000000002', 'f1100002-0000-4000-8000-000000000002', 'Hàm nào tăng chậm hơn khi n rất lớn?', '81111111-1111-1111-1111-111111111111', 'O(log n)', 'O(n)', 'O(n²)', 'O(2ⁿ)'),
+    ('f1120001-0000-4000-8000-000000000003', 'f1100002-0000-4000-8000-000000000002', 'Nếu một thao tác luôn mất cùng số bước bất kể n, nó có Big O là gì?', '81111111-1111-1111-1111-111111111111', 'O(1)', 'O(n)', 'O(log n)', 'O(n²)'),
+    ('f1120001-0000-4000-8000-000000000004', 'f1100002-0000-4000-8000-000000000002', 'Ba vòng lặp lồng nhau, mỗi vòng chạy n lần, có độ phức tạp nào?', '82222222-2222-2222-2222-222222222222', 'O(n³)', 'O(n²)', 'O(n)', 'O(log n)'),
+    ('f1120001-0000-4000-8000-000000000005', 'f1100002-0000-4000-8000-000000000002', 'Vòng lặp chạy từ 0 đến n với bước tăng 1 có số lần lặp theo bậc nào?', '82222222-2222-2222-2222-222222222222', 'O(n)', 'O(1)', 'O(log n)', 'O(n²)'),
+    ('f1120001-0000-4000-8000-000000000006', 'f1100002-0000-4000-8000-000000000002', 'Một vòng lặp ngoài chạy n lần, vòng trong chạy 10 lần cố định. Độ phức tạp là gì?', '82222222-2222-2222-2222-222222222222', 'O(n)', 'O(10n²)', 'O(log n)', 'O(1)'),
+    ('f1120001-0000-4000-8000-000000000007', 'f1100002-0000-4000-8000-000000000002', 'Queue tuân theo quy tắc nào?', '84444444-4444-4444-4444-444444444444', 'FIFO, vào trước ra trước', 'LIFO, vào sau ra trước', 'Ưu tiên khóa lớn nhất', 'Chỉ đọc tuần tự'),
+    ('f1120001-0000-4000-8000-000000000008', 'f1100002-0000-4000-8000-000000000002', 'Một cây nhị phân là cây mà mỗi nút có tối đa bao nhiêu nút con?', '84444444-4444-4444-4444-444444444444', 'Hai', 'Một', 'Ba', 'Không giới hạn'),
+    ('f1120001-0000-4000-8000-000000000009', 'f1100002-0000-4000-8000-000000000002', 'Trong danh sách liên kết, mỗi nút thường chứa gì?', '84444444-4444-4444-4444-444444444444', 'Dữ liệu và liên kết tới nút kế tiếp hoặc lân cận', 'Chỉ một chỉ số mảng', 'Chỉ khóa đã sắp xếp', 'Một ma trận kề đầy đủ'),
+    ('f1120001-0000-4000-8000-000000000010', 'f1100002-0000-4000-8000-000000000002', 'Để xem phần tử trên đỉnh stack mà không xóa nó, dùng thao tác nào?', '85555555-5555-5555-5555-555555555555', 'peek', 'pop', 'enqueue', 'insertAfter'),
+    ('f1120001-0000-4000-8000-000000000011', 'f1100002-0000-4000-8000-000000000002', 'Khi thêm phần tử vào cuối queue, thao tác được gọi là gì?', '85555555-5555-5555-5555-555555555555', 'enqueue', 'dequeue', 'pop', 'traverse'),
+    ('f1120001-0000-4000-8000-000000000012', 'f1100002-0000-4000-8000-000000000002', 'Trong cây tìm kiếm nhị phân, khóa nhỏ hơn nút gốc của một cây con được đặt ở đâu?', '85555555-5555-5555-5555-555555555555', 'Cây con trái', 'Cây con phải', 'Luôn ở lá sâu nhất', 'Trong queue ngoài cây'),
+    ('f1120001-0000-4000-8000-000000000013', 'f1100002-0000-4000-8000-000000000002', 'Tìm kiếm tuyến tính kiểm tra các phần tử theo cách nào?', '86666666-6666-6666-6666-666666666666', 'Lần lượt cho tới khi thấy khóa hoặc hết dữ liệu', 'Luôn bắt đầu ở giữa và chia đôi', 'Chỉ kiểm tra phần tử cuối', 'Sắp xếp bằng heap trước'),
+    ('f1120001-0000-4000-8000-000000000014', 'f1100002-0000-4000-8000-000000000002', 'Trong DFS lặp, cấu trúc nào thường dùng thay cho lời gọi đệ quy?', '86666666-6666-6666-6666-666666666666', 'Stack', 'Queue', 'Hash table', 'Mảng kết quả sắp xếp'),
+    ('f1120001-0000-4000-8000-000000000015', 'f1100002-0000-4000-8000-000000000002', 'Trong BFS, khi phát hiện một đỉnh kề chưa thăm, bước đúng là gì?', '86666666-6666-6666-6666-666666666666', 'Đánh dấu đã thăm và đưa nó vào queue', 'Xóa nó khỏi đồ thị', 'Đưa nó vào stack gọi hàm', 'Sắp xếp toàn bộ đồ thị'),
+    ('f1120001-0000-4000-8000-000000000016', 'f1100002-0000-4000-8000-000000000002', 'Selection sort chọn phần tử nào trong mỗi lượt để đặt vào đầu phần chưa sắp xếp?', '87777777-7777-7777-7777-777777777777', 'Phần tử nhỏ nhất', 'Phần tử lớn nhất luôn luôn', 'Phần tử giữa', 'Một phần tử ngẫu nhiên'),
+    ('f1120001-0000-4000-8000-000000000017', 'f1100002-0000-4000-8000-000000000002', 'Sau lượt đầu của selection sort tăng dần, vị trí đầu mảng chứa gì?', '87777777-7777-7777-7777-777777777777', 'Phần tử nhỏ nhất của toàn mảng', 'Phần tử lớn nhất của toàn mảng', 'Pivot của quicksort', 'Phần tử cuối ban đầu'),
+    ('f1120001-0000-4000-8000-000000000018', 'f1100002-0000-4000-8000-000000000002', 'Quick sort phân hoạch mảng quanh thành phần nào?', '87777777-7777-7777-7777-777777777777', 'Pivot', 'Queue', 'Root của heap', 'Con trỏ null'),
+    ('f1120001-0000-4000-8000-000000000019', 'f1100002-0000-4000-8000-000000000002', 'Để đảo ngược một chuỗi ký tự, cách dùng cấu trúc dữ liệu nào là phù hợp?', '8854781e-efc8-4130-9451-3b0391a32419', 'Đẩy từng ký tự vào stack rồi pop ra', 'Đưa ký tự vào queue rồi dequeue', 'Chạy BFS trên chuỗi', 'Dùng binary search'),
+    ('f1120001-0000-4000-8000-000000000020', 'f1100002-0000-4000-8000-000000000002', 'Để phát hiện đường đi trong đồ thị không trọng số từ s đến t, giải thuật nào cho số cạnh ít nhất?', '8854781e-efc8-4130-9451-3b0391a32419', 'BFS', 'DFS', 'Insertion sort', 'Linear search'),
+    -- Practice Quiz C
+    ('f1130001-0000-4000-8000-000000000001', 'f1100003-0000-4000-8000-000000000003', 'Big O tập trung vào hành vi của giải thuật trong trường hợp nào?', '81111111-1111-1111-1111-111111111111', 'Khi kích thước đầu vào tăng lớn', 'Chỉ khi đầu vào rỗng', 'Chỉ khi chạy trên máy nhanh', 'Chỉ khi không có vòng lặp'),
+    ('f1130001-0000-4000-8000-000000000002', 'f1100003-0000-4000-8000-000000000003', 'Độ phức tạp O(n log n) tăng nhanh hơn hay chậm hơn O(n²) khi n lớn?', '81111111-1111-1111-1111-111111111111', 'Chậm hơn O(n²)', 'Nhanh hơn O(n²)', 'Bằng O(n²)', 'Không phụ thuộc vào n'),
+    ('f1130001-0000-4000-8000-000000000003', 'f1100003-0000-4000-8000-000000000003', 'Big O nào thường được xem là hằng số?', '81111111-1111-1111-1111-111111111111', 'O(1)', 'O(n)', 'O(n log n)', 'O(n²)'),
+    ('f1130001-0000-4000-8000-000000000004', 'f1100003-0000-4000-8000-000000000003', 'Nếu lệnh trong vòng lặp chạy n lần và mỗi lần mất O(1), tổng thời gian là gì?', '82222222-2222-2222-2222-222222222222', 'O(n)', 'O(1)', 'O(log n)', 'O(n²)'),
+    ('f1130001-0000-4000-8000-000000000005', 'f1100003-0000-4000-8000-000000000003', 'Một vòng lặp giảm n xuống một nửa mỗi lần lặp có độ phức tạp gì?', '82222222-2222-2222-2222-222222222222', 'O(log n)', 'O(n)', 'O(n²)', 'O(2ⁿ)'),
+    ('f1130001-0000-4000-8000-000000000006', 'f1100003-0000-4000-8000-000000000003', 'Hai vòng lặp nối tiếp, mỗi vòng chạy n lần, có độ phức tạp nào?', '82222222-2222-2222-2222-222222222222', 'O(n)', 'O(n²)', 'O(log n)', 'O(1)'),
+    ('f1130001-0000-4000-8000-000000000007', 'f1100003-0000-4000-8000-000000000003', 'Ưu điểm nổi bật của mảng đối với phần tử ở vị trí i là gì?', '84444444-4444-4444-4444-444444444444', 'Truy cập trực tiếp bằng chỉ số', 'Chèn đầu luôn O(1) không cần dịch', 'Không cần biết kích thước', 'Không có thứ tự vị trí'),
+    ('f1130001-0000-4000-8000-000000000008', 'f1100003-0000-4000-8000-000000000003', 'Heap nhị phân thường được dùng để hiện thực cấu trúc nào?', '84444444-4444-4444-4444-444444444444', 'Priority queue', 'Linked list đơn', 'Ma trận kề', 'Stack gọi hàm'),
+    ('f1130001-0000-4000-8000-000000000009', 'f1100003-0000-4000-8000-000000000003', 'Trong cây, nút không có nút con được gọi là gì?', '84444444-4444-4444-4444-444444444444', 'Nút lá', 'Nút gốc', 'Nút cha bắt buộc', 'Cạnh kề'),
+    ('f1130001-0000-4000-8000-000000000010', 'f1100003-0000-4000-8000-000000000003', 'Để xóa đỉnh stack, thao tác nào được thực hiện?', '85555555-5555-5555-5555-555555555555', 'pop', 'push', 'enqueue', 'front'),
+    ('f1130001-0000-4000-8000-000000000011', 'f1100003-0000-4000-8000-000000000003', 'Trong danh sách liên kết đơn, cần giữ tham chiếu nào để duyệt từ đầu đến cuối?', '85555555-5555-5555-5555-555555555555', 'Con trỏ head rồi theo các liên kết next', 'Chỉ số cuối của mảng', 'Một pivot', 'Một queue rỗng'),
+    ('f1130001-0000-4000-8000-000000000012', 'f1100003-0000-4000-8000-000000000003', 'Để thêm cạnh vô hướng u-v vào danh sách kề, cần làm gì?', '85555555-5555-5555-5555-555555555555', 'Thêm v vào danh sách u và u vào danh sách v', 'Chỉ thêm v vào danh sách u', 'Xóa u và v', 'Đưa cả hai vào stack'),
+    ('f1130001-0000-4000-8000-000000000013', 'f1100003-0000-4000-8000-000000000003', 'Tìm kiếm nhị phân bắt đầu kiểm tra phần tử nào của đoạn tìm kiếm?', '86666666-6666-6666-6666-666666666666', 'Phần tử ở giữa', 'Phần tử đầu duy nhất', 'Phần tử cuối duy nhất', 'Một phần tử ngẫu nhiên'),
+    ('f1130001-0000-4000-8000-000000000014', 'f1100003-0000-4000-8000-000000000003', 'DFS thường đi theo cách nào trước khi quay lui?', '86666666-6666-6666-6666-666666666666', 'Đi sâu hết mức có thể theo một nhánh', 'Thăm toàn bộ đỉnh cùng mức', 'Luôn chọn cạnh ngắn nhất', 'Sắp xếp các đỉnh'),
+    ('f1130001-0000-4000-8000-000000000015', 'f1100003-0000-4000-8000-000000000003', 'Sau khi tìm thấy khóa ở vị trí giữa trong binary search, giải thuật làm gì?', '86666666-6666-6666-6666-666666666666', 'Trả về vị trí đó', 'Tiếp tục tìm cả hai nửa', 'Sắp xếp lại mảng', 'Đưa khóa vào queue'),
+    ('f1130001-0000-4000-8000-000000000016', 'f1100003-0000-4000-8000-000000000003', 'Bubble sort tăng dần hoán đổi hai phần tử kề nhau khi nào?', '87777777-7777-7777-7777-777777777777', 'Khi phần tử bên trái lớn hơn phần tử bên phải', 'Khi chúng bằng nhau bắt buộc', 'Khi phần tử trái nhỏ hơn', 'Chỉ khi mảng đã sắp xếp'),
+    ('f1130001-0000-4000-8000-000000000017', 'f1100003-0000-4000-8000-000000000003', 'Trong insertion sort, đoạn bên trái của chỉ số hiện tại có tính chất gì?', '87777777-7777-7777-7777-777777777777', 'Đã được sắp xếp', 'Luôn rỗng', 'Luôn giảm dần bất kể yêu cầu', 'Là một heap hoàn chỉnh'),
+    ('f1130001-0000-4000-8000-000000000018', 'f1100003-0000-4000-8000-000000000003', 'Bước đầu tiên của merge sort là gì?', '87777777-7777-7777-7777-777777777777', 'Chia dãy thành các nửa nhỏ hơn', 'Chọn phần tử nhỏ nhất toàn cục', 'Đưa mọi phần tử vào queue', 'Tìm khóa bằng binary search'),
+    ('f1130001-0000-4000-8000-000000000019', 'f1100003-0000-4000-8000-000000000003', 'Để đánh giá biểu thức hậu tố, giải thuật nên dùng cấu trúc dữ liệu nào?', '8854781e-efc8-4130-9451-3b0391a32419', 'Stack để lưu các toán hạng trung gian', 'Queue để đảo biểu thức', 'Binary search tree bắt buộc', 'Mảng không thể thay đổi'),
+    ('f1130001-0000-4000-8000-000000000020', 'f1100003-0000-4000-8000-000000000003', 'Để tìm các thành phần liên thông của đồ thị, có thể lặp lại giải thuật nào từ mỗi đỉnh chưa thăm?', '8854781e-efc8-4130-9451-3b0391a32419', 'DFS hoặc BFS', 'Merge sort', 'Binary search', 'Selection sort');
+
+INSERT INTO quizzes
+    (id, quiz_title, description, unlimited, time_limit_minutes, pass_score, start_time, due_time,
+     attempt_limited, course_id, teacher_id, display, lifecycle_status, source_type,
+     version, published_by, published_at)
+VALUES
+    ('f1100001-0000-4000-8000-000000000001', 'DSA Practice Quiz A',
+     'Always-available practice quiz covering every Data Structures and Algorithms learning outcome.',
+     true, NULL, 50.0, NULL, NULL, NULL, 'c1111111-1111-1111-1111-111111111111',
+     '11111111-1111-1111-1111-111111111111', true, 'PUBLISHED', 'MANUAL', 1,
+     '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP),
+    ('f1100002-0000-4000-8000-000000000002', 'DSA Practice Quiz B',
+     'Always-available practice quiz covering every Data Structures and Algorithms learning outcome.',
+     true, NULL, 50.0, NULL, NULL, NULL, 'c1111111-1111-1111-1111-111111111111',
+     '22222222-2222-2222-2222-222222222222', true, 'PUBLISHED', 'MANUAL', 1,
+     '22222222-2222-2222-2222-222222222222', CURRENT_TIMESTAMP),
+    ('f1100003-0000-4000-8000-000000000003', 'DSA Practice Quiz C',
+     'Always-available practice quiz covering every Data Structures and Algorithms learning outcome.',
+     true, NULL, 50.0, NULL, NULL, NULL, 'c1111111-1111-1111-1111-111111111111',
+     '33333333-3333-3333-3333-333333333333', true, 'PUBLISHED', 'MANUAL', 1,
+     '33333333-3333-3333-3333-333333333333', CURRENT_TIMESTAMP);
+
+INSERT INTO questions
+    (id, content, content_format, explanation, explanation_format, type, quiz_id,
+     review_status, source_type)
+SELECT question_id, content, 'PLAIN_TEXT',
+       'Đáp án đúng: ' || correct_answer, 'PLAIN_TEXT', 'MULTIPLE_CHOICE', quiz_id,
+       'APPROVED', 'MANUAL'
+FROM dsa_practice_quiz_seed_questions;
+
+INSERT INTO answers (content, content_format, is_correct, explanation, explanation_format, question_id)
+SELECT answer.content, 'PLAIN_TEXT', answer.is_correct,
+       CASE WHEN answer.is_correct THEN 'Đáp án đúng.' ELSE 'Đáp án chưa đúng.' END,
+       'PLAIN_TEXT', seed.question_id
+FROM dsa_practice_quiz_seed_questions seed
+CROSS JOIN LATERAL (
+    VALUES
+        (seed.correct_answer, true),
+        (seed.wrong_answer_1, false),
+        (seed.wrong_answer_2, false),
+        (seed.wrong_answer_3, false)
+) AS answer(content, is_correct);
+
+INSERT INTO quiz_learning_outcomes (quiz_id, learning_outcome_id)
+SELECT DISTINCT quiz_id, learning_outcome_id
+FROM dsa_practice_quiz_seed_questions;
+
+INSERT INTO question_learning_outcomes (question_id, learning_outcome_id)
+SELECT question_id, learning_outcome_id
+FROM dsa_practice_quiz_seed_questions;
+
+INSERT INTO quiz_chapters (quiz_id, chapter_id)
+SELECT quiz.id, chapter.chapter_id
+FROM (VALUES
+          ('f1100001-0000-4000-8000-000000000001'::uuid),
+          ('f1100002-0000-4000-8000-000000000002'::uuid),
+          ('f1100003-0000-4000-8000-000000000003'::uuid)
+     ) AS quiz(id)
+CROSS JOIN chapters chapter
+WHERE chapter.course_id = 'c1111111-1111-1111-1111-111111111111';
+
+INSERT INTO quiz_releases (id, quiz_id, release_number, quiz_version, active, published_by, published_at)
+VALUES
+    ('f1200001-0000-4000-8000-000000000001', 'f1100001-0000-4000-8000-000000000001', 1, 1, true, '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP),
+    ('f1200002-0000-4000-8000-000000000002', 'f1100002-0000-4000-8000-000000000002', 1, 1, true, '22222222-2222-2222-2222-222222222222', CURRENT_TIMESTAMP),
+    ('f1200003-0000-4000-8000-000000000003', 'f1100003-0000-4000-8000-000000000003', 1, 1, true, '33333333-3333-3333-3333-333333333333', CURRENT_TIMESTAMP);
+
 -- 17. Persistent CCCT seed profiles for the DSA course.
 -- schema.sql recreates the development database at every BE startup, then this
 -- script restores these selectable DRAFT profiles with stable UUIDs.

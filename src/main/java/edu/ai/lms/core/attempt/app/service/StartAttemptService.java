@@ -5,6 +5,7 @@ import edu.ai.lms.core.attempt.adapter.in.response.StartAttemptResponse;
 import edu.ai.lms.core.attempt.app.domain.Attempt;
 import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
 import edu.ai.lms.core.attempt.app.exception.AttemptLimitExceededException;
+import edu.ai.lms.core.attempt.app.exception.AttemptAccessDeniedException;
 import edu.ai.lms.core.attempt.app.exception.InvalidAttemptSubmissionException;
 import edu.ai.lms.core.attempt.app.exception.QuizNotFoundForAttemptException;
 import edu.ai.lms.core.attempt.app.exception.UserNotAuthenticatedForAttemptException;
@@ -43,11 +44,11 @@ public class StartAttemptService implements StartAttemptUseCase {
                 .orElseThrow(() -> new UserNotAuthenticatedForAttemptException("User not authenticated"));
 
         if (user.getRole() != Roles.STUDENT) {
-            throw new IllegalArgumentException("Only students can start attempts");
+            throw new AttemptAccessDeniedException("Only students can start attempts");
         }
 
         if (!loadQuizAttemptPolicyPort.isStudentInCourse(user.getId(), command.courseId())) {
-            throw new IllegalArgumentException("Student is not enrolled in this course");
+            throw new AttemptAccessDeniedException("Student is not enrolled in this course");
         }
 
         QuizAttemptPolicy policy = loadQuizAttemptPolicyPort.getQuizAttemptPolicy(command.courseId(), command.quizId())

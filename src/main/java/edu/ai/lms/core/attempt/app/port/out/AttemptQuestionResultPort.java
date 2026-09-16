@@ -12,4 +12,6 @@ public interface AttemptQuestionResultPort {
     void updateCorrectness(UUID attemptId, UUID questionId, boolean correct);
 
     List<AttemptQuestionResult> findFinishedHistory(UUID studentId, Collection<UUID> quizIds);
+
+    List<AttemptQuestionResult> findAttemptRecords(UUID studentId, UUID quizId, Collection<UUID> attemptIds);
 }

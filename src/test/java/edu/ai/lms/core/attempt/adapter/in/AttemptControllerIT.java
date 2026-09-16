@@ -8,6 +8,8 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -21,10 +23,14 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Attempt Controller Integration Tests")
 class gitAttemptControllerIT extends IntegrationTestConfiguration {
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
@@ -254,12 +260,12 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
                             "answers": [
                                 {
                                     "content": "5",
-                                    "isCorrect": true,
+                                    "correct": true,
                                     "explanation": "Correct"
                                 },
                                 {
                                     "content": "6",
-                                    "isCorrect": false,
+                                    "correct": false,
                                     "explanation": "Incorrect"
                                 }
                             ]
@@ -284,6 +290,10 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
         timedQuestionId = UUID.fromString(questionResponse.path("[0].questionId"));
         List<Map<String, Object>> answerItems = questionResponse.jsonPath().getList("[0].answers");
         timedCorrectAnswerNumber = ((Number) answerItems.getFirst().get("answerNumber")).longValue();
+
+        createObjectiveQuestion(untimedQuizId, learningOutcomeId, "Unanswered auto-close question");
+        publishQuiz(timedQuizId);
+        publishQuiz(untimedQuizId);
     }
 
     @Test
@@ -405,7 +415,10 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
             .statusCode(200)
             .body("attempts", hasSize(1))
             .body("attempts[0].status", equalTo("FINISHED"))
-            .body("attempts[0].score", equalTo(0.0f));
+            .body("attempts[0].score", equalTo(0.0f))
+            .body("attempts[0].attemptRecords", hasSize(1))
+            .body("attempts[0].attemptRecords[0].isCorrect", equalTo(false))
+            .body("attempts[0].attemptRecords[0].snapshotComplete", equalTo(true));
     }
 
     @Test
@@ -438,6 +451,9 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
                 .extract().response();
 
         UUID timedNearDueQuizId = UUID.fromString(timedNearDueQuizResponse.path("quizId"));
+
+        createObjectiveQuestion(timedNearDueQuizId, quizLearningOutcomeId, "Near-due question");
+        publishQuiz(timedNearDueQuizId);
 
         given()
                 .header("Authorization", "Bearer " + studentToken)
@@ -472,7 +488,15 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
                 .then()
                 .statusCode(200)
                 .body("quizId", equalTo(timedQuizId.toString()))
-                .body("attempts", hasSize(2));
+                .body("attempts", hasSize(2))
+                .body("attempts[0].attemptRecords", hasSize(1))
+                .body("attempts[0].attemptRecords[0].studentAnswer.answerNumber",
+                        equalTo(timedCorrectAnswerNumber.intValue()))
+                .body("attempts[0].attemptRecords[0].correctAnswer.answerNumber",
+                        equalTo(timedCorrectAnswerNumber.intValue()))
+                .body("attempts[0].attemptRecords[0].isCorrect", equalTo(true))
+                .body("attempts[0].attemptRecords[0].ktQuestionId", nullValue())
+                .body("attempts[0].attemptRecords[0].ktLearningOutcomeId", nullValue());
     }
 
     @Test
@@ -495,5 +519,36 @@ class gitAttemptControllerIT extends IntegrationTestConfiguration {
                 .post("/api/" + courseId + "/attempt/quiz/" + timedQuizId + "/submit")
                 .then()
                 .statusCode(anyOf(is(400), is(404)));
+    }
+
+    private void createObjectiveQuestion(UUID quizId, UUID learningOutcomeId, String content) {
+        String body = """
+                {
+                  "questions": [{
+                    "content": "%s",
+                    "type": "MULTIPLE_CHOICE",
+                    "learningOutcomeId": "%s",
+                    "answers": [
+                      {"content": "A", "correct": true},
+                      {"content": "B", "correct": false}
+                    ]
+                  }]
+                }
+                """.formatted(content, learningOutcomeId);
+        given().contentType(ContentType.MULTIPART)
+                .multiPart("question", "question.json", body, "application/json")
+                .header("Authorization", "Bearer " + teacherToken)
+                .post("/api/quiz/" + quizId + "/question")
+                .then().statusCode(201);
+    }
+
+    private void publishQuiz(UUID quizId) {
+        Long version = jdbc.queryForObject("SELECT version FROM edu.quizzes WHERE id = ?", Long.class, quizId);
+        given().contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + teacherToken)
+                .body("{\"version\":" + version + "}")
+                .post("/api/courses/{courseId}/quizzes/{quizId}/publish", courseId, quizId)
+                .then().log().ifValidationFails().statusCode(200)
+                .body("lifecycleStatus", equalTo("PUBLISHED"));
     }
 }
