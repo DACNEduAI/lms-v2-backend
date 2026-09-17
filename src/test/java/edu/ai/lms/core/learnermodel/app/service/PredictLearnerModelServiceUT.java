@@ -7,9 +7,7 @@ import edu.ai.lms.core.learnermodel.app.domain.LearningOutcomeTarget;
 import edu.ai.lms.core.learnermodel.app.domain.ModelOutcomePrediction;
 import edu.ai.lms.core.learnermodel.app.domain.PredictionStatus;
 import edu.ai.lms.core.learnermodel.app.exception.AmbiguousLearningOutcomeHistoryException;
-import edu.ai.lms.core.learnermodel.app.exception.LearnerModelAccessDeniedException;
 import edu.ai.lms.core.learnermodel.app.exception.LearnerModelNotFoundException;
-import edu.ai.lms.core.learnermodel.app.port.in.command.PredictLearnerModelCommand;
 import edu.ai.lms.core.learnermodel.app.port.out.LearnerModelInferencePort;
 import edu.ai.lms.core.learnermodel.app.port.out.LoadLearnerActorPort;
 import edu.ai.lms.core.learnermodel.app.port.out.LoadLearnerCoursePort;
@@ -33,24 +31,20 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PredictLearnerModelServiceUT {
-    @Mock private LoadLearnerActorPort actorPort;
     @Mock private LoadLearnerCoursePort coursePort;
     @Mock private LoadLearnerHistoryPort historyPort;
     @Mock private LearnerModelInferencePort inferencePort;
-    @InjectMocks private PredictLearnerModelService service;
+    @InjectMocks private LearnerModelPredictionCalculator calculator;
 
     @Test
     void returnsInsufficientHistoryForEveryDktTargetWithoutCallingUpstream() {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         var targets = List.of(target(1), target(2));
-        when(actorPort.requireStudentId()).thenReturn(studentId);
-        when(coursePort.isStudentEnrolled(studentId, courseId)).thenReturn(true);
         when(coursePort.findLearningOutcomes(courseId)).thenReturn(targets);
         when(historyPort.load(studentId, courseId)).thenReturn(List.of());
 
-        var result = service.predictAll(new PredictLearnerModelCommand(
-                courseId, null, LearnerModelType.DKT_CUSTOM));
+        var result = calculator.predictAll(studentId, courseId, LearnerModelType.DKT_CUSTOM);
 
         assertThat(result.predictions()).allMatch(item ->
                 item.status() == PredictionStatus.INSUFFICIENT_HISTORY
@@ -69,17 +63,13 @@ class PredictLearnerModelServiceUT {
         UUID questionId = UUID.randomUUID();
         LearningOutcomeTarget target = target(5);
         LearnerQuizHistory history = history(questionId, 9, target, 1);
-        when(actorPort.requireStudentId()).thenReturn(studentId);
-        when(coursePort.isStudentEnrolled(studentId, courseId)).thenReturn(true);
-        when(coursePort.findLearningOutcome(courseId, target.id())).thenReturn(Optional.of(target));
         when(historyPort.load(studentId, courseId)).thenReturn(List.of(history));
         when(inferencePort.predict(
                 LearnerModelType.AKT_CUSTOM, studentId, List.of(history), List.of(target)))
                 .thenReturn(List.of(new ModelOutcomePrediction(
                         5, 0.75, PredictionStatus.PREDICTED, List.of(9L))));
 
-        var result = service.predictSingle(new PredictLearnerModelCommand(
-                courseId, target.id(), LearnerModelType.AKT_CUSTOM));
+        var result = calculator.predictSingle(studentId, courseId, LearnerModelType.AKT_CUSTOM, target);
 
         assertThat(result.historyInteractionCount()).isEqualTo(1);
         assertThat(result.predictions().getFirst().probability()).isEqualTo(0.75);
@@ -92,13 +82,10 @@ class PredictLearnerModelServiceUT {
         UUID courseId = UUID.randomUUID();
         LearningOutcomeTarget target = target(3);
         LearnerQuizHistory history = history(UUID.randomUUID(), 8, target, 2);
-        when(actorPort.requireStudentId()).thenReturn(studentId);
-        when(coursePort.isStudentEnrolled(studentId, courseId)).thenReturn(true);
         when(coursePort.findLearningOutcomes(courseId)).thenReturn(List.of(target));
         when(historyPort.load(studentId, courseId)).thenReturn(List.of(history));
 
-        assertThatThrownBy(() -> service.predictAll(new PredictLearnerModelCommand(
-                courseId, null, LearnerModelType.AKT_PYKT)))
+        assertThatThrownBy(() -> calculator.predictAll(studentId, courseId, LearnerModelType.AKT_PYKT))
                 .isInstanceOf(AmbiguousLearningOutcomeHistoryException.class);
     }
 
@@ -112,17 +99,20 @@ class PredictLearnerModelServiceUT {
     }
 
     @Test
-    void rejectsAStudentWhoIsNotEnrolledBeforeLoadingHistory() {
+    void authenticatedPredictionRejectsAStudentWhoIsNotEnrolled() {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
-        when(actorPort.requireStudentId()).thenReturn(studentId);
+        LoadLearnerActorPort actor = org.mockito.Mockito.mock(LoadLearnerActorPort.class);
+        LearnerModelPredictionCalculator delegate = org.mockito.Mockito.mock(LearnerModelPredictionCalculator.class);
+        PredictLearnerModelService service = new PredictLearnerModelService(actor, coursePort, delegate);
+        when(actor.requireStudentId()).thenReturn(studentId);
         when(coursePort.isStudentEnrolled(studentId, courseId)).thenReturn(false);
 
-        assertThatThrownBy(() -> service.predictAll(new PredictLearnerModelCommand(
+        assertThatThrownBy(() -> service.predictAll(new edu.ai.lms.core.learnermodel.app.port.in.command.PredictLearnerModelCommand(
                 courseId, null, LearnerModelType.DKT_CUSTOM)))
-                .isInstanceOf(LearnerModelAccessDeniedException.class);
+                .isInstanceOf(edu.ai.lms.core.learnermodel.app.exception.LearnerModelAccessDeniedException.class);
 
-        verify(historyPort, never()).load(studentId, courseId);
+        verify(delegate, never()).predictAll(studentId, courseId, LearnerModelType.DKT_CUSTOM);
     }
 
     @Test
@@ -130,15 +120,18 @@ class PredictLearnerModelServiceUT {
         UUID studentId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID outcomeId = UUID.randomUUID();
-        when(actorPort.requireStudentId()).thenReturn(studentId);
-        when(coursePort.isStudentEnrolled(studentId, courseId)).thenReturn(true);
         when(coursePort.findLearningOutcome(courseId, outcomeId)).thenReturn(Optional.empty());
+        LoadLearnerActorPort actor = org.mockito.Mockito.mock(LoadLearnerActorPort.class);
+        LearnerModelPredictionCalculator delegate = org.mockito.Mockito.mock(LearnerModelPredictionCalculator.class);
+        PredictLearnerModelService service = new PredictLearnerModelService(actor, coursePort, delegate);
+        when(actor.requireStudentId()).thenReturn(studentId);
+        when(coursePort.isStudentEnrolled(studentId, courseId)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.predictSingle(new PredictLearnerModelCommand(
+        assertThatThrownBy(() -> service.predictSingle(new edu.ai.lms.core.learnermodel.app.port.in.command.PredictLearnerModelCommand(
                 courseId, outcomeId, LearnerModelType.AKT_CUSTOM)))
                 .isInstanceOf(LearnerModelNotFoundException.class);
 
-        verify(historyPort, never()).load(studentId, courseId);
+        org.mockito.Mockito.verifyNoInteractions(delegate);
     }
 
     private LearningOutcomeTarget target(long id) {

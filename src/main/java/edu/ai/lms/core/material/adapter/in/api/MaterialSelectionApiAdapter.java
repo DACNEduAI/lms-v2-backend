@@ -1,6 +1,7 @@
 package edu.ai.lms.core.material.adapter.in.api;
 
 import edu.ai.lms.core.material.api.MaterialEligibility;
+import edu.ai.lms.core.material.api.AiReadyMaterialMetadata;
 import edu.ai.lms.core.material.api.MaterialSelectionApi;
 import edu.ai.lms.core.material.app.domain.Material;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
@@ -18,15 +19,34 @@ class MaterialSelectionApiAdapter implements MaterialSelectionApi {
 
     @Override
     public List<MaterialEligibility> inspectReadyPdfMaterials(UUID courseId, List<UUID> materialIds) {
-        return inspect(materialIds, courseId, true);
+        return inspect(materialIds, courseId, true, true);
     }
 
     @Override
     public List<MaterialEligibility> inspectUploadedMaterials(UUID courseId, List<UUID> materialIds) {
-        return inspect(materialIds, courseId, false);
+        return inspect(materialIds, courseId, false, false);
     }
 
-    private List<MaterialEligibility> inspect(List<UUID> materialIds, UUID courseId, boolean requireReadyPdf) {
+    @Override
+    public List<MaterialEligibility> inspectAiReadyMaterials(UUID courseId, List<UUID> materialIds) {
+        return inspect(materialIds, courseId, false, true);
+    }
+
+    @Override
+    public List<AiReadyMaterialMetadata> listAiReadyMaterials(UUID courseId) {
+        return materialPort.findByCourseId(courseId).stream()
+                .filter(this::isAiReady)
+                .sorted(java.util.Comparator.comparing(Material::getTitle,
+                        java.util.Comparator.nullsLast(String::compareToIgnoreCase))
+                        .thenComparing(Material::getId))
+                .map(material -> new AiReadyMaterialMetadata(
+                        material.getId(), material.getTitle(), material.getOriginalFileName(),
+                        material.getType() == null ? null : material.getType().name()))
+                .toList();
+    }
+
+    private List<MaterialEligibility> inspect(
+            List<UUID> materialIds, UUID courseId, boolean requirePdf, boolean requireAiReady) {
         if (materialIds == null || materialIds.isEmpty()) {
             return List.of();
         }
@@ -35,14 +55,22 @@ class MaterialSelectionApiAdapter implements MaterialSelectionApi {
             if (material == null) {
                 return new MaterialEligibility(materialId, false, "Material does not belong to the course", null);
             }
-            if (requireReadyPdf && material.getType() != Material.MaterialType.PDF) {
+            if (requirePdf && material.getType() != Material.MaterialType.PDF) {
                 return new MaterialEligibility(materialId, false, "Only PDF materials can be used for quiz generation", null);
             }
             if (material.getStatus() != Material.MaterialStatus.UPLOADED
-                    || (requireReadyPdf && material.getIngestionStatus() != Material.IngestionStatus.READY)) {
-                return new MaterialEligibility(materialId, false, "Material is not ready for quiz generation", null);
+                    || (requireAiReady && material.getIngestionStatus() != Material.IngestionStatus.READY)) {
+                String reason = requireAiReady
+                        ? (requirePdf ? "Material is not ready for quiz generation" : "Material is not ready for AI chat")
+                        : "Material is not uploaded";
+                return new MaterialEligibility(materialId, false, reason, null);
             }
             return new MaterialEligibility(materialId, true, null, material.getFileKey());
         }).toList();
+    }
+
+    private boolean isAiReady(Material material) {
+        return material.getStatus() == Material.MaterialStatus.UPLOADED
+                && material.getIngestionStatus() == Material.IngestionStatus.READY;
     }
 }

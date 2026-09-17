@@ -1,5 +1,6 @@
 package edu.ai.lms.core.chat.adapter.in.http.request;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,13 +12,13 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AiChatRequest {
     @NotBlank(message = "Chat message must not be blank")
     @Size(max = 4000, message = "Chat message must be at most 4000 characters")
     private String userQuery;
     private List<ChatHistoryEntry> chatHistory;
     private List<UUID> selectedMaterialIds; // Source Selection: null hoặc rỗng = tìm toàn bộ khóa học
-    private boolean personalizationEnabled;
 
     @Data
     @NoArgsConstructor

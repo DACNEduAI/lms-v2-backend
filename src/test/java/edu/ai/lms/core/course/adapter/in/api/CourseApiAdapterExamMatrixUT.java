@@ -67,6 +67,26 @@ class CourseApiAdapterExamMatrixUT {
         assertEquals(3, mappedRow.levelCounts().getFirst().questionCount());
     }
 
+    @Test
+    void exposesOnlyCourseOwnedMetadataForTheTutor() {
+        UUID courseId = UUID.randomUUID();
+        UUID outcomeId = UUID.randomUUID();
+        Course course = Course.builder().id(courseId).courseCode("DSA101")
+                .courseName("Data Structures").description("Core structures").build();
+        LearningOutcome outcome = LearningOutcome.builder().id(outcomeId).courseId(courseId)
+                .ktLearningOutcomeId(1L).code("CLO1").description("Explain linked lists").build();
+        when(coursePort.findById(courseId)).thenReturn(Optional.of(course));
+        when(outcomePort.findByCourseId(courseId)).thenReturn(List.of(outcome));
+
+        var metadata = adapter().findForChat(courseId).orElseThrow();
+
+        assertEquals("DSA101", metadata.code());
+        assertEquals("Data Structures", metadata.name());
+        assertEquals("Core structures", metadata.description());
+        assertEquals(List.of(outcomeId), metadata.learningOutcomes().stream()
+                .map(edu.ai.lms.core.course.api.LearningOutcomeView::id).toList());
+    }
+
     private CourseApiAdapter adapter() {
         return new CourseApiAdapter(coursePort, matrixPort, outcomePort, groupPort, chapterPort);
     }

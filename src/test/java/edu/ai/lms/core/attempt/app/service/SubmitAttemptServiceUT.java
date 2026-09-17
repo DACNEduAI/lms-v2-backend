@@ -15,6 +15,7 @@ import edu.ai.lms.core.attempt.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.UnscheduleAttemptAutoClosePort;
 import edu.ai.lms.core.attempt.app.domain.CurrentActor;
+import edu.ai.lms.core.attempt.api.AttemptFinishedEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -58,6 +60,8 @@ class SubmitAttemptServiceUT {
     private AttemptQuestionResultPort attemptQuestionResultPort;
     @Mock
     private AttemptAutoCloseService attemptAutoCloseService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private SubmitAttemptService submitAttemptService;
@@ -152,6 +156,7 @@ class SubmitAttemptServiceUT {
         assertEquals(1, trueFalseResult.getInteractionOrder());
         assertFalse(trueFalseResult.getCorrect());
         verify(unscheduleAttemptAutoClosePort).unschedule(eq(startedAttempt.getId()));
+        verify(eventPublisher).publishEvent(any(AttemptFinishedEvent.class));
     }
 
     @Test
@@ -247,6 +252,7 @@ class SubmitAttemptServiceUT {
         assertEquals("ERROR", response.getStatus());
         assertNull(response.getScore());
         verify(unscheduleAttemptAutoClosePort).unschedule(eq(startedAttempt.getId()));
+        verify(eventPublisher, org.mockito.Mockito.never()).publishEvent(any());
     }
 
     @Test
@@ -284,6 +290,7 @@ class SubmitAttemptServiceUT {
         assertEquals("FINISHED", response.getStatus());
         assertEquals(0.0, response.getScore());
         verify(unscheduleAttemptAutoClosePort).unschedule(eq(startedAttempt.getId()));
+        verify(eventPublisher).publishEvent(any(AttemptFinishedEvent.class));
 
         verify(loadQuizAttemptPolicyPort).getQuizAttemptPolicy(eq(courseId), eq(quizId));
     }

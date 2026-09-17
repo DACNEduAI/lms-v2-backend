@@ -215,7 +215,7 @@ public class MaterialIndexingService {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(new AiIngestRequest(
                         material.getCourseId().toString(), material.getId().toString(), fileUrl,
-                        documentKey(material.getFileKey()), indexProfile, sourceHash))
+                        material.getOriginalFileName(), documentKey(material.getFileKey()), indexProfile, sourceHash))
                 .retrieve()
                 .onStatus(status -> status.isError(), clientResponse -> clientResponse.bodyToMono(String.class)
                         .defaultIfEmpty("No response body")
@@ -288,6 +288,7 @@ public class MaterialIndexingService {
             @JsonProperty("course_id") String courseId,
             @JsonProperty("material_id") String materialId,
             @JsonProperty("file_url") String fileUrl,
+            @JsonProperty("file_name") String fileName,
             @JsonProperty("document_key") String documentKey,
             @JsonProperty("index_profile") String indexProfile,
             @JsonProperty("source_hash") String sourceHash) {}

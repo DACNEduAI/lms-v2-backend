@@ -17,6 +17,7 @@ public class CreateMaterialCommandMapper {
         Material material = new Material(
                 courseId,
                 request.getTitle(),
+                originalFileName(request),
                 request.getType(),
                 request.getIsDownloadable() != null && request.getIsDownloadable()
         );
@@ -32,6 +33,7 @@ public class CreateMaterialCommandMapper {
         Material material = new Material(
                 courseId,
                 request.getTitle(),
+                originalFileName(request),
                 request.getType(),
                 request.getIsDownloadable() != null && request.getIsDownloadable()
         );
@@ -41,5 +43,11 @@ public class CreateMaterialCommandMapper {
                 .chapterId(chapterId)
                 .material(material)
                 .build();
+    }
+
+    private static String originalFileName(CreateMaterialRequest request) {
+        return request.getOriginalFileName() == null || request.getOriginalFileName().isBlank()
+                ? request.getTitle().trim()
+                : request.getOriginalFileName().trim();
     }
 }

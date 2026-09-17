@@ -1,5 +1,7 @@
 package edu.ai.lms.core.material.app.service;
 
+import java.util.Locale;
+
 import edu.ai.lms.core.material.app.port.in.usecase.CreateMaterialUseCase;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,7 @@ public class CreateMaterialService implements CreateMaterialUseCase {
     @Override
     @Transactional
     public CreateMaterialResponse createMaterialForCourse(CreateMaterialForCourseCommand command) {
+        rejectDuplicateUploadedFileName(command.courseId(), command.material());
         CreateMaterialResponse resumed = resumeIncompleteUpload(command.material());
         if (resumed != null) {
             return resumed;
@@ -45,6 +48,7 @@ public class CreateMaterialService implements CreateMaterialUseCase {
     @Override
     @Transactional
     public CreateMaterialResponse createMaterialForChapter(CreateMaterialForChapterCommand command) {
+        rejectDuplicateUploadedFileName(command.courseId(), command.material());
         CreateMaterialResponse resumed = resumeIncompleteUpload(command.material());
         if (resumed != null) {
             return resumed;
@@ -65,6 +69,7 @@ public class CreateMaterialService implements CreateMaterialUseCase {
         return CreateMaterialResponse.builder()
                 .id(m.getId())
                 .title(m.getTitle())
+                .originalFileName(m.getOriginalFileName())
                 .type(m.getType() != null ? m.getType().name() : null)
                 .fileKey(m.getFileKey())
                 .isDownloadable(m.isDownloadable())
@@ -104,5 +109,23 @@ public class CreateMaterialService implements CreateMaterialUseCase {
                 resumed.getFileKey(), resumed.getContentType(), null);
 
         return toResponse(resumed, presignedUploadUrl);
+    }
+
+    private void rejectDuplicateUploadedFileName(java.util.UUID courseId, Material requested) {
+        String requestedName = normalizeFileName(requested.getOriginalFileName());
+        if (requestedName.isEmpty()) {
+            return;
+        }
+        boolean exists = getMaterialPort.findByCourseId(courseId).stream()
+                .anyMatch(existing -> Material.MaterialStatus.UPLOADED.equals(existing.getStatus())
+                        && requestedName.equals(normalizeFileName(existing.getOriginalFileName())));
+        if (exists) {
+            throw new MaterialAlreadyUploadedException(
+                    "A file with this name has already been uploaded. Rename the file and try again.");
+        }
+    }
+
+    private static String normalizeFileName(String fileName) {
+        return fileName == null ? "" : fileName.trim().toLowerCase(Locale.ROOT);
     }
 }

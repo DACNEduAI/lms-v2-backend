@@ -8,10 +8,12 @@ import edu.ai.lms.core.attempt.app.port.out.AttemptQuestionResultPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
+import edu.ai.lms.core.attempt.api.AttemptFinishedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -57,6 +59,7 @@ public class AttemptAutoCloseService {
     private final LoadQuizAttemptPolicyPort loadQuizAttemptPolicyPort;
     private final SaveAttemptPort saveAttemptPort;
     private final AttemptQuestionResultPort attemptQuestionResultPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Closes the latest active started attempt for a student and quiz if that attempt is expired.
@@ -162,6 +165,8 @@ public class AttemptAutoCloseService {
         boolean closed = saveAttemptPort.closeIfStarted(attempt.getId(), status, score, errorReason, now);
         if (closed) {
             saveAllWrongRecords(attempt, loadQuizAttemptPolicyPort.getQuestionAnswerKeys(attempt.getQuizId()));
+            eventPublisher.publishEvent(new AttemptFinishedEvent(
+                    attempt.getId(), attempt.getStudentId(), policy.getCourseId(), now));
         }
         return closed;
     }

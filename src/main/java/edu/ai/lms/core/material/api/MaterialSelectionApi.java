@@ -8,4 +8,8 @@ public interface MaterialSelectionApi {
     List<MaterialEligibility> inspectReadyPdfMaterials(UUID courseId, List<UUID> materialIds);
 
     List<MaterialEligibility> inspectUploadedMaterials(UUID courseId, List<UUID> materialIds);
+
+    List<MaterialEligibility> inspectAiReadyMaterials(UUID courseId, List<UUID> materialIds);
+
+    List<AiReadyMaterialMetadata> listAiReadyMaterials(UUID courseId);
 }

@@ -30,6 +30,7 @@ import edu.ai.lms.core.material.app.domain.Material;
 import edu.ai.lms.core.material.app.domain.Material.MaterialStatus;
 import edu.ai.lms.core.material.app.domain.Material.MaterialType;
 import edu.ai.lms.core.material.app.exception.MaterialNotFoundException;
+import edu.ai.lms.core.material.app.exception.MaterialAlreadyUploadedException;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.LoadSignedInUserPort;
@@ -74,6 +75,7 @@ class ConfirmUploadServiceUT {
         material = Material.builder()
                 .id(materialId)
                 .title("Lecture Notes")
+                .originalFileName("Lecture Notes.pdf")
                 .type(MaterialType.PDF)
                 .fileKey("courses/" + courseId + "/Lecture_Notes.pdf")
                 .downloadable(true)
@@ -93,6 +95,7 @@ class ConfirmUploadServiceUT {
         Material updatedMaterial = Material.builder()
                 .id(materialId)
                 .title("Lecture Notes")
+                .originalFileName("Lecture Notes.pdf")
                 .type(MaterialType.PDF)
                 .fileKey(material.getFileKey())
                 .status(MaterialStatus.UPLOADED)
@@ -131,6 +134,7 @@ class ConfirmUploadServiceUT {
         Material updatedMaterial = Material.builder()
                 .id(materialId)
                 .title("Lecture Notes")
+                .originalFileName("Lecture Notes.pdf")
                 .type(MaterialType.PDF)
                 .fileKey(material.getFileKey())
                 .status(MaterialStatus.FAILED)
@@ -166,6 +170,24 @@ class ConfirmUploadServiceUT {
         assertTrue(exception.getMessage().contains(courseId.toString()));
 
         verify(verifyFileUploadedPort, never()).isFileUploaded(any());
+        verify(modifyMaterialPort, never()).update(any());
+    }
+
+    @Test
+    @DisplayName("Should reject confirmation when the filename is already uploaded in the course")
+    void testConfirmUpload_WhenDuplicateOriginalFileNameExists_ShouldThrowException() {
+        Material uploadedDuplicate = Material.builder()
+                .id(UUID.randomUUID())
+                .originalFileName(" lecture notes.PDF ")
+                .status(MaterialStatus.UPLOADED)
+                .build();
+        when(getMaterialPort.findByIdAndCourseId(materialId, courseId)).thenReturn(Optional.of(material));
+        when(getMaterialPort.findByCourseId(courseId)).thenReturn(List.of(uploadedDuplicate));
+        when(verifyFileUploadedPort.isFileUploaded(material.getFileKey())).thenReturn(true);
+
+        assertThrows(MaterialAlreadyUploadedException.class,
+                () -> confirmUploadService.confirmUpload(courseId, materialId));
+
         verify(modifyMaterialPort, never()).update(any());
     }
 }

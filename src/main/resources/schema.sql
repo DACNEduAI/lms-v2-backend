@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS materials
 (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title           VARCHAR(255),
+    original_file_name VARCHAR(255) NOT NULL,
     type            VARCHAR(50) CHECK (type IN ('PDF', 'VIDEO', 'IMAGE')),
     file_key        VARCHAR(255) UNIQUE,
     is_downloadable BOOLEAN          DEFAULT false,
@@ -110,6 +111,14 @@ CREATE TABLE IF NOT EXISTS materials
 -- Keep existing databases compatible when schema.sql runs against tables that
 -- predate material indexing.
 ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingestion_status VARCHAR(50) NOT NULL DEFAULT 'NOT_STARTED';
+ALTER TABLE materials ADD COLUMN IF NOT EXISTS original_file_name VARCHAR(255);
+UPDATE materials
+SET original_file_name = COALESCE(NULLIF(BTRIM(title), ''), 'material-' || id::text)
+WHERE original_file_name IS NULL OR BTRIM(original_file_name) = '';
+ALTER TABLE materials ALTER COLUMN original_file_name SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_material_uploaded_original_file_name_per_course
+    ON materials (course_id, LOWER(BTRIM(original_file_name)))
+    WHERE status = 'UPLOADED';
 ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingestion_error TEXT;
 ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingestion_revision UUID;
 ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingested_at TIMESTAMP;
@@ -1322,6 +1331,36 @@ CREATE TABLE IF NOT EXISTS attempt_records
 
 CREATE INDEX IF NOT EXISTS idx_attempt_records_attempt_order
     ON attempt_records (attempt_id, interaction_order);
+
+-- Immutable aggregate learner-model state after each finished attempt.
+CREATE TABLE IF NOT EXISTS learner_states
+(
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id    UUID      NOT NULL,
+    course_id     UUID      NOT NULL,
+    attempt_id    UUID      NOT NULL REFERENCES attempts (id) ON DELETE CASCADE,
+    calculated_at TIMESTAMP NOT NULL,
+    created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_learner_states_attempt UNIQUE (attempt_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_learner_states_student_course_calculated
+    ON learner_states (student_id, course_id, calculated_at, id);
+
+CREATE TABLE IF NOT EXISTS learner_state_outcomes
+(
+    learner_state_id    UUID        NOT NULL REFERENCES learner_states (id) ON DELETE CASCADE,
+    learning_outcome_id UUID        NOT NULL,
+    probability         DOUBLE PRECISION,
+    prediction_status   VARCHAR(50) NOT NULL,
+    PRIMARY KEY (learner_state_id, learning_outcome_id),
+    CONSTRAINT ck_learner_state_outcome_value CHECK (
+        (prediction_status = 'PREDICTED' AND probability IS NOT NULL
+            AND probability >= 0.0 AND probability <= 1.0)
+        OR
+        (prediction_status = 'INSUFFICIENT_PREDICTION' AND probability IS NULL)
+    )
+);
 
 CREATE TABLE IF NOT EXISTS code_submissions
 (

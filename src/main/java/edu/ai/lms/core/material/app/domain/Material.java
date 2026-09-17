@@ -35,6 +35,7 @@ public class Material {
 
     private UUID id;
     private String title;
+    private String originalFileName;
     private MaterialType type;
     private String fileKey;
     private boolean downloadable;
@@ -48,10 +49,11 @@ public class Material {
     private LocalDateTime updatedAt;
 
     // --- NEW: Dedicated constructor for creating NEW materials ---
-    public Material(UUID courseId, String title, MaterialType type, boolean downloadable) {
+    public Material(UUID courseId, String title, String originalFileName, MaterialType type, boolean downloadable) {
         this.id = UUID.randomUUID();
         this.courseId = courseId;
         this.title = title;
+        this.originalFileName = originalFileName;
         this.type = type;
         this.downloadable = downloadable;
         this.status = MaterialStatus.PENDING; // Good default for new uploads

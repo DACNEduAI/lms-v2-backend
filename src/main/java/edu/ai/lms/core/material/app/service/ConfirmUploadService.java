@@ -1,6 +1,7 @@
 package edu.ai.lms.core.material.app.service;
 
 import java.util.UUID;
+import java.util.Locale;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +10,7 @@ import edu.ai.lms.common.event.SystemActivityEvent;
 import edu.ai.lms.core.material.adapter.in.response.ConfirmUploadResponse;
 import edu.ai.lms.core.material.app.domain.Material;
 import edu.ai.lms.core.material.app.exception.MaterialNotFoundException;
+import edu.ai.lms.core.material.app.exception.MaterialAlreadyUploadedException;
 import edu.ai.lms.core.material.app.port.in.usecase.ConfirmUploadUseCase;
 import edu.ai.lms.core.material.app.port.out.persistence.GetMaterialPort;
 import edu.ai.lms.core.material.app.port.out.persistence.ModifyMaterialPort;
@@ -40,6 +42,7 @@ public class ConfirmUploadService implements ConfirmUploadUseCase {
         boolean uploaded = verifyFileUploadedPort.isFileUploaded(material.getFileKey());
 
         if (uploaded) {
+            rejectDuplicateUploadedFileName(courseId, material);
             material.setStatus(Material.MaterialStatus.UPLOADED);
             material.setIngestionError(null);
             material.setIngestedAt(null);
@@ -95,5 +98,24 @@ public class ConfirmUploadService implements ConfirmUploadUseCase {
         }
 
         return response;
+    }
+
+    private void rejectDuplicateUploadedFileName(UUID courseId, Material material) {
+        String requestedName = normalizeFileName(material.getOriginalFileName());
+        if (requestedName.isEmpty()) {
+            return;
+        }
+        boolean exists = getMaterialPort.findByCourseId(courseId).stream()
+                .anyMatch(existing -> !material.getId().equals(existing.getId())
+                        && Material.MaterialStatus.UPLOADED.equals(existing.getStatus())
+                        && requestedName.equals(normalizeFileName(existing.getOriginalFileName())));
+        if (exists) {
+            throw new MaterialAlreadyUploadedException(
+                    "A file with this name has already been uploaded. Rename the file and try again.");
+        }
+    }
+
+    private static String normalizeFileName(String fileName) {
+        return fileName == null ? "" : fileName.trim().toLowerCase(Locale.ROOT);
     }
 }

@@ -16,7 +16,7 @@ class ChatMaterialAdapter implements ValidateChatMaterialsPort {
 
     @Override
     public boolean allAvailableInCourse(UUID courseId, List<UUID> materialIds) {
-        return materialSelectionApi.inspectUploadedMaterials(courseId, materialIds).stream()
+        return materialSelectionApi.inspectAiReadyMaterials(courseId, materialIds).stream()
                 .allMatch(result -> result.eligible());
     }
 }

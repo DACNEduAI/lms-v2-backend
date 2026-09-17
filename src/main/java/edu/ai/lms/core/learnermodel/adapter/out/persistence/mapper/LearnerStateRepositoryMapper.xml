@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.learnermodel.adapter.out.persistence.LearnerStateRepository">
+  <resultMap id="StateRowMap" type="edu.ai.lms.core.learnermodel.adapter.out.persistence.LearnerStateRow">
+    <constructor>
+      <idArg column="id" javaType="java.util.UUID" />
+      <arg column="student_id" javaType="java.util.UUID" />
+      <arg column="course_id" javaType="java.util.UUID" />
+      <arg column="attempt_id" javaType="java.util.UUID" />
+      <arg column="calculated_at" javaType="java.time.LocalDateTime" />
+    </constructor>
+  </resultMap>
+  <resultMap id="OutcomeMap" type="edu.ai.lms.core.learnermodel.app.domain.LearnerStateOutcome">
+    <constructor>
+      <arg column="learning_outcome_id" javaType="java.util.UUID" />
+      <arg column="probability" javaType="java.lang.Double" />
+      <arg column="prediction_status" javaType="edu.ai.lms.core.learnermodel.app.domain.LearnerStateOutcomeStatus" typeHandler="edu.ai.lms.core.learnermodel.adapter.out.persistence.mybatis.LearnerStateOutcomeStatusTypeHandler" />
+    </constructor>
+  </resultMap>
+
+  <select id="existsForAttempt" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM edu.learner_states WHERE attempt_id = #{attemptId})
+  </select>
+
+  <insert id="insertState">
+    INSERT INTO edu.learner_states (id, student_id, course_id, attempt_id, calculated_at)
+    VALUES (#{state.id}, #{state.studentId}, #{state.courseId}, #{state.attemptId}, #{state.calculatedAt})
+    ON CONFLICT (attempt_id) DO NOTHING
+  </insert>
+
+  <insert id="insertOutcomes">
+    INSERT INTO edu.learner_state_outcomes (learner_state_id, learning_outcome_id, probability, prediction_status)
+    VALUES
+    <foreach collection="outcomes" item="outcome" separator=",">
+      (#{stateId}, #{outcome.learningOutcomeId}, #{outcome.probability}, #{outcome.status, javaType=edu.ai.lms.core.learnermodel.app.domain.LearnerStateOutcomeStatus, typeHandler=edu.ai.lms.core.learnermodel.adapter.out.persistence.mybatis.LearnerStateOutcomeStatusTypeHandler})
+    </foreach>
+  </insert>
+
+  <select id="findByStudentAndCourse" resultMap="StateRowMap">
+    SELECT id, student_id, course_id, attempt_id, calculated_at
+    FROM edu.learner_states
+    WHERE student_id = #{studentId} AND course_id = #{courseId}
+    ORDER BY calculated_at ASC, id ASC
+  </select>
+
+  <select id="findLatestByStudentAndCourse" resultMap="StateRowMap">
+    SELECT id, student_id, course_id, attempt_id, calculated_at
+    FROM edu.learner_states
+    WHERE student_id = #{studentId} AND course_id = #{courseId}
+    ORDER BY calculated_at DESC, id DESC
+    LIMIT 1
+  </select>
+
+  <select id="findOutcomes" resultMap="OutcomeMap">
+    SELECT learning_outcome_id, probability, prediction_status
+    FROM edu.learner_state_outcomes
+    WHERE learner_state_id = #{stateId}
+    ORDER BY learning_outcome_id ASC
+  </select>
+</mapper>

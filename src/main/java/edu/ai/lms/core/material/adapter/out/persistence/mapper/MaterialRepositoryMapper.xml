@@ -7,11 +7,12 @@
   <resultMap id="MaterialResultMap" type="edu.ai.lms.core.material.app.domain.Material">
     <id property="id" column="id" />
     <result property="title" column="title" />
-    <result property="type" column="type" javaType="edu.ai.lms.core.material.app.domain.Material$MaterialType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="originalFileName" column="original_file_name" />
+    <result property="type" column="type" javaType="edu.ai.lms.core.material.app.domain.Material$MaterialType" typeHandler="edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialTypeTypeHandler" />
     <result property="fileKey" column="file_key" />
     <result property="downloadable" column="is_downloadable" />
-    <result property="status" column="status" javaType="edu.ai.lms.core.material.app.domain.Material$MaterialStatus" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
-    <result property="ingestionStatus" column="ingestion_status" javaType="edu.ai.lms.core.material.app.domain.Material$IngestionStatus" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="status" column="status" javaType="edu.ai.lms.core.material.app.domain.Material$MaterialStatus" typeHandler="edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialStatusTypeHandler" />
+    <result property="ingestionStatus" column="ingestion_status" javaType="edu.ai.lms.core.material.app.domain.Material$IngestionStatus" typeHandler="edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialIngestionStatusTypeHandler" />
     <result property="ingestionError" column="ingestion_error" />
     <result property="ingestionRevision" column="ingestion_revision" />
     <result property="ingestedAt" column="ingested_at" />
@@ -21,24 +22,25 @@
   </resultMap>
 
   <select id="findById" resultMap="MaterialResultMap">
-    SELECT id, title, type, file_key, is_downloadable, status, ingestion_status, ingestion_error, ingestion_revision, ingested_at, course_id, created_at, updated_at
+    SELECT id, title, original_file_name, type, file_key, is_downloadable, status, ingestion_status, ingestion_error, ingestion_revision, ingested_at, course_id, created_at, updated_at
     FROM edu.materials
     WHERE id = #{id}
   </select>
 
   <insert id="insert" parameterType="edu.ai.lms.core.material.app.domain.Material">
-    INSERT INTO edu.materials (id, title, type, file_key, is_downloadable, status, ingestion_status, ingestion_error, ingestion_revision, ingested_at, course_id, created_at, updated_at)
-    VALUES (#{id}, #{title}, #{type, javaType=edu.ai.lms.core.material.app.domain.Material$MaterialType, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, #{fileKey}, #{downloadable}, #{status, javaType=edu.ai.lms.core.material.app.domain.Material$MaterialStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, #{ingestionStatus, javaType=edu.ai.lms.core.material.app.domain.Material$IngestionStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler}, #{ingestionError}, #{ingestionRevision}, #{ingestedAt}, #{courseId}, NOW(), NOW())
+    INSERT INTO edu.materials (id, title, original_file_name, type, file_key, is_downloadable, status, ingestion_status, ingestion_error, ingestion_revision, ingested_at, course_id, created_at, updated_at)
+    VALUES (#{id}, #{title}, #{originalFileName}, #{type, javaType=edu.ai.lms.core.material.app.domain.Material$MaterialType, typeHandler=edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialTypeTypeHandler}, #{fileKey}, #{downloadable}, #{status, javaType=edu.ai.lms.core.material.app.domain.Material$MaterialStatus, typeHandler=edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialStatusTypeHandler}, #{ingestionStatus, javaType=edu.ai.lms.core.material.app.domain.Material$IngestionStatus, typeHandler=edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialIngestionStatusTypeHandler}, #{ingestionError}, #{ingestionRevision}, #{ingestedAt}, #{courseId}, NOW(), NOW())
   </insert>
 
   <update id="update" parameterType="edu.ai.lms.core.material.app.domain.Material">
     UPDATE edu.materials
     SET title = #{title},
-        type = #{type, javaType=edu.ai.lms.core.material.app.domain.Material$MaterialType, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        original_file_name = #{originalFileName},
+        type = #{type, javaType=edu.ai.lms.core.material.app.domain.Material$MaterialType, typeHandler=edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialTypeTypeHandler},
         file_key = #{fileKey},
         is_downloadable = #{downloadable},
-        status = #{status, javaType=edu.ai.lms.core.material.app.domain.Material$MaterialStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-        ingestion_status = #{ingestionStatus, javaType=edu.ai.lms.core.material.app.domain.Material$IngestionStatus, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        status = #{status, javaType=edu.ai.lms.core.material.app.domain.Material$MaterialStatus, typeHandler=edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialStatusTypeHandler},
+        ingestion_status = #{ingestionStatus, javaType=edu.ai.lms.core.material.app.domain.Material$IngestionStatus, typeHandler=edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialIngestionStatusTypeHandler},
         ingestion_error = #{ingestionError},
         ingestion_revision = #{ingestionRevision},
         ingested_at = #{ingestedAt},
@@ -52,26 +54,26 @@
   </delete>
 
   <select id="findByIdAndCourseId" resultMap="MaterialResultMap">
-    SELECT id, title, type, file_key, is_downloadable, status, ingestion_status, ingestion_error, ingestion_revision, ingested_at, course_id, created_at, updated_at
+    SELECT id, title, original_file_name, type, file_key, is_downloadable, status, ingestion_status, ingestion_error, ingestion_revision, ingested_at, course_id, created_at, updated_at
     FROM edu.materials
     WHERE id = #{id}
       AND course_id = #{courseId}
   </select>
 
   <select id="findByFileKey" resultMap="MaterialResultMap">
-    SELECT id, title, type, file_key, is_downloadable, status, ingestion_status, ingestion_error, ingestion_revision, ingested_at, course_id, created_at, updated_at
+    SELECT id, title, original_file_name, type, file_key, is_downloadable, status, ingestion_status, ingestion_error, ingestion_revision, ingested_at, course_id, created_at, updated_at
     FROM edu.materials
     WHERE file_key = #{fileKey}
   </select>
 
   <select id="findByCourseId" resultMap="MaterialResultMap">
-    SELECT id, title, type, file_key, is_downloadable, status, ingestion_status, ingestion_error, ingestion_revision, ingested_at, course_id, created_at, updated_at
+    SELECT id, title, original_file_name, type, file_key, is_downloadable, status, ingestion_status, ingestion_error, ingestion_revision, ingested_at, course_id, created_at, updated_at
     FROM edu.materials
     WHERE course_id = #{courseId}
   </select>
 
   <select id="findByStatusIn" resultMap="MaterialResultMap">
-    SELECT id, title, type, file_key, is_downloadable, status, ingestion_status, ingestion_error, ingestion_revision, ingested_at, course_id, created_at, updated_at
+    SELECT id, title, original_file_name, type, file_key, is_downloadable, status, ingestion_status, ingestion_error, ingestion_revision, ingested_at, course_id, created_at, updated_at
     FROM edu.materials
     WHERE status IN
     <foreach collection="statuses" item="status" open="(" separator="," close=")">
@@ -80,7 +82,7 @@
   </select>
 
   <select id="findByChapterKey" resultMap="MaterialResultMap">
-    SELECT m.id, m.title, m.type, m.file_key, m.is_downloadable, m.status, m.ingestion_status, m.ingestion_error, m.ingestion_revision, m.ingested_at, m.course_id, m.created_at, m.updated_at
+    SELECT m.id, m.title, m.original_file_name, m.type, m.file_key, m.is_downloadable, m.status, m.ingestion_status, m.ingestion_error, m.ingestion_revision, m.ingested_at, m.course_id, m.created_at, m.updated_at
     FROM edu.materials m
     INNER JOIN edu.chapter_materials cm ON m.id = cm.material_id
     WHERE cm.chapter_id = #{chapterId}

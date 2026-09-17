@@ -2,6 +2,7 @@ package edu.ai.lms.core.attempt.app.service;
 
 import edu.ai.lms.core.attempt.app.domain.Attempt;
 import edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey;
+import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
 import edu.ai.lms.core.attempt.app.port.out.AttemptCodeRunnerPort;
 import edu.ai.lms.core.attempt.app.port.out.AttemptCodeSubmissionSnapshotPort;
 import edu.ai.lms.core.attempt.app.port.out.AttemptQuestionResultPort;
@@ -9,12 +10,14 @@ import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
 import edu.ai.lms.core.coderunner.api.CodeSubmissionCompletedEvent;
+import edu.ai.lms.core.attempt.api.AttemptFinishedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Map;
@@ -32,6 +35,7 @@ public class AttemptGradingService {
     private final AttemptCodeRunnerPort codeRunnerPort;
     private final AttemptCodeSubmissionSnapshotPort codeSubmissionSnapshotPort;
     private final AttemptQuestionResultPort attemptQuestionResultPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @EventListener
     @Transactional
@@ -83,7 +87,7 @@ public class AttemptGradingService {
                 .count();
 
         if (totalGradable == 0) {
-            saveAttemptPort.finalizeIfStillFinalizing(attempt.getId(), attempt.getScore() != null ? attempt.getScore() : 0.0);
+            finishAndPublish(attempt, attempt.getScore() != null ? attempt.getScore() : 0.0);
             return;
         }
 
@@ -106,7 +110,18 @@ public class AttemptGradingService {
                             + (codeRunnerEarnedRatios / totalGradable) * AttemptScoringService.DEFAULT_MAX_SCORE;
         finalScore = Math.round(finalScore * 100.0) / 100.0;
         
-        saveAttemptPort.finalizeIfStillFinalizing(attempt.getId(), finalScore);
+        finishAndPublish(attempt, finalScore);
         log.info("Attempt {} finalized with score {}", attempt.getId(), finalScore);
+    }
+
+    private void finishAndPublish(Attempt attempt, double score) {
+        if (!saveAttemptPort.finalizeIfStillFinalizing(attempt.getId(), score)) {
+            return;
+        }
+        QuizAttemptPolicy policy = policyPort.getQuizAttemptPolicy(null, attempt.getQuizId()).orElse(null);
+        if (policy != null && attempt.getSubmittedTime() != null) {
+            eventPublisher.publishEvent(new AttemptFinishedEvent(
+                    attempt.getId(), attempt.getStudentId(), policy.getCourseId(), attempt.getSubmittedTime()));
+        }
     }
 }

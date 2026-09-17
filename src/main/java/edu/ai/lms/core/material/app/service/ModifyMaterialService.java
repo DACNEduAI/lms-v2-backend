@@ -46,6 +46,7 @@ public class ModifyMaterialService implements ModifyMaterialUseCase {
         return ModifyMaterialResponse.builder()
                 .id(updated.getId())
                 .title(updated.getTitle())
+                .originalFileName(updated.getOriginalFileName())
                 .type(updated.getType() != null ? updated.getType().name() : null)
                 .fileKey(updated.getFileKey())
                 .isDownloadable(updated.isDownloadable())

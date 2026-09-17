@@ -9,15 +9,13 @@ import edu.ai.lms.core.chat.app.port.out.persistence.AiChatPersistencePort;
 import edu.ai.lms.core.chat.app.port.out.ValidateChatMaterialsPort;
 import edu.ai.lms.core.chat.adapter.in.http.request.ChatSessionDto;
 import edu.ai.lms.core.chat.adapter.in.http.request.PythonChatRequest;
+import edu.ai.lms.core.course.api.CourseChatMetadata;
+import edu.ai.lms.core.course.api.CourseChatMetadataApi;
 import edu.ai.lms.core.course.api.LearningOutcomeCatalogApi;
 import edu.ai.lms.core.course.api.LearningOutcomeView;
-import edu.ai.lms.core.learnermodel.app.domain.LearnerModelType;
-import edu.ai.lms.core.learnermodel.app.domain.PredictionStatus;
-import edu.ai.lms.core.learnermodel.app.port.in.command.PredictLearnerModelCommand;
-import edu.ai.lms.core.learnermodel.app.port.in.usecase.PredictLearnerModelUseCase;
-import edu.ai.lms.core.learnermodel.app.exception.AmbiguousLearningOutcomeHistoryException;
+import edu.ai.lms.core.learnermodel.app.port.in.usecase.GetLatestLearnerStateUseCase;
 import edu.ai.lms.core.learnermodel.app.exception.LearnerModelAccessDeniedException;
-import edu.ai.lms.core.learnermodel.app.exception.LearnerModelUpstreamException;
+import edu.ai.lms.core.material.api.MaterialSelectionApi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -28,11 +26,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -42,7 +38,9 @@ public class AiChatService {
     private final WebClient aiWebClient;
     private final AiChatPersistencePort aiChatPersistencePort;
     private final ValidateChatMaterialsPort validateChatMaterialsPort;
-    private final PredictLearnerModelUseCase learnerModelPredictionUseCase;
+    private final CourseChatMetadataApi courseChatMetadataApi;
+    private final MaterialSelectionApi materialSelectionApi;
+    private final GetLatestLearnerStateUseCase latestLearnerStateUseCase;
     private final LearningOutcomeCatalogApi learningOutcomeCatalogApi;
 
     // ==========================================
@@ -159,9 +157,8 @@ public class AiChatService {
                 .user_query(request.getUserQuery())
                 .chat_history(history)
                 .selected_material_ids(validatedMaterialIds) // Truyền danh sách đã validate sang Python
-                .learner_context(request.isPersonalizationEnabled()
-                        ? learnerContext(courseId)
-                        : List.of())
+                .course_metadata(courseMetadata(courseId))
+                .learner_state(learnerState(courseId))
                 .build();
 
         return aiWebClient.post()
@@ -212,38 +209,67 @@ public class AiChatService {
         }
     }
 
-    /**
-     * Learner-model output is only a cue for the tutor's explanatory style. It
-     * is intentionally not treated as a mastery judgement or a retrieval filter.
-     */
-    private List<String> learnerContext(UUID courseId) {
-        try {
-            var result = learnerModelPredictionUseCase.predictAll(
-                    new PredictLearnerModelCommand(courseId, null, LearnerModelType.AKT_PYKT));
-            var candidates = result.predictions().stream()
-                    .filter(prediction -> prediction.status() == PredictionStatus.PREDICTED)
-                    .filter(prediction -> prediction.probability() != null && prediction.probability() < 0.5d)
-                    .sorted(java.util.Comparator.comparingDouble(prediction -> prediction.probability()))
-                    .limit(3)
-                    .toList();
-            if (candidates.isEmpty()) return List.of();
+    private PythonChatRequest.CourseMetadata courseMetadata(UUID courseId) {
+        CourseChatMetadata course = courseChatMetadataApi.findForChat(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course was not found"));
+        List<PythonChatRequest.LearningOutcome> outcomes = course.learningOutcomes().stream()
+                .map(outcome -> PythonChatRequest.LearningOutcome.builder()
+                        .id(outcome.id().toString())
+                        .code(outcome.code())
+                        .description(outcome.description())
+                        .build())
+                .toList();
+        List<PythonChatRequest.MaterialMetadata> materials = materialSelectionApi.listAiReadyMaterials(courseId)
+                .stream()
+                .map(material -> PythonChatRequest.MaterialMetadata.builder()
+                        .id(material.id().toString())
+                        .title(material.title())
+                        .original_file_name(material.originalFileName())
+                        .type(material.type())
+                        .build())
+                .toList();
+        return PythonChatRequest.CourseMetadata.builder()
+                .id(course.id().toString())
+                .code(course.code())
+                .name(course.name())
+                .description(course.description())
+                .learning_outcomes(outcomes)
+                .materials(materials)
+                .build();
+    }
 
-            Map<UUID, LearningOutcomeView> outcomes = learningOutcomeCatalogApi.findByIds(
-                    courseId, candidates.stream().map(prediction -> prediction.learningOutcomeId()).toList())
-                    .stream().collect(Collectors.toMap(LearningOutcomeView::id, outcome -> outcome));
-            return candidates.stream().map(prediction -> {
-                LearningOutcomeView outcome = outcomes.get(prediction.learningOutcomeId());
-                if (outcome == null) return null;
-                String code = outcome.code() == null || outcome.code().isBlank() ? "LO" : outcome.code();
-                String description = outcome.description() == null ? "" : outcome.description().trim();
-                return description.isEmpty() ? code : code + ": " + description;
-            }).filter(java.util.Objects::nonNull).toList();
+    /** Learner state guides explanation style only; it never changes retrieval. */
+    private PythonChatRequest.LearnerState learnerState(UUID courseId) {
+        try {
+            return latestLearnerStateUseCase.getLatest(courseId).map(state -> {
+                var outcomesById = learningOutcomeCatalogApi.findByIds(courseId,
+                                state.outcomes().stream().map(item -> item.learningOutcomeId()).toList())
+                        .stream().collect(java.util.stream.Collectors.toMap(LearningOutcomeView::id, outcome -> outcome));
+                List<PythonChatRequest.LearnerStateOutcome> outcomes = state.outcomes().stream()
+                        .map(item -> {
+                            LearningOutcomeView outcome = outcomesById.get(item.learningOutcomeId());
+                            if (outcome == null) return null;
+                            return PythonChatRequest.LearnerStateOutcome.builder()
+                                    .learning_outcome_id(item.learningOutcomeId().toString())
+                                    .code(outcome.code())
+                                    .description(outcome.description())
+                                    .probability(item.probability())
+                                    .status(item.status().name())
+                                    .build();
+                        })
+                        .filter(java.util.Objects::nonNull)
+                        .toList();
+                return PythonChatRequest.LearnerState.builder()
+                        .calculated_at(state.calculatedAt())
+                        .outcomes(outcomes)
+                        .build();
+            }).orElse(null);
         } catch (LearnerModelAccessDeniedException exception) {
             // Teachers may use the tutor too, but only students have a learner model.
-            return List.of();
-        } catch (AmbiguousLearningOutcomeHistoryException | LearnerModelUpstreamException exception) {
+            return null;
+        } catch (RuntimeException exception) {
             log.warn("Learner context is unavailable for course {}: {}", courseId, exception.getMessage());
-            return List.of();
+            return null;
         }
     }
 

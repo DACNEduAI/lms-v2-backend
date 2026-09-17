@@ -3,9 +3,12 @@ package edu.ai.lms.core.learnermodel.adapter.in.http;
 import edu.ai.lms.core.learnermodel.adapter.in.http.mapper.LearnerModelResponseMapper;
 import edu.ai.lms.core.learnermodel.adapter.in.http.response.AllLearnerModelPredictionsResponse;
 import edu.ai.lms.core.learnermodel.adapter.in.http.response.SingleLearnerModelPredictionResponse;
+import edu.ai.lms.core.learnermodel.adapter.in.http.response.LearnerStateHistoryResponse;
 import edu.ai.lms.core.learnermodel.app.domain.LearnerModelType;
 import edu.ai.lms.core.learnermodel.app.port.in.command.PredictLearnerModelCommand;
 import edu.ai.lms.core.learnermodel.app.port.in.usecase.PredictLearnerModelUseCase;
+import edu.ai.lms.core.learnermodel.app.port.in.usecase.GetLearnerStateHistoryUseCase;
+import edu.ai.lms.core.learnermodel.app.port.out.LoadLearnerActorPort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,6 +29,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class LearnerModelController {
     private final PredictLearnerModelUseCase predictionUseCase;
+    private final GetLearnerStateHistoryUseCase stateHistoryUseCase;
+    private final LoadLearnerActorPort actorPort;
     private final LearnerModelResponseMapper responseMapper;
 
     @PostMapping("/dkt-custom/learning-outcomes/{learningOutcomeId}/predict")
@@ -77,6 +83,13 @@ public class LearnerModelController {
     @Operation(summary = "Predict every course learning outcome with AKT-pyKT")
     public ResponseEntity<AllLearnerModelPredictionsResponse> predictAllAktPykt(@PathVariable UUID courseId) {
         return predictAll(courseId, LearnerModelType.AKT_PYKT);
+    }
+
+    @GetMapping("/states")
+    @Operation(summary = "Get persisted learner-model states for the authenticated student")
+    public ResponseEntity<LearnerStateHistoryResponse> getStateHistory(@PathVariable UUID courseId) {
+        var states = stateHistoryUseCase.getHistory(courseId);
+        return ResponseEntity.ok(responseMapper.toStateHistory(courseId, actorPort.requireStudentId(), states));
     }
 
     private ResponseEntity<SingleLearnerModelPredictionResponse> predictSingle(

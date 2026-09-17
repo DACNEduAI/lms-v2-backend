@@ -1,6 +1,8 @@
 package edu.ai.lms.core.course.adapter.in.api;
 
 import edu.ai.lms.core.course.api.CourseAccessApi;
+import edu.ai.lms.core.course.api.CourseChatMetadata;
+import edu.ai.lms.core.course.api.CourseChatMetadataApi;
 import edu.ai.lms.core.course.api.LearningOutcomeCatalogApi;
 import edu.ai.lms.core.course.api.LearningOutcomeView;
 import edu.ai.lms.core.course.api.QuizGenerationContext;
@@ -26,7 +28,7 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, LearningOutcomeCatalogApi,
+class CourseApiAdapter implements CourseAccessApi, CourseChatMetadataApi, QuizGenerationContextApi, LearningOutcomeCatalogApi,
         QuestionBankReferenceApi {
 
     private final LoadCoursePort coursePort;
@@ -59,6 +61,16 @@ class CourseApiAdapter implements CourseAccessApi, QuizGenerationContextApi, Lea
         return coursePort.findById(courseId)
                 .map(course -> List.copyOf(course.getStudentIds()))
                 .orElseGet(List::of);
+    }
+
+    @Override
+    public Optional<CourseChatMetadata> findForChat(UUID courseId) {
+        return coursePort.findById(courseId).map(course -> new CourseChatMetadata(
+                course.getId(),
+                course.getCourseCode(),
+                course.getCourseName(),
+                course.getDescription(),
+                findByCourseId(courseId)));
     }
 
     @Override

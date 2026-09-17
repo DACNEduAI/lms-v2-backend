@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -34,11 +35,27 @@ class LearnerHistoryAdapter implements LoadLearnerHistoryPort {
 
     @Override
     public List<LearnerQuizHistory> load(UUID studentId, UUID courseId) {
-        var histories = historyApi.findFinishedHistory(
-                studentId, quizApi.findQuizIdsByCourseId(courseId)).stream()
+        return mapHistories(loadViews(studentId, courseId));
+    }
+
+    @Override
+    public List<LearnerQuizHistory> loadThroughAttempt(
+            UUID studentId, UUID courseId, UUID attemptId, LocalDateTime submittedAt) {
+        return mapHistories(loadViews(studentId, courseId).stream()
+                .filter(history -> history.submittedAt().isBefore(submittedAt)
+                        || (history.submittedAt().isEqual(submittedAt)
+                        && history.attemptId().compareTo(attemptId) <= 0))
+                .toList());
+    }
+
+    private List<LearnerQuizHistoryView> loadViews(UUID studentId, UUID courseId) {
+        return historyApi.findFinishedHistory(studentId, quizApi.findQuizIdsByCourseId(courseId)).stream()
                 .sorted(Comparator.comparing(LearnerQuizHistoryView::submittedAt)
                         .thenComparing(LearnerQuizHistoryView::attemptId))
                 .toList();
+    }
+
+    private List<LearnerQuizHistory> mapHistories(List<LearnerQuizHistoryView> histories) {
         Set<OffsetDateTime> usedTimestamps = new HashSet<>();
         return histories.stream().map(history -> {
             OffsetDateTime submittedAt = history.submittedAt()

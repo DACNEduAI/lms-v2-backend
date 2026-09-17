@@ -1,6 +1,7 @@
 package edu.ai.lms.core.material.app.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -67,6 +68,7 @@ class CreateMaterialServiceUT {
 
         material = Material.builder()
                 .title("Lecture Notes")
+                .originalFileName("Lecture Notes.pdf")
                 .type(MaterialType.PDF)
                 .fileKey("courses/" + courseId + "/Lecture_Notes.pdf")
                 .downloadable(true)
@@ -75,6 +77,7 @@ class CreateMaterialServiceUT {
         savedMaterial = Material.builder()
                 .id(materialId)
                 .title("Lecture Notes")
+                .originalFileName("Lecture Notes.pdf")
                 .type(MaterialType.PDF)
                 .fileKey("courses/" + courseId + "/Lecture_Notes.pdf")
                 .downloadable(true)
@@ -140,6 +143,43 @@ class CreateMaterialServiceUT {
         assertTrue(exception.getMessage().contains("already been uploaded"));
         verify(createMaterialPort, never()).createForCourse(any(), any());
         verify(createUploadLinkPort, never()).createUploadLink(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Should reject an uploaded course material with the same normalized original file name")
+    void testCreateMaterialForCourse_WithDuplicateOriginalFileName_ShouldThrowException() {
+        Material existingMaterial = Material.builder()
+                .id(UUID.randomUUID())
+                .originalFileName(" lecture notes.PDF ")
+                .status(MaterialStatus.UPLOADED)
+                .build();
+        when(getMaterialPort.findByCourseId(courseId)).thenReturn(List.of(existingMaterial));
+
+        assertThrows(MaterialAlreadyUploadedException.class,
+                () -> createMaterialService.createMaterialForCourse(
+                        CreateMaterialForCourseCommand.builder().courseId(courseId).material(material).build()));
+
+        verify(createMaterialPort, never()).createForCourse(any(), any());
+    }
+
+    @Test
+    @DisplayName("Should allow a matching filename when earlier uploads are pending or failed")
+    void testCreateMaterialForCourse_AllowsPendingAndFailedOriginalFileNames() {
+        Material pending = Material.builder().originalFileName("Lecture Notes.pdf")
+                .status(MaterialStatus.PENDING).build();
+        Material failed = Material.builder().originalFileName("Lecture Notes.pdf")
+                .status(MaterialStatus.FAILED).build();
+        when(getMaterialPort.findByCourseId(courseId)).thenReturn(List.of(pending, failed));
+        when(getMaterialPort.findByFileKey(material.getFileKey())).thenReturn(Optional.empty());
+        when(createMaterialPort.createForCourse(eq(courseId), any(Material.class))).thenReturn(savedMaterial);
+        when(createUploadLinkPort.createUploadLink(eq(savedMaterial.getFileKey()), eq("application/pdf"), isNull()))
+                .thenReturn("https://presigned-url.example.com/upload");
+
+        CreateMaterialResponse response = createMaterialService.createMaterialForCourse(
+                CreateMaterialForCourseCommand.builder().courseId(courseId).material(material).build());
+
+        assertEquals(materialId, response.getId());
+        verify(createMaterialPort).createForCourse(eq(courseId), any(Material.class));
     }
 
     @Test

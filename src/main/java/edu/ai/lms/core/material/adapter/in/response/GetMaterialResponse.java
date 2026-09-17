@@ -16,6 +16,7 @@ import java.util.UUID;
 public class GetMaterialResponse {
     private UUID id;
     private String title;
+    private String originalFileName;
     private String type;
     private String fileKey;
     private Boolean isDownloadable;

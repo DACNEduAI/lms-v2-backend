@@ -21,10 +21,12 @@ import edu.ai.lms.core.attempt.app.domain.AttemptQuestionResult;
 import edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey;
 import edu.ai.lms.core.attempt.app.domain.SubmittedAnswer;
 import edu.ai.lms.core.attempt.app.domain.CurrentActor;
+import edu.ai.lms.core.attempt.api.AttemptFinishedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -48,6 +50,7 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
     private final AttemptCodeSubmissionSnapshotPort codeSubmissionSnapshotPort;
     private final AttemptAutoCloseService attemptAutoCloseService;
     private final AttemptQuestionResultPort attemptQuestionResultPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -97,6 +100,7 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
 
         Attempt saved = saveAttemptPort.save(startedAttempt);
         unscheduleAutoCloseBestEffort(saved.getId());
+        publishFinished(saved, policy.getCourseId());
         return toResponse(saved);
     }
 
@@ -124,6 +128,7 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
 
         Attempt saved = saveAttemptPort.save(startedAttempt);
         unscheduleAutoCloseBestEffort(saved.getId());
+        publishFinished(saved, policy.getCourseId());
         return toResponse(saved);
     }
 
@@ -132,6 +137,13 @@ public class SubmitAttemptService implements SubmitAttemptUseCase {
             unscheduleAttemptAutoClosePort.unschedule(attemptId);
         } catch (RuntimeException ex) {
             log.warn("Failed to unschedule attempt auto-close job for attempt {}", attemptId, ex);
+        }
+    }
+
+    private void publishFinished(Attempt attempt, UUID courseId) {
+        if (attempt.getStatus() == Attempt.AttemptStatus.FINISHED && attempt.getSubmittedTime() != null) {
+            eventPublisher.publishEvent(new AttemptFinishedEvent(
+                    attempt.getId(), attempt.getStudentId(), courseId, attempt.getSubmittedTime()));
         }
     }
 

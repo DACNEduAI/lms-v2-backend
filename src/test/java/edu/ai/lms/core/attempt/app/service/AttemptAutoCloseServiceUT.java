@@ -6,12 +6,14 @@ import edu.ai.lms.core.attempt.app.port.out.LoadAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.attempt.app.port.out.SaveAttemptPort;
 import edu.ai.lms.core.attempt.app.port.out.AttemptQuestionResultPort;
+import edu.ai.lms.core.attempt.api.AttemptFinishedEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -32,6 +34,8 @@ class AttemptAutoCloseServiceUT {
     private SaveAttemptPort saveAttemptPort;
     @Mock
     private AttemptQuestionResultPort attemptQuestionResultPort;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private AttemptAutoCloseService attemptAutoCloseService;
@@ -62,6 +66,8 @@ class AttemptAutoCloseServiceUT {
 
         when(loadAttemptPort.getLatestStartedAttempt(studentId, quizId)).thenReturn(Optional.of(startedAttempt));
         when(loadQuizAttemptPolicyPort.getQuizAttemptPolicy(courseId, quizId)).thenReturn(Optional.of(timedPolicy));
+        when(saveAttemptPort.closeIfStarted(eq(attemptId), eq(Attempt.AttemptStatus.FINISHED), eq(0.0),
+                eq("Attempt expired before submission"), eq(now))).thenReturn(true);
 
         attemptAutoCloseService.isAlreadyStartedAttemptExpiredValidation(studentId, courseId, quizId, now);
 
@@ -72,6 +78,7 @@ class AttemptAutoCloseServiceUT {
                 eq("Attempt expired before submission"),
                 eq(now)
         );
+        verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(AttemptFinishedEvent.class));
     }
 
     @Test

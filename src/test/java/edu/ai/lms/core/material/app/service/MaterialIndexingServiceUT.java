@@ -249,6 +249,7 @@ class MaterialIndexingServiceUT {
     private Material readyToQueue() {
         return Material.builder()
                 .id(UUID.randomUUID()).courseId(UUID.randomUUID()).type(Material.MaterialType.PDF)
+                .originalFileName("notes.pdf")
                 .fileKey("courses/course/notes.pdf").status(Material.MaterialStatus.UPLOADED)
                 .ingestionStatus(Material.IngestionStatus.PENDING).ingestionRevision(UUID.randomUUID())
                 .createdAt(LocalDateTime.now()).build();

@@ -56,6 +56,8 @@ class LearnerModelMigrationIT {
                     """);
 
             executeAttemptRecordsMigration(connection);
+            executeLearnerStatesMigration(connection);
+            executeLearnerStatesMigration(connection);
 
             assertEquals(2L, scalarLong(connection,
                     "SELECT kt_question_id FROM edu.questions WHERE id = "
@@ -88,6 +90,12 @@ class LearnerModelMigrationIT {
                     FROM information_schema.tables
                     WHERE table_schema = 'edu'
                       AND table_name = 'attempt_records'
+                    """));
+            assertEquals(2L, scalarLong(connection, """
+                    SELECT COUNT(*)
+                    FROM information_schema.tables
+                    WHERE table_schema = 'edu'
+                      AND table_name IN ('learner_states', 'learner_state_outcomes')
                     """));
             assertEquals(12L, scalarLong(connection, """
                     SELECT COUNT(*)
@@ -132,6 +140,13 @@ class LearnerModelMigrationIT {
                 connection,
                 "/db/manual/V20260916_02__immutable_attempt_records.sql",
                 "Attempt-record migration resource is missing");
+    }
+
+    private static void executeLearnerStatesMigration(Connection connection) throws SQLException, IOException {
+        executeResource(
+                connection,
+                "/db/manual/V20260917_02__learner_model_states.sql",
+                "Learner-state migration resource is missing");
     }
 
     private static void executeResource(Connection connection, String path, String missingMessage)

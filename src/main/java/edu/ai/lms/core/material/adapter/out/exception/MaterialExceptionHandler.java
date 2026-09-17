@@ -37,7 +37,7 @@ public class MaterialExceptionHandler {
 
     /**
      * Handles MaterialAlreadyUploadedException.
-     * Thrown when a material with the same file key already exists and has UPLOADED status.
+     * Thrown when a material with the same original filename already exists and has UPLOADED status.
      */
     @ApiResponse(responseCode = "409", description = "Material already uploaded",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

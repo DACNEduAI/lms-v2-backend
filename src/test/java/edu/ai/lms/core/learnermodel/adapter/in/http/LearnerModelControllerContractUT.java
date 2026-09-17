@@ -4,6 +4,7 @@ import edu.ai.lms.core.learnermodel.app.exception.LearnerModelUpstreamException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.Arrays;
@@ -50,5 +51,14 @@ class LearnerModelControllerContractUT {
         assertThat(invalid.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
         assertThat(invalid.getBody()).isNotNull();
         assertThat(invalid.getBody().getCode()).isEqualTo("LEARNER_MODEL_BAD_RESPONSE");
+    }
+
+    @Test
+    void exposesThePersistedLearnerStateHistoryRoute() throws NoSuchMethodException {
+        GetMapping route = LearnerModelController.class
+                .getDeclaredMethod("getStateHistory", java.util.UUID.class)
+                .getAnnotation(GetMapping.class);
+
+        assertThat(route.value()).containsExactly("/states");
     }
 }
