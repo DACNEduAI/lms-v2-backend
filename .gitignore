@@ -38,6 +38,8 @@ build/
 .env.prod
 
 ### Local overrides ###
+
+### Local overrides ###
 src/main/resources/application-local.properties
 .env
 
@@ -46,6 +48,7 @@ src/main/resources/application-local.properties
 /backups
 backend-server.log
 backend-server.err.log
+*.log
 
 ### postman
 postman/**

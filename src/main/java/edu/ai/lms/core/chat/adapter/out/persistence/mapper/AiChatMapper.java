@@ -25,6 +25,13 @@ public interface AiChatMapper {
             "ORDER BY is_pinned DESC, updated_at DESC")
     List<ChatSessionDto> selectSessionsByUserAndCourse(@Param("userId") UUID userId, @Param("courseId") UUID courseId);
 
+    @Select("SELECT EXISTS (SELECT 1 FROM ai_chat_sessions " +
+            "WHERE id = #{sessionId} AND user_id = #{userId} AND course_id = #{courseId})")
+    boolean sessionBelongsTo(
+            @Param("sessionId") UUID sessionId,
+            @Param("userId") UUID userId,
+            @Param("courseId") UUID courseId);
+
     @Update("UPDATE ai_chat_sessions SET is_pinned = #{isPinned}, updated_at = CURRENT_TIMESTAMP WHERE id = #{id}")
     void updateSessionPin(@Param("id") UUID id, @Param("isPinned") boolean isPinned);
 

@@ -9,17 +9,30 @@ import edu.ai.lms.core.chat.app.port.out.persistence.AiChatPersistencePort;
 import edu.ai.lms.core.chat.app.port.out.ValidateChatMaterialsPort;
 import edu.ai.lms.core.chat.adapter.in.http.request.ChatSessionDto;
 import edu.ai.lms.core.chat.adapter.in.http.request.PythonChatRequest;
+import edu.ai.lms.core.course.api.LearningOutcomeCatalogApi;
+import edu.ai.lms.core.course.api.LearningOutcomeView;
+import edu.ai.lms.core.learnermodel.app.domain.LearnerModelType;
+import edu.ai.lms.core.learnermodel.app.domain.PredictionStatus;
+import edu.ai.lms.core.learnermodel.app.port.in.command.PredictLearnerModelCommand;
+import edu.ai.lms.core.learnermodel.app.port.in.usecase.PredictLearnerModelUseCase;
+import edu.ai.lms.core.learnermodel.app.exception.AmbiguousLearningOutcomeHistoryException;
+import edu.ai.lms.core.learnermodel.app.exception.LearnerModelAccessDeniedException;
+import edu.ai.lms.core.learnermodel.app.exception.LearnerModelUpstreamException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -29,6 +42,8 @@ public class AiChatService {
     private final WebClient aiWebClient;
     private final AiChatPersistencePort aiChatPersistencePort;
     private final ValidateChatMaterialsPort validateChatMaterialsPort;
+    private final PredictLearnerModelUseCase learnerModelPredictionUseCase;
+    private final LearningOutcomeCatalogApi learningOutcomeCatalogApi;
 
     // ==========================================
     // SESSION MANAGEMENT
@@ -63,14 +78,16 @@ public class AiChatService {
     /**
      * Ghim hoặc bỏ ghim một phiên chat.
      */
-    public void togglePin(UUID sessionId, boolean isPinned) {
+    public void togglePin(UUID courseId, UUID userId, UUID sessionId, boolean isPinned) {
+        requireOwnedSession(courseId, userId, sessionId);
         aiChatPersistencePort.updateSessionPin(sessionId, isPinned);
     }
 
     /**
      * Xóa một phiên chat (cùng toàn bộ tin nhắn bên trong nhờ ON DELETE CASCADE).
      */
-    public void deleteSession(UUID sessionId) {
+    public void deleteSession(UUID courseId, UUID userId, UUID sessionId) {
+        requireOwnedSession(courseId, userId, sessionId);
         aiChatPersistencePort.deleteSession(sessionId);
         log.info("Deleted chat session {}", sessionId);
     }
@@ -85,6 +102,7 @@ public class AiChatService {
      */
     public Flux<String> streamChatWithAi(UUID courseId, UUID userId, UUID sessionId, AiChatRequest request) {
         log.info("Chat request | course={} | session={} | user={}", courseId, sessionId, userId);
+        requireOwnedSession(courseId, userId, sessionId);
 
         // ====== IDOR VALIDATION (Anti-hack) ======
         // Nếu Frontend gửi danh sách materialIds, phải kiểm tra tất cả đều thuộc courseId hiện tại
@@ -102,6 +120,14 @@ public class AiChatService {
                     .collect(java.util.stream.Collectors.toList());
             log.info("Source Selection: {} materials validated for course {}", validatedMaterialIds.size(), courseId);
         }
+
+        // The persisted session is authoritative. Do not accept a client-made
+        // history as context because it can diverge from, or impersonate, a chat.
+        List<AiChatRequest.ChatHistoryEntry> history = aiChatPersistencePort
+                .getMessagesBySession(sessionId).stream()
+                .skip(Math.max(0, aiChatPersistencePort.countMessagesBySession(sessionId) - 12L))
+                .map(message -> new AiChatRequest.ChatHistoryEntry(message.getRole(), message.getContent()))
+                .toList();
 
         // 1. Lưu câu hỏi của User vào Database (gắn sessionId)
         aiChatPersistencePort.saveMessage(AiCourseChatMessage.builder()
@@ -131,8 +157,11 @@ public class AiChatService {
         PythonChatRequest pythonPayload = PythonChatRequest.builder()
                 .course_id(courseId.toString())
                 .user_query(request.getUserQuery())
-                .chat_history(request.getChatHistory())
+                .chat_history(history)
                 .selected_material_ids(validatedMaterialIds) // Truyền danh sách đã validate sang Python
+                .learner_context(request.isPersonalizationEnabled()
+                        ? learnerContext(courseId)
+                        : List.of())
                 .build();
 
         return aiWebClient.post()
@@ -172,8 +201,50 @@ public class AiChatService {
     /**
      * Lấy lịch sử chat của MỘT phiên chat cụ thể.
      */
-    public List<AiCourseChatMessage> getSessionHistory(UUID sessionId) {
+    public List<AiCourseChatMessage> getSessionHistory(UUID courseId, UUID userId, UUID sessionId) {
+        requireOwnedSession(courseId, userId, sessionId);
         return aiChatPersistencePort.getMessagesBySession(sessionId);
+    }
+
+    private void requireOwnedSession(UUID courseId, UUID userId, UUID sessionId) {
+        if (!aiChatPersistencePort.sessionBelongsTo(sessionId, userId, courseId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Chat session was not found");
+        }
+    }
+
+    /**
+     * Learner-model output is only a cue for the tutor's explanatory style. It
+     * is intentionally not treated as a mastery judgement or a retrieval filter.
+     */
+    private List<String> learnerContext(UUID courseId) {
+        try {
+            var result = learnerModelPredictionUseCase.predictAll(
+                    new PredictLearnerModelCommand(courseId, null, LearnerModelType.AKT_PYKT));
+            var candidates = result.predictions().stream()
+                    .filter(prediction -> prediction.status() == PredictionStatus.PREDICTED)
+                    .filter(prediction -> prediction.probability() != null && prediction.probability() < 0.5d)
+                    .sorted(java.util.Comparator.comparingDouble(prediction -> prediction.probability()))
+                    .limit(3)
+                    .toList();
+            if (candidates.isEmpty()) return List.of();
+
+            Map<UUID, LearningOutcomeView> outcomes = learningOutcomeCatalogApi.findByIds(
+                    courseId, candidates.stream().map(prediction -> prediction.learningOutcomeId()).toList())
+                    .stream().collect(Collectors.toMap(LearningOutcomeView::id, outcome -> outcome));
+            return candidates.stream().map(prediction -> {
+                LearningOutcomeView outcome = outcomes.get(prediction.learningOutcomeId());
+                if (outcome == null) return null;
+                String code = outcome.code() == null || outcome.code().isBlank() ? "LO" : outcome.code();
+                String description = outcome.description() == null ? "" : outcome.description().trim();
+                return description.isEmpty() ? code : code + ": " + description;
+            }).filter(java.util.Objects::nonNull).toList();
+        } catch (LearnerModelAccessDeniedException exception) {
+            // Teachers may use the tutor too, but only students have a learner model.
+            return List.of();
+        } catch (AmbiguousLearningOutcomeHistoryException | LearnerModelUpstreamException exception) {
+            log.warn("Learner context is unavailable for course {}: {}", courseId, exception.getMessage());
+            return List.of();
+        }
     }
 
     // ==========================================

@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
@@ -61,7 +62,7 @@ public class AiChatController {
             @PathVariable UUID courseId,
             @PathVariable UUID sessionId,
             @RequestParam boolean isPinned) {
-        aiChatService.togglePin(sessionId, isPinned);
+        aiChatService.togglePin(courseId, getAuthenticatedUserId(), sessionId, isPinned);
         return ResponseEntity.ok().build();
     }
 
@@ -71,7 +72,7 @@ public class AiChatController {
     public ResponseEntity<Void> deleteSession(
             @PathVariable UUID courseId,
             @PathVariable UUID sessionId) {
-        aiChatService.deleteSession(sessionId);
+        aiChatService.deleteSession(courseId, getAuthenticatedUserId(), sessionId);
         return ResponseEntity.noContent().build();
     }
 
@@ -85,7 +86,7 @@ public class AiChatController {
     public ResponseEntity<List<AiCourseChatMessage>> getSessionHistory(
             @PathVariable UUID courseId,
             @PathVariable UUID sessionId) {
-        return ResponseEntity.ok(aiChatService.getSessionHistory(sessionId));
+        return ResponseEntity.ok(aiChatService.getSessionHistory(courseId, getAuthenticatedUserId(), sessionId));
     }
 
     @Operation(summary = "Stream AI Chat response", description = "Nhận câu hỏi và stream câu trả lời từ AI trong phiên chat cụ thể.")
@@ -94,7 +95,7 @@ public class AiChatController {
     public Flux<String> streamAiChat(
             @PathVariable UUID courseId,
             @PathVariable UUID sessionId,
-            @RequestBody AiChatRequest request) {
+            @Valid @RequestBody AiChatRequest request) {
 
         log.info("AI Chat stream | course={} | session={}", courseId, sessionId);
         UUID userId = getAuthenticatedUserId();

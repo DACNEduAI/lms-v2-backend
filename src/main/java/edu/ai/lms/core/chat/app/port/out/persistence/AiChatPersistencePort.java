@@ -12,6 +12,7 @@ public interface AiChatPersistencePort {
     // Session operations
     void saveSession(AiChatSession session);
     List<ChatSessionDto> getSessionsByUserAndCourse(UUID userId, UUID courseId);
+    boolean sessionBelongsTo(UUID sessionId, UUID userId, UUID courseId);
     void updateSessionPin(UUID sessionId, boolean isPinned);
     void updateSessionTitle(UUID sessionId, String title);
     void touchSession(UUID sessionId);

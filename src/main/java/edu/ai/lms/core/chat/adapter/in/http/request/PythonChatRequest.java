@@ -13,4 +13,5 @@ public class PythonChatRequest {
     private String user_query;
     private List<ChatHistoryEntry> chat_history;
     private List<String> selected_material_ids; // Source Selection: null = tìm toàn bộ
+    private List<String> learner_context;
 }

@@ -32,6 +32,11 @@ public class AiChatPersistenceAdapter implements AiChatPersistencePort {
     }
 
     @Override
+    public boolean sessionBelongsTo(UUID sessionId, UUID userId, UUID courseId) {
+        return aiChatMapper.sessionBelongsTo(sessionId, userId, courseId);
+    }
+
+    @Override
     public void updateSessionPin(UUID sessionId, boolean isPinned) {
         aiChatMapper.updateSessionPin(sessionId, isPinned);
     }
