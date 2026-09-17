@@ -15,50 +15,50 @@ public interface AiChatMapper {
     // SESSION OPERATIONS
     // ==========================================
 
-    @Insert("INSERT INTO ai_chat_sessions (id, user_id, course_id, title, is_pinned) " +
+    @Insert("INSERT INTO edu.ai_chat_sessions (id, user_id, course_id, title, is_pinned) " +
             "VALUES (#{id}, #{userId}, #{courseId}, #{title}, #{isPinned})")
     void insertSession(AiChatSession session);
 
     @Select("SELECT id, title, is_pinned AS isPinned, updated_at AS updatedAt " +
-            "FROM ai_chat_sessions " +
+            "FROM edu.ai_chat_sessions " +
             "WHERE user_id = #{userId} AND course_id = #{courseId} " +
             "ORDER BY is_pinned DESC, updated_at DESC")
     List<ChatSessionDto> selectSessionsByUserAndCourse(@Param("userId") UUID userId, @Param("courseId") UUID courseId);
 
-    @Select("SELECT EXISTS (SELECT 1 FROM ai_chat_sessions " +
+    @Select("SELECT EXISTS (SELECT 1 FROM edu.ai_chat_sessions " +
             "WHERE id = #{sessionId} AND user_id = #{userId} AND course_id = #{courseId})")
     boolean sessionBelongsTo(
             @Param("sessionId") UUID sessionId,
             @Param("userId") UUID userId,
             @Param("courseId") UUID courseId);
 
-    @Update("UPDATE ai_chat_sessions SET is_pinned = #{isPinned}, updated_at = CURRENT_TIMESTAMP WHERE id = #{id}")
+    @Update("UPDATE edu.ai_chat_sessions SET is_pinned = #{isPinned}, updated_at = CURRENT_TIMESTAMP WHERE id = #{id}")
     void updateSessionPin(@Param("id") UUID id, @Param("isPinned") boolean isPinned);
 
-    @Update("UPDATE ai_chat_sessions SET title = #{title}, updated_at = CURRENT_TIMESTAMP WHERE id = #{id}")
+    @Update("UPDATE edu.ai_chat_sessions SET title = #{title}, updated_at = CURRENT_TIMESTAMP WHERE id = #{id}")
     void updateSessionTitle(@Param("id") UUID id, @Param("title") String title);
 
-    @Update("UPDATE ai_chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = #{id}")
+    @Update("UPDATE edu.ai_chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = #{id}")
     void touchSession(@Param("id") UUID id);
 
-    @Delete("DELETE FROM ai_chat_sessions WHERE id = #{id}")
+    @Delete("DELETE FROM edu.ai_chat_sessions WHERE id = #{id}")
     void deleteSession(@Param("id") UUID id);
 
     // ==========================================
     // MESSAGE OPERATIONS
     // ==========================================
 
-    @Insert("INSERT INTO ai_course_chat_messages (session_id, user_id, course_id, role, content) " +
+    @Insert("INSERT INTO edu.ai_course_chat_messages (session_id, user_id, course_id, role, content) " +
             "VALUES (#{sessionId}, #{userId}, #{courseId}, #{role}, #{content})")
     void insertMessage(AiCourseChatMessage message);
 
     @Select("SELECT id, session_id AS sessionId, role, content, created_at AS createdAt " +
-            "FROM ai_course_chat_messages " +
+            "FROM edu.ai_course_chat_messages " +
             "WHERE session_id = #{sessionId} " +
             "ORDER BY created_at ASC")
     List<AiCourseChatMessage> selectMessagesBySession(@Param("sessionId") UUID sessionId);
 
-    @Select("SELECT COUNT(*) FROM ai_course_chat_messages WHERE session_id = #{sessionId}")
+    @Select("SELECT COUNT(*) FROM edu.ai_course_chat_messages WHERE session_id = #{sessionId}")
     int countMessagesBySession(@Param("sessionId") UUID sessionId);
 
 }
