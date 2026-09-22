@@ -108,27 +108,9 @@ CREATE TABLE IF NOT EXISTS materials
     FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE
 );
 
--- Keep existing databases compatible when schema.sql runs against tables that
--- predate material indexing.
-ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingestion_status VARCHAR(50) NOT NULL DEFAULT 'NOT_STARTED';
-ALTER TABLE materials ADD COLUMN IF NOT EXISTS original_file_name VARCHAR(255);
-UPDATE materials
-SET original_file_name = COALESCE(NULLIF(BTRIM(title), ''), 'material-' || id::text)
-WHERE original_file_name IS NULL OR BTRIM(original_file_name) = '';
-ALTER TABLE materials ALTER COLUMN original_file_name SET NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_material_uploaded_original_file_name_per_course
     ON materials (course_id, LOWER(BTRIM(original_file_name)))
     WHERE status = 'UPLOADED';
-ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingestion_error TEXT;
-ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingestion_revision UUID;
-ALTER TABLE materials ADD COLUMN IF NOT EXISTS ingested_at TIMESTAMP;
-UPDATE materials
-SET ingestion_status = CASE
-    WHEN type = 'PDF' AND status = 'UPLOADED' THEN 'PENDING'
-    WHEN type <> 'PDF' AND status = 'UPLOADED' THEN 'NOT_APPLICABLE'
-    ELSE ingestion_status
-END
-WHERE ingestion_status = 'NOT_STARTED';
 
 CREATE TABLE IF NOT EXISTS material_index_jobs
 (
@@ -267,16 +249,6 @@ CREATE INDEX IF NOT EXISTS idx_ccct_chapters_profile
 CREATE INDEX IF NOT EXISTS idx_ccct_chapters_course_chapter
     ON ccct_chapters (course_chapter_id);
 
--- Existing CCCT rows remain format v1 and are intentionally read-only. New
--- profiles use v2, which fixes their chapter set to the Course Chapters.
-ALTER TABLE ccct_profiles ADD COLUMN IF NOT EXISTS format_version INTEGER NOT NULL DEFAULT 1;
-ALTER TABLE ccct_profiles ADD COLUMN IF NOT EXISTS structured_current BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE ccct_profiles ALTER COLUMN format_version SET DEFAULT 2;
-ALTER TABLE ccct_profiles DROP CONSTRAINT IF EXISTS ccct_profiles_last_mode_check;
-ALTER TABLE ccct_profiles ADD CONSTRAINT ccct_profiles_last_mode_check
-    CHECK (last_mode IN ('PDF', 'CUSTOM', 'STRUCTURED', 'MARKDOWN'));
-ALTER TABLE ccct_chapters ADD COLUMN IF NOT EXISTS custom_content TEXT NOT NULL DEFAULT '';
-
 CREATE TABLE IF NOT EXISTS ccct_ai_jobs
 (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -335,6 +307,11 @@ CREATE TABLE IF NOT EXISTS exam_matrices_2
     course_id   UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
     title       VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
     description TEXT,
+    lifecycle_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT'
+        CHECK (lifecycle_status IN ('DRAFT', 'PUBLISHED')),
+    version     BIGINT NOT NULL DEFAULT 0 CHECK (version >= 0),
+    published_by UUID REFERENCES users (id) ON DELETE SET NULL,
+    published_at TIMESTAMP,
     created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -361,18 +338,11 @@ CREATE TABLE IF NOT EXISTS exam_matrix_2_cell_counts
     row_id                     UUID NOT NULL REFERENCES exam_matrix_2_rows (id) ON DELETE CASCADE,
     custom_learning_level_id   UUID NOT NULL REFERENCES exam_matrix_2_custom_learning_levels (id) ON DELETE CASCADE,
     question_count             INTEGER NOT NULL DEFAULT 0 CHECK (question_count >= 0),
-    question_type              VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE'
+    question_type              VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE',
+    CONSTRAINT exam_matrix_2_cell_counts_question_type_check
         CHECK (question_type IN ('MULTIPLE_CHOICE', 'CODE_RUNNER')),
     PRIMARY KEY (row_id, custom_learning_level_id)
 );
-
-ALTER TABLE exam_matrix_2_cell_counts
-    ADD COLUMN IF NOT EXISTS question_type VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE';
-ALTER TABLE exam_matrix_2_cell_counts
-    DROP CONSTRAINT IF EXISTS exam_matrix_2_cell_counts_question_type_check;
-ALTER TABLE exam_matrix_2_cell_counts
-    ADD CONSTRAINT exam_matrix_2_cell_counts_question_type_check
-    CHECK (question_type IN ('MULTIPLE_CHOICE', 'CODE_RUNNER'));
 
 CREATE INDEX IF NOT EXISTS exam_matrices_2_course_idx ON exam_matrices_2 (course_id);
 CREATE INDEX IF NOT EXISTS exam_matrix_2_rows_matrix_idx ON exam_matrix_2_rows (matrix_id, sort_order);
@@ -404,6 +374,9 @@ CREATE TABLE IF NOT EXISTS exam_matrix_3_cell_relations
 (
     row_id UUID NOT NULL REFERENCES exam_matrix_3_rows(id) ON DELETE CASCADE,
     custom_learning_level_id UUID NOT NULL REFERENCES exam_matrix_3_custom_learning_levels(id) ON DELETE CASCADE,
+    question_type VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE',
+    CONSTRAINT exam_matrix_3_cell_relations_question_type_check
+        CHECK(question_type IN ('MULTIPLE_CHOICE','CODE_RUNNER')),
     PRIMARY KEY(row_id,custom_learning_level_id)
 );
 CREATE INDEX IF NOT EXISTS exam_matrices_3_course_idx ON exam_matrices_3(course_id);
@@ -436,13 +409,6 @@ CREATE TABLE IF NOT EXISTS question_bank_2_examples (
 );
 CREATE INDEX IF NOT EXISTS question_bank_2_groups_course_idx ON question_bank_2_groups(course_id,code_sequence);
 CREATE INDEX IF NOT EXISTS question_bank_2_examples_group_idx ON question_bank_2_examples(group_id,sequence);
-
-ALTER TABLE exam_matrices_2
-    ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT'
-        CHECK (lifecycle_status IN ('DRAFT', 'PUBLISHED')),
-    ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0 CHECK (version >= 0),
-    ADD COLUMN IF NOT EXISTS published_by UUID REFERENCES users (id) ON DELETE SET NULL,
-    ADD COLUMN IF NOT EXISTS published_at TIMESTAMP;
 
 CREATE TABLE IF NOT EXISTS enrollments
 (
@@ -854,11 +820,6 @@ CREATE TABLE IF NOT EXISTS code_submission_test_results
     CONSTRAINT uq_code_submission_test UNIQUE (submission_id, test_case_id)
 );
 
--- Keep an existing development schema aligned with
--- V20260901_02__code_runner_public_received_output.sql.
-ALTER TABLE code_submission_test_results
-    ADD COLUMN IF NOT EXISTS received_output TEXT;
-
 -- Join tables for many-to-many relationships
 CREATE TABLE IF NOT EXISTS quiz_chapters
 (
@@ -1003,7 +964,8 @@ CREATE TABLE IF NOT EXISTS quiz3_assessments (
     lifecycle_status VARCHAR(30) NOT NULL DEFAULT 'DRAFT' CHECK(lifecycle_status IN('DRAFT','GENERATING','REVIEW_PENDING','READY_TO_PUBLISH','PUBLISHED','ARCHIVED')),
     current_step INTEGER NOT NULL DEFAULT 1 CHECK(current_step BETWEEN 1 AND 9),
     ccct_profile_id UUID REFERENCES ccct_profiles(id) ON DELETE RESTRICT, ccct_profile_version BIGINT,
-    matrix2_id UUID REFERENCES exam_matrices_2(id) ON DELETE RESTRICT, matrix2_version BIGINT, base_generation_job_id UUID,
+    matrix_source_type VARCHAR(20), matrix2_id UUID REFERENCES exam_matrices_2(id) ON DELETE RESTRICT, matrix2_version BIGINT,
+    matrix3_id UUID REFERENCES exam_matrices_3(id) ON DELETE RESTRICT, matrix3_version BIGINT, base_generation_job_id UUID,
     base_confirmed_by UUID REFERENCES users(id) ON DELETE SET NULL, base_confirmed_at TIMESTAMP,
     created_by UUID REFERENCES users(id) ON DELETE SET NULL, version BIGINT NOT NULL DEFAULT 0 CHECK(version>=0),
     published_by UUID REFERENCES users(id) ON DELETE SET NULL, published_at TIMESTAMP,
@@ -1015,8 +977,10 @@ CREATE INDEX IF NOT EXISTS idx_quiz3_assessments_course_updated ON quiz3_assessm
 
 CREATE TABLE IF NOT EXISTS quiz3_generation_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE, matrix2_id UUID REFERENCES exam_matrices_2(id) ON DELETE RESTRICT,
-    matrix2_version BIGINT, quiz_id UUID REFERENCES quizzes(id) ON DELETE SET NULL,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE, matrix_source_type VARCHAR(20),
+    matrix2_id UUID REFERENCES exam_matrices_2(id) ON DELETE RESTRICT, matrix2_version BIGINT,
+    matrix3_id UUID REFERENCES exam_matrices_3(id) ON DELETE RESTRICT, matrix3_version BIGINT,
+    quiz_id UUID REFERENCES quizzes(id) ON DELETE SET NULL,
     requested_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT, request_snapshot JSONB NOT NULL,
     payload_hash VARCHAR(64) NOT NULL, idempotency_key VARCHAR(255) NOT NULL UNIQUE,
     status VARCHAR(30) NOT NULL DEFAULT 'PENDING' CHECK(status IN('PENDING','PROCESSING','COMPLETED','FAILED','TIMED_OUT')),
@@ -1047,42 +1011,20 @@ CREATE TABLE IF NOT EXISTS quiz3_question_provenance (
     generation_job_id UUID NOT NULL REFERENCES quiz3_generation_jobs(id) ON DELETE RESTRICT,
     matrix2_row_id UUID REFERENCES exam_matrix_2_rows(id) ON DELETE SET NULL,
     matrix2_custom_learning_level_id UUID REFERENCES exam_matrix_2_custom_learning_levels(id) ON DELETE SET NULL,
+    matrix3_row_id UUID REFERENCES exam_matrix_3_rows(id) ON DELETE SET NULL,
+    matrix3_custom_learning_level_id UUID REFERENCES exam_matrix_3_custom_learning_levels(id) ON DELETE SET NULL,
     learning_outcome_id UUID REFERENCES learning_outcomes(id) ON DELETE SET NULL,
     source_question_id UUID REFERENCES questions(id) ON DELETE SET NULL, allocation_snapshot JSONB NOT NULL,
+    qbank2_selection_mode VARCHAR(30),
+    qbank2_content_group_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    qbank2_content_group_codes JSONB NOT NULL DEFAULT '[]'::jsonb,
+    qbank2_example_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    qbank2_reference_snapshot JSONB,
+    CONSTRAINT quiz3_question_provenance_qbank2_selection_mode_check
+        CHECK(qbank2_selection_mode IS NULL OR qbank2_selection_mode IN('AUTO_SELECTED','RAG_FALLBACK','MANUAL_OVERRIDE')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_quiz3_provenance_allocation ON quiz3_question_provenance(matrix2_row_id,matrix2_custom_learning_level_id,learning_outcome_id);
-
-ALTER TABLE exam_matrix_3_cell_relations
-    ADD COLUMN IF NOT EXISTS question_type VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE';
-ALTER TABLE exam_matrix_3_cell_relations
-    DROP CONSTRAINT IF EXISTS exam_matrix_3_cell_relations_question_type_check;
-ALTER TABLE exam_matrix_3_cell_relations
-    ADD CONSTRAINT exam_matrix_3_cell_relations_question_type_check
-    CHECK(question_type IN ('MULTIPLE_CHOICE','CODE_RUNNER'));
-
-ALTER TABLE quiz3_assessments ADD COLUMN IF NOT EXISTS matrix_source_type VARCHAR(20);
-ALTER TABLE quiz3_assessments ADD COLUMN IF NOT EXISTS matrix3_id UUID REFERENCES exam_matrices_3(id) ON DELETE RESTRICT;
-ALTER TABLE quiz3_assessments ADD COLUMN IF NOT EXISTS matrix3_version BIGINT;
-ALTER TABLE quiz3_generation_jobs ADD COLUMN IF NOT EXISTS matrix_source_type VARCHAR(20);
-ALTER TABLE quiz3_generation_jobs ADD COLUMN IF NOT EXISTS matrix3_id UUID REFERENCES exam_matrices_3(id) ON DELETE RESTRICT;
-ALTER TABLE quiz3_generation_jobs ADD COLUMN IF NOT EXISTS matrix3_version BIGINT;
--- Matrix2 and Matrix3 are mutually exclusive job sources.
-ALTER TABLE quiz3_generation_jobs ALTER COLUMN matrix2_id DROP NOT NULL;
-ALTER TABLE quiz3_generation_jobs ALTER COLUMN matrix2_version DROP NOT NULL;
-ALTER TABLE quiz3_question_provenance ADD COLUMN IF NOT EXISTS matrix3_row_id UUID REFERENCES exam_matrix_3_rows(id) ON DELETE SET NULL;
-ALTER TABLE quiz3_question_provenance ADD COLUMN IF NOT EXISTS matrix3_custom_learning_level_id UUID REFERENCES exam_matrix_3_custom_learning_levels(id) ON DELETE SET NULL;
-ALTER TABLE quiz3_question_provenance
-    ADD COLUMN IF NOT EXISTS qbank2_selection_mode VARCHAR(30),
-    ADD COLUMN IF NOT EXISTS qbank2_content_group_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
-    ADD COLUMN IF NOT EXISTS qbank2_content_group_codes JSONB NOT NULL DEFAULT '[]'::jsonb,
-    ADD COLUMN IF NOT EXISTS qbank2_example_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
-    ADD COLUMN IF NOT EXISTS qbank2_reference_snapshot JSONB;
-ALTER TABLE quiz3_question_provenance
-    DROP CONSTRAINT IF EXISTS quiz3_question_provenance_qbank2_selection_mode_check;
-ALTER TABLE quiz3_question_provenance
-    ADD CONSTRAINT quiz3_question_provenance_qbank2_selection_mode_check
-    CHECK(qbank2_selection_mode IS NULL OR qbank2_selection_mode IN('AUTO_SELECTED','RAG_FALLBACK','MANUAL_OVERRIDE'));
 
 CREATE TABLE IF NOT EXISTS quiz3_qbank2_regeneration_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
