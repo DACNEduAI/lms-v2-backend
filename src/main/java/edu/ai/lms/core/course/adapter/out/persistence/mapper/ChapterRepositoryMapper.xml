@@ -69,30 +69,11 @@
     ON CONFLICT DO NOTHING
   </insert>
 
-  <insert id="insertUnselectedExamMatrixRowOutcomeMappings">
-    INSERT INTO edu.exam_matrix_row_learning_outcomes
-      (exam_matrix_row_id, learning_outcome_id, is_selected)
-    SELECT matrix_row.id, #{learningOutcomeId}, FALSE
-    FROM edu.exam_matrix_rows matrix_row
-    JOIN edu.chapter_learning_outcomes chapter_outcome
-      ON chapter_outcome.chapter_id = matrix_row.chapter_id
-     AND chapter_outcome.learning_outcome_id = #{learningOutcomeId}
-    WHERE matrix_row.chapter_id = #{chapterId}
-    ON CONFLICT (exam_matrix_row_id, learning_outcome_id) DO NOTHING
-  </insert>
-
   <delete id="deleteChapterLearningOutcome">
     DELETE FROM edu.chapter_learning_outcomes
     WHERE chapter_id = #{chapterId}
       AND learning_outcome_id = #{learningOutcomeId}
   </delete>
 
-  <delete id="deleteExamMatrixRowOutcomeMappings">
-    DELETE FROM edu.exam_matrix_row_learning_outcomes mapping
-    USING edu.exam_matrix_rows matrix_row
-    WHERE mapping.exam_matrix_row_id = matrix_row.id
-      AND matrix_row.chapter_id = #{chapterId}
-      AND mapping.learning_outcome_id = #{learningOutcomeId}
-  </delete>
 
 </mapper>

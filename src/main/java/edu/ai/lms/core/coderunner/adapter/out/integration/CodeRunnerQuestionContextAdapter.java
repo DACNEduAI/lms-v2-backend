@@ -2,7 +2,7 @@ package edu.ai.lms.core.coderunner.adapter.out.integration;
 
 import edu.ai.lms.core.coderunner.app.domain.CodeRunnerQuestionContext;
 import edu.ai.lms.core.coderunner.app.port.out.LoadCodeRunnerQuestionContextPort;
-import edu.ai.lms.core.quiz.api.CodeRunnerQuestionApi;
+import edu.ai.lms.core.quiz3.api.CodeRunnerQuestionApi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

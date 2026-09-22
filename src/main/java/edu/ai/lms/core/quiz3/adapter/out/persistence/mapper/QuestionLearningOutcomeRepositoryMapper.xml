@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.quiz3.adapter.out.persistence.QuestionLearningOutcomeRepository">
+
+  <insert id="insertBatch">
+    INSERT INTO edu.question_learning_outcomes (question_id, learning_outcome_id)
+    VALUES
+    <foreach collection="learningOutcomeIds" item="learningOutcomeId" separator=",">
+      (#{questionId}, #{learningOutcomeId})
+    </foreach>
+    ON CONFLICT (question_id, learning_outcome_id) DO NOTHING
+  </insert>
+
+  <delete id="deleteBatch">
+    DELETE FROM edu.question_learning_outcomes
+    WHERE question_id = #{questionId}
+      AND learning_outcome_id IN
+      <foreach collection="learningOutcomeIds" item="learningOutcomeId" open="(" separator="," close=")">
+        #{learningOutcomeId}
+      </foreach>
+  </delete>
+
+  <select id="findLearningOutcomeIdsByQuestionId" resultType="java.util.UUID">
+    SELECT learning_outcome_id
+    FROM edu.question_learning_outcomes
+    WHERE question_id = #{questionId}
+    ORDER BY learning_outcome_id
+  </select>
+
+  <select id="findLinksByQuizId" resultType="edu.ai.lms.core.quiz3.app.domain.QuestionLearningOutcomeLink">
+    SELECT qlo.question_id,
+           qlo.learning_outcome_id
+    FROM edu.question_learning_outcomes qlo
+    JOIN edu.questions q ON q.id = qlo.question_id
+    WHERE q.quiz_id = #{quizId}
+    ORDER BY qlo.question_id, qlo.learning_outcome_id
+  </select>
+
+</mapper>

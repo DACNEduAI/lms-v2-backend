@@ -1,0 +1,19 @@
+package edu.ai.lms.core.quiz3.adapter.in.http.request;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.*;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class CreateAnswerRequest {
+
+    @NotBlank(message = "Answer content cannot be blank")
+    private String content;
+
+    private boolean correct;
+
+    private String explanation;
+}

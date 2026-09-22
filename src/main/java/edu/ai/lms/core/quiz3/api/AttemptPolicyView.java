@@ -1,0 +1,16 @@
+package edu.ai.lms.core.quiz3.api;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+public record AttemptPolicyView(
+        UUID quizId,
+        UUID quizReleaseId,
+        UUID courseId,
+        boolean unlimited,
+        Integer timeLimitMinutes,
+        LocalDateTime startTime,
+        LocalDateTime dueTime,
+        Integer attemptLimit
+) {
+}

@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import edu.ai.lms.core.course.app.service.exammatrix.ExamMatrixAccess;
+import edu.ai.lms.core.course.app.service.CourseTeacherAccess;
 import lombok.RequiredArgsConstructor;
 
 /** Course-owned QBank2 content whose committed state is kept in sync with its vector representation. */
@@ -18,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class QuestionBank2Service {
     private final JdbcTemplate jdbc;
-    private final ExamMatrixAccess access;
+    private final CourseTeacherAccess access;
     private final QBank2VectorSyncService vectors;
 
     @Transactional(readOnly = true)

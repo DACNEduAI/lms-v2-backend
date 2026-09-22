@@ -2,7 +2,7 @@ package edu.ai.lms.core.attempt.adapter.in.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import edu.ai.lms.config.DatePatternConstants;
-import edu.ai.lms.core.quiz.app.domain.richcontent.RichContentFormat;
+import edu.ai.lms.core.quiz3.app.domain.richcontent.RichContentFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

@@ -5,7 +5,7 @@ import edu.ai.lms.core.attempt.api.LearnerQuizHistoryView;
 import edu.ai.lms.core.learnermodel.app.domain.LearnerInteraction;
 import edu.ai.lms.core.learnermodel.app.domain.LearnerQuizHistory;
 import edu.ai.lms.core.learnermodel.app.port.out.LoadLearnerHistoryPort;
-import edu.ai.lms.core.quiz.api.LearnerModelQuizApi;
+import edu.ai.lms.core.quiz3.api.LearnerModelQuizApi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 

@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import edu.ai.lms.core.course.app.service.exammatrix.ExamMatrixAccess;
+import edu.ai.lms.core.course.app.service.CourseTeacherAccess;
 import edu.ai.lms.core.course.app.service.qbank2.QuestionBank2Service.ExampleView;
 import edu.ai.lms.core.course.app.service.qbank2.QuestionBank2Service.GroupView;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +36,7 @@ public class QBank2ImportService {
     private static final long MAX_TOTAL_CONTENT = 10_000_000L;
 
     private final JdbcTemplate jdbc;
-    private final ExamMatrixAccess access;
+    private final CourseTeacherAccess access;
     private final QuestionBank2Service bank;
     private final QBank2VectorSyncService vectors;
 

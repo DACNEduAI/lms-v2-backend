@@ -5,15 +5,9 @@ import edu.ai.lms.core.course.api.CourseChatMetadata;
 import edu.ai.lms.core.course.api.CourseChatMetadataApi;
 import edu.ai.lms.core.course.api.LearningOutcomeCatalogApi;
 import edu.ai.lms.core.course.api.LearningOutcomeView;
-import edu.ai.lms.core.course.api.QuizGenerationContext;
-import edu.ai.lms.core.course.api.QuizGenerationContextApi;
-import edu.ai.lms.core.course.api.QuestionBankReferenceApi;
 import edu.ai.lms.core.course.app.domain.GroupLearningOutcome;
 import edu.ai.lms.core.course.app.domain.LearningOutcome;
-import edu.ai.lms.core.course.app.domain.ExamMatrixQuestionType;
-import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
-import edu.ai.lms.core.course.app.port.out.LoadExamMatrixPort;
 import edu.ai.lms.core.course.app.port.out.LoadGroupLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.LoadLearningOutcomePort;
 import lombok.RequiredArgsConstructor;
@@ -28,19 +22,11 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-class CourseApiAdapter implements CourseAccessApi, CourseChatMetadataApi, QuizGenerationContextApi, LearningOutcomeCatalogApi,
-        QuestionBankReferenceApi {
+class CourseApiAdapter implements CourseAccessApi, CourseChatMetadataApi, LearningOutcomeCatalogApi {
 
     private final LoadCoursePort coursePort;
-    private final LoadExamMatrixPort examMatrixPort;
     private final LoadLearningOutcomePort learningOutcomePort;
     private final LoadGroupLearningOutcomePort groupLearningOutcomePort;
-    private final LoadChapterPort chapterPort;
-
-    @Override
-    public boolean chapterBelongsToCourse(UUID courseId, UUID chapterId) {
-        return chapterPort.findByKey(courseId, chapterId).isPresent();
-    }
 
     @Override
     public boolean isTeacherInCourse(UUID teacherId, UUID courseId) {
@@ -71,76 +57,6 @@ class CourseApiAdapter implements CourseAccessApi, CourseChatMetadataApi, QuizGe
                 course.getCourseName(),
                 course.getDescription(),
                 findByCourseId(courseId)));
-    }
-
-    @Override
-    public Optional<QuizGenerationContext> load(UUID courseId, UUID examMatrixId) {
-        var course = coursePort.findById(courseId).orElse(null);
-        var matrix = examMatrixPort.findById(examMatrixId)
-                .filter(value -> courseId.equals(value.getCourseId()))
-                .orElse(null);
-        if (course == null || matrix == null) {
-            return Optional.empty();
-        }
-        boolean incomplete = matrix.getCustomLearningLevels().isEmpty()
-                || !matrix.getUncoveredLearningOutcomeIds().isEmpty()
-                || matrix.getCustomLearningLevels().stream()
-                        .anyMatch(level -> level.getLearningOutcomeIds().isEmpty())
-                || matrix.getRows().stream().anyMatch(row ->
-                        row.getChapterId() == null
-                                || row.getTopic() == null
-                                || row.getTopic().isBlank()
-                                || row.getLearningOutcomeIds().isEmpty()
-                                || row.getLevelCounts().stream().anyMatch(count ->
-                                        count.isActive() && count.getQuestionType()
-                                                != ExamMatrixQuestionType.MULTIPLE_CHOICE));
-        if (incomplete) {
-            throw new IllegalStateException(
-                    "MATRIX_CONFIGURATION_INCOMPLETE: configure custom learning levels and row outcomes before generation");
-        }
-        List<QuizGenerationContext.QuizGenerationRow> rows = matrix.getRows().stream()
-                .map(row -> {
-                    String chapterTitle = chapterPort.findByKey(courseId, row.getChapterId())
-                            .map(chapter -> chapter.getTitle())
-                            .orElseThrow(() -> new IllegalStateException("Matrix chapter is invalid"));
-                    List<QuizGenerationContext.LearningOutcomeRequirement> outcomes =
-                            row.getLearningOutcomeIds().stream().map(outcomeId -> {
-                                LearningOutcome outcome = learningOutcomePort.findById(outcomeId)
-                                        .filter(value -> courseId.equals(value.getCourseId()))
-                                        .orElseThrow(() ->
-                                                new IllegalStateException("Matrix learning outcome is invalid"));
-                                return new QuizGenerationContext.LearningOutcomeRequirement(
-                                        outcome.getId(),
-                                        formatLearningOutcomeCode(courseId, outcome),
-                                        outcome.getDescription());
-                            }).toList();
-                    List<QuizGenerationContext.LearningLevelRequirement> levelCounts =
-                            row.getLevelCounts().stream()
-                                    .filter(edu.ai.lms.core.course.app.domain.ExamMatrixLevelCount::isActive)
-                                    .filter(count -> count.getQuestionCount() > 0)
-                                    .map(count -> new QuizGenerationContext.LearningLevelRequirement(
-                                            count.getCustomLearningLevelId(),
-                                            count.getCode(),
-                                            count.getName(),
-                                            count.getDescription(),
-                                            count.getSortOrder(),
-                                            List.copyOf(count.getLearningOutcomeIds()),
-                                            count.getQuestionType().name(),
-                                            count.getQuestionCount()))
-                                    .toList();
-                    return new QuizGenerationContext.QuizGenerationRow(
-                            row.getId(), row.getChapterId(),
-                            chapterTitle == null ? "" : chapterTitle,
-                            row.getTopic() == null ? "" : row.getTopic(),
-                            outcomes, levelCounts);
-                })
-                .toList();
-        return Optional.of(new QuizGenerationContext(
-                courseId,
-                course.getCourseName(),
-                matrix.getId(),
-                matrix.getTitle(),
-                rows));
     }
 
     @Override
@@ -222,21 +138,4 @@ class CourseApiAdapter implements CourseAccessApi, CourseChatMetadataApi, QuizGe
                 group == null ? null : group.getDescription());
     }
 
-    private String formatLearningOutcomeCode(UUID courseId, LearningOutcome outcome) {
-        String outcomeCode = outcome.getCode();
-        if (outcome.getGroupLearningOutcomeId() == null) {
-            return outcomeCode;
-        }
-        GroupLearningOutcome group = groupLearningOutcomePort.findById(outcome.getGroupLearningOutcomeId())
-                .filter(value -> courseId.equals(value.getCourseId()))
-                .orElseThrow(() -> new IllegalStateException("Matrix learning outcome group is invalid"));
-        String groupCode = group.getCode();
-        if (groupCode == null || groupCode.isBlank()) {
-            return outcomeCode;
-        }
-        if (outcomeCode == null || outcomeCode.isBlank()) {
-            return groupCode;
-        }
-        return groupCode.endsWith(".") ? groupCode + outcomeCode : groupCode + "." + outcomeCode;
-    }
 }

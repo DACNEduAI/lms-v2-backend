@@ -13,10 +13,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import edu.ai.lms.common.api.ErrorResponse;
 import edu.ai.lms.core.course.app.exception.ChapterNotFoundException;
-import edu.ai.lms.core.course.app.exception.CustomLearningLevelNotFoundException;
-import edu.ai.lms.core.course.app.exception.CustomLearningLevelValidationException;
-import edu.ai.lms.core.course.app.exception.ExamMatrixNotFoundException;
-import edu.ai.lms.core.course.app.exception.ExamMatrixValidationException;
 import edu.ai.lms.core.course.app.exception.CourseCodeAlreadyExistsException;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
 import edu.ai.lms.core.course.app.exception.StudentNotEnrolledInCourseException;
@@ -177,51 +173,6 @@ public class CourseExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-    }
-
-    /**
-     * Handles ExamMatrixNotFoundException.
-     */
-    @ApiResponse(responseCode = "404", description = "Exam matrix not found",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @ExceptionHandler(ExamMatrixNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleExamMatrixNotFoundException(ExamMatrixNotFoundException ex) {
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .status(HttpStatus.NOT_FOUND.value())
-                .error("Exam Matrix Not Found")
-                .message(ex.getMessage())
-                .build();
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-    }
-
-    @ExceptionHandler(ExamMatrixValidationException.class)
-    public ResponseEntity<ErrorResponse> handleExamMatrixValidationException(ExamMatrixValidationException ex) {
-        return ResponseEntity.badRequest().body(ErrorResponse.builder()
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Invalid Exam Matrix")
-                .message(ex.getMessage())
-                .build());
-    }
-
-    @ExceptionHandler(CustomLearningLevelNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleCustomLearningLevelNotFoundException(
-            CustomLearningLevelNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.builder()
-                .status(HttpStatus.NOT_FOUND.value())
-                .error("Custom Learning Level Not Found")
-                .message(ex.getMessage())
-                .build());
-    }
-
-    @ExceptionHandler(CustomLearningLevelValidationException.class)
-    public ResponseEntity<ErrorResponse> handleCustomLearningLevelValidationException(
-            CustomLearningLevelValidationException ex) {
-        return ResponseEntity.badRequest().body(ErrorResponse.builder()
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Invalid Custom Learning Level")
-                .message(ex.getMessage())
-                .build());
     }
 
     @ExceptionHandler(UnauthorizedTeacherException.class)

@@ -3,7 +3,7 @@ package edu.ai.lms.core.notification.adapter.in.event;
 import edu.ai.lms.common.event.SystemNotificationEvent;
 import edu.ai.lms.core.course.api.CourseAccessApi;
 import edu.ai.lms.core.material.events.MaterialUploadConfirmedEvent;
-import edu.ai.lms.core.quiz.events.QuizDeadlineApproachingEvent;
+import edu.ai.lms.core.quiz3.events.QuizDeadlineApproachingEvent;
 import edu.ai.lms.core.notification.app.domain.Notification;
 import edu.ai.lms.core.notification.app.service.NotificationService;
 import edu.ai.lms.core.notification.app.service.SseNotificationService;

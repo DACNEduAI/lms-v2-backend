@@ -1,5 +1,8 @@
 package edu.ai.lms.core.quiz3;
 
+import edu.ai.lms.core.quiz3.adapter.out.persistence.Quiz3RichContentAssetRepository;
+import edu.ai.lms.core.quiz3.app.domain.Quiz3RichContentAsset;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;

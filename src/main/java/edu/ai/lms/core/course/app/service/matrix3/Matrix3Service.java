@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
-import edu.ai.lms.core.course.app.service.exammatrix.ExamMatrixAccess;
+import edu.ai.lms.core.course.app.service.CourseTeacherAccess;
 import lombok.RequiredArgsConstructor;
 
 /** Matrix 3 stores a relationship grid and its own total question count. */
@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class Matrix3Service {
     private final JdbcTemplate jdbc;
-    private final ExamMatrixAccess access;
+    private final CourseTeacherAccess access;
     private final LoadSignedInUserPort signedInUserPort;
 
     @Transactional(readOnly = true)

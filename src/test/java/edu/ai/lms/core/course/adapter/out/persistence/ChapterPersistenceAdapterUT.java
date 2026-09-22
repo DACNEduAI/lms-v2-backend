@@ -41,8 +41,6 @@ class ChapterPersistenceAdapterUT {
         InOrder insertionOrder = inOrder(chapterRepository);
         insertionOrder.verify(chapterRepository)
                 .insertChapterLearningOutcome(chapterId, courseId, outcomeId);
-        insertionOrder.verify(chapterRepository)
-                .insertUnselectedExamMatrixRowOutcomeMappings(chapterId, outcomeId);
     }
 
     @Test
@@ -57,7 +55,5 @@ class ChapterPersistenceAdapterUT {
         InOrder deletionOrder = inOrder(chapterRepository);
         deletionOrder.verify(chapterRepository)
                 .deleteChapterLearningOutcome(chapterId, courseId, outcomeId);
-        deletionOrder.verify(chapterRepository)
-                .deleteExamMatrixRowOutcomeMappings(chapterId, outcomeId);
     }
 }

@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import edu.ai.lms.core.course.app.service.exammatrix.ExamMatrixAccess;
+import edu.ai.lms.core.course.app.service.CourseTeacherAccess;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import lombok.RequiredArgsConstructor;
 
@@ -29,7 +29,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class Matrix2Service {
     private final JdbcTemplate jdbcTemplate;
-    private final ExamMatrixAccess access;
+    private final CourseTeacherAccess access;
     private final LoadSignedInUserPort signedInUserPort;
 
     @Transactional(readOnly = true)

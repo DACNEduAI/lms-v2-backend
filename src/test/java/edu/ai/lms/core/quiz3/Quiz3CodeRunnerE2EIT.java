@@ -1,5 +1,7 @@
 package edu.ai.lms.core.quiz3;
 
+import edu.ai.lms.core.quiz3.app.service.Quiz3GenerationDispatcher;
+
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;

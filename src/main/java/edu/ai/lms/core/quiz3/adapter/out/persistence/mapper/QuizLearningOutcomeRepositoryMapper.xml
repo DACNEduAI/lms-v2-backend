@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.quiz3.adapter.out.persistence.QuizLearningOutcomeRepository">
+
+  <insert id="insertBatch">
+    INSERT INTO edu.quiz_learning_outcomes (quiz_id, learning_outcome_id)
+    VALUES
+    <foreach collection="learningOutcomeIds" item="learningOutcomeId" separator=",">
+      (#{quizId}, #{learningOutcomeId})
+    </foreach>
+    ON CONFLICT (quiz_id, learning_outcome_id) DO NOTHING
+  </insert>
+
+  <delete id="deleteBatch">
+    DELETE FROM edu.quiz_learning_outcomes
+    WHERE quiz_id = #{quizId}
+      AND learning_outcome_id IN
+      <foreach collection="learningOutcomeIds" item="learningOutcomeId" open="(" separator="," close=")">
+        #{learningOutcomeId}
+      </foreach>
+  </delete>
+
+  <select id="findLearningOutcomeIdsByQuizId" resultType="java.util.UUID">
+    SELECT learning_outcome_id
+    FROM edu.quiz_learning_outcomes
+    WHERE quiz_id = #{quizId}
+    ORDER BY learning_outcome_id
+  </select>
+
+</mapper>

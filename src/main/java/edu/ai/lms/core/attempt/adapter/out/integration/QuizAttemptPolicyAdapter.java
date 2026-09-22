@@ -4,7 +4,7 @@ import edu.ai.lms.core.attempt.app.domain.QuestionAnswerKey;
 import edu.ai.lms.core.attempt.app.domain.QuizAttemptPolicy;
 import edu.ai.lms.core.attempt.app.port.out.LoadQuizAttemptPolicyPort;
 import edu.ai.lms.core.course.api.CourseAccessApi;
-import edu.ai.lms.core.quiz.api.AttemptPolicyApi;
+import edu.ai.lms.core.quiz3.api.AttemptPolicyApi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

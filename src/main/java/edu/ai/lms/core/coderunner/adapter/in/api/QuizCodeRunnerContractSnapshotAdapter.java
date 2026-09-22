@@ -10,7 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.ai.lms.core.coderunner.app.domain.ExecutableAssessmentContract;
 import edu.ai.lms.core.coderunner.app.port.out.SaveCodeRunnerContractPort;
 import edu.ai.lms.core.coderunner.app.port.out.LoadCodeRunnerContractPort;
-import edu.ai.lms.core.quiz.api.CodeRunnerContractSnapshotApi;
+import edu.ai.lms.core.quiz3.api.CodeRunnerContractSnapshotApi;
 import lombok.RequiredArgsConstructor;
 
 @Component

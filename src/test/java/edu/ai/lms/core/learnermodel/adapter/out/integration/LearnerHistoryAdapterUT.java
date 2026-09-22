@@ -2,7 +2,7 @@ package edu.ai.lms.core.learnermodel.adapter.out.integration;
 
 import edu.ai.lms.core.attempt.api.LearnerHistoryApi;
 import edu.ai.lms.core.attempt.api.LearnerQuizHistoryView;
-import edu.ai.lms.core.quiz.api.LearnerModelQuizApi;
+import edu.ai.lms.core.quiz3.api.LearnerModelQuizApi;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;

@@ -21,7 +21,6 @@ import edu.ai.lms.core.course.app.port.out.LoadGroupLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.LoadLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.SaveLearningOutcomePort;
-import edu.ai.lms.core.course.app.port.out.CustomLearningLevelPort;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -33,7 +32,6 @@ public class CreateLearningOutcomesService implements TeacherCreateLearningOutco
     private final LoadSignedInUserPort loadSignedInUserPort;
     private final LoadGroupLearningOutcomePort loadGroupLearningOutcomePort;
     private final LoadLearningOutcomePort loadLearningOutcomePort;
-    private final CustomLearningLevelPort customLearningLevelPort;
 
     @Override
     @Transactional
@@ -62,7 +60,6 @@ public class CreateLearningOutcomesService implements TeacherCreateLearningOutco
         }
 
         List<CreateLearningOutcomesResponse.LearningOutcomeDto> savedDtos = new ArrayList<>();
-        List<java.util.UUID> savedIds = new ArrayList<>();
         int nextSortOrder = group == null || loadLearningOutcomePort == null
                 ? 1
                 : loadLearningOutcomePort.findMaxSortOrderByGroupId(group.getId()) + 1;
@@ -74,7 +71,6 @@ public class CreateLearningOutcomesService implements TeacherCreateLearningOutco
                 lo.setSortOrder(nextSortOrder);
             }
             LearningOutcome saved = saveLearningOutcomePort.save(lo);
-            savedIds.add(saved.getId());
             savedDtos.add(CreateLearningOutcomesResponse.LearningOutcomeDto.builder()
                     .id(saved.getId())
                     .code(saved.getCode())
@@ -86,7 +82,6 @@ public class CreateLearningOutcomesService implements TeacherCreateLearningOutco
                     .build());
             nextSortOrder++;
         }
-        customLearningLevelPort.addUnselectedOutcomesToCourseMatrices(course.getId(), savedIds);
 
         return CreateLearningOutcomesResponse.builder()
                 .courseId(course.getId())

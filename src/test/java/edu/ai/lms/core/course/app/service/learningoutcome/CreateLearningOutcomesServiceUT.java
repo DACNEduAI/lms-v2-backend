@@ -36,7 +36,6 @@ import edu.ai.lms.core.course.app.port.out.LoadGroupLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.LoadLearningOutcomePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.SaveLearningOutcomePort;
-import edu.ai.lms.core.course.app.port.out.CustomLearningLevelPort;
 
 @ExtendWith(MockitoExtension.class)
 class CreateLearningOutcomesServiceUT {
@@ -55,9 +54,6 @@ class CreateLearningOutcomesServiceUT {
 
     @Mock
     private LoadLearningOutcomePort loadLearningOutcomePort;
-
-    @Mock
-    private CustomLearningLevelPort customLearningLevelPort;
 
     @InjectMocks
     private CreateLearningOutcomesService createLearningOutcomesService;

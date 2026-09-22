@@ -84,12 +84,10 @@ class ChapterPersistenceAdapter implements SaveChapterPort, LoadChapterPort, Del
     @Override
     public void addLearningOutcomeToChapter(UUID chapterId, UUID courseId, UUID learningOutcomeId) {
         chapterRepository.insertChapterLearningOutcome(chapterId, courseId, learningOutcomeId);
-        chapterRepository.insertUnselectedExamMatrixRowOutcomeMappings(chapterId, learningOutcomeId);
     }
 
     @Override
     public void removeLearningOutcomeFromChapter(UUID chapterId, UUID courseId, UUID learningOutcomeId) {
         chapterRepository.deleteChapterLearningOutcome(chapterId, courseId, learningOutcomeId);
-        chapterRepository.deleteExamMatrixRowOutcomeMappings(chapterId, learningOutcomeId);
     }
 }

@@ -1,0 +1,301 @@
+package edu.ai.lms.core.quiz3.app.service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import edu.ai.lms.core.quiz3.app.service.crudquiz.CreateQuizService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+
+import edu.ai.lms.common.api.Roles;
+import edu.ai.lms.core.quiz3.app.domain.CurrentActor;
+import edu.ai.lms.core.quiz3.adapter.in.http.response.CreateQuizResponse;
+import edu.ai.lms.core.quiz3.app.domain.Quiz;
+import edu.ai.lms.core.quiz3.app.exception.TimeValidationException;
+import edu.ai.lms.core.quiz3.app.exception.UserNotAuthenticatedException;
+import edu.ai.lms.core.quiz3.app.exception.UserNotAuthorizedException;
+import edu.ai.lms.core.quiz3.app.port.in.command.CreateQuizCommand;
+import edu.ai.lms.core.quiz3.app.port.out.LoadCourseLearningOutcomePort;
+import edu.ai.lms.core.quiz3.app.port.out.LoadCourseMembershipPort;
+import edu.ai.lms.core.quiz3.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.quiz3.app.port.out.SaveQuizLearningOutcomePort;
+import edu.ai.lms.core.quiz3.app.port.out.SaveQuizPort;
+
+@ExtendWith(MockitoExtension.class)
+class CreateQuizServiceUT {
+
+    @Mock
+    private SaveQuizPort saveQuizPort;
+
+    @Mock
+    private LoadSignedInUserPort loadSignedInUserPort;
+
+    @Mock
+    private LoadCourseMembershipPort loadCourseMembershipPort;
+
+        @Mock
+        private LoadCourseLearningOutcomePort loadCourseLearningOutcomePort;
+
+        @Mock
+        private SaveQuizLearningOutcomePort saveQuizLearningOutcomePort;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
+    @InjectMocks
+    private CreateQuizService createQuizService;
+
+    private CurrentActor mockTeacher;
+    private CurrentActor mockStudent;
+    private UUID teacherId;
+    private UUID studentId;
+    private UUID courseId;
+    private UUID quizId;
+        private UUID learningOutcomeId;
+    private CreateQuizCommand validCommand;
+
+    @BeforeEach
+    void setUp() {
+        teacherId = UUID.randomUUID();
+        studentId = UUID.randomUUID();
+        courseId = UUID.randomUUID();
+        quizId = UUID.randomUUID();
+        learningOutcomeId = UUID.randomUUID();
+
+        mockTeacher = CurrentActor.builder()
+                .id(teacherId)
+                .role(Roles.TEACHER)
+                .build();
+
+        mockStudent = CurrentActor.builder()
+                .id(studentId)
+                .role(Roles.STUDENT)
+                .build();
+
+        Quiz quiz = Quiz.builder()
+                .quizTitle("Midterm Quiz")
+                .unlimited(false)
+                .timeLimitMinutes(60)
+                .passScore(70.0)
+                .dueTime(LocalDateTime.now().plusHours(1))
+                .build();
+
+        validCommand = CreateQuizCommand.builder()
+                .courseId(courseId)
+                .quiz(quiz)
+                .learningOutcomeIds(List.of(learningOutcomeId))
+                .build();
+    }
+
+    @Test
+    @DisplayName("Should successfully create a quiz as a teacher")
+    void testCreateQuiz_AsTeacher_ShouldSucceed() {
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
+        when(loadCourseLearningOutcomePort.findExistingLearningOutcomeIdsByCourseIdAndIds(courseId,
+                List.of(learningOutcomeId))).thenReturn(List.of(learningOutcomeId));
+
+        Quiz savedQuiz = Quiz.builder()
+                .id(quizId)
+                .quizTitle("Midterm Quiz")
+                .unlimited(false)
+                .timeLimitMinutes(60)
+                .passScore(70.0)
+                .dueTime(LocalDateTime.now().plusHours(1))
+                .courseId(courseId)
+                .teacherId(teacherId)
+                .display(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+        when(saveQuizPort.save(any(Quiz.class))).thenReturn(savedQuiz);
+
+        CreateQuizResponse response = createQuizService.createQuiz(validCommand);
+
+        assertNotNull(response);
+        assertEquals(quizId, response.getQuizId());
+        assertEquals(courseId, response.getCourseId());
+        assertTrue(response.getDisplay());
+        verify(saveQuizPort, times(1)).save(any(Quiz.class));
+                verify(saveQuizLearningOutcomePort, times(1)).addLearningOutcomes(quizId, List.of(learningOutcomeId));
+    }
+
+    @Test
+    @DisplayName("Should successfully create a quiz as a student")
+    void testCreateQuiz_AsStudent_ShouldSucceed() {
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
+        when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
+        when(loadCourseLearningOutcomePort.findExistingLearningOutcomeIdsByCourseIdAndIds(courseId,
+                List.of(learningOutcomeId))).thenReturn(List.of(learningOutcomeId));
+
+                validCommand.quiz().setStartTime(LocalDateTime.of(2025, 1, 10, 9, 0));
+                validCommand.quiz().setDueTime(LocalDateTime.of(2025, 1, 10, 10, 0));
+                validCommand.quiz().setAttemptLimited(2);
+
+        Quiz savedQuiz = Quiz.builder()
+                .id(quizId)
+                .quizTitle("Midterm Quiz")
+                .courseId(courseId)
+                .studentId(studentId)
+                .display(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+        when(saveQuizPort.save(any(Quiz.class))).thenReturn(savedQuiz);
+
+        CreateQuizResponse response = createQuizService.createQuiz(validCommand);
+
+        assertNotNull(response);
+        assertEquals(quizId, response.getQuizId());
+        assertEquals(courseId, response.getCourseId());
+        verify(saveQuizPort, times(1)).save(any(Quiz.class));
+                verify(saveQuizLearningOutcomePort, times(1)).addLearningOutcomes(quizId, List.of(learningOutcomeId));
+    }
+
+    @Test
+    @DisplayName("Should throw UserNotAuthenticatedException when user is not authenticated")
+    void testCreateQuiz_WithUnauthenticatedUser_ShouldThrowException() {
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.empty());
+
+        UserNotAuthenticatedException exception = assertThrows(UserNotAuthenticatedException.class,
+                () -> createQuizService.createQuiz(validCommand));
+
+        assertEquals("User not authenticated", exception.getMessage());
+        verify(saveQuizPort, never()).save(any(Quiz.class));
+    }
+
+    @Test
+        @DisplayName("Should throw UserNotAuthorizedException when teacher is not a member of the course")
+    void testCreateQuiz_WithNonMemberTeacher_ShouldThrowException() {
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(false);
+
+                UserNotAuthorizedException exception = assertThrows(UserNotAuthorizedException.class,
+                () -> createQuizService.createQuiz(validCommand));
+
+        assertEquals("User is not a member of this course", exception.getMessage());
+        verify(saveQuizPort, never()).save(any(Quiz.class));
+    }
+
+    @Test
+    @DisplayName("Should set courseId and teacherId on quiz before saving")
+    void testCreateQuiz_ShouldSetCourseIdAndTeacherId() {
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
+        when(loadCourseLearningOutcomePort.findExistingLearningOutcomeIdsByCourseIdAndIds(courseId,
+                List.of(learningOutcomeId))).thenReturn(List.of(learningOutcomeId));
+
+        ArgumentCaptor<Quiz> quizCaptor = ArgumentCaptor.forClass(Quiz.class);
+        Quiz savedQuiz = Quiz.builder()
+                .id(quizId)
+                .quizTitle("Midterm Quiz")
+                .unlimited(false)
+                .courseId(courseId)
+                .teacherId(teacherId)
+                .display(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+        when(saveQuizPort.save(any(Quiz.class))).thenReturn(savedQuiz);
+
+        createQuizService.createQuiz(validCommand);
+
+        verify(saveQuizPort).save(quizCaptor.capture());
+        Quiz capturedQuiz = quizCaptor.getValue();
+        assertEquals(courseId, capturedQuiz.getCourseId());
+        assertEquals(teacherId, capturedQuiz.getTeacherId());
+                verify(saveQuizLearningOutcomePort, times(1)).addLearningOutcomes(quizId, List.of(learningOutcomeId));
+    }
+
+        @Test
+        @DisplayName("Should clear startTime, dueTime and attemptLimited for student-created quiz")
+        void testCreateQuiz_AsStudent_ShouldClearTeacherOnlyFields() {
+                when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockStudent));
+                when(loadCourseMembershipPort.isStudentInCourse(studentId, courseId)).thenReturn(true);
+                when(loadCourseLearningOutcomePort.findExistingLearningOutcomeIdsByCourseIdAndIds(courseId,
+                                List.of(learningOutcomeId))).thenReturn(List.of(learningOutcomeId));
+
+                validCommand.quiz().setStartTime(LocalDateTime.of(2025, 4, 1, 8, 0));
+                validCommand.quiz().setDueTime(LocalDateTime.of(2025, 4, 1, 9, 0));
+                validCommand.quiz().setAttemptLimited(3);
+
+                ArgumentCaptor<Quiz> quizCaptor = ArgumentCaptor.forClass(Quiz.class);
+                when(saveQuizPort.save(any(Quiz.class))).thenReturn(Quiz.builder().id(quizId).courseId(courseId).build());
+
+                createQuizService.createQuiz(validCommand);
+
+                verify(saveQuizPort).save(quizCaptor.capture());
+                Quiz capturedQuiz = quizCaptor.getValue();
+                assertEquals(studentId, capturedQuiz.getStudentId());
+                assertNull(capturedQuiz.getStartTime());
+                assertNull(capturedQuiz.getDueTime());
+                assertNull(capturedQuiz.getTimeLimitMinutes());
+                assertNull(capturedQuiz.getAttemptLimited());
+                verify(saveQuizLearningOutcomePort, times(1)).addLearningOutcomes(quizId, List.of(learningOutcomeId));
+        }
+
+    @Test
+    @DisplayName("Should reject create when unlimited is true but startTime or dueTime is provided")
+    void testCreateQuiz_WithUnlimitedTrueAndProvidedTimes_ShouldThrow() {
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
+
+        validCommand.quiz().setUnlimited(true);
+        validCommand.quiz().setStartTime(LocalDateTime.now().plusMinutes(1));
+        validCommand.quiz().setDueTime(LocalDateTime.now().plusHours(1));
+
+        TimeValidationException exception = assertThrows(TimeValidationException.class,
+                () -> createQuizService.createQuiz(validCommand));
+
+        assertEquals("When unlimited is true, startTime and dueTime must be null", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Should reject create when unlimited is false and dueTime is missing")
+    void testCreateQuiz_WithUnlimitedFalseAndMissingDueTime_ShouldThrow() {
+        when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+        when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
+
+        validCommand.quiz().setUnlimited(false);
+        validCommand.quiz().setDueTime(null);
+
+        TimeValidationException exception = assertThrows(TimeValidationException.class,
+                () -> createQuizService.createQuiz(validCommand));
+
+        assertEquals("dueTime is required when unlimited is false", exception.getMessage());
+    }
+
+        @Test
+        @DisplayName("Should reject create when unlimited is true and timeLimitMinutes is provided")
+        void testCreateQuiz_WithUnlimitedTrueAndProvidedTimeLimit_ShouldThrow() {
+                when(loadSignedInUserPort.getAuthenticatedUser()).thenReturn(Optional.of(mockTeacher));
+                when(loadCourseMembershipPort.isTeacherInCourse(teacherId, courseId)).thenReturn(true);
+
+                validCommand.quiz().setUnlimited(true);
+                validCommand.quiz().setStartTime(null);
+                validCommand.quiz().setDueTime(null);
+                validCommand.quiz().setTimeLimitMinutes(30);
+
+                TimeValidationException exception = assertThrows(TimeValidationException.class,
+                                () -> createQuizService.createQuiz(validCommand));
+
+                assertEquals("When unlimited is true, timeLimitMinutes must be null", exception.getMessage());
+        }
+}
