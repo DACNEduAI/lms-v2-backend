@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.asset.adapter.out.persistence.AssetRepositoryMapper">
+  <resultMap id="AssetImageRowMap" type="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
+    <id property="id" column="id" />
+    <result property="courseId" column="course_id" />
+    <result property="type" column="type" />
+    <result property="name" column="name" />
+    <result property="description" column="description" />
+    <result property="prompt" column="prompt" />
+    <result property="purpose" column="purpose" />
+    <result property="tagsJson" column="tags_json" />
+    <result property="publicationStatus" column="publication_status" />
+    <result property="uploadStatus" column="upload_status" />
+    <result property="createdAt" column="created_at" />
+    <result property="updatedAt" column="updated_at" />
+    <result property="originalFileName" column="original_file_name" />
+    <result property="contentType" column="content_type" />
+    <result property="byteSize" column="byte_size" />
+    <result property="storageKey" column="storage_key" />
+  </resultMap>
+
+  <sql id="imageColumns">a.id, a.course_id, a.type, a.name, a.description, a.prompt, a.purpose, a.tags::text AS tags_json, a.publication_status, a.upload_status, a.created_at, a.updated_at, i.original_file_name, i.content_type, i.byte_size, i.storage_key</sql>
+
+  <insert id="insertAsset" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
+    INSERT INTO edu.assets (id, course_id, type, name, description, prompt, purpose, tags, publication_status, upload_status)
+    VALUES (#{id}, #{courseId}, #{type}, #{name}, #{description}, #{prompt}, #{purpose}, CAST(#{tagsJson} AS jsonb), #{publicationStatus}, #{uploadStatus})
+  </insert>
+  <insert id="insertImage" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
+    INSERT INTO edu.image_assets (asset_id, original_file_name, content_type, byte_size, storage_key)
+    VALUES (#{id}, #{originalFileName}, #{contentType}, #{byteSize}, #{storageKey})
+  </insert>
+  <select id="findImages" resultMap="AssetImageRowMap">
+    SELECT <include refid="imageColumns" /> FROM edu.assets a JOIN edu.image_assets i ON i.asset_id = a.id
+    WHERE a.course_id = #{courseId} AND a.type = 'IMAGE' ORDER BY a.updated_at DESC
+  </select>
+  <select id="findImage" resultMap="AssetImageRowMap">
+    SELECT <include refid="imageColumns" /> FROM edu.assets a JOIN edu.image_assets i ON i.asset_id = a.id
+    WHERE a.course_id = #{courseId} AND a.id = #{assetId} AND a.type = 'IMAGE'
+  </select>
+  <update id="updateAssetLifecycle" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
+    UPDATE edu.assets SET publication_status = #{publicationStatus}, upload_status = #{uploadStatus}, updated_at = CURRENT_TIMESTAMP
+    WHERE id = #{id} AND course_id = #{courseId}
+  </update>
+  <update id="updateImageUploadMetadata" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
+    UPDATE edu.image_assets SET content_type = #{contentType}, byte_size = #{byteSize} WHERE asset_id = #{id}
+  </update>
+  <delete id="delete">DELETE FROM edu.assets WHERE id = #{assetId} AND course_id = #{courseId}</delete>
+</mapper>

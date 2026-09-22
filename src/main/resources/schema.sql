@@ -108,6 +108,35 @@ CREATE TABLE IF NOT EXISTS materials
     FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE
 );
 
+-- Reusable course assets. Child tables carry type-specific payloads so CODE and
+-- FORMULA can be added without changing the common lifecycle contract.
+CREATE TABLE IF NOT EXISTS assets
+(
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id UUID NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+    type VARCHAR(20) NOT NULL CHECK (type IN ('IMAGE', 'CODE', 'FORMULA')),
+    name VARCHAR(255) NOT NULL,
+    description VARCHAR(1000) NOT NULL,
+    prompt TEXT,
+    purpose VARCHAR(255) NOT NULL,
+    tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+    publication_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' CHECK (publication_status IN ('DRAFT', 'PUBLISHED')),
+    upload_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (upload_status IN ('PENDING', 'UPLOADED', 'FAILED')),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_assets_course_type_status ON assets(course_id, type, publication_status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_assets_tags ON assets USING GIN(tags);
+
+CREATE TABLE IF NOT EXISTS image_assets
+(
+    asset_id UUID PRIMARY KEY REFERENCES assets (id) ON DELETE CASCADE,
+    original_file_name VARCHAR(255) NOT NULL,
+    content_type VARCHAR(100) NOT NULL CHECK (content_type IN ('image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp')),
+    byte_size BIGINT NOT NULL DEFAULT 0,
+    storage_key VARCHAR(1024) NOT NULL UNIQUE
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_material_uploaded_original_file_name_per_course
     ON materials (course_id, LOWER(BTRIM(original_file_name)))
     WHERE status = 'UPLOADED';
@@ -298,15 +327,15 @@ CREATE TABLE IF NOT EXISTS ccct_items
 CREATE INDEX IF NOT EXISTS idx_ccct_items_topic_status
     ON ccct_items (topic_id, coverage_status);
 
--- Exam Matrices
--- Matrix 2 is deliberately independent from the existing Exam Matrix/Quiz2
--- tables. It is a teacher-authored planning surface and is not consumed by AI.
-CREATE TABLE IF NOT EXISTS exam_matrices_2
+-- Unified course exam matrices. MANUAL stores positive quotas; AUTOMATIC stores
+-- selected cells and allocates the matrix-owned total deterministically.
+CREATE TABLE IF NOT EXISTS exam_matrices
 (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     course_id   UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
     title       VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
-    description TEXT,
+    description TEXT, mode VARCHAR(20) NOT NULL DEFAULT 'MANUAL' CHECK(mode IN ('MANUAL','AUTOMATIC')),
+    total_question_count INTEGER CHECK(total_question_count IS NULL OR total_question_count > 0),
     lifecycle_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT'
         CHECK (lifecycle_status IN ('DRAFT', 'PUBLISHED')),
     version     BIGINT NOT NULL DEFAULT 0 CHECK (version >= 0),
@@ -314,73 +343,37 @@ CREATE TABLE IF NOT EXISTS exam_matrices_2
     published_at TIMESTAMP,
     created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    CHECK ((mode='MANUAL' AND total_question_count IS NULL) OR (mode='AUTOMATIC' AND total_question_count IS NOT NULL))
 );
-
-CREATE TABLE IF NOT EXISTS exam_matrix_2_custom_learning_levels
+CREATE TABLE IF NOT EXISTS exam_matrix_custom_learning_levels
 (
     id          UUID PRIMARY KEY,
-    matrix_id   UUID         NOT NULL REFERENCES exam_matrices_2 (id) ON DELETE CASCADE,
+    matrix_id   UUID         NOT NULL REFERENCES exam_matrices (id) ON DELETE CASCADE,
     name        VARCHAR(255) NOT NULL CHECK (btrim(name) <> ''),
     sort_order  INTEGER      NOT NULL CHECK (sort_order >= 0)
 );
 
-CREATE TABLE IF NOT EXISTS exam_matrix_2_rows
+CREATE TABLE IF NOT EXISTS exam_matrix_rows
 (
     id                         UUID PRIMARY KEY,
-    matrix_id                  UUID NOT NULL REFERENCES exam_matrices_2 (id) ON DELETE CASCADE,
+    matrix_id                  UUID NOT NULL REFERENCES exam_matrices (id) ON DELETE CASCADE,
     chapter_id                 UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
     mapped_learning_outcome_id UUID REFERENCES learning_outcomes (id) ON DELETE SET NULL,
     sort_order                 INTEGER NOT NULL CHECK (sort_order >= 0)
 );
 
-CREATE TABLE IF NOT EXISTS exam_matrix_2_cell_counts
+CREATE TABLE IF NOT EXISTS exam_matrix_cells
 (
-    row_id                     UUID NOT NULL REFERENCES exam_matrix_2_rows (id) ON DELETE CASCADE,
-    custom_learning_level_id   UUID NOT NULL REFERENCES exam_matrix_2_custom_learning_levels (id) ON DELETE CASCADE,
-    question_count             INTEGER NOT NULL DEFAULT 0 CHECK (question_count >= 0),
+    row_id                     UUID NOT NULL REFERENCES exam_matrix_rows (id) ON DELETE CASCADE,
+    custom_learning_level_id   UUID NOT NULL REFERENCES exam_matrix_custom_learning_levels (id) ON DELETE CASCADE,
+    question_count             INTEGER CHECK (question_count >= 0),
     question_type              VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE',
-    CONSTRAINT exam_matrix_2_cell_counts_question_type_check
+    CONSTRAINT exam_matrix_cells_question_type_check
         CHECK (question_type IN ('MULTIPLE_CHOICE', 'CODE_RUNNER')),
     PRIMARY KEY (row_id, custom_learning_level_id)
 );
-
-CREATE INDEX IF NOT EXISTS exam_matrices_2_course_idx ON exam_matrices_2 (course_id);
-CREATE INDEX IF NOT EXISTS exam_matrix_2_rows_matrix_idx ON exam_matrix_2_rows (matrix_id, sort_order);
-
--- Matrix 3 has the same authoring lifecycle as Matrix 2, but stores selected
--- CLL × CLO relations plus one total question count owned by the Matrix itself.
-CREATE TABLE IF NOT EXISTS exam_matrices_3
-(
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL CHECK(btrim(title)<>''), description TEXT,
-    total_question_count INTEGER NOT NULL CHECK(total_question_count>0),
-    lifecycle_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' CHECK(lifecycle_status IN('DRAFT','PUBLISHED')),
-    version BIGINT NOT NULL DEFAULT 0 CHECK(version>=0), published_by UUID REFERENCES users(id) ON DELETE SET NULL,
-    published_at TIMESTAMP, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS exam_matrix_3_custom_learning_levels
-(
-    id UUID PRIMARY KEY, matrix_id UUID NOT NULL REFERENCES exam_matrices_3(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL CHECK(btrim(name)<>''), sort_order INTEGER NOT NULL CHECK(sort_order>=0)
-);
-CREATE TABLE IF NOT EXISTS exam_matrix_3_rows
-(
-    id UUID PRIMARY KEY, matrix_id UUID NOT NULL REFERENCES exam_matrices_3(id) ON DELETE CASCADE,
-    chapter_id UUID REFERENCES chapters(chapter_id) ON DELETE SET NULL,
-    mapped_learning_outcome_id UUID REFERENCES learning_outcomes(id) ON DELETE SET NULL,
-    sort_order INTEGER NOT NULL CHECK(sort_order>=0)
-);
-CREATE TABLE IF NOT EXISTS exam_matrix_3_cell_relations
-(
-    row_id UUID NOT NULL REFERENCES exam_matrix_3_rows(id) ON DELETE CASCADE,
-    custom_learning_level_id UUID NOT NULL REFERENCES exam_matrix_3_custom_learning_levels(id) ON DELETE CASCADE,
-    question_type VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE',
-    CONSTRAINT exam_matrix_3_cell_relations_question_type_check
-        CHECK(question_type IN ('MULTIPLE_CHOICE','CODE_RUNNER')),
-    PRIMARY KEY(row_id,custom_learning_level_id)
-);
-CREATE INDEX IF NOT EXISTS exam_matrices_3_course_idx ON exam_matrices_3(course_id);
-CREATE INDEX IF NOT EXISTS exam_matrix_3_rows_matrix_idx ON exam_matrix_3_rows(matrix_id,sort_order);
+CREATE INDEX IF NOT EXISTS exam_matrices_course_idx ON exam_matrices (course_id);
+CREATE INDEX IF NOT EXISTS exam_matrix_rows_matrix_idx ON exam_matrix_rows (matrix_id, sort_order);
 
 -- QBank2 is an independent, course-owned collection of plain-text content groups and examples.
 -- This development/reset schema is executed with sql.init.mode=always.  Reset
@@ -964,8 +957,7 @@ CREATE TABLE IF NOT EXISTS quiz3_assessments (
     lifecycle_status VARCHAR(30) NOT NULL DEFAULT 'DRAFT' CHECK(lifecycle_status IN('DRAFT','GENERATING','REVIEW_PENDING','READY_TO_PUBLISH','PUBLISHED','ARCHIVED')),
     current_step INTEGER NOT NULL DEFAULT 1 CHECK(current_step BETWEEN 1 AND 9),
     ccct_profile_id UUID REFERENCES ccct_profiles(id) ON DELETE RESTRICT, ccct_profile_version BIGINT,
-    matrix_source_type VARCHAR(20), matrix2_id UUID REFERENCES exam_matrices_2(id) ON DELETE RESTRICT, matrix2_version BIGINT,
-    matrix3_id UUID REFERENCES exam_matrices_3(id) ON DELETE RESTRICT, matrix3_version BIGINT, base_generation_job_id UUID,
+    matrix_id UUID REFERENCES exam_matrices(id) ON DELETE RESTRICT, matrix_version BIGINT, base_generation_job_id UUID,
     base_confirmed_by UUID REFERENCES users(id) ON DELETE SET NULL, base_confirmed_at TIMESTAMP,
     created_by UUID REFERENCES users(id) ON DELETE SET NULL, version BIGINT NOT NULL DEFAULT 0 CHECK(version>=0),
     published_by UUID REFERENCES users(id) ON DELETE SET NULL, published_at TIMESTAMP,
@@ -977,9 +969,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz3_assessments_course_updated ON quiz3_assessm
 
 CREATE TABLE IF NOT EXISTS quiz3_generation_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE, matrix_source_type VARCHAR(20),
-    matrix2_id UUID REFERENCES exam_matrices_2(id) ON DELETE RESTRICT, matrix2_version BIGINT,
-    matrix3_id UUID REFERENCES exam_matrices_3(id) ON DELETE RESTRICT, matrix3_version BIGINT,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE, matrix_id UUID REFERENCES exam_matrices(id) ON DELETE RESTRICT, matrix_version BIGINT,
     quiz_id UUID REFERENCES quizzes(id) ON DELETE SET NULL,
     requested_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT, request_snapshot JSONB NOT NULL,
     payload_hash VARCHAR(64) NOT NULL, idempotency_key VARCHAR(255) NOT NULL UNIQUE,
@@ -1009,10 +999,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz3_base_variant ON quiz3_assessment_vari
 CREATE TABLE IF NOT EXISTS quiz3_question_provenance (
     question_id UUID PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
     generation_job_id UUID NOT NULL REFERENCES quiz3_generation_jobs(id) ON DELETE RESTRICT,
-    matrix2_row_id UUID REFERENCES exam_matrix_2_rows(id) ON DELETE SET NULL,
-    matrix2_custom_learning_level_id UUID REFERENCES exam_matrix_2_custom_learning_levels(id) ON DELETE SET NULL,
-    matrix3_row_id UUID REFERENCES exam_matrix_3_rows(id) ON DELETE SET NULL,
-    matrix3_custom_learning_level_id UUID REFERENCES exam_matrix_3_custom_learning_levels(id) ON DELETE SET NULL,
+    matrix_row_id UUID REFERENCES exam_matrix_rows(id) ON DELETE SET NULL,
+    matrix_custom_learning_level_id UUID REFERENCES exam_matrix_custom_learning_levels(id) ON DELETE SET NULL,
     learning_outcome_id UUID REFERENCES learning_outcomes(id) ON DELETE SET NULL,
     source_question_id UUID REFERENCES questions(id) ON DELETE SET NULL, allocation_snapshot JSONB NOT NULL,
     qbank2_selection_mode VARCHAR(30),
@@ -1024,7 +1012,7 @@ CREATE TABLE IF NOT EXISTS quiz3_question_provenance (
         CHECK(qbank2_selection_mode IS NULL OR qbank2_selection_mode IN('AUTO_SELECTED','RAG_FALLBACK','MANUAL_OVERRIDE')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_quiz3_provenance_allocation ON quiz3_question_provenance(matrix2_row_id,matrix2_custom_learning_level_id,learning_outcome_id);
+CREATE INDEX IF NOT EXISTS idx_quiz3_provenance_allocation ON quiz3_question_provenance(matrix_row_id,matrix_custom_learning_level_id,learning_outcome_id);
 
 CREATE TABLE IF NOT EXISTS quiz3_qbank2_regeneration_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,

@@ -24,6 +24,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -135,6 +136,16 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
             return true;
         } catch (NoSuchKeyException e) {
             return false;
+        }
+    }
+
+    /** Read direct-upload metadata without leaking the configured bucket. */
+    public edu.ai.lms.core.material.api.StoredObjectMetadata inspect(String key) {
+        try {
+            HeadObjectResponse object = s3Client.headObject(HeadObjectRequest.builder().bucket(bucketName).key(key).build());
+            return new edu.ai.lms.core.material.api.StoredObjectMetadata(true, object.contentLength(), object.contentType());
+        } catch (NoSuchKeyException e) {
+            return edu.ai.lms.core.material.api.StoredObjectMetadata.missing();
         }
     }
 

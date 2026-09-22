@@ -105,14 +105,14 @@ VALUES
     ('d1f07793-cfd2-450f-887a-abfc5b189b4b', '87777777-7777-7777-7777-777777777777'),
     ('d1f07793-cfd2-450f-887a-abfc5b189b4b', '8854781e-efc8-4130-9451-3b0391a32419');
 
-INSERT INTO exam_matrices_2 (id, course_id, title, description)
+INSERT INTO exam_matrices (id, course_id, title, description)
 VALUES
     ('b3000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
      'Matrix 2 - DSA midterm sample', 'Sample Matrix 2 with direct row-to-LO mapping.'),
     ('b3000001-0000-4000-8000-000000000002', 'c1111111-1111-1111-1111-111111111111',
      'Matrix 2 - DSA final sample', 'Second Matrix 2 sample for the course tab.');
 
-INSERT INTO exam_matrix_2_custom_learning_levels (id, matrix_id, name, sort_order)
+INSERT INTO exam_matrix_custom_learning_levels (id, matrix_id, name, sort_order)
 VALUES
     ('b3000011-0000-4000-8000-000000000001', 'b3000001-0000-4000-8000-000000000001', 'Understand', 0),
     ('b3000011-0000-4000-8000-000000000002', 'b3000001-0000-4000-8000-000000000001', 'Apply', 1),
@@ -120,7 +120,7 @@ VALUES
     ('b3000011-0000-4000-8000-000000000011', 'b3000001-0000-4000-8000-000000000002', 'Recall', 0),
     ('b3000011-0000-4000-8000-000000000012', 'b3000001-0000-4000-8000-000000000002', 'Problem solving', 1);
 
-INSERT INTO exam_matrix_2_rows
+INSERT INTO exam_matrix_rows
     (id, matrix_id, chapter_id, mapped_learning_outcome_id, sort_order)
 VALUES
     ('b3000021-0000-4000-8000-000000000001', 'b3000001-0000-4000-8000-000000000001',
@@ -132,7 +132,7 @@ VALUES
     ('b3000021-0000-4000-8000-000000000012', 'b3000001-0000-4000-8000-000000000002',
      'a8c06712-6aa5-4993-901b-77008af766d3', '86666666-6666-6666-6666-666666666666', 1);
 
-INSERT INTO exam_matrix_2_cell_counts (row_id, custom_learning_level_id, question_count)
+INSERT INTO exam_matrix_cells (row_id, custom_learning_level_id, question_count)
 VALUES
     ('b3000021-0000-4000-8000-000000000001', 'b3000011-0000-4000-8000-000000000001', 0),
     ('b3000021-0000-4000-8000-000000000001', 'b3000011-0000-4000-8000-000000000002', 1),
@@ -144,16 +144,16 @@ VALUES
 
 -- Matrix 2 dedicated to Quiz3 Code Runner. Both allocated cells use
 -- CODE_RUNNER, so a new assessment produces two C++17 questions by default.
-INSERT INTO exam_matrices_2 (id, course_id, title, description)
+INSERT INTO exam_matrices (id, course_id, title, description)
 VALUES
     ('b3000001-0000-4000-8000-000000000003', 'c1111111-1111-1111-1111-111111111111',
      'Matrix 2 - DSA Code Runner', 'Two C++17 Code Runner questions: heap construction and insertion sort.');
 
-INSERT INTO exam_matrix_2_custom_learning_levels (id, matrix_id, name, sort_order)
+INSERT INTO exam_matrix_custom_learning_levels (id, matrix_id, name, sort_order)
 VALUES
     ('b3000011-0000-4000-8000-000000000021', 'b3000001-0000-4000-8000-000000000003', 'Implementation', 0);
 
-INSERT INTO exam_matrix_2_rows
+INSERT INTO exam_matrix_rows
     (id, matrix_id, chapter_id, mapped_learning_outcome_id, sort_order)
 VALUES
     ('b3000021-0000-4000-8000-000000000021', 'b3000001-0000-4000-8000-000000000003',
@@ -161,7 +161,7 @@ VALUES
     ('b3000021-0000-4000-8000-000000000022', 'b3000001-0000-4000-8000-000000000003',
      'a8c06712-6aa5-4993-901b-77008af766d3', '85555555-5555-5555-5555-555555555555', 1);
 
-INSERT INTO exam_matrix_2_cell_counts
+INSERT INTO exam_matrix_cells
     (row_id, custom_learning_level_id, question_count, question_type)
 VALUES
     ('b3000021-0000-4000-8000-000000000021', 'b3000011-0000-4000-8000-000000000021', 1, 'CODE_RUNNER'),
@@ -169,19 +169,19 @@ VALUES
 
 -- Comprehensive 40-question final exam matrix. Every DSA learning outcome is
 -- represented by one row; the row totals are 6, 6, 6, 6, 6, 5, and 5.
-INSERT INTO exam_matrices_2 (id, course_id, title, description)
+INSERT INTO exam_matrices (id, course_id, title, description)
 VALUES
     ('b3000001-0000-4000-8000-000000000004', 'c1111111-1111-1111-1111-111111111111',
      'Matrix 2 - DSA comprehensive final (40 questions)',
      'A 40-question final exam matrix covering every learning outcome in Data Structures and Algorithms.');
 
-INSERT INTO exam_matrix_2_custom_learning_levels (id, matrix_id, name, sort_order)
+INSERT INTO exam_matrix_custom_learning_levels (id, matrix_id, name, sort_order)
 VALUES
     ('b3000011-0000-4000-8000-000000000031', 'b3000001-0000-4000-8000-000000000004', 'Understand', 0),
     ('b3000011-0000-4000-8000-000000000032', 'b3000001-0000-4000-8000-000000000004', 'Apply', 1),
     ('b3000011-0000-4000-8000-000000000033', 'b3000001-0000-4000-8000-000000000004', 'Advanced application', 2);
 
-INSERT INTO exam_matrix_2_rows
+INSERT INTO exam_matrix_rows
     (id, matrix_id, chapter_id, mapped_learning_outcome_id, sort_order)
 VALUES
     -- LO 1: Define Big O.
@@ -206,7 +206,7 @@ VALUES
     ('b3000021-0000-4000-8000-000000000037', 'b3000001-0000-4000-8000-000000000004',
      '6967be86-ae45-4e55-8faa-71318f50bbf6', '8854781e-efc8-4130-9451-3b0391a32419', 6);
 
-INSERT INTO exam_matrix_2_cell_counts
+INSERT INTO exam_matrix_cells
     (row_id, custom_learning_level_id, question_count)
 VALUES
     -- LO 1 total: 6.
@@ -749,15 +749,15 @@ VALUES ('c1111111-1111-1111-1111-111111111111', 'd0000000-0000-0000-0000-0000000
 
 -- Matrix 3 reset fixtures for the BigO chapter. Matrix 3 uses selected
 -- relations, so every CLL × CLO cell below is intentionally ticked.
-INSERT INTO exam_matrices_3
-    (id, course_id, title, description, total_question_count, lifecycle_status)
+INSERT INTO exam_matrices
+    (id, course_id, title, description, total_question_count, lifecycle_status, mode)
 VALUES
     ('d5000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
-     'Matrix3 BigO - 3 questions', 'Two BigO CLO rows with all CLL relations selected.', 3, 'DRAFT'),
+     'Matrix BigO - 3 questions', 'Two BigO CLO rows with all CLL relations selected.', 3, 'DRAFT', 'AUTOMATIC'),
     ('d5000001-0000-4000-8000-000000000002', 'c1111111-1111-1111-1111-111111111111',
-     'Matrix3 BigO - 6 questions', 'Two BigO CLO rows with all CLL relations selected.', 6, 'DRAFT');
+     'Matrix BigO - 6 questions', 'Two BigO CLO rows with all CLL relations selected.', 6, 'DRAFT', 'AUTOMATIC');
 
-INSERT INTO exam_matrix_3_custom_learning_levels (id, matrix_id, name, sort_order)
+INSERT INTO exam_matrix_custom_learning_levels (id, matrix_id, name, sort_order)
 VALUES
     ('d5100001-0000-4000-8000-000000000001', 'd5000001-0000-4000-8000-000000000001', 'Know', 0),
     ('d5100001-0000-4000-8000-000000000002', 'd5000001-0000-4000-8000-000000000001', 'Understand', 1),
@@ -766,7 +766,7 @@ VALUES
     ('d5100001-0000-4000-8000-000000000005', 'd5000001-0000-4000-8000-000000000002', 'Understand', 1),
     ('d5100001-0000-4000-8000-000000000006', 'd5000001-0000-4000-8000-000000000002', 'Master', 2);
 
-INSERT INTO exam_matrix_3_rows
+INSERT INTO exam_matrix_rows
     (id, matrix_id, chapter_id, mapped_learning_outcome_id, sort_order)
 VALUES
     ('d5200001-0000-4000-8000-000000000001', 'd5000001-0000-4000-8000-000000000001',
@@ -778,7 +778,7 @@ VALUES
     ('d5200001-0000-4000-8000-000000000004', 'd5000001-0000-4000-8000-000000000002',
      '5e055691-371a-4de5-b61a-f6d06712c36a', '82222222-2222-2222-2222-222222222222', 1);
 
-INSERT INTO exam_matrix_3_cell_relations (row_id, custom_learning_level_id)
+INSERT INTO exam_matrix_cells (row_id, custom_learning_level_id)
 VALUES
     ('d5200001-0000-4000-8000-000000000001', 'd5100001-0000-4000-8000-000000000001'),
     ('d5200001-0000-4000-8000-000000000001', 'd5100001-0000-4000-8000-000000000002'),
@@ -847,25 +847,25 @@ VALUES ('c1111111-1111-1111-1111-111111111111', 7);
 INSERT INTO quiz3_assessments
     (id, course_id, title, description, unlimited, time_limit_minutes, pass_score,
      start_time, due_time, attempt_limited, variant_count, lifecycle_status, current_step,
-     ccct_profile_id, ccct_profile_version, matrix_source_type, matrix2_id, matrix2_version,
+     ccct_profile_id, ccct_profile_version, matrix_id, matrix_version,
      base_confirmed_by, base_confirmed_at, created_by, version, published_by, published_at)
 VALUES
     ('f9000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
      'Quiz3 Student Attempt Demo', 'Published Quiz3 base assessment for student attempt testing.',
      true, NULL, 5.0, NULL, NULL, NULL, 1, 'PUBLISHED', 9,
-     'e1000001-0000-4000-8000-000000000001', 0, 'MATRIX2',
+     'e1000001-0000-4000-8000-000000000001', 0,
      'b3000001-0000-4000-8000-000000000001', 0,
      '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP,
      '11111111-1111-1111-1111-111111111111', 1,
      '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP);
 
 INSERT INTO quiz3_generation_jobs
-    (id, assessment_id, course_id, matrix_source_type, matrix2_id, matrix2_version,
+    (id, assessment_id, course_id, matrix_id, matrix_version,
      requested_by, request_snapshot, payload_hash, idempotency_key, status, phase,
      attempt_count, generated_question_count, total_question_count, completed_at)
 VALUES
     ('f9000001-0000-4000-8000-000000000002', 'f9000001-0000-4000-8000-000000000001',
-     'c1111111-1111-1111-1111-111111111111', 'MATRIX2',
+     'c1111111-1111-1111-1111-111111111111',
      'b3000001-0000-4000-8000-000000000001', 0,
      '11111111-1111-1111-1111-111111111111',
      CAST('{"matrix":{"rows":[{"id":"b3000021-0000-4000-8000-000000000001","learningOutcome":{"id":"81111111-1111-1111-1111-111111111111"},"cells":[{"customLearningLevelId":"b3000011-0000-4000-8000-000000000002","questionCount":1}]},{"id":"b3000021-0000-4000-8000-000000000002","learningOutcome":{"id":"84444444-4444-4444-4444-444444444444"},"cells":[{"customLearningLevelId":"b3000011-0000-4000-8000-000000000003","questionCount":2}]}]}}' AS jsonb),
@@ -943,7 +943,7 @@ VALUES
     ('f9000001-0000-4000-8000-000000000013', '84444444-4444-4444-4444-444444444444');
 
 INSERT INTO quiz3_question_provenance
-    (question_id, generation_job_id, matrix2_row_id, matrix2_custom_learning_level_id,
+    (question_id, generation_job_id, matrix_row_id, matrix_custom_learning_level_id,
      learning_outcome_id, allocation_snapshot)
 VALUES
     ('f9000001-0000-4000-8000-000000000011', 'f9000001-0000-4000-8000-000000000002',

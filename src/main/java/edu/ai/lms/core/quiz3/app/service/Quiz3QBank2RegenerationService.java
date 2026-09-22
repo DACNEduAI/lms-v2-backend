@@ -234,13 +234,11 @@ public class Quiz3QBank2RegenerationService {
 
     private Map<String, Object> requestPayload(UUID courseId, UUID assessmentId, UUID questionId, List<Example> examples) {
         Map<String, Object> metadata = jdbc.query("""
-                SELECT COALESCE(c2.title,c3.title),COALESCE(lo.prefix_number::text || ' - ' || lo.description,lo.description),COALESCE(l2.name,l3.name),
-                       COALESCE(p.matrix2_row_id,p.matrix3_row_id),p.learning_outcome_id,COALESCE(p.matrix2_custom_learning_level_id,p.matrix3_custom_learning_level_id)
+                SELECT c.title,COALESCE(lo.prefix_number::text || ' - ' || lo.description,lo.description),l.name,
+                       p.matrix_row_id,p.learning_outcome_id,p.matrix_custom_learning_level_id
                 FROM edu.quiz3_question_provenance p JOIN edu.learning_outcomes lo ON lo.id=p.learning_outcome_id
-                LEFT JOIN edu.exam_matrix_2_rows r2 ON r2.id=p.matrix2_row_id LEFT JOIN edu.chapters c2 ON c2.chapter_id=r2.chapter_id
-                LEFT JOIN edu.exam_matrix_3_rows r3 ON r3.id=p.matrix3_row_id LEFT JOIN edu.chapters c3 ON c3.chapter_id=r3.chapter_id
-                LEFT JOIN edu.exam_matrix_2_custom_learning_levels l2 ON l2.id=p.matrix2_custom_learning_level_id
-                LEFT JOIN edu.exam_matrix_3_custom_learning_levels l3 ON l3.id=p.matrix3_custom_learning_level_id WHERE p.question_id=?
+                LEFT JOIN edu.exam_matrix_rows r ON r.id=p.matrix_row_id LEFT JOIN edu.chapters c ON c.chapter_id=r.chapter_id
+                LEFT JOIN edu.exam_matrix_custom_learning_levels l ON l.id=p.matrix_custom_learning_level_id WHERE p.question_id=?
         """, rs -> rs.next() ? Map.of("chapter", rs.getString(1), "learningOutcome", rs.getString(2), "customLearningLevel", rs.getString(3),
                 "matrixRowId", String.valueOf(rs.getObject(4)), "learningOutcomeId", String.valueOf(rs.getObject(5)), "customLearningLevelId", String.valueOf(rs.getObject(6))) : null, questionId);
         if (metadata == null) throw badRequest("Question provenance is missing");
