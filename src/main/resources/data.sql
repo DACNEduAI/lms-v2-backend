@@ -1231,4 +1231,105 @@ VALUES
      '84444444-4444-4444-4444-444444444444',
      CAST('{"matrixRowId":"b3000021-0000-4000-8000-000000000002","customLearningLevelId":"b3000011-0000-4000-8000-000000000003","learningOutcomeId":"84444444-4444-4444-4444-444444444444"}' AS jsonb));
 
+-- 21. Published mixed practice quiz. This is intentionally separate from the
+-- legacy Quiz 1 Code Runner fixture so students can exercise a complete quiz
+-- containing both a conventional question and an executable-code question.
+INSERT INTO quizzes
+    (id, quiz_title, description, unlimited, time_limit_minutes, pass_score,
+     attempt_limited, course_id, teacher_id, display, lifecycle_status,
+     source_type, version, published_by, published_at)
+VALUES
+    ('f9100001-0000-4000-8000-000000000001', 'DSA Practice: Arrays and Functions',
+     'A mixed practice quiz with a multiple-choice question and a C++17 Code Runner exercise.',
+     true, NULL, 5.0, NULL, 'c1111111-1111-1111-1111-111111111111',
+     '11111111-1111-1111-1111-111111111111', true, 'PUBLISHED', 'MANUAL', 1,
+     '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP);
+
+INSERT INTO questions
+    (id, content, content_format, explanation, explanation_format, type, quiz_id,
+     review_status, source_type, order_index)
+VALUES
+    ('f9100001-0000-4000-8000-000000000011',
+     'Which time complexity describes accessing an array element by a valid index?',
+     'PLAIN_TEXT', 'An array address is calculated directly from its base address and index.',
+     'PLAIN_TEXT', 'MULTIPLE_CHOICE', 'f9100001-0000-4000-8000-000000000001',
+     'APPROVED', 'MANUAL', 0),
+    ('f9100001-0000-4000-8000-000000000012',
+     'Implement multiply(a, b), which returns the product of two integers.',
+     'PLAIN_TEXT', 'Return the multiplication of the two integer parameters.',
+     'PLAIN_TEXT', 'CODE_RUNNER', 'f9100001-0000-4000-8000-000000000001',
+     'APPROVED', 'MANUAL', 1);
+
+INSERT INTO answers (content, content_format, is_correct, explanation, explanation_format, question_id)
+VALUES
+    ('O(1)', 'PLAIN_TEXT', true, 'Indexed array access is constant time.', 'PLAIN_TEXT', 'f9100001-0000-4000-8000-000000000011'),
+    ('O(log n)', 'PLAIN_TEXT', false, 'Logarithmic time is typical of operations such as binary search.', 'PLAIN_TEXT', 'f9100001-0000-4000-8000-000000000011'),
+    ('O(n)', 'PLAIN_TEXT', false, 'A sequential scan is linear, unlike direct indexed access.', 'PLAIN_TEXT', 'f9100001-0000-4000-8000-000000000011'),
+    ('O(n log n)', 'PLAIN_TEXT', false, 'This is commonly associated with efficient comparison sorting.', 'PLAIN_TEXT', 'f9100001-0000-4000-8000-000000000011');
+
+INSERT INTO quiz_chapters (quiz_id, chapter_id)
+VALUES ('f9100001-0000-4000-8000-000000000001', '5e055691-371a-4de5-b61a-f6d06712c36a');
+
+INSERT INTO quiz_learning_outcomes (quiz_id, learning_outcome_id)
+VALUES
+    ('f9100001-0000-4000-8000-000000000001', '81111111-1111-1111-1111-111111111111'),
+    ('f9100001-0000-4000-8000-000000000001', '82222222-2222-2222-2222-222222222222');
+
+INSERT INTO question_learning_outcomes (question_id, learning_outcome_id)
+VALUES
+    ('f9100001-0000-4000-8000-000000000011', '81111111-1111-1111-1111-111111111111'),
+    ('f9100001-0000-4000-8000-000000000012', '82222222-2222-2222-2222-222222222222');
+
+INSERT INTO quiz_releases (id, quiz_id, release_number, quiz_version, active, published_by, published_at)
+VALUES
+    ('f9100001-0000-4000-8000-000000000021', 'f9100001-0000-4000-8000-000000000001',
+     1, 1, true, '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP);
+
+INSERT INTO code_runner_configs
+    (id, question_id, schema_version, contract_id, contract_version, contract_status,
+     title, statement, execution_profile_id, execution_profile_version, archetype_id,
+     archetype_version, comparator_id, comparator_version, entry_point, signature_json,
+     starter_code, reference_solution, revision)
+VALUES
+    ('f9100001-0000-4000-8000-000000000022', 'f9100001-0000-4000-8000-000000000012',
+     '2.0.0', 'multiply_two_integers', '1.0.0', 'VERIFIED_EXECUTION_GOLD',
+     'Multiply two integers', 'Write a function that takes integers a and b and returns a multiplied by b.',
+     'dsa_cpp17', '1.0.0', 'scalar_function', '1.0.0', 'exact_typed', '1.0.0', 'multiply',
+     '{"return_fixture":{"id":"integer","version":"1.0.0"},"arguments":[{"name":"a","fixture":{"id":"integer","version":"1.0.0"},"constraints":{}},{"name":"b","fixture":{"id":"integer","version":"1.0.0"},"constraints":{}}]}'::jsonb,
+     'int multiply(int a, int b) {\n    // Write your code here\n    return 0;\n}',
+     'int multiply(int a, int b) {\n    return a * b;\n}', 1);
+
+INSERT INTO code_runner_test_cases
+    (id, code_runner_config_id, external_test_id, category, visibility, arguments_json,
+     expected_output_json, points, ordinal)
+VALUES
+    ('f9100001-0000-4000-8000-000000000031', 'f9100001-0000-4000-8000-000000000022',
+     'public_1', 'basic', 'PUBLIC', '{"a":3,"b":4}'::jsonb, '12'::jsonb, 0.0, 1),
+    ('f9100001-0000-4000-8000-000000000032', 'f9100001-0000-4000-8000-000000000022',
+     'hidden_1', 'negative_operand', 'HIDDEN', '{"a":-5,"b":6}'::jsonb, '-30'::jsonb, 5.0, 2);
+
+-- The fixture records a deterministic successful verification of the reference
+-- solution. Live student execution still runs through Judge0.
+INSERT INTO code_runner_verifications
+    (id, revision_id, verified_by, verified_at, execution_profile, judge0_submission_id,
+     verdict, stdout, stderr, time_ms, memory_kb, wall_time_limit_ms, memory_limit_kb)
+VALUES
+    ('f9100001-0000-4000-8000-000000000041', 'f9100001-0000-4000-8000-000000000022',
+     '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP,
+     '{"id":"dsa_cpp17","version":"1.0.0"}'::jsonb, 'seed-fixture-multiply-reference',
+     'ACCEPTED', '12\n-30', '', 1.0, 1024, 5000, 131072);
+
+INSERT INTO code_runner_verification_cases
+    (id, verification_id, external_test_id, visibility, verdict, time_ms, memory_kb, diagnostic)
+VALUES
+    ('f9100001-0000-4000-8000-000000000051', 'f9100001-0000-4000-8000-000000000041',
+     'public_1', 'PUBLIC', 'ACCEPTED', 1.0, 1024, ''),
+    ('f9100001-0000-4000-8000-000000000052', 'f9100001-0000-4000-8000-000000000041',
+     'hidden_1', 'HIDDEN', 'ACCEPTED', 1.0, 1024, '');
+
+INSERT INTO quiz_release_code_runner_bindings (quiz_release_id, question_id, code_runner_config_id)
+VALUES
+    ('f9100001-0000-4000-8000-000000000021', 'f9100001-0000-4000-8000-000000000012',
+     'f9100001-0000-4000-8000-000000000022');
+
 COMMIT;
