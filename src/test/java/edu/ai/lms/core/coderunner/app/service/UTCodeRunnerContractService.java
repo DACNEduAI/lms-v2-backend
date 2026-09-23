@@ -77,6 +77,8 @@ class UTCodeRunnerContractService {
                 ArgumentCaptor.forClass(ExecutableAssessmentContract.class);
         verify(saveContractPort).saveRevision(org.mockito.ArgumentMatchers.eq(questionId), saved.capture());
         assertThat(saved.getValue().status()).isEqualTo("READY_FOR_REVIEW");
+        assertThat(saved.getValue().runtime().executionLimits())
+                .isEqualTo(new ExecutableAssessmentContract.ExecutionLimits(5_000, 131_072));
         assertThat(response.status()).isEqualTo("READY_FOR_REVIEW");
     }
 
@@ -124,7 +126,8 @@ class UTCodeRunnerContractService {
                 new ExecutableAssessmentContract.VersionedRef("scalar_function", "1.0.0"),
                 new ExecutableAssessmentContract.VersionedRef("exact_typed", "1.0.0"),
                 "isEven", signature, "bool isEven(int value) { return false; }",
-                List.of(publicTest), List.of("\\bsystem\\s*\\("));
+                List.of(publicTest), List.of("\\bsystem\\s*\\("),
+                new ExecutableAssessmentContract.ExecutionLimits(5_000, 131_072));
         return new ExecutableAssessmentContract(
                 "2.0.0", "is_even_v1", "1.0.0", status, "Even number",
                 "Return true when the integer is even.", runtime,

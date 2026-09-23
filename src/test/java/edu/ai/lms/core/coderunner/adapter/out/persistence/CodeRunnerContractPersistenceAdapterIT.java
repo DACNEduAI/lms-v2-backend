@@ -38,10 +38,20 @@ class CodeRunnerContractPersistenceAdapterIT extends IntegrationTestConfiguratio
 
         assertThat(configId).isNotNull();
         assertThat(reloaded).isEqualTo(contract);
+        assertThat(reloaded.runtime().executionLimits())
+                .isEqualTo(new ExecutableAssessmentContract.ExecutionLimits(5_000, 131_072));
         assertThat(jdbc.queryForObject(
                 "SELECT count(*) FROM edu.code_runner_configs WHERE question_id = ?",
                 Integer.class,
                 questionId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "SELECT wall_time_limit_ms FROM edu.code_runner_configs WHERE question_id = ?",
+                Integer.class,
+                questionId)).isEqualTo(5_000);
+        assertThat(jdbc.queryForObject(
+                "SELECT memory_limit_kb FROM edu.code_runner_configs WHERE question_id = ?",
+                Integer.class,
+                questionId)).isEqualTo(131_072);
         assertThat(jdbc.queryForObject(
                 "SELECT count(*) FROM edu.code_runner_test_cases WHERE code_runner_config_id = ?",
                 Integer.class,
@@ -77,7 +87,7 @@ class CodeRunnerContractPersistenceAdapterIT extends IntegrationTestConfiguratio
     }
 
     @Test
-    void onlyMarksTheExactLatestReviewRevisionAsVerified() {
+    void onlyMarksTheLatestRevisionAndAllowsItsReverification() {
         UUID teacherId = UUID.randomUUID();
         UUID courseId = UUID.randomUUID();
         UUID quizId = UUID.randomUUID();
@@ -89,7 +99,7 @@ class CodeRunnerContractPersistenceAdapterIT extends IntegrationTestConfiguratio
 
         assertThat(adapter.markVerified(questionId, firstConfigId)).isFalse();
         assertThat(adapter.markVerified(questionId, latestConfigId)).isTrue();
-        assertThat(adapter.markVerified(questionId, latestConfigId)).isFalse();
+        assertThat(adapter.markVerified(questionId, latestConfigId)).isTrue();
         assertThat(adapter.findLatestByQuestionId(questionId).orElseThrow().status())
                 .isEqualTo("VERIFIED_EXECUTION_GOLD");
     }
@@ -141,7 +151,8 @@ class CodeRunnerContractPersistenceAdapterIT extends IntegrationTestConfiguratio
                 signature,
                 "bool isEven(int value) { return false; }",
                 List.of(publicTest),
-                List.of("\\bsystem\\s*\\("));
+                List.of("\\bsystem\\s*\\("),
+                new ExecutableAssessmentContract.ExecutionLimits(5_000, 131_072));
         return new ExecutableAssessmentContract(
                 "2.0.0",
                 "is_even_v1",

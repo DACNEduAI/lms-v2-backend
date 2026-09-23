@@ -138,7 +138,11 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
                           "arguments": { "value": 2 }, "expected_output": true, "points": 0.0
                         }
                       ],
-                      "banned_api_patterns": []
+                      "banned_api_patterns": [],
+                      "execution_limits": {
+                        "wall_time_limit_ms": 5000,
+                        "memory_limit_kb": 131072
+                      }
                     },
                     "private_grading": {
                       "reference_solution": "bool isEven(int value) { return value %% 2 == 0; }",
@@ -200,6 +204,15 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(5)
+    void studentCannotReadTeacherOnlyContractWithHiddenTests() {
+        given().header("Authorization", "Bearer " + studentToken)
+                .get("/api/courses/{courseId}/quizzes/{quizId}/questions/{questionId}/code-runner",
+                        courseId, quizId, quizQuestionId)
+                .then().statusCode(403);
+    }
+
+    @Test
+    @Order(6)
     void verifyCodeRunner() {
         when(codeExecutionEngine.submit(any())).thenReturn(new ExecutionTicket("dummy-token"));
         when(codeExecutionEngine.getResult(any())).thenReturn(
@@ -213,10 +226,17 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
                 .post("/api/courses/{courseId}/quizzes/{quizId}/questions/{questionId}/code-runner/verify", courseId, quizId, quizQuestionId)
                 .then().log().all().statusCode(200)
                 .body("passed", equalTo(true));
+
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT wall_time_limit_ms FROM edu.code_runner_configs WHERE question_id = ? ORDER BY revision DESC LIMIT 1",
+                Integer.class, quizQuestionId)).isEqualTo(5_000);
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "SELECT memory_limit_kb FROM edu.code_runner_configs WHERE question_id = ? ORDER BY revision DESC LIMIT 1",
+                Integer.class, quizQuestionId)).isEqualTo(131_072);
     }
 
     @Test
-    @Order(6)
+    @Order(7)
     void publishQuiz() {
         given().contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + teacherToken)
@@ -227,7 +247,7 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(7)
+    @Order(8)
     void pendingSubmissionFinalizesWhenCompletionEventArrives() {
         attemptId = UUID.fromString(given().contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + studentToken)
@@ -302,7 +322,7 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(8)
+    @Order(9)
     void teacherCanInspectAndRegradeTheSelectedSubmissionWithoutDoubleScoring() {
         given().header("Authorization", "Bearer " + teacherToken)
                 .get("/api/courses/{courseId}/quizzes/{quizId}/questions/{questionId}/code-runner/submissions",
@@ -343,7 +363,7 @@ class CodeRunnerE2EIT extends IntegrationTestConfiguration {
     }
 
     @Test
-    @Order(9)
+    @Order(10)
     void recoveryFinalizesWhenTheCompletionEventWasLost() {
         recoveryAttemptId = UUID.fromString(given().contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + studentToken)

@@ -116,7 +116,8 @@ class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
                          {"name":"b","fixture":{"id":"integer","version":"1.0.0"},"constraints":{}}]},
                        "starter_code":"int sum(int a, int b) { return 0; }",
                        "public_tests":[{"id":"public_1","category":"example","visibility":"PUBLIC",
-                         "arguments":{"a":1,"b":2},"expected_output":3,"points":0}],"banned_api_patterns":[]},
+                         "arguments":{"a":1,"b":2},"expected_output":3,"points":0}],"banned_api_patterns":[],
+                       "execution_limits":{"wall_time_limit_ms":5000,"memory_limit_kb":131072}},
                      "private_grading":{"reference_solution":"int sum(int a, int b) { return a + b; }",
                        "hidden_tests":[{"id":"hidden_1","category":"negative","visibility":"HIDDEN",
                          "arguments":{"a":-2,"b":1},"expected_output":-1,"points":2}]}}
@@ -138,6 +139,10 @@ class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
                 .isZero();
         assertThat(jdbc.queryForObject("SELECT contract_status FROM edu.code_runner_configs WHERE question_id=?", String.class, baseQuestionId))
                 .isEqualTo("READY_FOR_REVIEW");
+        assertThat(jdbc.queryForObject("SELECT wall_time_limit_ms FROM edu.code_runner_configs WHERE question_id=?", Integer.class, baseQuestionId))
+                .isEqualTo(5_000);
+        assertThat(jdbc.queryForObject("SELECT memory_limit_kb FROM edu.code_runner_configs WHERE question_id=?", Integer.class, baseQuestionId))
+                .isEqualTo(131_072);
 
         when(engine.submit(any())).thenReturn(new ExecutionTicket("judge0-ticket"));
         when(engine.getResult(any())).thenReturn(
@@ -165,6 +170,12 @@ class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
         assertThat(jdbc.queryForObject("""
                 SELECT contract_status FROM edu.code_runner_configs WHERE question_id=? ORDER BY revision DESC LIMIT 1
                 """, String.class, studentQuestionId)).isEqualTo("VERIFIED_EXECUTION_GOLD");
+        assertThat(jdbc.queryForObject("""
+                SELECT wall_time_limit_ms FROM edu.code_runner_configs WHERE question_id=? ORDER BY revision DESC LIMIT 1
+                """, Integer.class, studentQuestionId)).isEqualTo(5_000);
+        assertThat(jdbc.queryForObject("""
+                SELECT memory_limit_kb FROM edu.code_runner_configs WHERE question_id=? ORDER BY revision DESC LIMIT 1
+                """, Integer.class, studentQuestionId)).isEqualTo(131_072);
 
         given().header("Authorization", "Bearer " + teacherToken)
                 .post("/api/courses/{courseId}/quiz3/assessments/{assessmentId}/publish", courseId, assessmentId)
@@ -224,9 +235,10 @@ class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
         jdbc.update("INSERT INTO edu.exam_matrix_2_cell_counts(row_id,custom_learning_level_id,question_count,question_type) VALUES(?,?,1,'CODE_RUNNER')",
                 rowId, levelId);
         jdbc.update("""
-                INSERT INTO edu.materials(id,title,type,file_key,status,ingestion_status,course_id)
-                VALUES (?,?, 'PDF', ?, 'UPLOADED', 'READY', ?)
-                """, UUID.randomUUID(), "Ready source", "quiz3-retry-" + UUID.randomUUID(), courseId);
+                INSERT INTO edu.materials(id,title,original_file_name,type,file_key,status,ingestion_status,course_id)
+                VALUES (?,?,?, 'PDF', ?, 'UPLOADED', 'READY', ?)
+                """, UUID.randomUUID(), "Ready source", "ready-source.pdf",
+                "quiz3-retry-" + UUID.randomUUID(), courseId);
 
         UUID assessmentId = UUID.randomUUID(), failedJobId = UUID.randomUUID();
         jdbc.update("""
