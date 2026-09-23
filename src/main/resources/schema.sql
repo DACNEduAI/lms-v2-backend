@@ -134,7 +134,10 @@ CREATE TABLE IF NOT EXISTS image_assets
     original_file_name VARCHAR(255) NOT NULL,
     content_type VARCHAR(100) NOT NULL CHECK (content_type IN ('image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp')),
     byte_size BIGINT NOT NULL DEFAULT 0,
-    storage_key VARCHAR(1024) NOT NULL UNIQUE
+    storage_key VARCHAR(1024) NOT NULL UNIQUE,
+    pending_original_file_name VARCHAR(255),
+    pending_content_type VARCHAR(100) CHECK (pending_content_type IS NULL OR pending_content_type IN ('image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp')),
+    pending_storage_key VARCHAR(1024) UNIQUE
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_material_uploaded_original_file_name_per_course

@@ -34,13 +34,14 @@ public class ImageAssetService {
     @Transactional
     public UploadCreated create(UUID courseId, CreateImage input) {
         access.requireCourseTeacher(courseId);
-        validate(input);
+        validateMetadata(input.name(), input.description(), input.prompt(), input.purpose(), input.tags());
+        validateImageFile(input.originalFileName(), input.contentType());
         UUID id = UUID.randomUUID();
         String contentType = normalizeContentType(input.contentType());
         String extension = extension(input.originalFileName(), contentType);
         Asset asset = new Asset(id, courseId, Asset.Type.IMAGE, input.name().trim(), input.description().trim(), blankToNull(input.prompt()),
                 input.purpose().trim(), normalizeTags(input.tags()), Asset.PublicationStatus.DRAFT, Asset.UploadStatus.PENDING, LocalDateTime.now(), LocalDateTime.now());
-        ImageAsset saved = assets.createImage(new ImageAsset(asset, input.originalFileName().trim(), contentType, 0, "courses/" + courseId + "/assets/" + id + "/source." + extension));
+        ImageAsset saved = assets.createImage(new ImageAsset(asset, input.originalFileName().trim(), contentType, 0, "courses/" + courseId + "/assets/" + id + "/source." + extension, null));
         return new UploadCreated(saved, storage.createUploadLink(saved.storageKey(), contentType));
     }
 
@@ -52,10 +53,10 @@ public class ImageAssetService {
         Asset updated = image.asset();
         if (!object.exists() || object.contentLength() <= 0 || object.contentLength() > MAX_BYTES || !sameContentType(image.contentType(), object.contentType())) {
             updated = new Asset(updated.id(), updated.courseId(), updated.type(), updated.name(), updated.description(), updated.prompt(), updated.purpose(), updated.tags(), updated.publicationStatus(), Asset.UploadStatus.FAILED, updated.createdAt(), LocalDateTime.now());
-            return assets.saveImage(new ImageAsset(updated, image.originalFileName(), image.contentType(), 0, image.storageKey()));
+            return assets.saveImage(withAsset(image, updated, 0));
         }
         updated = new Asset(updated.id(), updated.courseId(), updated.type(), updated.name(), updated.description(), updated.prompt(), updated.purpose(), updated.tags(), updated.publicationStatus(), Asset.UploadStatus.UPLOADED, updated.createdAt(), LocalDateTime.now());
-        return assets.saveImage(new ImageAsset(updated, image.originalFileName(), image.contentType(), object.contentLength(), image.storageKey()));
+        return assets.saveImage(withAsset(image, updated, object.contentLength()));
     }
 
     @Transactional
@@ -64,7 +65,53 @@ public class ImageAssetService {
         ImageAsset image = require(courseId, assetId);
         if (image.asset().uploadStatus() != Asset.UploadStatus.UPLOADED) throw new AssetValidationException("Only uploaded images can be published");
         Asset a = image.asset();
-        return assets.saveImage(new ImageAsset(new Asset(a.id(), a.courseId(), a.type(), a.name(), a.description(), a.prompt(), a.purpose(), a.tags(), status, a.uploadStatus(), a.createdAt(), LocalDateTime.now()), image.originalFileName(), image.contentType(), image.byteSize(), image.storageKey()));
+        return assets.saveImage(withAsset(image, new Asset(a.id(), a.courseId(), a.type(), a.name(), a.description(), a.prompt(), a.purpose(), a.tags(), status, a.uploadStatus(), a.createdAt(), LocalDateTime.now()), image.byteSize()));
+    }
+
+    @Transactional
+    public ImageAsset update(UUID courseId, UUID assetId, UpdateImage input) {
+        access.requireCourseTeacher(courseId);
+        validateMetadata(input.name(), input.description(), input.prompt(), input.purpose(), input.tags());
+        ImageAsset image = require(courseId, assetId);
+        Asset current = image.asset();
+        Asset updated = new Asset(current.id(), current.courseId(), current.type(), input.name().trim(), input.description().trim(), blankToNull(input.prompt()), input.purpose().trim(), normalizeTags(input.tags()), current.publicationStatus(), current.uploadStatus(), current.createdAt(), LocalDateTime.now());
+        return assets.saveImage(withAsset(image, updated, image.byteSize()));
+    }
+
+    @Transactional
+    public ReplacementUpload beginReplacement(UUID courseId, UUID assetId, ReplacementImage input) {
+        access.requireCourseTeacher(courseId);
+        validateImageFile(input.originalFileName(), input.contentType());
+        ImageAsset image = require(courseId, assetId);
+        if (image.asset().uploadStatus() != Asset.UploadStatus.UPLOADED) throw new AssetValidationException("Only uploaded images can be replaced");
+        if (image.pendingReplacement() != null) {
+            try { storage.delete(image.pendingReplacement().storageKey()); } catch (RuntimeException ignored) { }
+        }
+        String contentType = normalizeContentType(input.contentType());
+        String pendingKey = "courses/" + courseId + "/assets/" + assetId + "/replacements/" + UUID.randomUUID() + "/source." + extension(input.originalFileName(), contentType);
+        ImageAsset.PendingReplacement pending = new ImageAsset.PendingReplacement(input.originalFileName().trim(), contentType, pendingKey);
+        ImageAsset staged = new ImageAsset(image.asset(), image.originalFileName(), image.contentType(), image.byteSize(), image.storageKey(), pending);
+        assets.saveImage(staged);
+        return new ReplacementUpload(storage.createUploadLink(pendingKey, contentType));
+    }
+
+    @Transactional
+    public ImageAsset confirmReplacement(UUID courseId, UUID assetId) {
+        access.requireCourseTeacher(courseId);
+        ImageAsset image = require(courseId, assetId);
+        ImageAsset.PendingReplacement pending = image.pendingReplacement();
+        if (pending == null) throw new AssetValidationException("No image replacement is pending");
+        StoredObjectMetadata object = storage.inspect(pending.storageKey());
+        if (!object.exists() || object.contentLength() <= 0 || object.contentLength() > MAX_BYTES || !sameContentType(pending.contentType(), object.contentType())) {
+            try { storage.delete(pending.storageKey()); } catch (RuntimeException ignored) { }
+            assets.saveImage(new ImageAsset(image.asset(), image.originalFileName(), image.contentType(), image.byteSize(), image.storageKey(), null));
+            throw new AssetValidationException("Invalid replacement image upload");
+        }
+        Asset current = image.asset();
+        Asset updated = new Asset(current.id(), current.courseId(), current.type(), current.name(), current.description(), current.prompt(), current.purpose(), current.tags(), current.publicationStatus(), current.uploadStatus(), current.createdAt(), LocalDateTime.now());
+        ImageAsset promoted = assets.saveImage(new ImageAsset(updated, pending.originalFileName(), pending.contentType(), object.contentLength(), pending.storageKey(), null));
+        try { storage.delete(image.storageKey()); } catch (RuntimeException ignored) { }
+        return promoted;
     }
 
     @Transactional
@@ -78,7 +125,9 @@ public class ImageAssetService {
     @Transactional(readOnly = true)
     public String downloadUrl(UUID courseId, UUID assetId) { access.requireCourseTeacher(courseId); return storage.createDownloadLink(require(courseId, assetId).storageKey()); }
     private ImageAsset require(UUID courseId, UUID assetId) { return assets.findImage(courseId, assetId).orElseThrow(() -> new AssetNotFoundException("Image asset not found")); }
-    private static void validate(CreateImage i) { if (i.name() == null || i.name().isBlank() || i.name().trim().length() > 255 || i.description() == null || i.description().isBlank() || i.description().trim().length() > 1000 || i.purpose() == null || i.purpose().isBlank() || i.originalFileName() == null || i.originalFileName().isBlank() || !CONTENT_TYPES.contains(normalizeContentType(i.contentType())) || !validExtension(i.originalFileName(), normalizeContentType(i.contentType()))) throw new AssetValidationException("Invalid image asset metadata"); }
+    private static ImageAsset withAsset(ImageAsset image, Asset asset, long byteSize) { return new ImageAsset(asset, image.originalFileName(), image.contentType(), byteSize, image.storageKey(), image.pendingReplacement()); }
+    private static void validateMetadata(String name, String description, String prompt, String purpose, List<String> tags) { if (name == null || name.isBlank() || name.trim().length() > 255 || description == null || description.isBlank() || description.trim().length() > 1000 || prompt != null && prompt.length() > 2000 || purpose == null || purpose.isBlank() || purpose.trim().length() > 255) throw new AssetValidationException("Invalid image asset metadata"); }
+    private static void validateImageFile(String originalFileName, String contentType) { if (originalFileName == null || originalFileName.isBlank() || originalFileName.trim().length() > 255 || !CONTENT_TYPES.contains(normalizeContentType(contentType)) || !validExtension(originalFileName, normalizeContentType(contentType))) throw new AssetValidationException("Invalid image file"); }
     private static String normalizeContentType(String v) { return v == null ? "" : v.trim().toLowerCase(Locale.ROOT); }
     private static boolean sameContentType(String expected, String actual) { return normalizeContentType(expected).equals(normalizeContentType(actual)); }
     private static String extension(String name, String type) { String lower = name.toLowerCase(Locale.ROOT); if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "jpg"; if (lower.endsWith(".gif")) return "gif"; if (lower.endsWith(".svg")) return "svg"; if (lower.endsWith(".webp")) return "webp"; return type.equals("image/png") ? "png" : "bin"; }
@@ -86,5 +135,8 @@ public class ImageAssetService {
     private static String blankToNull(String value) { return value == null || value.isBlank() ? null : value.trim(); }
     private static List<String> normalizeTags(List<String> tags) { return tags == null ? List.of() : tags.stream().filter(t -> t != null && !t.isBlank()).map(t -> t.trim().toLowerCase(Locale.ROOT)).distinct().limit(30).toList(); }
     public record CreateImage(String name, String originalFileName, String contentType, String description, String prompt, String purpose, List<String> tags) {}
+    public record UpdateImage(String name, String description, String prompt, String purpose, List<String> tags) {}
+    public record ReplacementImage(String originalFileName, String contentType) {}
     public record UploadCreated(ImageAsset image, String presignedUploadUrl) {}
+    public record ReplacementUpload(String presignedUploadUrl) {}
 }

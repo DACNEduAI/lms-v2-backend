@@ -11,7 +11,7 @@ interface AssetRepositoryMapper {
     int insertImage(AssetImageRow row);
     List<AssetImageRow> findImages(@Param("courseId") UUID courseId);
     AssetImageRow findImage(@Param("courseId") UUID courseId, @Param("assetId") UUID assetId);
-    int updateAssetLifecycle(AssetImageRow row);
-    int updateImageUploadMetadata(AssetImageRow row);
+    int updateAsset(AssetImageRow row);
+    int updateImage(AssetImageRow row);
     int delete(@Param("courseId") UUID courseId, @Param("assetId") UUID assetId);
 }
