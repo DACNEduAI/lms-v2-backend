@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,7 +38,7 @@ class ImageAssetServiceUT {
     @BeforeEach void setUp() {
         service = new ImageAssetService(assets, access, storage);
         courseId = UUID.randomUUID(); assetId = UUID.randomUUID();
-        when(assets.saveImage(any())).thenAnswer(call -> call.getArgument(0));
+        lenient().when(assets.saveImage(any())).thenAnswer(call -> call.getArgument(0));
     }
 
     @Test void updatesMetadataWithoutChangingPublishedLifecycle() {
@@ -68,8 +69,6 @@ class ImageAssetServiceUT {
     }
 
     @Test void rejectsProseMetadataOverFiveThousandCharacters() {
-        ImageAsset original = image(Asset.PublicationStatus.DRAFT, null);
-        when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(original));
         String tooLong = "x".repeat(5001);
 
         assertThatThrownBy(() -> service.update(courseId, assetId,
