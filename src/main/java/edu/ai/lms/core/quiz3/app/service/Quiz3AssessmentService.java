@@ -195,8 +195,7 @@ public class Quiz3AssessmentService {
         if (materials.isEmpty()) throw conflict("The course has no source materials");
         UUID jobId = UUID.randomUUID();
         ObjectNode snapshot = buildSnapshot(assessment, jobId, materials);
-        int total = snapshot.path("matrix").path("rows").findValuesAsText("questionCount").stream()
-                .mapToInt(Integer::parseInt).sum();
+        int total = generatedQuestionTotal(snapshot);
         String json = toJson(snapshot);
         jdbc.update("""
                 INSERT INTO edu.quiz3_generation_jobs
@@ -444,7 +443,7 @@ public class Quiz3AssessmentService {
     }
 
     private ObjectNode buildSnapshot(AssessmentView assessment,UUID jobId,List<UUID> materialIds){
-        ObjectNode root=objectMapper.createObjectNode(); root.put("jobId",jobId.toString()); root.put("assessmentId",assessment.id().toString()); root.put("contractVersion",2);
+        ObjectNode root=objectMapper.createObjectNode(); root.put("jobId",jobId.toString()); root.put("assessmentId",assessment.id().toString()); root.put("contractVersion",3);
         ObjectNode course=root.putObject("course"); course.put("id",assessment.courseId().toString());
         course.put("name",jdbc.queryForObject("SELECT course_name FROM edu.courses WHERE id=?",String.class,assessment.courseId()));
         UUID matrixId=assessment.matrixId();
@@ -459,7 +458,7 @@ public class Quiz3AssessmentService {
         List<Integer> allocated;
         cells=jdbc.queryForList("""
             SELECT r.id row_id,r.chapter_id,c.title chapter_name,r.mapped_learning_outcome_id lo_id,
-                   lo.prefix_number,lo.description,l.id level_id,l.name level_name,ec.question_count,ec.question_type
+                   lo.prefix_number,lo.description,l.id level_id,l.name level_name,ec.question_count
             FROM edu.exam_matrix_rows r JOIN edu.chapters c ON c.chapter_id=r.chapter_id
             JOIN edu.learning_outcomes lo ON lo.id=r.mapped_learning_outcome_id
             JOIN edu.exam_matrix_cells ec ON ec.row_id=r.id
@@ -470,6 +469,8 @@ public class Quiz3AssessmentService {
         allocated="AUTOMATIC".equals(mode)
                 ? MatrixService.allocate(cells.size(),jdbc.queryForObject("SELECT total_question_count FROM edu.exam_matrices WHERE id=?",Integer.class,matrixId))
                 : cells.stream().map(cell->((Number)cell.get("question_count")).intValue()).toList();
+        Map<UUID,List<MatrixService.AssetCoverage>> coverageByLevel=new HashMap<>();
+        selectedMatrix.customLearningLevels().forEach(level -> coverageByLevel.put(level.id(),level.assetCoverages()));
         Map<UUID,ObjectNode> rowNodes=new LinkedHashMap<>();
         for(int index=0;index<cells.size();index++){
             int count=allocated.get(index); if(count<=0) continue;
@@ -483,7 +484,13 @@ public class Quiz3AssessmentService {
             });
             ObjectNode node=row.withArray("cells").addObject(); node.put("customLearningLevelId",String.valueOf(cell.get("level_id")));
             node.put("customLearningLevelName",String.valueOf(cell.get("level_name"))); node.put("questionCount",count);
-            node.put("questionType",String.valueOf(cell.getOrDefault("question_type","MULTIPLE_CHOICE")));
+            ArrayNode allocations=node.putArray("assetAllocations");
+            for (AssetAllocation allocation : allocateAssetCoverage(count,coverageByLevel.get((UUID)cell.get("level_id")))) {
+                ObjectNode value=allocations.addObject(); value.put("assetType",allocation.assetType());
+                value.put("questionType",allocation.questionType()); value.put("questionCount",allocation.questionCount());
+                value.put("effectiveAssetType",allocation.effectiveAssetType());
+                if (allocation.fallbackReason()!=null) value.put("fallbackReason",allocation.fallbackReason());
+            }
         }
         ArrayNode materials=root.putArray("materialIds"); materialIds.forEach(id->materials.add(id.toString()));
         root.put("idempotencyKey","quiz3-base-"+assessment.id()+"-matrix-"+matrixVersion+"-job-"+jobId); return root;
@@ -501,11 +508,48 @@ public class Quiz3AssessmentService {
         for(int index=0;index<selectedCellCount;index++)counts.add(base+(index<remainder?1:0)); return counts;
     }
 
+    static List<AssetAllocation> allocateAssetCoverage(int total,List<MatrixService.AssetCoverage> coverages){
+        List<MatrixService.AssetType> order=List.of(MatrixService.AssetType.TEXT,MatrixService.AssetType.IMAGE,MatrixService.AssetType.CODE_MCQ,MatrixService.AssetType.CODE_RUNNER);
+        Map<MatrixService.AssetType,Integer> percentages=new HashMap<>();
+        for (MatrixService.AssetCoverage coverage:coverages==null?List.<MatrixService.AssetCoverage>of():coverages) percentages.put(coverage.assetType(),coverage.percentage());
+        List<Integer> counts=new ArrayList<>(); List<Integer> remainders=new ArrayList<>(); int assigned=0;
+        for (MatrixService.AssetType type:order){int scaled=total*percentages.getOrDefault(type,type==MatrixService.AssetType.TEXT?100:0); counts.add(scaled/100); remainders.add(scaled%100); assigned+=scaled/100;}
+        while(assigned<total){int winner=0;for(int index=1;index<remainders.size();index++)if(remainders.get(index)>remainders.get(winner))winner=index;counts.set(winner,counts.get(winner)+1);remainders.set(winner,-1);assigned++;}
+        List<AssetAllocation> result=new ArrayList<>();
+        for(int index=0;index<order.size();index++){String asset=order.get(index).name();String type="CODE_RUNNER".equals(asset)?"CODE_RUNNER":"MULTIPLE_CHOICE";String effective="IMAGE".equals(asset)?"TEXT":asset;result.add(new AssetAllocation(asset,type,counts.get(index),effective,"IMAGE".equals(asset)?"IMAGE_MEDIA_NOT_SUPPORTED":null));}
+        return result;
+    }
+    record AssetAllocation(String assetType,String questionType,int questionCount,String effectiveAssetType,String fallbackReason) { }
+
+    /** Counts only the allocation slots that are sent to the Quiz3 AI pipeline. */
+    static int generatedQuestionTotal(JsonNode snapshot) {
+        int total = 0;
+        for (JsonNode row : snapshot.path("matrix").path("rows")) {
+            for (JsonNode cell : row.path("cells")) {
+                int cellQuota = cell.path("questionCount").asInt(-1);
+                if (cellQuota <= 0) throw badRequest("Quiz3 snapshot cell question count must be greater than zero");
+                int allocated = 0;
+                for (JsonNode allocation : cell.path("assetAllocations")) {
+                    int count = allocation.path("questionCount").asInt(-1);
+                    if (count < 0) throw badRequest("Quiz3 snapshot asset allocation question count cannot be negative");
+                    allocated += count;
+                }
+                if (allocated != cellQuota) {
+                    throw badRequest("Quiz3 snapshot asset allocation total does not match cell question count");
+                }
+                total += allocated;
+            }
+        }
+        return total;
+    }
+
     static void validateCallback(JsonNode snapshot,List<GeneratedQuestion> questions,int total){
         if(questions.size()!=total) throw badRequest("Quiz3 callback total question count does not match snapshot");
         Map<String,Integer> expected=new HashMap<>(),actual=new HashMap<>();
-        for(JsonNode row:snapshot.path("matrix").path("rows")) for(JsonNode cell:row.path("cells"))
-            expected.put(allocationKey(row.path("id").asText(),cell.path("customLearningLevelId").asText(),row.path("learningOutcome").path("id").asText(),cell.path("questionType").asText("MULTIPLE_CHOICE")),cell.path("questionCount").asInt());
+        for(JsonNode row:snapshot.path("matrix").path("rows")) for(JsonNode cell:row.path("cells")) for(JsonNode allocation:cell.path("assetAllocations")) {
+            int count=allocation.path("questionCount").asInt();
+            if(count>0) expected.put(allocationKey(row.path("id").asText(),cell.path("customLearningLevelId").asText(),row.path("learningOutcome").path("id").asText(),allocation.path("assetType").asText(),allocation.path("questionType").asText()),count);
+        }
         for(GeneratedQuestion question:questions){
             if(question.matrixRowId()==null||question.customLearningLevelId()==null||question.learningOutcomeId()==null) throw badRequest("Quiz3 callback provenance is incomplete");
             if("MULTIPLE_CHOICE".equals(question.type())) validateGeneratedAnswers(question.answers());
@@ -513,7 +557,9 @@ public class Quiz3AssessmentService {
                 if(question.answers()!=null&&!question.answers().isEmpty()) throw badRequest("Quiz3 Code Runner callback cannot contain answers");
                 if(question.codeRunnerContract()==null||question.codeRunnerContract().isNull()) throw badRequest("Quiz3 Code Runner callback needs codeRunnerContract");
             } else throw badRequest("Quiz3 accepts only MULTIPLE_CHOICE or CODE_RUNNER");
-            actual.merge(allocationKey(question.matrixRowId().toString(),question.customLearningLevelId().toString(),question.learningOutcomeId().toString(),question.type()),1,Integer::sum);
+            if(question.assetType()==null||question.effectiveAssetType()==null) throw badRequest("Quiz3 callback asset provenance is incomplete");
+            if("IMAGE".equals(question.assetType()) && !"TEXT".equals(question.effectiveAssetType())) throw badRequest("Quiz3 IMAGE questions must use the text fallback");
+            actual.merge(allocationKey(question.matrixRowId().toString(),question.customLearningLevelId().toString(),question.learningOutcomeId().toString(),question.assetType(),question.type()),1,Integer::sum);
         }
         if(!expected.equals(actual)) throw badRequest("Quiz3 callback distribution does not match the matrix snapshot");
     }
@@ -536,11 +582,11 @@ public class Quiz3AssessmentService {
         List<String> exampleIds=reference==null?List.of():reference.path("example").hasNonNull("id")?List.of(reference.path("example").path("id").asText()):List.of();
         jdbc.update("""
                 INSERT INTO edu.quiz3_question_provenance(question_id,generation_job_id,matrix_row_id,matrix_custom_learning_level_id,
-                    learning_outcome_id,source_question_id,allocation_snapshot,
+                    learning_outcome_id,source_question_id,allocation_snapshot,requested_asset_type,effective_asset_type,asset_fallback_reason,
                     qbank2_selection_mode,qbank2_content_group_ids,qbank2_content_group_codes,qbank2_example_ids,qbank2_reference_snapshot)
-                VALUES (?,?,?,?,?,?,CAST(? AS jsonb),?,CAST(? AS jsonb),CAST(? AS jsonb),CAST(? AS jsonb),CAST(? AS jsonb))
+                VALUES (?,?,?,?,?,?,CAST(? AS jsonb),?,?,?, ?,CAST(? AS jsonb),CAST(? AS jsonb),CAST(? AS jsonb),CAST(? AS jsonb))
                 """,id,jobId,source.matrixRowId(),source.customLearningLevelId(),source.learningOutcomeId(),sourceQuestionId,
-                toJson(Map.of("matrixRowId",source.matrixRowId(),"customLearningLevelId",source.customLearningLevelId(),"learningOutcomeId",source.learningOutcomeId())),
+                toJson(Map.of("matrixRowId",source.matrixRowId(),"customLearningLevelId",source.customLearningLevelId(),"learningOutcomeId",source.learningOutcomeId(),"assetType",source.assetType(),"effectiveAssetType",source.effectiveAssetType())),source.assetType(),source.effectiveAssetType(),source.assetFallbackReason(),
                 selectionMode,toJson(groupIds),toJson(groupCodes),toJson(exampleIds),reference==null?null:toJson(source.qbank2Reference()));
     }
 
@@ -560,13 +606,15 @@ public class Quiz3AssessmentService {
         Collections.shuffle(questionIds,new Random(seed));
         for(int index=0;index<questionIds.size();index++){
             UUID sourceId=questionIds.get(index); Map<String,Object> q=jdbc.queryForMap("""
-                    SELECT q.content,q.type,p.generation_job_id,p.matrix_row_id,p.matrix_custom_learning_level_id level_id,p.learning_outcome_id
+                    SELECT q.content,q.type,p.generation_job_id,p.matrix_row_id,p.matrix_custom_learning_level_id level_id,p.learning_outcome_id,
+                           p.requested_asset_type,p.effective_asset_type,p.asset_fallback_reason
                     FROM edu.questions q JOIN edu.quiz3_question_provenance p ON p.question_id=q.id WHERE q.id=?
                     """,sourceId);
             List<GeneratedAnswer> answers=jdbc.query("SELECT content,is_correct,explanation FROM edu.answers WHERE question_id=? ORDER BY answer_number",
                     (rs,row)->new GeneratedAnswer(rs.getString(1),rs.getBoolean(2),rs.getString(3)),sourceId); Collections.shuffle(answers,new Random(seed^index));
             persistQuestion((UUID)q.get("generation_job_id"),quizId,new GeneratedQuestion(String.valueOf(q.get("content")),String.valueOf(q.get("type")),
-                    (UUID)q.get("matrix_row_id"),(UUID)q.get("level_id"),(UUID)q.get("learning_outcome_id"),answers,null,null),index,sourceId);
+                    (UUID)q.get("matrix_row_id"),(UUID)q.get("level_id"),(UUID)q.get("learning_outcome_id"),answers,null,null,
+                    String.valueOf(q.get("requested_asset_type")),String.valueOf(q.get("effective_asset_type")),(String)q.get("asset_fallback_reason")),index,sourceId);
             jdbc.update("""
                     UPDATE edu.quiz3_question_provenance target SET qbank2_selection_mode=source.qbank2_selection_mode,
                         qbank2_content_group_ids=source.qbank2_content_group_ids,qbank2_content_group_codes=source.qbank2_content_group_codes,
@@ -609,15 +657,16 @@ public class Quiz3AssessmentService {
                 """,String.class,assessmentId);
         if(snapshot==null)throw conflict("Quiz3 generation snapshot is missing");
         Map<String,Integer> expected=new LinkedHashMap<>(); JsonNode root=readJson(snapshot);
-        for(JsonNode row:root.path("matrix").path("rows"))for(JsonNode cell:row.path("cells")){
-            expected.put(key(row.path("id").asText(),cell.path("customLearningLevelId").asText(),row.path("learningOutcome").path("id").asText()),cell.path("questionCount").asInt());
+        for(JsonNode row:root.path("matrix").path("rows"))for(JsonNode cell:row.path("cells"))for(JsonNode allocation:cell.path("assetAllocations")){
+            int count=allocation.path("questionCount").asInt();
+            if(count>0) expected.put(allocationKey(row.path("id").asText(),cell.path("customLearningLevelId").asText(),row.path("learningOutcome").path("id").asText(),allocation.path("assetType").asText(),allocation.path("questionType").asText()),count);
         }
         Map<String,Integer> actual=new LinkedHashMap<>();
         jdbc.query("""
-                SELECT p.matrix_row_id,p.matrix_custom_learning_level_id,p.learning_outcome_id,COUNT(*) actual
+                SELECT p.matrix_row_id,p.matrix_custom_learning_level_id,p.learning_outcome_id,p.requested_asset_type,q.type,COUNT(*) actual
                 FROM edu.quiz3_question_provenance p JOIN edu.questions q ON q.id=p.question_id WHERE q.quiz_id=?
-                GROUP BY p.matrix_row_id,p.matrix_custom_learning_level_id,p.learning_outcome_id
-                """,(org.springframework.jdbc.core.RowCallbackHandler)rs->actual.put(key(String.valueOf(rs.getObject(1)),String.valueOf(rs.getObject(2)),String.valueOf(rs.getObject(3))),rs.getInt(4)),quizId);
+                GROUP BY p.matrix_row_id,p.matrix_custom_learning_level_id,p.learning_outcome_id,p.requested_asset_type,q.type
+                """,(org.springframework.jdbc.core.RowCallbackHandler)rs->actual.put(allocationKey(String.valueOf(rs.getObject(1)),String.valueOf(rs.getObject(2)),String.valueOf(rs.getObject(3)),rs.getString(4),rs.getString(5)),rs.getInt(6)),quizId);
         List<Map<String,Object>> differences=coverageDifferences(expected,actual);
         String status=differences.isEmpty()?"COMPLIANT":"DRIFTED";
         jdbc.update("UPDATE edu.quiz3_assessment_variants SET coverage_status=?,coverage_snapshot=CAST(? AS jsonb),updated_at=CURRENT_TIMESTAMP WHERE id=?",
@@ -643,7 +692,7 @@ public class Quiz3AssessmentService {
         if(answers.stream().anyMatch(a->a.content()==null||a.content().isBlank()))throw badRequest("Answers cannot be blank");}
     private static void validateGeneratedAnswers(List<GeneratedAnswer> answers){if(answers==null||answers.size()!=4)throw badRequest("Quiz3 AI must return exactly four initial answers");
         if(answers.stream().filter(GeneratedAnswer::isCorrect).count()!=1)throw badRequest("Quiz3 AI must return exactly one correct answer");}
-    private static String allocationKey(String row,String level,String outcome,String type){return key(row,level,outcome)+"/"+type;}
+    private static String allocationKey(String row,String level,String outcome,String assetType,String questionType){return key(row,level,outcome)+"/"+assetType+"/"+questionType;}
     private UUID baseQuiz(UUID assessmentId){UUID id=jdbc.query("SELECT quiz_id FROM edu.quiz3_assessment_variants WHERE assessment_id=? AND variant_kind='BASE'",rs->rs.next()?rs.getObject(1,UUID.class):null,assessmentId);
         if(id==null)throw conflict("Quiz 001 has not been generated");return id;}
     private UUID resolveCcct(UUID courseId,UUID actor,SourceSelection selection){return switch(selection.mode()){

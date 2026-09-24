@@ -380,9 +380,6 @@ CREATE TABLE IF NOT EXISTS exam_matrix_cells
     row_id                     UUID NOT NULL REFERENCES exam_matrix_rows (id) ON DELETE CASCADE,
     custom_learning_level_id   UUID NOT NULL REFERENCES exam_matrix_custom_learning_levels (id) ON DELETE CASCADE,
     question_count             INTEGER CHECK (question_count >= 0),
-    question_type              VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE',
-    CONSTRAINT exam_matrix_cells_question_type_check
-        CHECK (question_type IN ('MULTIPLE_CHOICE', 'CODE_RUNNER')),
     PRIMARY KEY (row_id, custom_learning_level_id)
 );
 CREATE INDEX IF NOT EXISTS exam_matrices_course_idx ON exam_matrices (course_id);
@@ -1021,6 +1018,9 @@ CREATE TABLE IF NOT EXISTS quiz3_question_provenance (
     qbank2_content_group_codes JSONB NOT NULL DEFAULT '[]'::jsonb,
     qbank2_example_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
     qbank2_reference_snapshot JSONB,
+    requested_asset_type VARCHAR(30) NOT NULL DEFAULT 'TEXT' CHECK (requested_asset_type IN ('TEXT','IMAGE','CODE_MCQ','CODE_RUNNER')),
+    effective_asset_type VARCHAR(30) NOT NULL DEFAULT 'TEXT' CHECK (effective_asset_type IN ('TEXT','IMAGE','CODE_MCQ','CODE_RUNNER')),
+    asset_fallback_reason VARCHAR(255),
     CONSTRAINT quiz3_question_provenance_qbank2_selection_mode_check
         CHECK(qbank2_selection_mode IS NULL OR qbank2_selection_mode IN('AUTO_SELECTED','RAG_FALLBACK','MANUAL_OVERRIDE')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
