@@ -22,6 +22,22 @@ import org.springframework.web.server.ResponseStatusException;
 
 class Quiz3AssessmentServiceValidationUT {
     @Test
+    void formatsGroupedLearningOutcomeWithItsGroupCode() {
+        assertEquals("L.O.1.1 - Define Big O", Quiz3AssessmentService.formatLearningOutcome("L.O.1", 1, "Define Big O"));
+        assertEquals("LO2 - Ungrouped", Quiz3AssessmentService.formatLearningOutcome(null, 2, "Ungrouped"));
+    }
+
+    @Test
+    void serializesQuestionAssetTypesInTheReviewMetadataContract() {
+        var metadata = new Quiz3Models.QuestionMetadata(UUID.randomUUID(), "Chapter", UUID.randomUUID(), "L.O.1.1 - Outcome",
+                UUID.randomUUID(), "Understand", "IMAGE", "TEXT", "AUTO_SELECTED", List.of(), List.of());
+        var json = new ObjectMapper().valueToTree(metadata);
+
+        assertEquals("IMAGE", json.path("requestedAssetType").asText());
+        assertEquals("TEXT", json.path("effectiveAssetType").asText());
+    }
+
+    @Test
     void allocatesEveryAssetBucketByLargestRemainderWithStableTies() {
         var coverages = List.of(
                 new MatrixService.AssetCoverage(MatrixService.AssetType.TEXT, 25),

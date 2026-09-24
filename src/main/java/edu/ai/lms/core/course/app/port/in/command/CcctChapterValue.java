@@ -7,7 +7,6 @@ public record CcctChapterValue(
         UUID id,
         UUID courseChapterId,
         String title,
-        String customContent,
         List<CcctTopicValue> topics) {
 
     public CcctChapterValue {

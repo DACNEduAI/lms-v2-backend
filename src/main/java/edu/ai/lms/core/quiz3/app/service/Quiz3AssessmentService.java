@@ -630,19 +630,27 @@ public class Quiz3AssessmentService {
     private List<QuestionView> questions(UUID quizId){
         return jdbc.query("""
                 SELECT q.id,q.content,q.content_format,q.explanation,q.explanation_format,q.type,q.order_index,q.version,
-                       p.matrix_row_id,c.title,p.learning_outcome_id,lo.prefix_number,lo.description,
-                        p.matrix_custom_learning_level_id,l.name,
+                       p.matrix_row_id,c.title,p.learning_outcome_id,lo.prefix_number,lo.description,glo.code,
+                        p.matrix_custom_learning_level_id,l.name,p.requested_asset_type,p.effective_asset_type,
                         p.qbank2_selection_mode,p.qbank2_content_group_codes::text,p.qbank2_example_ids::text
                 FROM edu.questions q JOIN edu.quiz3_question_provenance p ON p.question_id=q.id
                 LEFT JOIN edu.exam_matrix_rows r ON r.id=p.matrix_row_id LEFT JOIN edu.chapters c ON c.chapter_id=r.chapter_id
                 LEFT JOIN edu.learning_outcomes lo ON lo.id=p.learning_outcome_id
+                LEFT JOIN edu.group_learning_outcomes glo ON glo.id=lo.group_learning_outcome_id AND glo.course_id=lo.course_id
                 LEFT JOIN edu.exam_matrix_custom_learning_levels l ON l.id=p.matrix_custom_learning_level_id
                 WHERE q.quiz_id=? ORDER BY q.order_index,q.id
                 """,(rs,row)->{
-                    Object prefix=rs.getObject(12);String desc=rs.getString(13);String lo=prefix==null?desc:"LO"+prefix+" - "+desc;
+                    Object prefix=rs.getObject(12);String desc=rs.getString(13);String groupCode=rs.getString(14);
+                    String lo=formatLearningOutcome(groupCode,prefix,desc);
                     UUID id=rs.getObject(1,UUID.class);return new QuestionView(id,rs.getString(2),rs.getString(3),rs.getString(4),rs.getString(5),rs.getString(6),
                     rs.getInt(7),rs.getLong(8),new QuestionMetadata(rs.getObject(9,UUID.class),rs.getString(10),rs.getObject(11,UUID.class),lo,
-                     rs.getObject(14,UUID.class),rs.getString(15),rs.getString(16),jsonStrings(rs.getString(17)),jsonUuids(rs.getString(18))),answers(id));},quizId);
+                     rs.getObject(15,UUID.class),rs.getString(16),rs.getString(17),rs.getString(18),rs.getString(19),jsonStrings(rs.getString(20)),jsonUuids(rs.getString(21))),answers(id));},quizId);
+    }
+
+    static String formatLearningOutcome(String groupCode,Object prefix,String description){
+        if(prefix==null)return description;
+        String code=groupCode==null||groupCode.isBlank()?"LO"+prefix:groupCode+"."+prefix;
+        return code+" - "+description;
     }
 
     private List<AnswerView> answers(UUID questionId){return jdbc.query("SELECT answer_number,content,content_format,is_correct FROM edu.answers WHERE question_id=? ORDER BY answer_number",

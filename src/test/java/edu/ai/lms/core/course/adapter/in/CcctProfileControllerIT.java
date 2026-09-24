@@ -47,22 +47,18 @@ class CcctProfileControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(2)
-    void rejectsCrossCourseChapterAndMalformedEnum() {
-        givenOwner().body(createBody("Wrong mapping", otherChapterId, "LEARN_AND_EXAM", "Sort"))
+    void rejectsCrossCourseChapterMapping() {
+        givenOwner().body(createBody("Wrong mapping", otherChapterId, "Sort"))
                 .post(basePath(), courseId)
                 .then().statusCode(400)
                 .body("error", equalTo("Invalid CCCT"));
-
-        givenOwner().body(createBody("Bad enum", chapterId, "EXAM", "Sort"))
-                .post(basePath(), courseId)
-                .then().statusCode(400);
     }
 
     @Test
     @Order(3)
     void createsListsAndGetsDraft() {
         var response = givenOwner()
-                .body(createBody("Midterm CCCT", chapterId, "LEARN_AND_EXAM", "Sorting"))
+                .body(createBody("Midterm CCCT", chapterId, "Sorting"))
                 .post(basePath(), courseId)
                 .then().statusCode(201)
                 .body("courseId", equalTo(courseId.toString()))
@@ -84,7 +80,7 @@ class CcctProfileControllerIT extends IntegrationTestConfiguration {
     @Test
     @Order(4)
     void rejectsDuplicateNameAndStaleUpdateThenUpdatesDraft() {
-        givenOwner().body(createBody("  midterm ccct  ", chapterId, "LEARN_ONLY", "Duplicate"))
+        givenOwner().body(createBody("  midterm ccct  ", chapterId, "Duplicate"))
                 .post(basePath(), courseId)
                 .then().statusCode(409);
 
@@ -102,17 +98,17 @@ class CcctProfileControllerIT extends IntegrationTestConfiguration {
 
     @Test
     @Order(5)
-    void rejectsPublishWithoutExamEligibleItem() {
+    void publishesContentOnlyDraft() {
         UUID learnOnlyDraft = UUID.fromString(givenOwner()
-                .body(createBody("Learning only", chapterId, "LEARN_ONLY", "Reading"))
+                .body(createBody("Content-only", chapterId, "Reading"))
                 .post(basePath(), courseId)
                 .then().statusCode(201)
                 .extract().path("id"));
 
         givenOwner().body("{\"version\":0}")
                 .post(basePath() + "/{profileId}/publish", courseId, learnOnlyDraft)
-                .then().statusCode(400)
-                .body("error", equalTo("Invalid CCCT"));
+                .then().statusCode(200)
+                .body("status", equalTo("PUBLISHED"));
     }
 
     @Test
@@ -176,7 +172,7 @@ class CcctProfileControllerIT extends IntegrationTestConfiguration {
     @Order(9)
     void deletesOnlyDraftAndReturnsNoContent() {
         UUID disposable = UUID.fromString(givenOwner()
-                .body(createBody("Disposable", chapterId, "SKIP", "Out of scope"))
+                .body(createBody("Disposable", chapterId, "Out of scope"))
                 .post(basePath(), courseId)
                 .then().statusCode(201)
                 .extract().path("id"));
@@ -242,9 +238,8 @@ class CcctProfileControllerIT extends IntegrationTestConfiguration {
     private String createBody(
             String name,
             UUID mappedChapterId,
-            String status,
             String content) {
-        return writeBody(null, name, mappedChapterId, status, content);
+        return writeBody(null, name, mappedChapterId, content);
     }
 
     private String updateBody(
@@ -252,14 +247,13 @@ class CcctProfileControllerIT extends IntegrationTestConfiguration {
             String name,
             UUID mappedChapterId,
             String content) {
-        return writeBody(version, name, mappedChapterId, "LEARN_AND_EXAM", content);
+        return writeBody(version, name, mappedChapterId, content);
     }
 
     private String writeBody(
             Long version,
             String name,
             UUID mappedChapterId,
-            String status,
             String content) {
         String versionField = version == null ? "" : "\"version\":" + version + ",";
         String chapterMapping = mappedChapterId == null
@@ -270,9 +264,9 @@ class CcctProfileControllerIT extends IntegrationTestConfiguration {
                  "name":"%s","formatVersion":2,"structuredCurrent":true,
                  "lastMode":"STRUCTURED","markdown":"# CCCT",
                  "template":{"title":"%s","chapters":[
-                   {"id":"%s",%s"title":"Algorithms","customContent":"Source notes","topics":[
+                   {"id":"%s",%s"title":"Algorithms","topics":[
                      {"id":"%s","title":"Sorting","items":[
-                       {"id":"%s","content":"%s","status":"%s","note":""}
+                       {"id":"%s","content":"%s"}
                      ]}
                    ]}
                  ]}}
@@ -284,7 +278,6 @@ class CcctProfileControllerIT extends IntegrationTestConfiguration {
                 chapterMapping,
                 UUID.randomUUID(),
                 UUID.randomUUID(),
-                content,
-                status);
+                content);
     }
 }

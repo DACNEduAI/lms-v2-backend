@@ -117,7 +117,6 @@ class CcctProfilePersistenceAdapter
             CcctChapter chapter = chapters.get(chapterIndex);
             chapter.setId(chapter.getId() == null ? UUID.randomUUID() : chapter.getId());
             chapter.setProfileId(profile.getId());
-            chapter.setCustomContent(chapter.getCustomContent() == null ? "" : chapter.getCustomContent());
             chapter.setOrderIndex(chapterIndex);
             List<CcctTopic> topics = chapter.getTopics() == null
                     ? new ArrayList<>()
@@ -136,7 +135,6 @@ class CcctProfilePersistenceAdapter
                     CcctItem item = items.get(itemIndex);
                     item.setId(item.getId() == null ? UUID.randomUUID() : item.getId());
                     item.setTopicId(topic.getId());
-                    item.setNote(item.getNote() == null ? "" : item.getNote());
                     item.setOrderIndex(itemIndex);
                 }
             }
