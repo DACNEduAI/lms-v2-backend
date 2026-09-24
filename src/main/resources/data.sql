@@ -162,10 +162,10 @@ VALUES
      'a8c06712-6aa5-4993-901b-77008af766d3', '85555555-5555-5555-5555-555555555555', 1);
 
 INSERT INTO exam_matrix_cells
-    (row_id, custom_learning_level_id, question_count, question_type)
+    (row_id, custom_learning_level_id, question_count)
 VALUES
-    ('b3000021-0000-4000-8000-000000000021', 'b3000011-0000-4000-8000-000000000021', 1, 'CODE_RUNNER'),
-    ('b3000021-0000-4000-8000-000000000022', 'b3000011-0000-4000-8000-000000000021', 1, 'CODE_RUNNER');
+    ('b3000021-0000-4000-8000-000000000021', 'b3000011-0000-4000-8000-000000000021', 1),
+    ('b3000021-0000-4000-8000-000000000022', 'b3000011-0000-4000-8000-000000000021', 1);
 
 -- Comprehensive 40-question final exam matrix. Every DSA learning outcome is
 -- represented by one row; the row totals are 6, 6, 6, 6, 6, 5, and 5.

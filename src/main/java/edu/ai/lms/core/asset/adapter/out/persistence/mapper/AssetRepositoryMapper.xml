@@ -20,9 +20,12 @@
     <result property="contentType" column="content_type" />
     <result property="byteSize" column="byte_size" />
     <result property="storageKey" column="storage_key" />
+    <result property="pendingOriginalFileName" column="pending_original_file_name" />
+    <result property="pendingContentType" column="pending_content_type" />
+    <result property="pendingStorageKey" column="pending_storage_key" />
   </resultMap>
 
-  <sql id="imageColumns">a.id, a.course_id, a.type, a.name, a.description, a.prompt, a.purpose, a.tags::text AS tags_json, a.publication_status, a.upload_status, a.created_at, a.updated_at, i.original_file_name, i.content_type, i.byte_size, i.storage_key</sql>
+  <sql id="imageColumns">a.id, a.course_id, a.type, a.name, a.description, a.prompt, a.purpose, a.tags::text AS tags_json, a.publication_status, a.upload_status, a.created_at, a.updated_at, i.original_file_name, i.content_type, i.byte_size, i.storage_key, i.pending_original_file_name, i.pending_content_type, i.pending_storage_key</sql>
 
   <insert id="insertAsset" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
     INSERT INTO edu.assets (id, course_id, type, name, description, prompt, purpose, tags, publication_status, upload_status)
@@ -40,12 +43,12 @@
     SELECT <include refid="imageColumns" /> FROM edu.assets a JOIN edu.image_assets i ON i.asset_id = a.id
     WHERE a.course_id = #{courseId} AND a.id = #{assetId} AND a.type = 'IMAGE'
   </select>
-  <update id="updateAssetLifecycle" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
-    UPDATE edu.assets SET publication_status = #{publicationStatus}, upload_status = #{uploadStatus}, updated_at = CURRENT_TIMESTAMP
+  <update id="updateAsset" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
+    UPDATE edu.assets SET name = #{name}, description = #{description}, prompt = #{prompt}, purpose = #{purpose}, tags = CAST(#{tagsJson} AS jsonb), publication_status = #{publicationStatus}, upload_status = #{uploadStatus}, updated_at = CURRENT_TIMESTAMP
     WHERE id = #{id} AND course_id = #{courseId}
   </update>
-  <update id="updateImageUploadMetadata" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
-    UPDATE edu.image_assets SET content_type = #{contentType}, byte_size = #{byteSize} WHERE asset_id = #{id}
+  <update id="updateImage" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
+    UPDATE edu.image_assets SET original_file_name = #{originalFileName}, content_type = #{contentType}, byte_size = #{byteSize}, storage_key = #{storageKey}, pending_original_file_name = #{pendingOriginalFileName}, pending_content_type = #{pendingContentType}, pending_storage_key = #{pendingStorageKey} WHERE asset_id = #{id}
   </update>
   <delete id="delete">DELETE FROM edu.assets WHERE id = #{assetId} AND course_id = #{courseId}</delete>
 </mapper>

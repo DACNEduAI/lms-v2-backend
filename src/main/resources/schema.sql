@@ -116,9 +116,9 @@ CREATE TABLE IF NOT EXISTS assets
     course_id UUID NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
     type VARCHAR(20) NOT NULL CHECK (type IN ('IMAGE', 'CODE', 'FORMULA')),
     name VARCHAR(255) NOT NULL,
-    description VARCHAR(1000) NOT NULL,
+    description VARCHAR(5000) NOT NULL,
     prompt TEXT,
-    purpose VARCHAR(255) NOT NULL,
+    purpose VARCHAR(5000) NOT NULL,
     tags JSONB NOT NULL DEFAULT '[]'::jsonb,
     publication_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' CHECK (publication_status IN ('DRAFT', 'PUBLISHED')),
     upload_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (upload_status IN ('PENDING', 'UPLOADED', 'FAILED')),
@@ -134,7 +134,10 @@ CREATE TABLE IF NOT EXISTS image_assets
     original_file_name VARCHAR(255) NOT NULL,
     content_type VARCHAR(100) NOT NULL CHECK (content_type IN ('image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp')),
     byte_size BIGINT NOT NULL DEFAULT 0,
-    storage_key VARCHAR(1024) NOT NULL UNIQUE
+    storage_key VARCHAR(1024) NOT NULL UNIQUE,
+    pending_original_file_name VARCHAR(255),
+    pending_content_type VARCHAR(100) CHECK (pending_content_type IS NULL OR pending_content_type IN ('image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp')),
+    pending_storage_key VARCHAR(1024) UNIQUE
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_material_uploaded_original_file_name_per_course
@@ -353,6 +356,16 @@ CREATE TABLE IF NOT EXISTS exam_matrix_custom_learning_levels
     sort_order  INTEGER      NOT NULL CHECK (sort_order >= 0)
 );
 
+-- LMS-only presentation/allocation metadata for a Matrix-owned CLL. Quiz3's
+-- generation snapshot deliberately does not read this table yet.
+CREATE TABLE IF NOT EXISTS exam_matrix_custom_learning_level_asset_coverages
+(
+    custom_learning_level_id UUID        NOT NULL REFERENCES exam_matrix_custom_learning_levels (id) ON DELETE CASCADE,
+    asset_type               VARCHAR(30) NOT NULL CHECK (asset_type IN ('TEXT', 'IMAGE', 'CODE_MCQ', 'CODE_RUNNER')),
+    percentage               INTEGER     NOT NULL CHECK (percentage BETWEEN 0 AND 100),
+    PRIMARY KEY (custom_learning_level_id, asset_type)
+);
+
 CREATE TABLE IF NOT EXISTS exam_matrix_rows
 (
     id                         UUID PRIMARY KEY,
@@ -367,9 +380,6 @@ CREATE TABLE IF NOT EXISTS exam_matrix_cells
     row_id                     UUID NOT NULL REFERENCES exam_matrix_rows (id) ON DELETE CASCADE,
     custom_learning_level_id   UUID NOT NULL REFERENCES exam_matrix_custom_learning_levels (id) ON DELETE CASCADE,
     question_count             INTEGER CHECK (question_count >= 0),
-    question_type              VARCHAR(30) NOT NULL DEFAULT 'MULTIPLE_CHOICE',
-    CONSTRAINT exam_matrix_cells_question_type_check
-        CHECK (question_type IN ('MULTIPLE_CHOICE', 'CODE_RUNNER')),
     PRIMARY KEY (row_id, custom_learning_level_id)
 );
 CREATE INDEX IF NOT EXISTS exam_matrices_course_idx ON exam_matrices (course_id);
@@ -1008,6 +1018,9 @@ CREATE TABLE IF NOT EXISTS quiz3_question_provenance (
     qbank2_content_group_codes JSONB NOT NULL DEFAULT '[]'::jsonb,
     qbank2_example_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
     qbank2_reference_snapshot JSONB,
+    requested_asset_type VARCHAR(30) NOT NULL DEFAULT 'TEXT' CHECK (requested_asset_type IN ('TEXT','IMAGE','CODE_MCQ','CODE_RUNNER')),
+    effective_asset_type VARCHAR(30) NOT NULL DEFAULT 'TEXT' CHECK (effective_asset_type IN ('TEXT','IMAGE','CODE_MCQ','CODE_RUNNER')),
+    asset_fallback_reason VARCHAR(255),
     CONSTRAINT quiz3_question_provenance_qbank2_selection_mode_check
         CHECK(qbank2_selection_mode IS NULL OR qbank2_selection_mode IN('AUTO_SELECTED','RAG_FALLBACK','MANUAL_OVERRIDE')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

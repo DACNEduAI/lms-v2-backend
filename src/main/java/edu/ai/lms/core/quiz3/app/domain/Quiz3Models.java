@@ -11,20 +11,20 @@ public final class Quiz3Models {
     private Quiz3Models() { }
 
     public enum SourceMode { USE_EXISTING, COPY_AS_DRAFT, CREATE_NEW_DRAFT }
-    public enum MatrixSourceType { MATRIX2, MATRIX3 }
+    public enum MatrixMode { MANUAL, AUTOMATIC }
     public record Configuration(String title, String description, Boolean unlimited,
             Integer timeLimitMinutes, Double passScore, LocalDateTime startTime,
             LocalDateTime dueTime, Integer attemptLimited, Integer variantCount) { }
     public record AssessmentView(UUID id, UUID courseId, String title, String description,
             boolean unlimited, Integer timeLimitMinutes, Double passScore, LocalDateTime startTime,
             LocalDateTime dueTime, Integer attemptLimited, int variantCount, String lifecycleStatus,
-            int currentStep, UUID ccctProfileId, Long ccctProfileVersion, MatrixSourceType matrixSourceType,
-            UUID matrix2Id, Long matrix2Version, UUID matrix3Id, Long matrix3Version, UUID baseGenerationJobId, long version,
+            int currentStep, UUID ccctProfileId, Long ccctProfileVersion, UUID matrixId, Long matrixVersion,
+            MatrixMode matrixMode, UUID baseGenerationJobId, long version,
             LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt) { }
-    public record SourceOption(UUID id, String name, String lifecycleStatus, long version, MatrixSourceType matrixSourceType) { }
+    public record SourceOption(UUID id, String name, String lifecycleStatus, long version, MatrixMode matrixMode) { }
     public record ContextView(AssessmentView assessment, List<SourceOption> ccctProfiles,
-            List<SourceOption> matrix2s, List<SourceOption> matrix3s) { }
-    public record SourceSelection(SourceMode mode, UUID sourceId, String draftName, MatrixSourceType matrixSourceType) { }
+            List<SourceOption> matrices) { }
+    public record SourceSelection(SourceMode mode, UUID sourceId, String draftName, MatrixMode matrixMode) { }
     public record ContextSelection(SourceSelection ccct, SourceSelection matrix) { }
     public record SourceVersion(long version) { }
     public record VersionedConfiguration(long version, Configuration configuration) { }
@@ -52,7 +52,14 @@ public final class Quiz3Models {
     public record QuizPayload(String quizName, List<GeneratedQuestion> questions) { }
     public record GeneratedQuestion(String content, String type, UUID matrixRowId,
             UUID customLearningLevelId, UUID learningOutcomeId, List<GeneratedAnswer> answers,
-            Map<String, Object> qbank2Reference, JsonNode codeRunnerContract) { }
+            Map<String, Object> qbank2Reference, JsonNode codeRunnerContract,
+            String assetType, String effectiveAssetType, String assetFallbackReason) {
+        public GeneratedQuestion(String content, String type, UUID matrixRowId,
+                UUID customLearningLevelId, UUID learningOutcomeId, List<GeneratedAnswer> answers,
+                Map<String, Object> qbank2Reference, JsonNode codeRunnerContract) {
+            this(content,type,matrixRowId,customLearningLevelId,learningOutcomeId,answers,qbank2Reference,codeRunnerContract,"TEXT","TEXT",null);
+        }
+    }
     public record GeneratedAnswer(String content, boolean isCorrect, String explanation) { }
     public record ProgressPayload(UUID jobId, UUID assessmentId, int attempt,
             int generatedQuestionCount) { }
