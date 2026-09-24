@@ -116,9 +116,9 @@ CREATE TABLE IF NOT EXISTS assets
     course_id UUID NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
     type VARCHAR(20) NOT NULL CHECK (type IN ('IMAGE', 'CODE', 'FORMULA')),
     name VARCHAR(255) NOT NULL,
-    description VARCHAR(1000) NOT NULL,
+    description VARCHAR(5000) NOT NULL,
     prompt TEXT,
-    purpose VARCHAR(255) NOT NULL,
+    purpose VARCHAR(5000) NOT NULL,
     tags JSONB NOT NULL DEFAULT '[]'::jsonb,
     publication_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' CHECK (publication_status IN ('DRAFT', 'PUBLISHED')),
     upload_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (upload_status IN ('PENDING', 'UPLOADED', 'FAILED')),
@@ -354,6 +354,16 @@ CREATE TABLE IF NOT EXISTS exam_matrix_custom_learning_levels
     matrix_id   UUID         NOT NULL REFERENCES exam_matrices (id) ON DELETE CASCADE,
     name        VARCHAR(255) NOT NULL CHECK (btrim(name) <> ''),
     sort_order  INTEGER      NOT NULL CHECK (sort_order >= 0)
+);
+
+-- LMS-only presentation/allocation metadata for a Matrix-owned CLL. Quiz3's
+-- generation snapshot deliberately does not read this table yet.
+CREATE TABLE IF NOT EXISTS exam_matrix_custom_learning_level_asset_coverages
+(
+    custom_learning_level_id UUID        NOT NULL REFERENCES exam_matrix_custom_learning_levels (id) ON DELETE CASCADE,
+    asset_type               VARCHAR(30) NOT NULL CHECK (asset_type IN ('TEXT', 'IMAGE', 'CODE_MCQ', 'CODE_RUNNER')),
+    percentage               INTEGER     NOT NULL CHECK (percentage BETWEEN 0 AND 100),
+    PRIMARY KEY (custom_learning_level_id, asset_type)
 );
 
 CREATE TABLE IF NOT EXISTS exam_matrix_rows

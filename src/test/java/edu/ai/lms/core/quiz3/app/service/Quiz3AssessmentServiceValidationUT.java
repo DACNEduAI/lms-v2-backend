@@ -5,7 +5,9 @@ import edu.ai.lms.core.quiz3.adapter.out.persistence.Quiz3RichContentAssetReposi
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 import java.util.List;
@@ -32,19 +34,61 @@ class Quiz3AssessmentServiceValidationUT {
     }
 
     @Test
-    void materializesMatrix3RelationsToTheExactStoredTotal() {
+    void materializesAutomaticModeRelationsToTheExactStoredTotal() {
         assertEquals(List.of(3, 3, 3, 3, 3), Quiz3AssessmentService.allocateRelationCounts(5, 15));
         assertEquals(List.of(1, 1, 0, 0, 0), Quiz3AssessmentService.allocateRelationCounts(5, 2));
     }
 
     @Test
-    void buildsQuiz3AiMatrixWithoutTheInternalMatrixType() {
+    void namesAutomaticModeInAllocationValidationErrors() {
+        ResponseStatusException missingRelations = assertThrows(ResponseStatusException.class,
+                () -> Quiz3AssessmentService.allocateRelationCounts(0, 1));
+        ResponseStatusException missingTotal = assertThrows(ResponseStatusException.class,
+                () -> Quiz3AssessmentService.allocateRelationCounts(1, 0));
+
+        assertEquals("Automatic mode needs at least one selected relation", missingRelations.getReason());
+        assertEquals("Automatic mode total question count must be greater than zero", missingTotal.getReason());
+    }
+
+    @Test
+    void buildsQuiz3AiMatrixWithTheUnifiedMatrixContract() {
         UUID matrixId = UUID.randomUUID();
-        ObjectNode matrix = Quiz3AssessmentService.createGenerationMatrix(new ObjectMapper(), matrixId, "Matrix 3");
+        ObjectNode matrix = Quiz3AssessmentService.createGenerationMatrix(new ObjectMapper(), matrixId, "Matrix");
 
         assertEquals(matrixId.toString(), matrix.path("id").asText());
-        assertEquals("Matrix 3", matrix.path("name").asText());
+        assertEquals("Matrix", matrix.path("name").asText());
         assertEquals(false, matrix.has("type"));
+        assertEquals(false, matrix.has("mode"));
+        assertEquals(false, matrix.has("version"));
+        assertFalse(matrix.has("assetCoverages"));
+    }
+
+    @Test
+    void serializesTheUnifiedMatrixAssessmentAndContextContracts() {
+        UUID assessmentId = UUID.randomUUID(), courseId = UUID.randomUUID(), matrixId = UUID.randomUUID();
+        var assessment = new Quiz3Models.AssessmentView(
+                assessmentId, courseId, "Assessment", "", false, null, 10.0,
+                null, null, null, 1, "DRAFT", 1,
+                null, null, matrixId, 4L, Quiz3Models.MatrixMode.MANUAL,
+                null, 2L, null, null, null);
+        var context = new Quiz3Models.ContextView(
+                assessment,
+                List.of(new Quiz3Models.SourceOption(UUID.randomUUID(), "Profile", "PUBLISHED", 3L, null)),
+                List.of(new Quiz3Models.SourceOption(matrixId, "Matrix", "DRAFT", 4L,
+                        Quiz3Models.MatrixMode.MANUAL)));
+
+        var json = new ObjectMapper().valueToTree(context);
+        var assessmentJson = json.path("assessment");
+
+        assertTrue(assessmentJson.has("matrixId"));
+        assertTrue(assessmentJson.has("matrixVersion"));
+        assertTrue(assessmentJson.has("matrixMode"));
+        assertFalse(assessmentJson.has("matrix2Id"));
+        assertFalse(assessmentJson.has("matrix3Id"));
+        assertFalse(assessmentJson.has("matrixSourceType"));
+        assertTrue(json.has("matrices"));
+        assertFalse(json.has("matrix2s"));
+        assertFalse(json.has("matrix3s"));
     }
 
     @Test

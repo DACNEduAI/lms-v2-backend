@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.ai.lms.core.course.adapter.out.persistence.MatrixAssetCoverageRepository">
+  <select id="findByMatrixId" resultType="edu.ai.lms.core.course.adapter.out.persistence.MatrixAssetCoverageRow">
+    SELECT c.custom_learning_level_id AS customLearningLevelId,
+           c.asset_type AS assetType,
+           c.percentage AS percentage
+    FROM edu.exam_matrix_custom_learning_level_asset_coverages c
+    JOIN edu.exam_matrix_custom_learning_levels l ON l.id = c.custom_learning_level_id
+    WHERE l.matrix_id = #{matrixId}
+    ORDER BY l.sort_order, c.asset_type
+  </select>
+
+  <insert id="insert" parameterType="edu.ai.lms.core.course.adapter.out.persistence.MatrixAssetCoverageRow">
+    INSERT INTO edu.exam_matrix_custom_learning_level_asset_coverages
+      (custom_learning_level_id, asset_type, percentage)
+    VALUES (#{customLearningLevelId}, #{assetType}, #{percentage})
+  </insert>
+</mapper>

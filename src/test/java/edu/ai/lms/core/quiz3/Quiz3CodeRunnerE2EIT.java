@@ -67,21 +67,20 @@ class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
                 outcomeId, "Implement a scalar function", courseId);
 
         UUID matrixId = UUID.randomUUID(), rowId = UUID.randomUUID(), levelId = UUID.randomUUID();
-        jdbc.update("INSERT INTO edu.exam_matrices_2(id,course_id,title,lifecycle_status) VALUES(?,?,?,'PUBLISHED')",
+        jdbc.update("INSERT INTO edu.exam_matrices(id,course_id,title,lifecycle_status,mode) VALUES(?,?,?,'PUBLISHED','MANUAL')",
                 matrixId, courseId, "Quiz3 mixed matrix");
-        jdbc.update("INSERT INTO edu.exam_matrix_2_custom_learning_levels(id,matrix_id,name,sort_order) VALUES(?,?,?,0)",
+        jdbc.update("INSERT INTO edu.exam_matrix_custom_learning_levels(id,matrix_id,name,sort_order) VALUES(?,?,?,0)",
                 levelId, matrixId, "Apply");
-        jdbc.update("INSERT INTO edu.exam_matrix_2_rows(id,matrix_id,chapter_id,mapped_learning_outcome_id,sort_order) VALUES(?,?,?,?,0)",
+        jdbc.update("INSERT INTO edu.exam_matrix_rows(id,matrix_id,chapter_id,mapped_learning_outcome_id,sort_order) VALUES(?,?,?,?,0)",
                 rowId, matrixId, chapterId, outcomeId);
-        jdbc.update("INSERT INTO edu.exam_matrix_2_cell_counts(row_id,custom_learning_level_id,question_count,question_type) VALUES(?,?,1,'CODE_RUNNER')",
+        jdbc.update("INSERT INTO edu.exam_matrix_cells(row_id,custom_learning_level_id,question_count,question_type) VALUES(?,?,1,'CODE_RUNNER')",
                 rowId, levelId);
 
         UUID assessmentId = UUID.randomUUID(), jobId = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO edu.quiz3_assessments
-                  (id,course_id,title,unlimited,variant_count,lifecycle_status,current_step,matrix_source_type,
-                   matrix2_id,matrix2_version,created_by)
-                VALUES (?,?,?,true,2,'GENERATING',5,'MATRIX2',?,0,?)
+                  (id,course_id,title,unlimited,variant_count,lifecycle_status,current_step,matrix_id,matrix_version,created_by)
+                VALUES (?,?,?,true,2,'GENERATING',5,?,0,?)
                 """, assessmentId, courseId, "Generated C++17 quiz", matrixId, teacherId);
         String snapshot = """
                 {"jobId":"%s","assessmentId":"%s","contractVersion":2,
@@ -94,9 +93,8 @@ class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
                 """.formatted(jobId, assessmentId, courseId, matrixId, rowId, chapterId, outcomeId, levelId);
         jdbc.update("""
                 INSERT INTO edu.quiz3_generation_jobs
-                  (id,assessment_id,course_id,matrix_source_type,matrix2_id,matrix2_version,requested_by,
-                   request_snapshot,payload_hash,idempotency_key,status,attempt_count,total_question_count)
-                VALUES (?,?,?,'MATRIX2',?,0,?,CAST(? AS jsonb),'hash',?,'PROCESSING',1,1)
+                  (id,assessment_id,course_id,matrix_id,matrix_version,requested_by,request_snapshot,payload_hash,idempotency_key,status,attempt_count,total_question_count)
+                VALUES (?,?,?,?,0,?,CAST(? AS jsonb),'hash',?,'PROCESSING',1,1)
                 """, jobId, assessmentId, courseId, matrixId, teacherId, snapshot, "quiz3-cr-" + jobId);
         jdbc.update("UPDATE edu.quiz3_assessments SET base_generation_job_id=? WHERE id=?", jobId, assessmentId);
 
@@ -215,13 +213,13 @@ class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
                 chapterId, "Recovery", courseId);
         jdbc.update("INSERT INTO edu.learning_outcomes(id,prefix_number,description,course_id) VALUES(?,1,?,?)",
                 outcomeId, "Recover invalid generation", courseId);
-        jdbc.update("INSERT INTO edu.exam_matrices_2(id,course_id,title,lifecycle_status) VALUES(?,?,?,'PUBLISHED')",
+        jdbc.update("INSERT INTO edu.exam_matrices(id,course_id,title,lifecycle_status,mode) VALUES(?,?,?,'PUBLISHED','MANUAL')",
                 matrixId, courseId, "Recovery matrix");
-        jdbc.update("INSERT INTO edu.exam_matrix_2_custom_learning_levels(id,matrix_id,name,sort_order) VALUES(?,?,?,0)",
+        jdbc.update("INSERT INTO edu.exam_matrix_custom_learning_levels(id,matrix_id,name,sort_order) VALUES(?,?,?,0)",
                 levelId, matrixId, "Apply");
-        jdbc.update("INSERT INTO edu.exam_matrix_2_rows(id,matrix_id,chapter_id,mapped_learning_outcome_id,sort_order) VALUES(?,?,?,?,0)",
+        jdbc.update("INSERT INTO edu.exam_matrix_rows(id,matrix_id,chapter_id,mapped_learning_outcome_id,sort_order) VALUES(?,?,?,?,0)",
                 rowId, matrixId, chapterId, outcomeId);
-        jdbc.update("INSERT INTO edu.exam_matrix_2_cell_counts(row_id,custom_learning_level_id,question_count,question_type) VALUES(?,?,1,'CODE_RUNNER')",
+        jdbc.update("INSERT INTO edu.exam_matrix_cells(row_id,custom_learning_level_id,question_count,question_type) VALUES(?,?,1,'CODE_RUNNER')",
                 rowId, levelId);
         jdbc.update("""
                 INSERT INTO edu.materials(id,title,type,file_key,status,ingestion_status,course_id)
@@ -231,9 +229,8 @@ class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
         UUID assessmentId = UUID.randomUUID(), failedJobId = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO edu.quiz3_assessments
-                  (id,course_id,title,unlimited,variant_count,lifecycle_status,current_step,matrix_source_type,
-                   matrix2_id,matrix2_version,created_by)
-                VALUES (?,?,?,true,1,'GENERATING',5,'MATRIX2',?,0,?)
+                  (id,course_id,title,unlimited,variant_count,lifecycle_status,current_step,matrix_id,matrix_version,created_by)
+                VALUES (?,?,?,true,1,'GENERATING',5,?,0,?)
                 """, assessmentId, courseId, "Retry invalid AI", matrixId, teacherId);
         String snapshot = """
                 {"jobId":"%s","assessmentId":"%s","contractVersion":2,
@@ -246,9 +243,8 @@ class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
                 """.formatted(failedJobId, assessmentId, courseId, matrixId, rowId, chapterId, outcomeId, levelId);
         jdbc.update("""
                 INSERT INTO edu.quiz3_generation_jobs
-                  (id,assessment_id,course_id,matrix_source_type,matrix2_id,matrix2_version,requested_by,
-                   request_snapshot,payload_hash,idempotency_key,status,attempt_count,total_question_count)
-                VALUES (?,?,?,'MATRIX2',?,0,?,CAST(? AS jsonb),'hash',?,'PROCESSING',1,1)
+                  (id,assessment_id,course_id,matrix_id,matrix_version,requested_by,request_snapshot,payload_hash,idempotency_key,status,attempt_count,total_question_count)
+                VALUES (?,?,?,?,0,?,CAST(? AS jsonb),'hash',?,'PROCESSING',1,1)
                 """, failedJobId, assessmentId, courseId, matrixId, teacherId, snapshot, "invalid-" + failedJobId);
         jdbc.update("UPDATE edu.quiz3_assessments SET base_generation_job_id=? WHERE id=?", failedJobId, assessmentId);
 

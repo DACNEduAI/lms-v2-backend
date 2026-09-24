@@ -54,6 +54,35 @@ class ImageAssetServiceUT {
         assertThat(updated.storageKey()).isEqualTo("courses/source.png");
     }
 
+    @Test void acceptsProseMetadataUpToFiveThousandCharacters() {
+        ImageAsset original = image(Asset.PublicationStatus.DRAFT, null);
+        when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(original));
+        String prose = "x".repeat(5000);
+
+        ImageAsset updated = service.update(courseId, assetId,
+                new ImageAssetService.UpdateImage("Title", prose, prose, prose, List.of()));
+
+        assertThat(updated.asset().description()).isEqualTo(prose);
+        assertThat(updated.asset().prompt()).isEqualTo(prose);
+        assertThat(updated.asset().purpose()).isEqualTo(prose);
+    }
+
+    @Test void rejectsProseMetadataOverFiveThousandCharacters() {
+        ImageAsset original = image(Asset.PublicationStatus.DRAFT, null);
+        when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(original));
+        String tooLong = "x".repeat(5001);
+
+        assertThatThrownBy(() -> service.update(courseId, assetId,
+                new ImageAssetService.UpdateImage("Title", tooLong, "Prompt", "Purpose", List.of())))
+                .isInstanceOf(AssetValidationException.class);
+        assertThatThrownBy(() -> service.update(courseId, assetId,
+                new ImageAssetService.UpdateImage("Title", "Description", tooLong, "Purpose", List.of())))
+                .isInstanceOf(AssetValidationException.class);
+        assertThatThrownBy(() -> service.update(courseId, assetId,
+                new ImageAssetService.UpdateImage("Title", "Description", "Prompt", tooLong, List.of())))
+                .isInstanceOf(AssetValidationException.class);
+    }
+
     @Test void promotesOnlyVerifiedReplacementAndKeepsPublishedStatus() {
         ImageAsset original = image(Asset.PublicationStatus.PUBLISHED, null);
         when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(original));

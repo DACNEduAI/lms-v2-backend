@@ -52,8 +52,8 @@ public class AssetController {
     @GetMapping("/{assetId}/download-url") public DownloadResponse download(@PathVariable UUID courseId, @PathVariable UUID assetId) { return new DownloadResponse(images.downloadUrl(courseId, assetId)); }
     @DeleteMapping("/{assetId}") public ResponseEntity<Void> delete(@PathVariable UUID courseId, @PathVariable UUID assetId) { images.delete(courseId, assetId); return ResponseEntity.noContent().build(); }
 
-    public record CreateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType, @NotBlank @Size(max = 1000) String description, @Size(max = 2000) String prompt, @NotBlank @Size(max = 255) String purpose, List<String> tags) {}
-    public record UpdateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 1000) String description, @Size(max = 2000) String prompt, @NotBlank @Size(max = 255) String purpose, List<String> tags) {}
+    public record CreateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType, @NotBlank @Size(max = 5000) String description, @Size(max = 5000) String prompt, @NotBlank @Size(max = 5000) String purpose, List<String> tags) {}
+    public record UpdateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 5000) String description, @Size(max = 5000) String prompt, @NotBlank @Size(max = 5000) String purpose, List<String> tags) {}
     public record ReplacementImageRequest(@NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType) {}
     public record PublicationRequest(@NotNull Asset.PublicationStatus status) {}
     public record DownloadResponse(String url) {}

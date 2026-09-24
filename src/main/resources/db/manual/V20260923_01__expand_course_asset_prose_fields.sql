@@ -1,0 +1,7 @@
+BEGIN;
+
+ALTER TABLE edu.assets
+    ALTER COLUMN description TYPE VARCHAR(5000),
+    ALTER COLUMN purpose TYPE VARCHAR(5000);
+
+COMMIT;
