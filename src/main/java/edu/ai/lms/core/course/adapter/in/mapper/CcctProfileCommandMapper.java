@@ -99,6 +99,7 @@ public class CcctProfileCommandMapper {
     private CcctTopicValue topic(CcctTopicRequest value) {
         return new CcctTopicValue(
                 value.id(),
+                value.groupCode(),
                 value.title(),
                 value.items().stream().map(this::item).toList());
     }

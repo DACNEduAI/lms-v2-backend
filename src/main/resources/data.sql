@@ -571,18 +571,18 @@ VALUES
     ('e2000001-0000-4000-8000-000000000009', 'e1000001-0000-4000-8000-000000000001', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'Cấu trúc cây nâng cao', 8),
     ('e2000001-0000-4000-8000-000000000010', 'e1000001-0000-4000-8000-000000000001', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', 9);
 
-INSERT INTO ccct_topics (id, chapter_id, title, order_index)
+INSERT INTO ccct_topics (id, chapter_id, group_code, title, order_index)
 VALUES
-    ('e3000001-0000-4000-8000-000000000001', 'e2000001-0000-4000-8000-000000000001', 'Cây nhị phân và BST', 0),
-    ('e3000001-0000-4000-8000-000000000002', 'e2000001-0000-4000-8000-000000000002', 'Phân tích độ phức tạp', 0),
-    ('e3000001-0000-4000-8000-000000000003', 'e2000001-0000-4000-8000-000000000003', 'Biểu diễn và duyệt đồ thị', 0),
-    ('e3000001-0000-4000-8000-000000000004', 'e2000001-0000-4000-8000-000000000004', 'Heap và hàng đợi ưu tiên', 0),
-    ('e3000001-0000-4000-8000-000000000005', 'e2000001-0000-4000-8000-000000000005', 'Nền tảng cấu trúc dữ liệu và giải thuật', 0),
-    ('e3000001-0000-4000-8000-000000000006', 'e2000001-0000-4000-8000-000000000006', 'Các giải thuật sắp xếp', 0),
-    ('e3000001-0000-4000-8000-000000000007', 'e2000001-0000-4000-8000-000000000007', 'Stack và Queue', 0),
-    ('e3000001-0000-4000-8000-000000000008', 'e2000001-0000-4000-8000-000000000008', 'Các giải thuật tìm kiếm', 0),
-    ('e3000001-0000-4000-8000-000000000009', 'e2000001-0000-4000-8000-000000000009', 'Cây cân bằng và cây đa nhánh', 0),
-    ('e3000001-0000-4000-8000-000000000010', 'e2000001-0000-4000-8000-000000000010', 'Danh sách liên kết', 0);
+    ('e3000001-0000-4000-8000-000000000001', 'e2000001-0000-4000-8000-000000000001', 'binary-tree', 'Cây nhị phân và BST', 0),
+    ('e3000001-0000-4000-8000-000000000002', 'e2000001-0000-4000-8000-000000000002', 'complexity', 'Phân tích độ phức tạp', 0),
+    ('e3000001-0000-4000-8000-000000000003', 'e2000001-0000-4000-8000-000000000003', 'graphs', 'Biểu diễn và duyệt đồ thị', 0),
+    ('e3000001-0000-4000-8000-000000000004', 'e2000001-0000-4000-8000-000000000004', 'heap', 'Heap và hàng đợi ưu tiên', 0),
+    ('e3000001-0000-4000-8000-000000000005', 'e2000001-0000-4000-8000-000000000005', 'foundations', 'Nền tảng cấu trúc dữ liệu và giải thuật', 0),
+    ('e3000001-0000-4000-8000-000000000006', 'e2000001-0000-4000-8000-000000000006', 'sorting', 'Các giải thuật sắp xếp', 0),
+    ('e3000001-0000-4000-8000-000000000007', 'e2000001-0000-4000-8000-000000000007', 'stack-queue', 'Stack và Queue', 0),
+    ('e3000001-0000-4000-8000-000000000008', 'e2000001-0000-4000-8000-000000000008', 'searching', 'Các giải thuật tìm kiếm', 0),
+    ('e3000001-0000-4000-8000-000000000009', 'e2000001-0000-4000-8000-000000000009', 'balanced-tree', 'Cây cân bằng và cây đa nhánh', 0),
+    ('e3000001-0000-4000-8000-000000000010', 'e2000001-0000-4000-8000-000000000010', 'linked-list', 'Danh sách liên kết', 0);
 
 INSERT INTO ccct_items (id, topic_id, content, order_index)
 VALUES
@@ -1041,5 +1041,102 @@ INSERT INTO quiz_release_code_runner_bindings (quiz_release_id, question_id, cod
 VALUES
     ('f9100001-0000-4000-8000-000000000021', 'f9100001-0000-4000-8000-000000000012',
      'f9100001-0000-4000-8000-000000000022');
+
+-- Matrix fixtures now bind the one seeded CCCT and use one CLL relation per
+-- selected content-detail row. Existing fixture row IDs are retained.
+UPDATE exam_matrices
+SET ccct_profile_id = 'e1000001-0000-4000-8000-000000000001',
+    ccct_profile_version = 0
+WHERE course_id = 'c1111111-1111-1111-1111-111111111111';
+
+UPDATE exam_matrix_rows r
+SET ccct_item_id = (
+    SELECT i.id
+    FROM ccct_items i
+    JOIN ccct_topics t ON t.id = i.topic_id
+    JOIN ccct_chapters c ON c.id = t.chapter_id
+    WHERE c.profile_id = 'e1000001-0000-4000-8000-000000000001'
+    ORDER BY c.order_index, t.order_index, i.order_index
+    OFFSET r.sort_order
+    LIMIT 1
+)
+WHERE r.matrix_id IN (
+    SELECT id FROM exam_matrices
+    WHERE course_id = 'c1111111-1111-1111-1111-111111111111'
+);
+
+DELETE FROM exam_matrix_cells cell
+USING (
+    SELECT row_id, custom_learning_level_id,
+           row_number() OVER (PARTITION BY row_id ORDER BY question_count DESC NULLS LAST, custom_learning_level_id) AS relation_order
+    FROM exam_matrix_cells
+) ranked
+WHERE cell.row_id = ranked.row_id
+  AND cell.custom_learning_level_id = ranked.custom_learning_level_id
+  AND ranked.relation_order > 1;
+
+UPDATE ccct_profiles
+SET markdown_content = '# CCCT – Data Structures and Algorithms
+
+## Cây nhị phân
+
+### [binary-tree] Cây nhị phân và BST
+- Khái niệm, biểu diễn và các phép duyệt cây nhị phân
+- Cây nhị phân tìm kiếm: tìm kiếm, chèn và xóa
+
+## Độ phức tạp giải thuật
+
+### [complexity] Phân tích độ phức tạp
+- Ký hiệu Big-O, Big-Ω và Big-Θ
+- Phân tích độ phức tạp vòng lặp và giải thuật đệ quy
+
+## Đồ thị
+
+### [graphs] Biểu diễn và duyệt đồ thị
+- Ma trận kề và danh sách kề
+- Duyệt đồ thị BFS và DFS
+
+## Heap
+
+### [heap] Heap và hàng đợi ưu tiên
+- Max-Heap, Min-Heap và biểu diễn bằng mảng
+- Chèn, xóa, vun đống và hàng đợi ưu tiên
+
+## Giới thiệu
+
+### [foundations] Nền tảng cấu trúc dữ liệu và giải thuật
+- Cấu trúc dữ liệu, kiểu dữ liệu trừu tượng và giải thuật
+- Mảng, con trỏ và đánh giá hiệu quả giải thuật
+
+## Sắp xếp
+
+### [sorting] Các giải thuật sắp xếp
+- Selection sort, insertion sort và bubble sort
+- Merge sort, quicksort, heapsort và độ phức tạp
+
+## Chồng và Hàng
+
+### [stack-queue] Stack và Queue
+- Stack, Queue và các thao tác cơ bản
+- Hiện thực và ứng dụng của Stack, Queue
+
+## Tìm kiếm
+
+### [searching] Các giải thuật tìm kiếm
+- Tìm kiếm tuần tự và tìm kiếm nhị phân
+- Điều kiện áp dụng và độ phức tạp tìm kiếm
+
+## Cấu trúc cây nâng cao
+
+### [balanced-tree] Cây cân bằng và cây đa nhánh
+- Cây AVL, cân bằng cây và các phép quay
+- Cây B/B+ và ứng dụng tổ chức dữ liệu
+
+## Danh sách
+
+### [linked-list] Danh sách liên kết
+- Danh sách liên kết đơn, đôi và vòng
+- Chèn, xóa, duyệt và tìm kiếm trên danh sách'
+WHERE id = 'e1000001-0000-4000-8000-000000000001';
 
 COMMIT;

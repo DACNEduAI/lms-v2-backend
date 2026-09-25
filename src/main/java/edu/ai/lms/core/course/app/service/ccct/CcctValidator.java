@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
 
@@ -15,6 +17,7 @@ import edu.ai.lms.core.course.app.port.in.command.CcctProfileContent;
 
 @Component
 class CcctValidator {
+    private static final Pattern GROUP_CODE = Pattern.compile("[a-z0-9]+(?:[-_][a-z0-9]+)*");
     static final int MAX_CHAPTERS = 100;
     static final int MAX_TOPICS_PER_CHAPTER = 200;
     static final int MAX_ITEMS_PER_TOPIC = 500;
@@ -63,15 +66,23 @@ class CcctValidator {
                 invalid("A chapter cannot contain more than "
                         + MAX_TOPICS_PER_CHAPTER + " topics");
             }
+            Set<String> groupCodes = new HashSet<>();
             payloadBytes += utf8(chapter.title());
             for (var topic : chapter.topics()) {
                 uniqueNodeId(nodeIds, topic.id());
+                String groupCode = topic.groupCode() == null ? "" : topic.groupCode().trim();
+                if (!groupCode.equals(groupCode.toLowerCase(Locale.ROOT)) || !GROUP_CODE.matcher(groupCode).matches()) {
+                    invalid("Topic Group ID must be a lowercase slug using letters, digits, hyphens, or underscores");
+                }
+                if (!groupCodes.add(groupCode)) {
+                    invalid("Topic Group IDs must be unique within a chapter");
+                }
                 required(topic.title(), "Topic title", 255);
                 if (topic.items().size() > MAX_ITEMS_PER_TOPIC) {
                     invalid("A topic cannot contain more than "
                             + MAX_ITEMS_PER_TOPIC + " items");
                 }
-                payloadBytes += utf8(topic.title());
+                payloadBytes += utf8(topic.title()) + utf8(groupCode);
                 for (var item : topic.items()) {
                     uniqueNodeId(nodeIds, item.id());
                     required(item.content(), "Item content", Integer.MAX_VALUE);

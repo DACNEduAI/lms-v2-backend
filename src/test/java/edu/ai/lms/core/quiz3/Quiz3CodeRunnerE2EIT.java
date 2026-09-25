@@ -83,14 +83,14 @@ class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
                 VALUES (?,?,?,true,2,'GENERATING',5,?,0,?)
                 """, assessmentId, courseId, "Generated C++17 quiz", matrixId, teacherId);
         String snapshot = """
-                {"jobId":"%s","assessmentId":"%s","contractVersion":2,
+                {"jobId":"%s","assessmentId":"%s","contractVersion":4,
                  "course":{"id":"%s","name":"Quiz3 Code Runner"},"quizName":"Generated C++17 quiz - 001",
                  "matrix":{"id":"%s","name":"Quiz3 mixed matrix","rows":[{
                    "id":"%s","chapter":{"id":"%s","name":"Functions"},
-                   "learningOutcome":{"id":"%s","name":"LO1"},"cells":[{
+                   "learningOutcome":{"id":"%s","name":"LO1"},"content":{"id":"%s","groupId":"functions","groupName":"Functions","detail":"Scalar functions","contentCode":"functions.apply"},"cells":[{
                      "customLearningLevelId":"%s","customLearningLevelName":"Apply",
-                     "questionCount":1,"questionType":"CODE_RUNNER"}]}]},"materialIds":[]}
-                """.formatted(jobId, assessmentId, courseId, matrixId, rowId, chapterId, outcomeId, levelId);
+                     "questionCount":1,"assetAllocations":[{"assetType":"TEXT","questionType":"MULTIPLE_CHOICE","questionCount":0,"effectiveAssetType":"TEXT"},{"assetType":"IMAGE","questionType":"MULTIPLE_CHOICE","questionCount":0,"effectiveAssetType":"TEXT","fallbackReason":"IMAGE_MEDIA_NOT_SUPPORTED"},{"assetType":"CODE_MCQ","questionType":"MULTIPLE_CHOICE","questionCount":0,"effectiveAssetType":"CODE_MCQ"},{"assetType":"CODE_RUNNER","questionType":"CODE_RUNNER","questionCount":1,"effectiveAssetType":"CODE_RUNNER"}]}]}]},"materialIds":[]}
+                """.formatted(jobId, assessmentId, courseId, matrixId, rowId, chapterId, outcomeId, UUID.randomUUID(), levelId);
         jdbc.update("""
                 INSERT INTO edu.quiz3_generation_jobs
                   (id,assessment_id,course_id,matrix_id,matrix_version,requested_by,request_snapshot,payload_hash,idempotency_key,status,attempt_count,total_question_count)
@@ -233,14 +233,14 @@ class Quiz3CodeRunnerE2EIT extends IntegrationTestConfiguration {
                 VALUES (?,?,?,true,1,'GENERATING',5,?,0,?)
                 """, assessmentId, courseId, "Retry invalid AI", matrixId, teacherId);
         String snapshot = """
-                {"jobId":"%s","assessmentId":"%s","contractVersion":2,
+                {"jobId":"%s","assessmentId":"%s","contractVersion":4,
                  "course":{"id":"%s","name":"Recovery"},"quizName":"Retry invalid AI - 001",
                  "matrix":{"id":"%s","name":"Recovery matrix","rows":[{
                    "id":"%s","chapter":{"id":"%s","name":"Recovery"},
-                   "learningOutcome":{"id":"%s","name":"LO1"},"cells":[{
+                   "learningOutcome":{"id":"%s","name":"LO1"},"content":{"id":"%s","groupId":"recovery","groupName":"Recovery","detail":"Recover invalid generation","contentCode":"recovery.apply"},"cells":[{
                      "customLearningLevelId":"%s","customLearningLevelName":"Apply",
-                     "questionCount":1,"questionType":"CODE_RUNNER"}]}]},"materialIds":[]}
-                """.formatted(failedJobId, assessmentId, courseId, matrixId, rowId, chapterId, outcomeId, levelId);
+                     "questionCount":1,"assetAllocations":[{"assetType":"TEXT","questionType":"MULTIPLE_CHOICE","questionCount":0,"effectiveAssetType":"TEXT"},{"assetType":"IMAGE","questionType":"MULTIPLE_CHOICE","questionCount":0,"effectiveAssetType":"TEXT","fallbackReason":"IMAGE_MEDIA_NOT_SUPPORTED"},{"assetType":"CODE_MCQ","questionType":"MULTIPLE_CHOICE","questionCount":0,"effectiveAssetType":"CODE_MCQ"},{"assetType":"CODE_RUNNER","questionType":"CODE_RUNNER","questionCount":1,"effectiveAssetType":"CODE_RUNNER"}]}]}]},"materialIds":[]}
+                """.formatted(failedJobId, assessmentId, courseId, matrixId, rowId, chapterId, outcomeId, UUID.randomUUID(), levelId);
         jdbc.update("""
                 INSERT INTO edu.quiz3_generation_jobs
                   (id,assessment_id,course_id,matrix_id,matrix_version,requested_by,request_snapshot,payload_hash,idempotency_key,status,attempt_count,total_question_count)

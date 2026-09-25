@@ -283,9 +283,11 @@ CREATE TABLE IF NOT EXISTS ccct_topics
 (
     id          UUID PRIMARY KEY,
     chapter_id  UUID         NOT NULL REFERENCES ccct_chapters (id) ON DELETE CASCADE,
+    group_code  VARCHAR(64)  NOT NULL CHECK (group_code ~ '^[a-z0-9]+([-_][a-z0-9]+)*$'),
     title       VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
     order_index INTEGER      NOT NULL CHECK (order_index >= 0),
-    CONSTRAINT uq_ccct_topic_order UNIQUE (chapter_id, order_index)
+    CONSTRAINT uq_ccct_topic_order UNIQUE (chapter_id, order_index),
+    CONSTRAINT uq_ccct_topic_group_code UNIQUE (chapter_id, group_code)
 );
 
 CREATE INDEX IF NOT EXISTS idx_ccct_topics_chapter
@@ -309,6 +311,8 @@ CREATE TABLE IF NOT EXISTS exam_matrices
 (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     course_id   UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+    ccct_profile_id UUID     REFERENCES ccct_profiles (id) ON DELETE RESTRICT,
+    ccct_profile_version BIGINT CHECK (ccct_profile_version >= 0),
     title       VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
     description TEXT, mode VARCHAR(20) NOT NULL DEFAULT 'MANUAL' CHECK(mode IN ('MANUAL','AUTOMATIC')),
     total_question_count INTEGER CHECK(total_question_count IS NULL OR total_question_count > 0),
@@ -344,8 +348,10 @@ CREATE TABLE IF NOT EXISTS exam_matrix_rows
     id                         UUID PRIMARY KEY,
     matrix_id                  UUID NOT NULL REFERENCES exam_matrices (id) ON DELETE CASCADE,
     chapter_id                 UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
+    ccct_item_id               UUID REFERENCES ccct_items (id) ON DELETE RESTRICT,
     mapped_learning_outcome_id UUID REFERENCES learning_outcomes (id) ON DELETE SET NULL,
-    sort_order                 INTEGER NOT NULL CHECK (sort_order >= 0)
+    sort_order                 INTEGER NOT NULL CHECK (sort_order >= 0),
+    CONSTRAINT uq_exam_matrix_row_content UNIQUE (matrix_id, ccct_item_id)
 );
 
 CREATE TABLE IF NOT EXISTS exam_matrix_cells
@@ -353,7 +359,8 @@ CREATE TABLE IF NOT EXISTS exam_matrix_cells
     row_id                     UUID NOT NULL REFERENCES exam_matrix_rows (id) ON DELETE CASCADE,
     custom_learning_level_id   UUID NOT NULL REFERENCES exam_matrix_custom_learning_levels (id) ON DELETE CASCADE,
     question_count             INTEGER CHECK (question_count >= 0),
-    PRIMARY KEY (row_id, custom_learning_level_id)
+    PRIMARY KEY (row_id, custom_learning_level_id),
+    CONSTRAINT uq_exam_matrix_cell_per_row UNIQUE (row_id) DEFERRABLE INITIALLY DEFERRED
 );
 CREATE INDEX IF NOT EXISTS exam_matrices_course_idx ON exam_matrices (course_id);
 CREATE INDEX IF NOT EXISTS exam_matrix_rows_matrix_idx ON exam_matrix_rows (matrix_id, sort_order);

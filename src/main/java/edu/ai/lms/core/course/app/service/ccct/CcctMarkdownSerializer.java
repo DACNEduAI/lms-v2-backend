@@ -18,7 +18,7 @@ class CcctMarkdownSerializer {
             lines.add("## " + chapter.getTitle().trim());
             chapter.getTopics().forEach(topic -> {
                 lines.add("");
-                lines.add("### " + topic.getTitle().trim());
+                lines.add("### [" + topic.getGroupCode().trim() + "] " + topic.getTitle().trim());
                 topic.getItems().forEach(item -> {
                     lines.add("- " + item.getContent().trim());
                 });

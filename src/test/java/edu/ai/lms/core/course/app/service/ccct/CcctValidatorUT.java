@@ -29,7 +29,7 @@ class CcctValidatorUT {
         UUID duplicate = UUID.randomUUID();
         UUID chapterId = UUID.randomUUID();
         var content = content(List.of(new CcctChapterValue(duplicate, chapterId, "Chapter",
-                List.of(new CcctTopicValue(duplicate, "Topic", List.of())))));
+                List.of(new CcctTopicValue(duplicate, "topic", "Topic", List.of())))));
 
         assertThatThrownBy(() -> validator.validateDraft(course(chapterId), content))
                 .isInstanceOf(CcctValidationException.class)
@@ -41,7 +41,7 @@ class CcctValidatorUT {
         UUID chapterId = UUID.randomUUID();
         String multibyte = "ế".repeat(1_100_000);
         var content = content(List.of(new CcctChapterValue(null, chapterId, "Chapter",
-                List.of(new CcctTopicValue(null, "Topic", List.of(new CcctItemValue(null, multibyte)))))));
+                List.of(new CcctTopicValue(null, "topic", "Topic", List.of(new CcctItemValue(null, multibyte)))))));
 
         assertThatThrownBy(() -> validator.validateDraft(course(chapterId), content))
                 .isInstanceOf(CcctPayloadTooLargeException.class);
@@ -79,6 +79,23 @@ class CcctValidatorUT {
         assertThatThrownBy(() -> validator.validatePublish(course(null), legacy))
                 .isInstanceOf(CcctValidationException.class)
                 .hasMessageContaining("Legacy");
+    }
+
+    @Test
+    void rejectsInvalidOrDuplicateGroupIdsWithinOneChapter() {
+        UUID chapterId = UUID.randomUUID();
+        var invalid = content(List.of(new CcctChapterValue(null, chapterId, "Chapter",
+                List.of(new CcctTopicValue(null, "Invalid Group", "Topic", List.of())))));
+        assertThatThrownBy(() -> validator.validateDraft(course(chapterId), invalid))
+                .isInstanceOf(CcctValidationException.class)
+                .hasMessageContaining("lowercase slug");
+
+        var duplicate = content(List.of(new CcctChapterValue(null, chapterId, "Chapter", List.of(
+                new CcctTopicValue(null, "same_group", "One", List.of()),
+                new CcctTopicValue(null, "same_group", "Two", List.of())))));
+        assertThatThrownBy(() -> validator.validateDraft(course(chapterId), duplicate))
+                .isInstanceOf(CcctValidationException.class)
+                .hasMessageContaining("unique within a chapter");
     }
 
     private CcctProfileContent content(List<CcctChapterValue> chapters) {

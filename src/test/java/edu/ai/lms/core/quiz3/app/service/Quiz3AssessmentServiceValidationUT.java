@@ -52,6 +52,23 @@ class Quiz3AssessmentServiceValidationUT {
     }
 
     @Test
+    void preservesAssetOrderForSixQuestionsAcrossThirtyFortyTwentyTenCoverage() {
+        var coverages = List.of(
+                new MatrixService.AssetCoverage(MatrixService.AssetType.TEXT, 30),
+                new MatrixService.AssetCoverage(MatrixService.AssetType.IMAGE, 40),
+                new MatrixService.AssetCoverage(MatrixService.AssetType.CODE_MCQ, 20),
+                new MatrixService.AssetCoverage(MatrixService.AssetType.CODE_RUNNER, 10));
+
+        var allocations = Quiz3AssessmentService.allocateAssetCoverage(6, coverages);
+
+        assertEquals(List.of(2, 2, 1, 1), allocations.stream()
+                .map(Quiz3AssessmentService.AssetAllocation::questionCount).toList());
+        assertEquals("TEXT", allocations.get(0).assetType());
+        assertEquals("TEXT", allocations.get(1).effectiveAssetType());
+        assertEquals("IMAGE_MEDIA_NOT_SUPPORTED", allocations.get(1).fallbackReason());
+    }
+
+    @Test
     void countsOnlyAssetAllocationsForTheDsaManualMatrixSnapshot() throws Exception {
         var applyCoverages = List.of(
                 new MatrixService.AssetCoverage(MatrixService.AssetType.TEXT, 100),

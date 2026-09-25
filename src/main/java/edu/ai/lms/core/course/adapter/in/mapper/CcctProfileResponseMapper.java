@@ -36,6 +36,7 @@ public class CcctProfileResponseMapper {
                                 chapter.getTitle(),
                                 chapter.getTopics().stream().map(topic -> new CcctTopicResponse(
                                         topic.getId(),
+                                        topic.getGroupCode(),
                                         topic.getTitle(),
                                         topic.getItems().stream().map(item -> new CcctItemResponse(
                                                 item.getId(),

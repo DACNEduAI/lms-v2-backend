@@ -35,6 +35,7 @@
   <resultMap id="CcctTopicResultMap" type="edu.ai.lms.core.course.app.domain.CcctTopic">
     <id property="id" column="id"/>
     <result property="chapterId" column="chapter_id"/>
+    <result property="groupCode" column="group_code"/>
     <result property="title" column="title"/>
     <result property="orderIndex" column="order_index"/>
   </resultMap>
@@ -89,7 +90,7 @@
   </select>
 
   <select id="findTopicsByChapterIds" resultMap="CcctTopicResultMap">
-    SELECT id, chapter_id, title, order_index
+    SELECT id, chapter_id, group_code, title, order_index
     FROM edu.ccct_topics
     WHERE chapter_id IN
     <foreach collection="chapterIds" item="chapterId" open="(" separator="," close=")">
@@ -152,10 +153,10 @@
   </insert>
 
   <insert id="insertTopics">
-    INSERT INTO edu.ccct_topics (id, chapter_id, title, order_index)
+    INSERT INTO edu.ccct_topics (id, chapter_id, group_code, title, order_index)
     VALUES
     <foreach collection="topics" item="topic" separator=",">
-      (#{topic.id}, #{topic.chapterId}, #{topic.title}, #{topic.orderIndex})
+      (#{topic.id}, #{topic.chapterId}, #{topic.groupCode}, #{topic.title}, #{topic.orderIndex})
     </foreach>
   </insert>
 
