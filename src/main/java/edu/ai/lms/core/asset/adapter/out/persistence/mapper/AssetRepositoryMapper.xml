@@ -10,7 +10,6 @@
     <result property="name" column="name" />
     <result property="description" column="description" />
     <result property="prompt" column="prompt" />
-    <result property="purpose" column="purpose" />
     <result property="tagsJson" column="tags_json" />
     <result property="publicationStatus" column="publication_status" />
     <result property="uploadStatus" column="upload_status" />
@@ -25,11 +24,11 @@
     <result property="pendingStorageKey" column="pending_storage_key" />
   </resultMap>
 
-  <sql id="imageColumns">a.id, a.course_id, a.type, a.name, a.description, a.prompt, a.purpose, a.tags::text AS tags_json, a.publication_status, a.upload_status, a.created_at, a.updated_at, i.original_file_name, i.content_type, i.byte_size, i.storage_key, i.pending_original_file_name, i.pending_content_type, i.pending_storage_key</sql>
+  <sql id="imageColumns">a.id, a.course_id, a.type, a.name, a.description, a.prompt, a.tags::text AS tags_json, a.publication_status, a.upload_status, a.created_at, a.updated_at, i.original_file_name, i.content_type, i.byte_size, i.storage_key, i.pending_original_file_name, i.pending_content_type, i.pending_storage_key</sql>
 
   <insert id="insertAsset" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
-    INSERT INTO edu.assets (id, course_id, type, name, description, prompt, purpose, tags, publication_status, upload_status)
-    VALUES (#{id}, #{courseId}, #{type}, #{name}, #{description}, #{prompt}, #{purpose}, CAST(#{tagsJson} AS jsonb), #{publicationStatus}, #{uploadStatus})
+    INSERT INTO edu.assets (id, course_id, type, name, description, prompt, tags, publication_status, upload_status)
+    VALUES (#{id}, #{courseId}, #{type}, #{name}, #{description}, #{prompt}, CAST(#{tagsJson} AS jsonb), #{publicationStatus}, #{uploadStatus})
   </insert>
   <insert id="insertImage" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
     INSERT INTO edu.image_assets (asset_id, original_file_name, content_type, byte_size, storage_key)
@@ -44,7 +43,7 @@
     WHERE a.course_id = #{courseId} AND a.id = #{assetId} AND a.type = 'IMAGE'
   </select>
   <update id="updateAsset" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
-    UPDATE edu.assets SET name = #{name}, description = #{description}, prompt = #{prompt}, purpose = #{purpose}, tags = CAST(#{tagsJson} AS jsonb), publication_status = #{publicationStatus}, upload_status = #{uploadStatus}, updated_at = CURRENT_TIMESTAMP
+    UPDATE edu.assets SET name = #{name}, description = #{description}, prompt = #{prompt}, tags = CAST(#{tagsJson} AS jsonb), publication_status = #{publicationStatus}, upload_status = #{uploadStatus}, updated_at = CURRENT_TIMESTAMP
     WHERE id = #{id} AND course_id = #{courseId}
   </update>
   <update id="updateImage" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">

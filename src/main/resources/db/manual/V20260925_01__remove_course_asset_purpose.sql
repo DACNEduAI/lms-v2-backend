@@ -1,0 +1,6 @@
+BEGIN;
+
+ALTER TABLE edu.assets
+    DROP COLUMN IF EXISTS purpose;
+
+COMMIT;

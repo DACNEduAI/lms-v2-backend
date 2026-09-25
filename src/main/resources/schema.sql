@@ -118,7 +118,6 @@ CREATE TABLE IF NOT EXISTS assets
     name VARCHAR(255) NOT NULL,
     description VARCHAR(5000) NOT NULL,
     prompt TEXT,
-    purpose VARCHAR(5000) NOT NULL,
     tags JSONB NOT NULL DEFAULT '[]'::jsonb,
     publication_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' CHECK (publication_status IN ('DRAFT', 'PUBLISHED')),
     upload_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (upload_status IN ('PENDING', 'UPLOADED', 'FAILED')),
