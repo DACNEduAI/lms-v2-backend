@@ -10,6 +10,9 @@ import jakarta.validation.constraints.Size;
 
 public record CcctTopicRequest(
         UUID id,
+        @NotBlank(message = "Topic Group ID cannot be blank")
+        @Size(max = 64, message = "Topic Group ID cannot exceed 64 characters")
+        String groupCode,
         @NotBlank(message = "Topic title cannot be blank")
         @Size(max = 255, message = "Topic title cannot exceed 255 characters")
         String title,

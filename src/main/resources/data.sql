@@ -167,19 +167,36 @@ VALUES
     ('b3000021-0000-4000-8000-000000000021', 'b3000011-0000-4000-8000-000000000021', 1),
     ('b3000021-0000-4000-8000-000000000022', 'b3000011-0000-4000-8000-000000000021', 1);
 
--- Comprehensive 40-question final exam matrix. Every DSA learning outcome is
--- represented by one row; the row totals are 6, 6, 6, 6, 6, 5, and 5.
+-- Manual 22-question DSA final exam matrix. Every DSA learning outcome is
+-- represented by one row; the level totals are 5 Understand, 13 Apply, and 4
+-- Advanced application questions.
 INSERT INTO exam_matrices (id, course_id, title, description)
 VALUES
     ('b3000001-0000-4000-8000-000000000004', 'c1111111-1111-1111-1111-111111111111',
-     'Matrix 2 - DSA comprehensive final (40 questions)',
-     'A 40-question final exam matrix covering every learning outcome in Data Structures and Algorithms.');
+     'manual matrix - final DSA 22 questions',
+     'A manual 22-question final exam matrix covering every learning outcome in Data Structures and Algorithms.');
 
 INSERT INTO exam_matrix_custom_learning_levels (id, matrix_id, name, sort_order)
 VALUES
     ('b3000011-0000-4000-8000-000000000031', 'b3000001-0000-4000-8000-000000000004', 'Understand', 0),
     ('b3000011-0000-4000-8000-000000000032', 'b3000001-0000-4000-8000-000000000004', 'Apply', 1),
     ('b3000011-0000-4000-8000-000000000033', 'b3000001-0000-4000-8000-000000000004', 'Advanced application', 2);
+
+INSERT INTO exam_matrix_custom_learning_level_asset_coverages
+    (custom_learning_level_id, asset_type, percentage)
+VALUES
+    ('b3000011-0000-4000-8000-000000000031', 'TEXT', 100),
+    ('b3000011-0000-4000-8000-000000000031', 'IMAGE', 0),
+    ('b3000011-0000-4000-8000-000000000031', 'CODE_MCQ', 0),
+    ('b3000011-0000-4000-8000-000000000031', 'CODE_RUNNER', 0),
+    ('b3000011-0000-4000-8000-000000000032', 'TEXT', 70),
+    ('b3000011-0000-4000-8000-000000000032', 'IMAGE', 0),
+    ('b3000011-0000-4000-8000-000000000032', 'CODE_MCQ', 0),
+    ('b3000011-0000-4000-8000-000000000032', 'CODE_RUNNER', 30),
+    ('b3000011-0000-4000-8000-000000000033', 'TEXT', 60),
+    ('b3000011-0000-4000-8000-000000000033', 'IMAGE', 0),
+    ('b3000011-0000-4000-8000-000000000033', 'CODE_MCQ', 0),
+    ('b3000011-0000-4000-8000-000000000033', 'CODE_RUNNER', 40);
 
 INSERT INTO exam_matrix_rows
     (id, matrix_id, chapter_id, mapped_learning_outcome_id, sort_order)
@@ -209,33 +226,24 @@ VALUES
 INSERT INTO exam_matrix_cells
     (row_id, custom_learning_level_id, question_count)
 VALUES
-    -- LO 1 total: 6.
+    -- LO 1 total: 3.
     ('b3000021-0000-4000-8000-000000000031', 'b3000011-0000-4000-8000-000000000031', 2),
-    ('b3000021-0000-4000-8000-000000000031', 'b3000011-0000-4000-8000-000000000032', 3),
-    ('b3000021-0000-4000-8000-000000000031', 'b3000011-0000-4000-8000-000000000033', 1),
-    -- LO 2 total: 6.
-    ('b3000021-0000-4000-8000-000000000032', 'b3000011-0000-4000-8000-000000000031', 2),
+    ('b3000021-0000-4000-8000-000000000031', 'b3000011-0000-4000-8000-000000000032', 1),
+    -- LO 2 total: 4.
     ('b3000021-0000-4000-8000-000000000032', 'b3000011-0000-4000-8000-000000000032', 3),
     ('b3000021-0000-4000-8000-000000000032', 'b3000011-0000-4000-8000-000000000033', 1),
-    -- LO 3 total: 6.
+    -- LO 3 total: 2.
     ('b3000021-0000-4000-8000-000000000033', 'b3000011-0000-4000-8000-000000000031', 2),
-    ('b3000021-0000-4000-8000-000000000033', 'b3000011-0000-4000-8000-000000000032', 3),
-    ('b3000021-0000-4000-8000-000000000033', 'b3000011-0000-4000-8000-000000000033', 1),
-    -- LO 4 total: 6.
-    ('b3000021-0000-4000-8000-000000000034', 'b3000011-0000-4000-8000-000000000031', 1),
+    -- LO 4 total: 3.
     ('b3000021-0000-4000-8000-000000000034', 'b3000011-0000-4000-8000-000000000032', 3),
-    ('b3000021-0000-4000-8000-000000000034', 'b3000011-0000-4000-8000-000000000033', 2),
-    -- LO 5 total: 6.
+    -- LO 5 total: 4.
     ('b3000021-0000-4000-8000-000000000035', 'b3000011-0000-4000-8000-000000000031', 1),
     ('b3000021-0000-4000-8000-000000000035', 'b3000011-0000-4000-8000-000000000032', 3),
-    ('b3000021-0000-4000-8000-000000000035', 'b3000011-0000-4000-8000-000000000033', 2),
-    -- LO 6 total: 5.
-    ('b3000021-0000-4000-8000-000000000036', 'b3000011-0000-4000-8000-000000000031', 2),
+    -- LO 6 total: 3.
     ('b3000021-0000-4000-8000-000000000036', 'b3000011-0000-4000-8000-000000000032', 2),
     ('b3000021-0000-4000-8000-000000000036', 'b3000011-0000-4000-8000-000000000033', 1),
-    -- LO 7 total: 5.
-    ('b3000021-0000-4000-8000-000000000037', 'b3000011-0000-4000-8000-000000000031', 1),
-    ('b3000021-0000-4000-8000-000000000037', 'b3000011-0000-4000-8000-000000000032', 2),
+    -- LO 7 total: 3.
+    ('b3000021-0000-4000-8000-000000000037', 'b3000011-0000-4000-8000-000000000032', 1),
     ('b3000021-0000-4000-8000-000000000037', 'b3000011-0000-4000-8000-000000000033', 2);
 
 -- 12. Insert Quizzes
@@ -496,144 +504,118 @@ VALUES
     ('f1200002-0000-4000-8000-000000000002', 'f1100002-0000-4000-8000-000000000002', 1, 1, true, '22222222-2222-2222-2222-222222222222', CURRENT_TIMESTAMP),
     ('f1200003-0000-4000-8000-000000000003', 'f1100003-0000-4000-8000-000000000003', 1, 1, true, '33333333-3333-3333-3333-333333333333', CURRENT_TIMESTAMP);
 
--- 17. Persistent CCCT seed profiles for the DSA course.
+-- 17. One complete CCCT seed profile for the DSA course.
 -- schema.sql recreates the development database at every BE startup, then this
--- script restores these selectable DRAFT profiles with stable UUIDs.
+-- script restores this selectable DRAFT profile with stable UUIDs.
 INSERT INTO ccct_profiles
     (id, course_id, name, template_title, status, version, format_version,
      structured_current, last_mode, markdown_content, created_by)
 VALUES
     ('e1000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
-     'CCCT – Độ phức tạp giải thuật', 'CCCT – Độ phức tạp giải thuật', 'DRAFT', 0, 2,
+     'CCCT – Data Structures and Algorithms', 'CCCT – Data Structures and Algorithms', 'DRAFT', 0, 2,
      true, 'STRUCTURED',
-     '# CCCT – Độ phức tạp giải thuật
+     '# CCCT – Data Structures and Algorithms
+
+## Cây nhị phân
+- Khái niệm, biểu diễn và các phép duyệt cây nhị phân — Learn and exam
+- Cây nhị phân tìm kiếm và các thao tác tìm kiếm, chèn, xóa — Learn and exam
 
 ## Độ phức tạp giải thuật
-
-### Phân tích độ phức tạp tiệm cận
-- Big-O (Cận trên / Upper bound) — Learn and exam
-- Big-Ω (Cận dưới / Lower bound) — Learn and exam',
-     '11111111-1111-1111-1111-111111111111'),
-    ('e1000001-0000-4000-8000-000000000002', 'c1111111-1111-1111-1111-111111111111',
-     'CCCT – Heap', 'CCCT – Heap', 'DRAFT', 0, 2,
-     true, 'STRUCTURED',
-     '# CCCT – Heap
-
-## Heap
-
-### Các loại Heap
-- Max-Heap — Learn and exam
-- Min-Heap — Learn and exam',
-     '11111111-1111-1111-1111-111111111111'),
-    ('e1000001-0000-4000-8000-000000000003', 'c1111111-1111-1111-1111-111111111111',
-     'CCCT – Đồ thị', 'CCCT – Đồ thị', 'DRAFT', 0, 2,
-     true, 'STRUCTURED',
-     '# CCCT – Đồ thị
+- Ký hiệu Big-O, Big-Ω và Big-Θ — Learn and exam
+- Phân tích độ phức tạp vòng lặp và giải thuật đệ quy — Learn and exam
 
 ## Đồ thị
+- Biểu diễn đồ thị bằng ma trận kề và danh sách kề — Learn and exam
+- Duyệt đồ thị BFS, DFS và ứng dụng — Learn and exam
 
-### Duyệt đồ thị
-- BFS (Duyệt theo chiều rộng) — Learn and exam
-- DFS (Duyệt theo chiều sâu) — Learn and exam',
+## Heap
+- Max-Heap, Min-Heap và biểu diễn bằng mảng — Learn and exam
+- Thao tác chèn, xóa, vun đống và ứng dụng hàng đợi ưu tiên — Learn and exam
+
+## Giới thiệu
+- Khái niệm cấu trúc dữ liệu, kiểu dữ liệu trừu tượng và giải thuật — Learn and exam
+- Mảng, con trỏ và cách đánh giá hiệu quả giải thuật — Learn and exam
+
+## Sắp xếp
+- Các giải thuật sắp xếp cơ bản: selection, insertion và bubble sort — Learn and exam
+- Merge sort, quicksort, heapsort và so sánh độ phức tạp — Learn and exam
+
+## Chồng và Hàng
+- Stack, Queue và các thao tác push, pop, enqueue, dequeue — Learn and exam
+- Hiện thực bằng mảng, danh sách liên kết và các ứng dụng — Learn and exam
+
+## Tìm kiếm
+- Tìm kiếm tuần tự và tìm kiếm nhị phân — Learn and exam
+- Điều kiện áp dụng và phân tích độ phức tạp tìm kiếm — Learn and exam
+
+## Cấu trúc cây nâng cao
+- Cây AVL, cân bằng cây và các phép quay — Learn and exam
+- Cây B/B+ và ứng dụng tổ chức dữ liệu — Learn and exam
+
+## Danh sách
+- Danh sách liên kết đơn, đôi và vòng — Learn and exam
+- Các thao tác chèn, xóa, duyệt và tìm kiếm trên danh sách — Learn and exam',
      '11111111-1111-1111-1111-111111111111');
 
--- Format v2 requires every Course Chapter in its persisted order. Only the
--- requested chapter contains topics; the remaining chapters are intentionally empty.
-INSERT INTO ccct_chapters (id, profile_id, course_chapter_id, title, custom_content, order_index)
+-- Format v2 requires every course chapter in its persisted order.
+INSERT INTO ccct_chapters (id, profile_id, course_chapter_id, title, order_index)
 VALUES
-    ('e2000001-0000-4000-8000-000000000001', 'e1000001-0000-4000-8000-000000000001', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'Cây nhị phân', '', 0),
-    ('e2000001-0000-4000-8000-000000000002', 'e1000001-0000-4000-8000-000000000001', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', '', 1),
-    ('e2000001-0000-4000-8000-000000000003', 'e1000001-0000-4000-8000-000000000001', '6967be86-ae45-4e55-8faa-71318f50bbf6', 'Đồ thị', '', 2),
-    ('e2000001-0000-4000-8000-000000000004', 'e1000001-0000-4000-8000-000000000001', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'Heap', '', 3),
-    ('e2000001-0000-4000-8000-000000000005', 'e1000001-0000-4000-8000-000000000001', '8a01575f-a418-4107-b1b1-5eef75c5b72d', 'Giới thiệu', '', 4),
-    ('e2000001-0000-4000-8000-000000000006', 'e1000001-0000-4000-8000-000000000001', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Sắp xếp', '', 5),
-    ('e2000001-0000-4000-8000-000000000007', 'e1000001-0000-4000-8000-000000000001', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Chồng và Hàng', '', 6),
-    ('e2000001-0000-4000-8000-000000000008', 'e1000001-0000-4000-8000-000000000001', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Tìm kiếm', '', 7),
-    ('e2000001-0000-4000-8000-000000000009', 'e1000001-0000-4000-8000-000000000001', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'Cấu trúc cây nâng cao', '', 8),
-    ('e2000001-0000-4000-8000-000000000010', 'e1000001-0000-4000-8000-000000000001', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', '', 9),
-    ('e2000001-0000-4000-8000-000000000011', 'e1000001-0000-4000-8000-000000000002', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'Cây nhị phân', '', 0),
-    ('e2000001-0000-4000-8000-000000000012', 'e1000001-0000-4000-8000-000000000002', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', '', 1),
-    ('e2000001-0000-4000-8000-000000000013', 'e1000001-0000-4000-8000-000000000002', '6967be86-ae45-4e55-8faa-71318f50bbf6', 'Đồ thị', '', 2),
-    ('e2000001-0000-4000-8000-000000000014', 'e1000001-0000-4000-8000-000000000002', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'Heap', '', 3),
-    ('e2000001-0000-4000-8000-000000000015', 'e1000001-0000-4000-8000-000000000002', '8a01575f-a418-4107-b1b1-5eef75c5b72d', 'Giới thiệu', '', 4),
-    ('e2000001-0000-4000-8000-000000000016', 'e1000001-0000-4000-8000-000000000002', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Sắp xếp', '', 5),
-    ('e2000001-0000-4000-8000-000000000017', 'e1000001-0000-4000-8000-000000000002', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Chồng và Hàng', '', 6),
-    ('e2000001-0000-4000-8000-000000000018', 'e1000001-0000-4000-8000-000000000002', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Tìm kiếm', '', 7),
-    ('e2000001-0000-4000-8000-000000000019', 'e1000001-0000-4000-8000-000000000002', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'Cấu trúc cây nâng cao', '', 8),
-    ('e2000001-0000-4000-8000-000000000020', 'e1000001-0000-4000-8000-000000000002', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', '', 9),
-    ('e2000001-0000-4000-8000-000000000021', 'e1000001-0000-4000-8000-000000000003', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'Cây nhị phân', '', 0),
-    ('e2000001-0000-4000-8000-000000000022', 'e1000001-0000-4000-8000-000000000003', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', '', 1),
-    ('e2000001-0000-4000-8000-000000000023', 'e1000001-0000-4000-8000-000000000003', '6967be86-ae45-4e55-8faa-71318f50bbf6', 'Đồ thị', '', 2),
-    ('e2000001-0000-4000-8000-000000000024', 'e1000001-0000-4000-8000-000000000003', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'Heap', '', 3),
-    ('e2000001-0000-4000-8000-000000000025', 'e1000001-0000-4000-8000-000000000003', '8a01575f-a418-4107-b1b1-5eef75c5b72d', 'Giới thiệu', '', 4),
-    ('e2000001-0000-4000-8000-000000000026', 'e1000001-0000-4000-8000-000000000003', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Sắp xếp', '', 5),
-    ('e2000001-0000-4000-8000-000000000027', 'e1000001-0000-4000-8000-000000000003', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Chồng và Hàng', '', 6),
-    ('e2000001-0000-4000-8000-000000000028', 'e1000001-0000-4000-8000-000000000003', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Tìm kiếm', '', 7),
-    ('e2000001-0000-4000-8000-000000000029', 'e1000001-0000-4000-8000-000000000003', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'Cấu trúc cây nâng cao', '', 8),
-    ('e2000001-0000-4000-8000-000000000030', 'e1000001-0000-4000-8000-000000000003', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', '', 9);
+    ('e2000001-0000-4000-8000-000000000001', 'e1000001-0000-4000-8000-000000000001', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'Cây nhị phân', 0),
+    ('e2000001-0000-4000-8000-000000000002', 'e1000001-0000-4000-8000-000000000001', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Độ phức tạp giải thuật', 1),
+    ('e2000001-0000-4000-8000-000000000003', 'e1000001-0000-4000-8000-000000000001', '6967be86-ae45-4e55-8faa-71318f50bbf6', 'Đồ thị', 2),
+    ('e2000001-0000-4000-8000-000000000004', 'e1000001-0000-4000-8000-000000000001', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'Heap', 3),
+    ('e2000001-0000-4000-8000-000000000005', 'e1000001-0000-4000-8000-000000000001', '8a01575f-a418-4107-b1b1-5eef75c5b72d', 'Giới thiệu', 4),
+    ('e2000001-0000-4000-8000-000000000006', 'e1000001-0000-4000-8000-000000000001', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Sắp xếp', 5),
+    ('e2000001-0000-4000-8000-000000000007', 'e1000001-0000-4000-8000-000000000001', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Chồng và Hàng', 6),
+    ('e2000001-0000-4000-8000-000000000008', 'e1000001-0000-4000-8000-000000000001', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Tìm kiếm', 7),
+    ('e2000001-0000-4000-8000-000000000009', 'e1000001-0000-4000-8000-000000000001', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'Cấu trúc cây nâng cao', 8),
+    ('e2000001-0000-4000-8000-000000000010', 'e1000001-0000-4000-8000-000000000001', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Danh sách', 9);
 
-INSERT INTO ccct_topics (id, chapter_id, title, order_index)
+INSERT INTO ccct_topics (id, chapter_id, group_code, title, order_index)
 VALUES
-    ('e3000001-0000-4000-8000-000000000001', 'e2000001-0000-4000-8000-000000000002', 'Phân tích độ phức tạp tiệm cận', 0),
-    ('e3000001-0000-4000-8000-000000000002', 'e2000001-0000-4000-8000-000000000014', 'Các loại Heap', 0),
-    ('e3000001-0000-4000-8000-000000000003', 'e2000001-0000-4000-8000-000000000023', 'Duyệt đồ thị', 0);
+    ('e3000001-0000-4000-8000-000000000001', 'e2000001-0000-4000-8000-000000000001', 'binary-tree', 'Cây nhị phân và BST', 0),
+    ('e3000001-0000-4000-8000-000000000002', 'e2000001-0000-4000-8000-000000000002', 'complexity', 'Phân tích độ phức tạp', 0),
+    ('e3000001-0000-4000-8000-000000000003', 'e2000001-0000-4000-8000-000000000003', 'graphs', 'Biểu diễn và duyệt đồ thị', 0),
+    ('e3000001-0000-4000-8000-000000000004', 'e2000001-0000-4000-8000-000000000004', 'heap', 'Heap và hàng đợi ưu tiên', 0),
+    ('e3000001-0000-4000-8000-000000000005', 'e2000001-0000-4000-8000-000000000005', 'foundations', 'Nền tảng cấu trúc dữ liệu và giải thuật', 0),
+    ('e3000001-0000-4000-8000-000000000006', 'e2000001-0000-4000-8000-000000000006', 'sorting', 'Các giải thuật sắp xếp', 0),
+    ('e3000001-0000-4000-8000-000000000007', 'e2000001-0000-4000-8000-000000000007', 'stack-queue', 'Stack và Queue', 0),
+    ('e3000001-0000-4000-8000-000000000008', 'e2000001-0000-4000-8000-000000000008', 'searching', 'Các giải thuật tìm kiếm', 0),
+    ('e3000001-0000-4000-8000-000000000009', 'e2000001-0000-4000-8000-000000000009', 'balanced-tree', 'Cây cân bằng và cây đa nhánh', 0),
+    ('e3000001-0000-4000-8000-000000000010', 'e2000001-0000-4000-8000-000000000010', 'linked-list', 'Danh sách liên kết', 0);
 
-INSERT INTO ccct_items (id, topic_id, content, coverage_status, note, order_index)
+INSERT INTO ccct_items (id, topic_id, content, order_index)
 VALUES
-    ('e4000001-0000-4000-8000-000000000001', 'e3000001-0000-4000-8000-000000000001', 'Big-O (Cận trên / Upper bound)', 'LEARN_AND_EXAM', '', 0),
-    ('e4000001-0000-4000-8000-000000000002', 'e3000001-0000-4000-8000-000000000001', 'Big-Ω (Cận dưới / Lower bound)', 'LEARN_AND_EXAM', '', 1),
-    ('e4000001-0000-4000-8000-000000000003', 'e3000001-0000-4000-8000-000000000002', 'Max-Heap', 'LEARN_AND_EXAM', '', 0),
-    ('e4000001-0000-4000-8000-000000000004', 'e3000001-0000-4000-8000-000000000002', 'Min-Heap', 'LEARN_AND_EXAM', '', 1),
-    ('e4000001-0000-4000-8000-000000000005', 'e3000001-0000-4000-8000-000000000003', 'BFS (Duyệt theo chiều rộng)', 'LEARN_AND_EXAM', '', 0),
-    ('e4000001-0000-4000-8000-000000000006', 'e3000001-0000-4000-8000-000000000003', 'DFS (Duyệt theo chiều sâu)', 'LEARN_AND_EXAM', '', 1);
+    ('e4000001-0000-4000-8000-000000000001', 'e3000001-0000-4000-8000-000000000001', 'Khái niệm, biểu diễn và các phép duyệt cây nhị phân', 0),
+    ('e4000001-0000-4000-8000-000000000002', 'e3000001-0000-4000-8000-000000000001', 'Cây nhị phân tìm kiếm: tìm kiếm, chèn và xóa', 1),
+    ('e4000001-0000-4000-8000-000000000003', 'e3000001-0000-4000-8000-000000000002', 'Ký hiệu Big-O, Big-Ω và Big-Θ', 0),
+    ('e4000001-0000-4000-8000-000000000004', 'e3000001-0000-4000-8000-000000000002', 'Phân tích độ phức tạp vòng lặp và giải thuật đệ quy', 1),
+    ('e4000001-0000-4000-8000-000000000005', 'e3000001-0000-4000-8000-000000000003', 'Ma trận kề và danh sách kề', 0),
+    ('e4000001-0000-4000-8000-000000000006', 'e3000001-0000-4000-8000-000000000003', 'Duyệt đồ thị BFS và DFS', 1),
+    ('e4000001-0000-4000-8000-000000000007', 'e3000001-0000-4000-8000-000000000004', 'Max-Heap, Min-Heap và biểu diễn bằng mảng', 0),
+    ('e4000001-0000-4000-8000-000000000008', 'e3000001-0000-4000-8000-000000000004', 'Chèn, xóa, vun đống và hàng đợi ưu tiên', 1),
+    ('e4000001-0000-4000-8000-000000000009', 'e3000001-0000-4000-8000-000000000005', 'Cấu trúc dữ liệu, kiểu dữ liệu trừu tượng và giải thuật', 0),
+    ('e4000001-0000-4000-8000-000000000010', 'e3000001-0000-4000-8000-000000000005', 'Mảng, con trỏ và đánh giá hiệu quả giải thuật', 1),
+    ('e4000001-0000-4000-8000-000000000011', 'e3000001-0000-4000-8000-000000000006', 'Selection sort, insertion sort và bubble sort', 0),
+    ('e4000001-0000-4000-8000-000000000012', 'e3000001-0000-4000-8000-000000000006', 'Merge sort, quicksort, heapsort và độ phức tạp', 1),
+    ('e4000001-0000-4000-8000-000000000013', 'e3000001-0000-4000-8000-000000000007', 'Stack, Queue và các thao tác cơ bản', 0),
+    ('e4000001-0000-4000-8000-000000000014', 'e3000001-0000-4000-8000-000000000007', 'Hiện thực và ứng dụng của Stack, Queue', 1),
+    ('e4000001-0000-4000-8000-000000000015', 'e3000001-0000-4000-8000-000000000008', 'Tìm kiếm tuần tự và tìm kiếm nhị phân', 0),
+    ('e4000001-0000-4000-8000-000000000016', 'e3000001-0000-4000-8000-000000000008', 'Điều kiện áp dụng và độ phức tạp tìm kiếm', 1),
+    ('e4000001-0000-4000-8000-000000000017', 'e3000001-0000-4000-8000-000000000009', 'Cây AVL, cân bằng cây và các phép quay', 0),
+    ('e4000001-0000-4000-8000-000000000018', 'e3000001-0000-4000-8000-000000000009', 'Cây B/B+ và ứng dụng tổ chức dữ liệu', 1),
+    ('e4000001-0000-4000-8000-000000000019', 'e3000001-0000-4000-8000-000000000010', 'Danh sách liên kết đơn, đôi và vòng', 0),
+    ('e4000001-0000-4000-8000-000000000020', 'e3000001-0000-4000-8000-000000000010', 'Chèn, xóa, duyệt và tìm kiếm trên danh sách', 1);
 
--- <<<<<<< HEAD
--- -- Material rows are intentionally not seeded. A local reset uses LocalStack,
--- -- while the former fixture keys only exist in the production Supabase bucket.
--- -- Local PDF metadata and indexing jobs are created through the normal upload
--- -- and confirm flow after the corresponding object exists in local storage.
--- =======
--- -- Persistent CCCT paired with the dedicated Code Runner matrix above.
--- INSERT INTO ccct_profiles
---     (id, course_id, name, template_title, status, version, format_version,
---      structured_current, last_mode, markdown_content, created_by)
--- VALUES
---     ('e1000001-0000-4000-8000-000000000004', 'c1111111-1111-1111-1111-111111111111',
---      'CCCT - DSA Code Runner', 'CCCT - DSA Code Runner', 'DRAFT', 0, 2,
---      true, 'STRUCTURED',
---      '# CCCT - DSA Code Runner
---
--- ## Heap and sorting
---
--- ### C++17 function implementation
--- - Build a min-heap from an array - Learn and exam
--- - Implement insertion sort - Learn and exam',
---      '11111111-1111-1111-1111-111111111111');
---
--- INSERT INTO ccct_chapters (id, profile_id, course_chapter_id, title, custom_content, order_index)
--- VALUES
---     ('e2000001-0000-4000-8000-000000000031', 'e1000001-0000-4000-8000-000000000004', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'Binary trees', '', 0),
---     ('e2000001-0000-4000-8000-000000000032', 'e1000001-0000-4000-8000-000000000004', '5e055691-371a-4de5-b61a-f6d06712c36a', 'Algorithm complexity', '', 1),
---     ('e2000001-0000-4000-8000-000000000033', 'e1000001-0000-4000-8000-000000000004', '6967be86-ae45-4e55-8faa-71318f50bbf6', 'Graphs', '', 2),
---     ('e2000001-0000-4000-8000-000000000034', 'e1000001-0000-4000-8000-000000000004', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'Heap', '', 3),
---     ('e2000001-0000-4000-8000-000000000035', 'e1000001-0000-4000-8000-000000000004', '8a01575f-a418-4107-b1b1-5eef75c5b72d', 'Introduction', '', 4),
---     ('e2000001-0000-4000-8000-000000000036', 'e1000001-0000-4000-8000-000000000004', 'a8c06712-6aa5-4993-901b-77008af766d3', 'Sorting', '', 5),
---     ('e2000001-0000-4000-8000-000000000037', 'e1000001-0000-4000-8000-000000000004', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'Stack and queue', '', 6),
---     ('e2000001-0000-4000-8000-000000000038', 'e1000001-0000-4000-8000-000000000004', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'Searching', '', 7),
---     ('e2000001-0000-4000-8000-000000000039', 'e1000001-0000-4000-8000-000000000004', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'Advanced trees', '', 8),
---     ('e2000001-0000-4000-8000-000000000040', 'e1000001-0000-4000-8000-000000000004', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'Lists', '', 9);
---
--- INSERT INTO ccct_topics (id, chapter_id, title, order_index)
--- VALUES
---     ('e3000001-0000-4000-8000-000000000004', 'e2000001-0000-4000-8000-000000000034', 'Min-heap implementation', 0),
---     ('e3000001-0000-4000-8000-000000000005', 'e2000001-0000-4000-8000-000000000036', 'Insertion sort', 0);
---
--- INSERT INTO ccct_items (id, topic_id, content, coverage_status, note, order_index)
--- VALUES
---     ('e4000001-0000-4000-8000-000000000007', 'e3000001-0000-4000-8000-000000000004', 'Build a min-heap from an array using sift-down', 'LEARN_AND_EXAM', '', 0),
---     ('e4000001-0000-4000-8000-000000000008', 'e3000001-0000-4000-8000-000000000005', 'Insertion sort in ascending order', 'LEARN_AND_EXAM', '', 0);
---
--- -- Reset fixtures: the original PDFs remain in the private Supabase bucket.
+UPDATE ccct_profiles
+SET markdown_content = regexp_replace(markdown_content, E'\\s+—\\s+Learn and exam', '', 'g')
+WHERE id = 'e1000001-0000-4000-8000-000000000001';
+
+-- Material rows are intentionally not seeded. A local reset uses LocalStack,
+-- while the former fixture keys only exist in the production Supabase bucket.
+-- Local PDF metadata and indexing jobs are created through the normal upload
+-- and confirm flow after the corresponding object exists in local storage.
+-- Reset fixtures: the original PDFs remain in the private Supabase bucket.
 -- -- Each boot recreates their LMS metadata and queues fresh AI ingestion instead
 -- -- of storing an expiring signed URL in the seed data.
 -- INSERT INTO materials
@@ -1059,5 +1041,102 @@ INSERT INTO quiz_release_code_runner_bindings (quiz_release_id, question_id, cod
 VALUES
     ('f9100001-0000-4000-8000-000000000021', 'f9100001-0000-4000-8000-000000000012',
      'f9100001-0000-4000-8000-000000000022');
+
+-- Matrix fixtures now bind the one seeded CCCT and use one CLL relation per
+-- selected content-detail row. Existing fixture row IDs are retained.
+UPDATE exam_matrices
+SET ccct_profile_id = 'e1000001-0000-4000-8000-000000000001',
+    ccct_profile_version = 0
+WHERE course_id = 'c1111111-1111-1111-1111-111111111111';
+
+UPDATE exam_matrix_rows r
+SET ccct_item_id = (
+    SELECT i.id
+    FROM ccct_items i
+    JOIN ccct_topics t ON t.id = i.topic_id
+    JOIN ccct_chapters c ON c.id = t.chapter_id
+    WHERE c.profile_id = 'e1000001-0000-4000-8000-000000000001'
+    ORDER BY c.order_index, t.order_index, i.order_index
+    OFFSET r.sort_order
+    LIMIT 1
+)
+WHERE r.matrix_id IN (
+    SELECT id FROM exam_matrices
+    WHERE course_id = 'c1111111-1111-1111-1111-111111111111'
+);
+
+DELETE FROM exam_matrix_cells cell
+USING (
+    SELECT row_id, custom_learning_level_id,
+           row_number() OVER (PARTITION BY row_id ORDER BY question_count DESC NULLS LAST, custom_learning_level_id) AS relation_order
+    FROM exam_matrix_cells
+) ranked
+WHERE cell.row_id = ranked.row_id
+  AND cell.custom_learning_level_id = ranked.custom_learning_level_id
+  AND ranked.relation_order > 1;
+
+UPDATE ccct_profiles
+SET markdown_content = '# CCCT – Data Structures and Algorithms
+
+## Cây nhị phân
+
+### [binary-tree] Cây nhị phân và BST
+- Khái niệm, biểu diễn và các phép duyệt cây nhị phân
+- Cây nhị phân tìm kiếm: tìm kiếm, chèn và xóa
+
+## Độ phức tạp giải thuật
+
+### [complexity] Phân tích độ phức tạp
+- Ký hiệu Big-O, Big-Ω và Big-Θ
+- Phân tích độ phức tạp vòng lặp và giải thuật đệ quy
+
+## Đồ thị
+
+### [graphs] Biểu diễn và duyệt đồ thị
+- Ma trận kề và danh sách kề
+- Duyệt đồ thị BFS và DFS
+
+## Heap
+
+### [heap] Heap và hàng đợi ưu tiên
+- Max-Heap, Min-Heap và biểu diễn bằng mảng
+- Chèn, xóa, vun đống và hàng đợi ưu tiên
+
+## Giới thiệu
+
+### [foundations] Nền tảng cấu trúc dữ liệu và giải thuật
+- Cấu trúc dữ liệu, kiểu dữ liệu trừu tượng và giải thuật
+- Mảng, con trỏ và đánh giá hiệu quả giải thuật
+
+## Sắp xếp
+
+### [sorting] Các giải thuật sắp xếp
+- Selection sort, insertion sort và bubble sort
+- Merge sort, quicksort, heapsort và độ phức tạp
+
+## Chồng và Hàng
+
+### [stack-queue] Stack và Queue
+- Stack, Queue và các thao tác cơ bản
+- Hiện thực và ứng dụng của Stack, Queue
+
+## Tìm kiếm
+
+### [searching] Các giải thuật tìm kiếm
+- Tìm kiếm tuần tự và tìm kiếm nhị phân
+- Điều kiện áp dụng và độ phức tạp tìm kiếm
+
+## Cấu trúc cây nâng cao
+
+### [balanced-tree] Cây cân bằng và cây đa nhánh
+- Cây AVL, cân bằng cây và các phép quay
+- Cây B/B+ và ứng dụng tổ chức dữ liệu
+
+## Danh sách
+
+### [linked-list] Danh sách liên kết
+- Danh sách liên kết đơn, đôi và vòng
+- Chèn, xóa, duyệt và tìm kiếm trên danh sách'
+WHERE id = 'e1000001-0000-4000-8000-000000000001';
 
 COMMIT;

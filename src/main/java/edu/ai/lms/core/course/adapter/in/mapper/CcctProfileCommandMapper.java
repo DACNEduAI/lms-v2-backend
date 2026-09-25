@@ -93,13 +93,13 @@ public class CcctProfileCommandMapper {
                 value.id(),
                 value.courseChapterId(),
                 value.title(),
-                value.customContent() == null ? "" : value.customContent(),
                 value.topics().stream().map(this::topic).toList());
     }
 
     private CcctTopicValue topic(CcctTopicRequest value) {
         return new CcctTopicValue(
                 value.id(),
+                value.groupCode(),
                 value.title(),
                 value.items().stream().map(this::item).toList());
     }
@@ -107,8 +107,6 @@ public class CcctProfileCommandMapper {
     private CcctItemValue item(CcctItemRequest value) {
         return new CcctItemValue(
                 value.id(),
-                value.content(),
-                value.status(),
-                value.note());
+                value.content());
     }
 }

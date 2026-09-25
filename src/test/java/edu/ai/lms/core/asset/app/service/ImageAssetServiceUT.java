@@ -46,7 +46,7 @@ class ImageAssetServiceUT {
         when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(original));
 
         ImageAsset updated = service.update(courseId, assetId,
-                new ImageAssetService.UpdateImage("New title", "Updated description", "  prompt  ", "Reference material", List.of("Graph", "graph", " ")));
+                new ImageAssetService.UpdateImage("New title", "Updated description", "  prompt  ", List.of("Graph", "graph", " ")));
 
         assertThat(updated.asset().name()).isEqualTo("New title");
         assertThat(updated.asset().publicationStatus()).isEqualTo(Asset.PublicationStatus.PUBLISHED);
@@ -61,24 +61,20 @@ class ImageAssetServiceUT {
         String prose = "x".repeat(5000);
 
         ImageAsset updated = service.update(courseId, assetId,
-                new ImageAssetService.UpdateImage("Title", prose, prose, prose, List.of()));
+                new ImageAssetService.UpdateImage("Title", prose, prose, List.of()));
 
         assertThat(updated.asset().description()).isEqualTo(prose);
         assertThat(updated.asset().prompt()).isEqualTo(prose);
-        assertThat(updated.asset().purpose()).isEqualTo(prose);
     }
 
     @Test void rejectsProseMetadataOverFiveThousandCharacters() {
         String tooLong = "x".repeat(5001);
 
         assertThatThrownBy(() -> service.update(courseId, assetId,
-                new ImageAssetService.UpdateImage("Title", tooLong, "Prompt", "Purpose", List.of())))
+                new ImageAssetService.UpdateImage("Title", tooLong, "Prompt", List.of())))
                 .isInstanceOf(AssetValidationException.class);
         assertThatThrownBy(() -> service.update(courseId, assetId,
-                new ImageAssetService.UpdateImage("Title", "Description", tooLong, "Purpose", List.of())))
-                .isInstanceOf(AssetValidationException.class);
-        assertThatThrownBy(() -> service.update(courseId, assetId,
-                new ImageAssetService.UpdateImage("Title", "Description", "Prompt", tooLong, List.of())))
+                new ImageAssetService.UpdateImage("Title", "Description", tooLong, List.of())))
                 .isInstanceOf(AssetValidationException.class);
     }
 
@@ -123,7 +119,7 @@ class ImageAssetServiceUT {
     }
 
     private ImageAsset image(Asset.PublicationStatus status, ImageAsset.PendingReplacement pending) {
-        Asset asset = new Asset(assetId, courseId, Asset.Type.IMAGE, "Title", "Description", null, "Lecture material", List.of("tree"), status, Asset.UploadStatus.UPLOADED, LocalDateTime.now(), LocalDateTime.now());
+        Asset asset = new Asset(assetId, courseId, Asset.Type.IMAGE, "Title", "Description", null, List.of("tree"), status, Asset.UploadStatus.UPLOADED, LocalDateTime.now(), LocalDateTime.now());
         return new ImageAsset(asset, "source.png", "image/png", 12, "courses/source.png", pending);
     }
 }

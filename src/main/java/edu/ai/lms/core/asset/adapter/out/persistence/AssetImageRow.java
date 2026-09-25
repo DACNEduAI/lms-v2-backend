@@ -10,7 +10,7 @@ import lombok.Setter;
 @Getter @Setter @NoArgsConstructor
 class AssetImageRow {
     private UUID id; private UUID courseId; private String type; private String name; private String description;
-    private String prompt; private String purpose; private String tagsJson; private String publicationStatus;
+    private String prompt; private String tagsJson; private String publicationStatus;
     private String uploadStatus; private LocalDateTime createdAt; private LocalDateTime updatedAt;
     private String originalFileName; private String contentType; private long byteSize; private String storageKey;
     private String pendingOriginalFileName; private String pendingContentType; private String pendingStorageKey;

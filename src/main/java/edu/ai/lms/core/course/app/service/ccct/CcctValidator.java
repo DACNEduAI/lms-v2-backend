@@ -4,10 +4,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
 
-import edu.ai.lms.core.course.app.domain.CcctCoverageStatus;
 import edu.ai.lms.core.course.app.domain.CcctProfile;
 import edu.ai.lms.core.course.app.domain.Course;
 import edu.ai.lms.core.course.app.exception.CcctPayloadTooLargeException;
@@ -16,6 +17,7 @@ import edu.ai.lms.core.course.app.port.in.command.CcctProfileContent;
 
 @Component
 class CcctValidator {
+    private static final Pattern GROUP_CODE = Pattern.compile("[a-z0-9]+(?:[-_][a-z0-9]+)*");
     static final int MAX_CHAPTERS = 100;
     static final int MAX_TOPICS_PER_CHAPTER = 200;
     static final int MAX_ITEMS_PER_TOPIC = 500;
@@ -64,25 +66,27 @@ class CcctValidator {
                 invalid("A chapter cannot contain more than "
                         + MAX_TOPICS_PER_CHAPTER + " topics");
             }
-            payloadBytes += utf8(chapter.title()) + utf8(chapter.customContent());
+            Set<String> groupCodes = new HashSet<>();
+            payloadBytes += utf8(chapter.title());
             for (var topic : chapter.topics()) {
                 uniqueNodeId(nodeIds, topic.id());
+                String groupCode = topic.groupCode() == null ? "" : topic.groupCode().trim();
+                if (!groupCode.equals(groupCode.toLowerCase(Locale.ROOT)) || !GROUP_CODE.matcher(groupCode).matches()) {
+                    invalid("Topic Group ID must be a lowercase slug using letters, digits, hyphens, or underscores");
+                }
+                if (!groupCodes.add(groupCode)) {
+                    invalid("Topic Group IDs must be unique within a chapter");
+                }
                 required(topic.title(), "Topic title", 255);
                 if (topic.items().size() > MAX_ITEMS_PER_TOPIC) {
                     invalid("A topic cannot contain more than "
                             + MAX_ITEMS_PER_TOPIC + " items");
                 }
-                payloadBytes += utf8(topic.title());
+                payloadBytes += utf8(topic.title()) + utf8(groupCode);
                 for (var item : topic.items()) {
                     uniqueNodeId(nodeIds, item.id());
                     required(item.content(), "Item content", Integer.MAX_VALUE);
-                    if (item.status() == null) {
-                        invalid("Item status is required");
-                    }
-                    if (item.note() != null && item.note().length() > 2_000) {
-                        invalid("Item note cannot exceed 2000 characters");
-                    }
-                    payloadBytes += utf8(item.content()) + utf8(item.note());
+                    payloadBytes += utf8(item.content());
                     if (payloadBytes > MAX_PAYLOAD_BYTES) {
                         throw new CcctPayloadTooLargeException(
                                 "CCCT payload cannot exceed 2 MB");
@@ -98,25 +102,6 @@ class CcctValidator {
     void validatePublish(Course course, CcctProfile profile) {
         if (profile.getFormatVersion() != 2) {
             invalid("Legacy CCCT profiles are read-only and cannot be published");
-        }
-        Set<UUID> courseChapterIds = new HashSet<>();
-        course.getChapters().forEach(chapter -> courseChapterIds.add(chapter.getChapterId()));
-        int examItemCount = 0;
-        for (var chapter : profile.getChapters()) {
-            for (var topic : chapter.getTopics()) {
-                for (var item : topic.getItems()) {
-                    if (item.getCoverageStatus() == CcctCoverageStatus.LEARN_AND_EXAM) {
-                        examItemCount++;
-                        if (chapter.getCourseChapterId() == null
-                                || !courseChapterIds.contains(chapter.getCourseChapterId())) {
-                            invalid("Every LEARN_AND_EXAM item must belong to a mapped Course Chapter");
-                        }
-                    }
-                }
-            }
-        }
-        if (examItemCount == 0) {
-            invalid("A published CCCT must contain at least one LEARN_AND_EXAM item");
         }
     }
 

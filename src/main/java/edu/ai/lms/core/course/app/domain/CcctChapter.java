@@ -20,7 +20,6 @@ public class CcctChapter {
     private UUID profileId;
     private UUID courseChapterId;
     private String title;
-    private String customContent;
     private int orderIndex;
 
     @Builder.Default

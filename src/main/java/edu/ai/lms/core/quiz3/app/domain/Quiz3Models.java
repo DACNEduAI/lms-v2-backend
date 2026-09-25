@@ -37,7 +37,8 @@ public final class Quiz3Models {
     public record AnswerView(long number, String content, String contentFormat, boolean correct) { }
     public record QuestionMetadata(UUID matrixRowId, String chapter, UUID learningOutcomeId,
             String learningOutcome, UUID customLearningLevelId, String customLearningLevelName,
-            String qbank2SelectionMode, List<String> contentGroupIds, List<UUID> exampleIds) { }
+            String requestedAssetType, String effectiveAssetType, String qbank2SelectionMode,
+            List<String> contentGroupIds, List<UUID> exampleIds) { }
     public record QuestionView(UUID id, String content, String contentFormat, String explanation,
             String explanationFormat, String type, int orderIndex, long version,
             QuestionMetadata metadata, List<AnswerView> answers) { }

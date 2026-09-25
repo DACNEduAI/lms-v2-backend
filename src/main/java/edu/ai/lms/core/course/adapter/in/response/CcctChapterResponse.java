@@ -7,6 +7,5 @@ public record CcctChapterResponse(
         UUID id,
         UUID courseChapterId,
         String title,
-        String customContent,
         List<CcctTopicResponse> topics) {
 }

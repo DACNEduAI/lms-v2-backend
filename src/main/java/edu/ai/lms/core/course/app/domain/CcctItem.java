@@ -17,7 +17,5 @@ public class CcctItem {
     private UUID id;
     private UUID topicId;
     private String content;
-    private CcctCoverageStatus coverageStatus;
-    private String note;
     private int orderIndex;
 }

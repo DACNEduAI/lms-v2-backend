@@ -32,11 +32,11 @@ public class AssetController {
     private final ImageAssetService images;
     @GetMapping public List<ImageResponse> list(@PathVariable UUID courseId) { return images.list(courseId).stream().map(image -> ImageResponse.from(image, images.downloadUrl(courseId, image.asset().id()))).toList(); }
     @PostMapping("/images") public ResponseEntity<UploadResponse> create(@PathVariable UUID courseId, @Valid @RequestBody CreateImageRequest request) {
-        var created = images.create(courseId, new ImageAssetService.CreateImage(request.name(), request.originalFileName(), request.contentType(), request.description(), request.prompt(), request.purpose(), request.tags()));
+        var created = images.create(courseId, new ImageAssetService.CreateImage(request.name(), request.originalFileName(), request.contentType(), request.description(), request.prompt(), request.tags()));
         return ResponseEntity.status(HttpStatus.CREATED).body(new UploadResponse(ImageResponse.from(created.image(), null), created.presignedUploadUrl()));
     }
     @PatchMapping("/{assetId}") public ImageResponse update(@PathVariable UUID courseId, @PathVariable UUID assetId, @Valid @RequestBody UpdateImageRequest request) {
-        var image = images.update(courseId, assetId, new ImageAssetService.UpdateImage(request.name(), request.description(), request.prompt(), request.purpose(), request.tags()));
+        var image = images.update(courseId, assetId, new ImageAssetService.UpdateImage(request.name(), request.description(), request.prompt(), request.tags()));
         return ImageResponse.from(image, images.downloadUrl(courseId, assetId));
     }
     @PostMapping("/{assetId}/replacement-upload") public ReplacementUploadResponse replacementUpload(@PathVariable UUID courseId, @PathVariable UUID assetId, @Valid @RequestBody ReplacementImageRequest request) {
@@ -52,14 +52,14 @@ public class AssetController {
     @GetMapping("/{assetId}/download-url") public DownloadResponse download(@PathVariable UUID courseId, @PathVariable UUID assetId) { return new DownloadResponse(images.downloadUrl(courseId, assetId)); }
     @DeleteMapping("/{assetId}") public ResponseEntity<Void> delete(@PathVariable UUID courseId, @PathVariable UUID assetId) { images.delete(courseId, assetId); return ResponseEntity.noContent().build(); }
 
-    public record CreateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType, @NotBlank @Size(max = 5000) String description, @Size(max = 5000) String prompt, @NotBlank @Size(max = 5000) String purpose, List<String> tags) {}
-    public record UpdateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 5000) String description, @Size(max = 5000) String prompt, @NotBlank @Size(max = 5000) String purpose, List<String> tags) {}
+    public record CreateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType, @NotBlank @Size(max = 5000) String description, @Size(max = 5000) String prompt, List<String> tags) {}
+    public record UpdateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 5000) String description, @Size(max = 5000) String prompt, List<String> tags) {}
     public record ReplacementImageRequest(@NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType) {}
     public record PublicationRequest(@NotNull Asset.PublicationStatus status) {}
     public record DownloadResponse(String url) {}
     public record UploadResponse(ImageResponse asset, String presignedUploadUrl) {}
     public record ReplacementUploadResponse(String presignedUploadUrl) {}
-    public record ImageResponse(UUID id, UUID courseId, String type, String name, String description, String prompt, String purpose, List<String> tags, Asset.PublicationStatus publicationStatus, Asset.UploadStatus uploadStatus, String originalFileName, String contentType, long byteSize, String previewUrl, java.time.LocalDateTime createdAt, java.time.LocalDateTime updatedAt) {
-        static ImageResponse from(ImageAsset image, String previewUrl) { Asset a = image.asset(); return new ImageResponse(a.id(), a.courseId(), a.type().name(), a.name(), a.description(), a.prompt(), a.purpose(), a.tags(), a.publicationStatus(), a.uploadStatus(), image.originalFileName(), image.contentType(), image.byteSize(), previewUrl, a.createdAt(), a.updatedAt()); }
+    public record ImageResponse(UUID id, UUID courseId, String type, String name, String description, String prompt, List<String> tags, Asset.PublicationStatus publicationStatus, Asset.UploadStatus uploadStatus, String originalFileName, String contentType, long byteSize, String previewUrl, java.time.LocalDateTime createdAt, java.time.LocalDateTime updatedAt) {
+        static ImageResponse from(ImageAsset image, String previewUrl) { Asset a = image.asset(); return new ImageResponse(a.id(), a.courseId(), a.type().name(), a.name(), a.description(), a.prompt(), a.tags(), a.publicationStatus(), a.uploadStatus(), image.originalFileName(), image.contentType(), image.byteSize(), previewUrl, a.createdAt(), a.updatedAt()); }
     }
 }

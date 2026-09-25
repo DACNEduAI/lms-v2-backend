@@ -22,6 +22,22 @@ import org.springframework.web.server.ResponseStatusException;
 
 class Quiz3AssessmentServiceValidationUT {
     @Test
+    void formatsGroupedLearningOutcomeWithItsGroupCode() {
+        assertEquals("L.O.1.1 - Define Big O", Quiz3AssessmentService.formatLearningOutcome("L.O.1", 1, "Define Big O"));
+        assertEquals("LO2 - Ungrouped", Quiz3AssessmentService.formatLearningOutcome(null, 2, "Ungrouped"));
+    }
+
+    @Test
+    void serializesQuestionAssetTypesInTheReviewMetadataContract() {
+        var metadata = new Quiz3Models.QuestionMetadata(UUID.randomUUID(), "Chapter", UUID.randomUUID(), "L.O.1.1 - Outcome",
+                UUID.randomUUID(), "Understand", "IMAGE", "TEXT", "AUTO_SELECTED", List.of(), List.of());
+        var json = new ObjectMapper().valueToTree(metadata);
+
+        assertEquals("IMAGE", json.path("requestedAssetType").asText());
+        assertEquals("TEXT", json.path("effectiveAssetType").asText());
+    }
+
+    @Test
     void allocatesEveryAssetBucketByLargestRemainderWithStableTies() {
         var coverages = List.of(
                 new MatrixService.AssetCoverage(MatrixService.AssetType.TEXT, 25),
@@ -33,6 +49,23 @@ class Quiz3AssessmentServiceValidationUT {
 
         assertEquals(List.of(1, 1, 0, 0), allocations.stream().map(Quiz3AssessmentService.AssetAllocation::questionCount).toList());
         assertEquals(List.of("TEXT", "IMAGE", "CODE_MCQ", "CODE_RUNNER"), allocations.stream().map(Quiz3AssessmentService.AssetAllocation::assetType).toList());
+    }
+
+    @Test
+    void preservesAssetOrderForSixQuestionsAcrossThirtyFortyTwentyTenCoverage() {
+        var coverages = List.of(
+                new MatrixService.AssetCoverage(MatrixService.AssetType.TEXT, 30),
+                new MatrixService.AssetCoverage(MatrixService.AssetType.IMAGE, 40),
+                new MatrixService.AssetCoverage(MatrixService.AssetType.CODE_MCQ, 20),
+                new MatrixService.AssetCoverage(MatrixService.AssetType.CODE_RUNNER, 10));
+
+        var allocations = Quiz3AssessmentService.allocateAssetCoverage(6, coverages);
+
+        assertEquals(List.of(2, 2, 1, 1), allocations.stream()
+                .map(Quiz3AssessmentService.AssetAllocation::questionCount).toList());
+        assertEquals("TEXT", allocations.get(0).assetType());
+        assertEquals("TEXT", allocations.get(1).effectiveAssetType());
+        assertEquals("IMAGE_MEDIA_NOT_SUPPORTED", allocations.get(1).fallbackReason());
     }
 
     @Test

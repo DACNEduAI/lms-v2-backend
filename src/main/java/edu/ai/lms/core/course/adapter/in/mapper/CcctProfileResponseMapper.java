@@ -34,15 +34,13 @@ public class CcctProfileResponseMapper {
                                 chapter.getId(),
                                 chapter.getCourseChapterId(),
                                 chapter.getTitle(),
-                                chapter.getCustomContent(),
                                 chapter.getTopics().stream().map(topic -> new CcctTopicResponse(
                                         topic.getId(),
+                                        topic.getGroupCode(),
                                         topic.getTitle(),
                                         topic.getItems().stream().map(item -> new CcctItemResponse(
                                                 item.getId(),
-                                                item.getContent(),
-                                                item.getCoverageStatus(),
-                                                item.getNote())).toList())).toList())).toList()),
+                                                item.getContent())).toList())).toList())).toList()),
                 profile.getCreatedBy(),
                 profile.getPublishedAt(),
                 profile.getCreatedAt(),

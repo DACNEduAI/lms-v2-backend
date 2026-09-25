@@ -18,6 +18,8 @@ import lombok.Setter;
 public class CcctTopic {
     private UUID id;
     private UUID chapterId;
+    /** Teacher-defined identifier used by Matrix content codes. */
+    private String groupCode;
     private String title;
     private int orderIndex;
 
