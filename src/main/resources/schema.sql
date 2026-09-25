@@ -282,12 +282,13 @@ CREATE INDEX IF NOT EXISTS idx_ccct_chapters_course_chapter
 CREATE TABLE IF NOT EXISTS ccct_topics
 (
     id          UUID PRIMARY KEY,
+    profile_id  UUID         NOT NULL REFERENCES ccct_profiles (id) ON DELETE CASCADE,
     chapter_id  UUID         NOT NULL REFERENCES ccct_chapters (id) ON DELETE CASCADE,
     group_code  VARCHAR(64)  NOT NULL CHECK (group_code ~ '^[a-z0-9]+([-_][a-z0-9]+)*$'),
     title       VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
     order_index INTEGER      NOT NULL CHECK (order_index >= 0),
     CONSTRAINT uq_ccct_topic_order UNIQUE (chapter_id, order_index),
-    CONSTRAINT uq_ccct_topic_group_code UNIQUE (chapter_id, group_code)
+    CONSTRAINT uq_ccct_topic_group_code UNIQUE (profile_id, group_code)
 );
 
 CREATE INDEX IF NOT EXISTS idx_ccct_topics_chapter
@@ -297,9 +298,12 @@ CREATE TABLE IF NOT EXISTS ccct_items
 (
     id              UUID PRIMARY KEY,
     topic_id        UUID        NOT NULL REFERENCES ccct_topics (id) ON DELETE CASCADE,
+    content_code    VARCHAR(128) NOT NULL,
     content         TEXT        NOT NULL CHECK (btrim(content) <> ''),
     order_index     INTEGER     NOT NULL CHECK (order_index >= 0),
-    CONSTRAINT uq_ccct_item_order UNIQUE (topic_id, order_index)
+    CONSTRAINT uq_ccct_item_order UNIQUE (topic_id, order_index),
+    CONSTRAINT ck_ccct_item_content_code CHECK (content_code ~ '^[a-z0-9]+([._-][a-z0-9]+)*$'),
+    CONSTRAINT uq_ccct_item_code UNIQUE (topic_id, content_code)
 );
 
 CREATE INDEX IF NOT EXISTS idx_ccct_items_topic
@@ -331,6 +335,15 @@ CREATE TABLE IF NOT EXISTS exam_matrix_custom_learning_levels
     matrix_id   UUID         NOT NULL REFERENCES exam_matrices (id) ON DELETE CASCADE,
     name        VARCHAR(255) NOT NULL CHECK (btrim(name) <> ''),
     sort_order  INTEGER      NOT NULL CHECK (sort_order >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS exam_matrix_outcome_cognitive_levels
+(
+    matrix_id          UUID        NOT NULL REFERENCES exam_matrices (id) ON DELETE CASCADE,
+    learning_outcome_id UUID       NOT NULL REFERENCES learning_outcomes (id) ON DELETE CASCADE,
+    cognitive_level_code VARCHAR(30) NOT NULL CHECK
+        (cognitive_level_code IN ('REMEMBER', 'UNDERSTAND', 'APPLY', 'ANALYZE', 'EVALUATE', 'CREATE')),
+    PRIMARY KEY (matrix_id, learning_outcome_id)
 );
 
 -- LMS-only presentation/allocation metadata for a Matrix-owned CLL. Quiz3's

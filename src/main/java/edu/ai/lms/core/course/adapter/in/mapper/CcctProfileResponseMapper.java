@@ -40,6 +40,7 @@ public class CcctProfileResponseMapper {
                                         topic.getTitle(),
                                         topic.getItems().stream().map(item -> new CcctItemResponse(
                                                 item.getId(),
+                                                item.getContentCode(),
                                                 item.getContent())).toList())).toList())).toList()),
                 profile.getCreatedBy(),
                 profile.getPublishedAt(),

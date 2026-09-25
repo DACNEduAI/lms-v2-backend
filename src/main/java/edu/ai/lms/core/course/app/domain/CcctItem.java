@@ -16,6 +16,7 @@ import lombok.Setter;
 public class CcctItem {
     private UUID id;
     private UUID topicId;
+    private String contentCode;
     private String content;
     private int orderIndex;
 }

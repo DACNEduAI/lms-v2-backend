@@ -1,6 +1,7 @@
 package edu.ai.lms.core.course.app.service.ccct;
 
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import org.springframework.stereotype.Component;
 
@@ -38,10 +39,17 @@ class CcctProfileFactory {
                                 .id(topic.id())
                                 .groupCode(topic.groupCode().trim().toLowerCase(java.util.Locale.ROOT))
                                 .title(topic.title().trim())
-                                .items(topic.items().stream().map(item -> CcctItem.builder()
-                                        .id(item.id())
-                                        .content(item.content().trim())
-                                        .build()).toList())
+                                .items(IntStream.range(0, topic.items().size()).mapToObj(itemIndex -> {
+                                    var item = topic.items().get(itemIndex);
+                                    String code = item.contentCode() == null || item.contentCode().isBlank()
+                                            ? topic.groupCode().trim().toLowerCase(java.util.Locale.ROOT) + ".item-" + (itemIndex + 1)
+                                            : item.contentCode().trim().toLowerCase(java.util.Locale.ROOT);
+                                    return CcctItem.builder()
+                                            .id(item.id())
+                                            .contentCode(code)
+                                            .content(item.content().trim())
+                                            .build();
+                                }).toList())
                                 .build()).toList())
                         .build()).toList())
                 .build();
@@ -78,6 +86,7 @@ class CcctProfileFactory {
                                 .groupCode(topic.getGroupCode())
                                 .title(topic.getTitle())
                                 .items(topic.getItems().stream().map(item -> CcctItem.builder()
+                                        .contentCode(item.getContentCode())
                                         .content(item.getContent())
                                         .build()).toList())
                                 .build()).toList())

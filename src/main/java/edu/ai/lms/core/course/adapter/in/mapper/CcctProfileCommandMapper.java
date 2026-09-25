@@ -107,6 +107,7 @@ public class CcctProfileCommandMapper {
     private CcctItemValue item(CcctItemRequest value) {
         return new CcctItemValue(
                 value.id(),
+                value.contentCode(),
                 value.content());
     }
 }

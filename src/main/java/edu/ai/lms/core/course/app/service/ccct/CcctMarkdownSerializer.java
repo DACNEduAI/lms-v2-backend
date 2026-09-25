@@ -19,9 +19,15 @@ class CcctMarkdownSerializer {
             chapter.getTopics().forEach(topic -> {
                 lines.add("");
                 lines.add("### [" + topic.getGroupCode().trim() + "] " + topic.getTitle().trim());
-                topic.getItems().forEach(item -> {
-                    lines.add("- " + item.getContent().trim());
-                });
+                for (int itemIndex = 0; itemIndex < topic.getItems().size(); itemIndex++) {
+                    var item = topic.getItems().get(itemIndex);
+                    String code = item.getContentCode();
+                    if (code == null || code.isBlank()) {
+                        code = topic.getGroupCode().trim().toLowerCase(java.util.Locale.ROOT)
+                                + ".item-" + (itemIndex + 1);
+                    }
+                    lines.add("- " + item.getContent().trim() + " [" + code.trim() + "]");
+                }
             });
         });
         return String.join("\n", lines);

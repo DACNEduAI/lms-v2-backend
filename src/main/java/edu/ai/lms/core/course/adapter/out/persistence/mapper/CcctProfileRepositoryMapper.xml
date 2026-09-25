@@ -34,6 +34,7 @@
 
   <resultMap id="CcctTopicResultMap" type="edu.ai.lms.core.course.app.domain.CcctTopic">
     <id property="id" column="id"/>
+    <result property="profileId" column="profile_id"/>
     <result property="chapterId" column="chapter_id"/>
     <result property="groupCode" column="group_code"/>
     <result property="title" column="title"/>
@@ -43,6 +44,7 @@
   <resultMap id="CcctItemResultMap" type="edu.ai.lms.core.course.app.domain.CcctItem">
     <id property="id" column="id"/>
     <result property="topicId" column="topic_id"/>
+    <result property="contentCode" column="content_code"/>
     <result property="content" column="content"/>
     <result property="orderIndex" column="order_index"/>
   </resultMap>
@@ -90,7 +92,7 @@
   </select>
 
   <select id="findTopicsByChapterIds" resultMap="CcctTopicResultMap">
-    SELECT id, chapter_id, group_code, title, order_index
+    SELECT id, profile_id, chapter_id, group_code, title, order_index
     FROM edu.ccct_topics
     WHERE chapter_id IN
     <foreach collection="chapterIds" item="chapterId" open="(" separator="," close=")">
@@ -100,7 +102,7 @@
   </select>
 
   <select id="findItemsByTopicIds" resultMap="CcctItemResultMap">
-    SELECT id, topic_id, content, order_index
+    SELECT id, topic_id, content_code, content, order_index
     FROM edu.ccct_items
     WHERE topic_id IN
     <foreach collection="topicIds" item="topicId" open="(" separator="," close=")">
@@ -153,19 +155,20 @@
   </insert>
 
   <insert id="insertTopics">
-    INSERT INTO edu.ccct_topics (id, chapter_id, group_code, title, order_index)
+    INSERT INTO edu.ccct_topics (id, profile_id, chapter_id, group_code, title, order_index)
     VALUES
     <foreach collection="topics" item="topic" separator=",">
-      (#{topic.id}, #{topic.chapterId}, #{topic.groupCode}, #{topic.title}, #{topic.orderIndex})
+      (#{topic.id}, (SELECT profile_id FROM edu.ccct_chapters WHERE id = #{topic.chapterId}),
+       #{topic.chapterId}, #{topic.groupCode}, #{topic.title}, #{topic.orderIndex})
     </foreach>
   </insert>
 
   <insert id="insertItems">
     INSERT INTO edu.ccct_items
-      (id, topic_id, content, order_index)
+      (id, topic_id, content_code, content, order_index)
     VALUES
     <foreach collection="items" item="item" separator=",">
-      (#{item.id}, #{item.topicId}, #{item.content}, #{item.orderIndex})
+      (#{item.id}, #{item.topicId}, #{item.contentCode}, #{item.content}, #{item.orderIndex})
     </foreach>
   </insert>
 

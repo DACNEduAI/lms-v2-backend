@@ -18,6 +18,7 @@ import edu.ai.lms.core.course.app.port.in.command.CcctProfileContent;
 @Component
 class CcctValidator {
     private static final Pattern GROUP_CODE = Pattern.compile("[a-z0-9]+(?:[-_][a-z0-9]+)*");
+    private static final Pattern CONTENT_CODE = Pattern.compile("[a-z0-9]+(?:[._-][a-z0-9]+)*");
     static final int MAX_CHAPTERS = 100;
     static final int MAX_TOPICS_PER_CHAPTER = 200;
     static final int MAX_ITEMS_PER_TOPIC = 500;
@@ -43,6 +44,8 @@ class CcctValidator {
         }
 
         Set<UUID> nodeIds = new HashSet<>();
+        Set<String> groupCodes = new HashSet<>();
+        Set<String> contentCodes = new HashSet<>();
         if (content.chapters().size() != course.getChapters().size()) {
             invalid("CCCT must contain every Course Chapter exactly once");
         }
@@ -66,16 +69,17 @@ class CcctValidator {
                 invalid("A chapter cannot contain more than "
                         + MAX_TOPICS_PER_CHAPTER + " topics");
             }
-            Set<String> groupCodes = new HashSet<>();
             payloadBytes += utf8(chapter.title());
             for (var topic : chapter.topics()) {
                 uniqueNodeId(nodeIds, topic.id());
                 String groupCode = topic.groupCode() == null ? "" : topic.groupCode().trim();
-                if (!groupCode.equals(groupCode.toLowerCase(Locale.ROOT)) || !GROUP_CODE.matcher(groupCode).matches()) {
+                if (groupCode.length() > 64
+                        || !groupCode.equals(groupCode.toLowerCase(Locale.ROOT))
+                        || !GROUP_CODE.matcher(groupCode).matches()) {
                     invalid("Topic Group ID must be a lowercase slug using letters, digits, hyphens, or underscores");
                 }
                 if (!groupCodes.add(groupCode)) {
-                    invalid("Topic Group IDs must be unique within a chapter");
+                    invalid("Topic Group IDs must be unique within the CCCT profile");
                 }
                 required(topic.title(), "Topic title", 255);
                 if (topic.items().size() > MAX_ITEMS_PER_TOPIC) {
@@ -85,8 +89,20 @@ class CcctValidator {
                 payloadBytes += utf8(topic.title()) + utf8(groupCode);
                 for (var item : topic.items()) {
                     uniqueNodeId(nodeIds, item.id());
+                    String contentCode = item.contentCode() == null ? "" : item.contentCode().trim();
+                    if (!contentCode.isBlank()) {
+                        if (!contentCode.equals(contentCode.toLowerCase(Locale.ROOT))
+                                || contentCode.length() > 128
+                                || !CONTENT_CODE.matcher(contentCode).matches()
+                                || !contentCode.startsWith(groupCode + ".")) {
+                            invalid("Content Code must be a lowercase code prefixed by its Group Code, for example big-o.concept");
+                        }
+                        if (!contentCodes.add(contentCode)) {
+                            invalid("Content Codes must be unique within the CCCT profile");
+                        }
+                    }
                     required(item.content(), "Item content", Integer.MAX_VALUE);
-                    payloadBytes += utf8(item.content());
+                    payloadBytes += utf8(contentCode) + utf8(item.content());
                     if (payloadBytes > MAX_PAYLOAD_BYTES) {
                         throw new CcctPayloadTooLargeException(
                                 "CCCT payload cannot exceed 2 MB");

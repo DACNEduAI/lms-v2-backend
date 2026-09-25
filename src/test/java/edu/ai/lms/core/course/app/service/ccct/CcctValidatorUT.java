@@ -95,7 +95,7 @@ class CcctValidatorUT {
                 new CcctTopicValue(null, "same_group", "Two", List.of())))));
         assertThatThrownBy(() -> validator.validateDraft(course(chapterId), duplicate))
                 .isInstanceOf(CcctValidationException.class)
-                .hasMessageContaining("unique within a chapter");
+                .hasMessageContaining("unique within the CCCT profile");
     }
 
     private CcctProfileContent content(List<CcctChapterValue> chapters) {

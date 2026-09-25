@@ -56,29 +56,31 @@ public class Quiz3CcctSourceRepository {
         Map<UUID, UUID> topicIds = new HashMap<>();
         for (Map.Entry<UUID, UUID> entry : chapterIds.entrySet()) {
             jdbc.query("""
-                    SELECT id, title, order_index FROM edu.ccct_topics
+                    SELECT id, group_code, title, order_index FROM edu.ccct_topics
                     WHERE chapter_id = :chapterId ORDER BY order_index
                     """, Map.of("chapterId", entry.getKey()), rs -> {
                 UUID newId = UUID.randomUUID();
                 topicIds.put(rs.getObject("id", UUID.class), newId);
                 jdbc.update("""
-                        INSERT INTO edu.ccct_topics (id, chapter_id, title, order_index)
-                        VALUES (:id, :chapterId, :title, :orderIndex)
+                        INSERT INTO edu.ccct_topics (id, profile_id, chapter_id, group_code, title, order_index)
+                        VALUES (:id, :profileId, :chapterId, :groupCode, :title, :orderIndex)
                         """, new MapSqlParameterSource().addValue("id", newId)
-                        .addValue("chapterId", entry.getValue()).addValue("title", rs.getString("title"))
+                        .addValue("profileId", cloneId).addValue("chapterId", entry.getValue())
+                        .addValue("groupCode", rs.getString("group_code")).addValue("title", rs.getString("title"))
                         .addValue("orderIndex", rs.getInt("order_index")));
             });
         }
         for (Map.Entry<UUID, UUID> entry : topicIds.entrySet()) {
             jdbc.query("""
-                    SELECT content, order_index FROM edu.ccct_items
+                    SELECT content_code, content, order_index FROM edu.ccct_items
                     WHERE topic_id = :topicId ORDER BY order_index
                     """, Map.of("topicId", entry.getKey()), rs -> {
                 jdbc.update("""
-                        INSERT INTO edu.ccct_items (id, topic_id, content, order_index)
-                        VALUES (:id, :topicId, :content, :orderIndex)
+                        INSERT INTO edu.ccct_items (id, topic_id, content_code, content, order_index)
+                        VALUES (:id, :topicId, :contentCode, :content, :orderIndex)
                         """, new MapSqlParameterSource().addValue("id", UUID.randomUUID())
-                        .addValue("topicId", entry.getValue()).addValue("content", rs.getString("content"))
+                        .addValue("topicId", entry.getValue()).addValue("contentCode", rs.getString("content_code"))
+                        .addValue("content", rs.getString("content"))
                         .addValue("orderIndex", rs.getInt("order_index")));
             });
         }

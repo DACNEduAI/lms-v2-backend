@@ -17,6 +17,7 @@ import lombok.Setter;
 @Builder
 public class CcctTopic {
     private UUID id;
+    private UUID profileId;
     private UUID chapterId;
     /** Teacher-defined identifier used by Matrix content codes. */
     private String groupCode;
