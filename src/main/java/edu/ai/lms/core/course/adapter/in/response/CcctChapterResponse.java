@@ -6,6 +6,7 @@ import java.util.UUID;
 public record CcctChapterResponse(
         UUID id,
         UUID courseChapterId,
+        String chapterCode,
         String title,
-        List<CcctTopicResponse> topics) {
+        List<CcctItemResponse> items) {
 }

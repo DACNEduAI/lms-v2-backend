@@ -19,9 +19,11 @@ public class CcctChapter {
     private UUID id;
     private UUID profileId;
     private UUID courseChapterId;
+    /** Teacher-authored camelCase identifier used to prefix content codes. */
+    private String chapterCode;
     private String title;
     private int orderIndex;
 
     @Builder.Default
-    private List<CcctTopic> topics = new ArrayList<>();
+    private List<CcctItem> items = new ArrayList<>();
 }

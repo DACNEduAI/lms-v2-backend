@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 
 import edu.ai.lms.core.course.adapter.in.request.CcctChapterRequest;
 import edu.ai.lms.core.course.adapter.in.request.CcctItemRequest;
-import edu.ai.lms.core.course.adapter.in.request.CcctTopicRequest;
 import edu.ai.lms.core.course.adapter.in.request.CloneCcctProfileRequest;
 import edu.ai.lms.core.course.adapter.in.request.CreateCcctProfileRequest;
 import edu.ai.lms.core.course.adapter.in.request.PublishCcctProfileRequest;
@@ -14,7 +13,6 @@ import edu.ai.lms.core.course.adapter.in.request.UpdateCcctProfileRequest;
 import edu.ai.lms.core.course.app.port.in.command.CcctChapterValue;
 import edu.ai.lms.core.course.app.port.in.command.CcctItemValue;
 import edu.ai.lms.core.course.app.port.in.command.CcctProfileContent;
-import edu.ai.lms.core.course.app.port.in.command.CcctTopicValue;
 import edu.ai.lms.core.course.app.port.in.command.CloneCcctProfileCommand;
 import edu.ai.lms.core.course.app.port.in.command.CreateCcctProfileCommand;
 import edu.ai.lms.core.course.app.port.in.command.PublishCcctProfileCommand;
@@ -92,14 +90,7 @@ public class CcctProfileCommandMapper {
         return new CcctChapterValue(
                 value.id(),
                 value.courseChapterId(),
-                value.title(),
-                value.topics().stream().map(this::topic).toList());
-    }
-
-    private CcctTopicValue topic(CcctTopicRequest value) {
-        return new CcctTopicValue(
-                value.id(),
-                value.groupCode(),
+                value.chapterCode(),
                 value.title(),
                 value.items().stream().map(this::item).toList());
     }
