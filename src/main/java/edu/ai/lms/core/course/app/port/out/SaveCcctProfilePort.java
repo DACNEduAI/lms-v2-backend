@@ -9,8 +9,6 @@ public interface SaveCcctProfilePort {
 
     boolean replaceDraft(CcctProfile profile, long expectedVersion);
 
-    boolean archivePublished(UUID courseId, UUID publishedProfileId);
-
     boolean publishDraft(
             UUID courseId,
             UUID profileId,

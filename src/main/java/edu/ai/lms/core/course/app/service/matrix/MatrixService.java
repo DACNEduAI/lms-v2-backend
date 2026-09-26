@@ -1,5 +1,6 @@
 package edu.ai.lms.core.course.app.service.matrix;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDateTime;
 import java.util.*;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,8 @@ import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.service.CourseTeacherAccess;
 import edu.ai.lms.core.course.adapter.out.persistence.MatrixAssetCoverageRepository;
 import edu.ai.lms.core.course.adapter.out.persistence.MatrixAssetCoverageRow;
+import edu.ai.lms.core.course.app.port.in.command.PublishCcctProfileCommand;
+import edu.ai.lms.core.course.app.port.in.usecase.PublishCcctProfileUseCase;
 import lombok.RequiredArgsConstructor;
 
 /** Course-owned matrix authoring with manual quotas or automatic cell allocation. */
@@ -23,6 +26,7 @@ public class MatrixService {
     private final CourseTeacherAccess access;
     private final LoadSignedInUserPort signedInUserPort;
     private final MatrixAssetCoverageRepository assetCoverages;
+    private final PublishCcctProfileUseCase publishCcct;
 
     @Transactional(readOnly = true)
     public MatrixList list(UUID courseId) {
@@ -40,36 +44,42 @@ public class MatrixService {
 
     @Transactional public MatrixDetail create(UUID courseId, MatrixPayload payload) {
         access.requireCourseTeacher(courseId); payload=withDefaultOutcomeCognitiveLevels(payload); validate(courseId,payload); UUID id=UUID.randomUUID();
-        jdbc.update("INSERT INTO edu.exam_matrices(id,course_id,ccct_profile_id,ccct_profile_version,title,description,mode,total_question_count) VALUES(?,?,?,?,?,?,?,?)",id,courseId,payload.ccctProfileId(),payload.ccctProfileVersion(),payload.title().trim(),trim(payload.description()),payload.mode().name(),payload.totalQuestionCount());
-        replace(id,payload); return load(courseId,id);
+        UUID profileId=singleCcct(courseId);
+        jdbc.update("INSERT INTO edu.exam_matrices(id,course_id,ccct_profile_id,ccct_published_at,title,description,mode,total_question_count) VALUES(?,?,?,?,?,?,?,?)",id,courseId,profileId,null,payload.title().trim(),trim(payload.description()),payload.mode().name(),payload.totalQuestionCount());
+        replace(id,profileId,payload); return load(courseId,id);
     }
     @Transactional public MatrixDetail update(UUID courseId,UUID id,MatrixPayload payload) {
         access.requireCourseTeacher(courseId); MatrixDetail old=editable(courseId,id);
         if(payload==null||payload.expectedVersion()==null||payload.expectedVersion()!=old.version()) throw conflict("Matrix changed before update; reload and try again");
         payload=withDefaultOutcomeCognitiveLevels(payload);
         validate(courseId,payload);
-        if(jdbc.update("UPDATE edu.exam_matrices SET ccct_profile_id=?,ccct_profile_version=?,title=?,description=?,mode=?,total_question_count=?,version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND course_id=? AND lifecycle_status='DRAFT' AND version=?",payload.ccctProfileId(),payload.ccctProfileVersion(),payload.title().trim(),trim(payload.description()),payload.mode().name(),payload.totalQuestionCount(),id,courseId,payload.expectedVersion())!=1) throw conflict("Matrix changed before update; reload and try again");
+        if(jdbc.update("UPDATE edu.exam_matrices SET title=?,description=?,mode=?,total_question_count=?,version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND course_id=? AND lifecycle_status='DRAFT' AND version=?",payload.title().trim(),trim(payload.description()),payload.mode().name(),payload.totalQuestionCount(),id,courseId,payload.expectedVersion())!=1) throw conflict("Matrix changed before update; reload and try again");
         jdbc.update("DELETE FROM edu.exam_matrix_rows WHERE matrix_id=?",id);
         jdbc.update("DELETE FROM edu.exam_matrix_outcome_cognitive_levels WHERE matrix_id=?",id);
         jdbc.update("DELETE FROM edu.exam_matrix_custom_learning_levels WHERE matrix_id=?",id);
-        replace(id,payload);
+        replace(id,old.ccctProfileId(),payload);
         return load(courseId,id);
     }
     @Transactional public MatrixDetail copyAsDraft(UUID courseId,UUID sourceId,CopyRequest request) {
         access.requireCourseTeacher(courseId); MatrixDetail source=load(courseId,sourceId); Map<UUID,UUID> levels=new HashMap<>();
         List<LearningLevelPayload> copiedLevels=source.customLearningLevels().stream().map(x->{UUID id=UUID.randomUUID();levels.put(x.id(),id);return new LearningLevelPayload(id,x.name(),x.assetCoverages());}).toList();
         List<RowPayload> rows=source.rows().stream().map(r->new RowPayload(UUID.randomUUID(),r.ccctItemId(),r.mappedLearningOutcomeId(),r.cells().stream().map(c->new Cell(levels.get(c.customLearningLevelId()),c.questionCount())).toList())).toList();
-        return create(courseId,new MatrixPayload(request==null||trim(request.title())==null?source.title()+" (Copy)":trim(request.title()),source.description(),source.ccctProfileId(),source.ccctProfileVersion(),source.mode(),source.totalQuestionCount(),rows,copiedLevels,source.outcomeCognitiveLevels(),null));
+        return create(courseId,new MatrixPayload(request==null||trim(request.title())==null?source.title()+" (Copy)":trim(request.title()),source.description(),source.mode(),source.totalQuestionCount(),rows,copiedLevels,source.outcomeCognitiveLevels(),null));
     }
     @Transactional public void delete(UUID courseId,UUID id) { access.requireCourseTeacher(courseId); editable(courseId,id); if(jdbc.update("DELETE FROM edu.exam_matrices WHERE id=? AND course_id=? AND lifecycle_status='DRAFT'",id,courseId)!=1)throw conflict("Only a DRAFT Matrix can be deleted"); }
     @Transactional public MatrixDetail publish(UUID courseId,UUID id,PublishRequest request) {
-        access.requireCourseTeacher(courseId); MatrixDetail current=editable(courseId,id); if(request==null||request.expectedVersion()!=current.version())throw conflict("Matrix changed before publish; reload and try again"); validateConfirmable(current);
+        access.requireCourseTeacher(courseId); MatrixDetail current=editable(courseId,id); if(request==null||request.expectedVersion()!=current.version())throw conflict("Matrix changed before publish; reload and try again");
+        Object[] source=jdbc.query("SELECT status,version,published_at FROM edu.ccct_profiles WHERE id=?",rs->rs.next()?new Object[]{rs.getString(1),rs.getLong(2),rs.getObject(3,LocalDateTime.class)}:null,current.ccctProfileId());
+        if(source==null) throw badRequest("Course CCCT is required");
+        if("DRAFT".equals(source[0])) publishCcct.publish(new PublishCcctProfileCommand(courseId,current.ccctProfileId(),(Long)source[1]));
+        LocalDateTime revisionAt=jdbc.queryForObject("SELECT published_at FROM edu.ccct_profiles WHERE id=?",LocalDateTime.class,current.ccctProfileId());
+        current=load(courseId,id); validateConfirmable(current);
         UUID actor=signedInUserPort.findAuthenticatedUser().orElseThrow(()->new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Authentication is required")).getId();
-        if(jdbc.update("UPDATE edu.exam_matrices SET lifecycle_status='PUBLISHED',version=version+1,published_by=?,published_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=? AND course_id=? AND lifecycle_status='DRAFT' AND version=?",actor,id,courseId,request.expectedVersion())!=1)throw conflict("Matrix changed before publish; reload and try again"); return load(courseId,id);
+        if(jdbc.update("UPDATE edu.exam_matrices SET lifecycle_status='PUBLISHED',ccct_published_at=?,version=version+1,published_by=?,published_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=? AND course_id=? AND lifecycle_status='DRAFT' AND version=?",revisionAt,actor,id,courseId,request.expectedVersion())!=1)throw conflict("Matrix changed before publish; reload and try again"); return load(courseId,id);
     }
     public void validateConfirmable(MatrixDetail matrix) {
-        Integer sourceState=jdbc.query("SELECT CASE WHEN status='PUBLISHED' AND version=? THEN 1 ELSE 0 END FROM edu.ccct_profiles WHERE id=?",rs->rs.next()?rs.getInt(1):0,matrix.ccctProfileVersion(),matrix.ccctProfileId());
-        if(sourceState==null||sourceState!=1) throw badRequest("Matrix source CCCT must be Published at the Matrix-recorded version; refresh and save the Matrix source first");
+        Integer sourceState=jdbc.query("SELECT CASE WHEN status='PUBLISHED' THEN 1 ELSE 0 END FROM edu.ccct_profiles WHERE id=?",rs->rs.next()?rs.getInt(1):0,matrix.ccctProfileId());
+        if(sourceState==null||sourceState!=1) throw badRequest("Matrix source CCCT must be Published before publishing this Matrix");
         List<String> errors=new ArrayList<>(); if(matrix.rows().isEmpty())errors.add("Matrix needs at least one row"); if(matrix.customLearningLevels().isEmpty())errors.add("Matrix needs at least one custom learning level");
         Set<UUID> mappedOutcomes=matrix.outcomeCognitiveLevels().stream().map(OutcomeCognitiveLevel::learningOutcomeId).collect(java.util.stream.Collectors.toSet());
         List<Cell> configured=matrix.rows().stream().flatMap(r->r.cells().stream()).toList();
@@ -80,14 +90,26 @@ public class MatrixService {
     public static List<Integer> allocate(int selectedCellCount,Integer total) { if(selectedCellCount<=0)throw badRequest("Automatic Matrix needs at least one selected cell"); if(total==null||total<=0)throw badRequest("Automatic Matrix total question count must be greater than zero"); int base=total/selectedCellCount,rem=total%selectedCellCount; List<Integer> result=new ArrayList<>();for(int i=0;i<selectedCellCount;i++)result.add(base+(i<rem?1:0));return result; }
     public AllocationPreview previewAllocation(AllocationPreviewRequest request) { return new AllocationPreview(allocate(request.selectedCellCount(),request.totalQuestionCount())); }
     private MatrixDetail load(UUID courseId,UUID id) {
-        MatrixMetadata m=jdbc.query("SELECT id,course_id,ccct_profile_id,ccct_profile_version,title,description,mode,total_question_count,lifecycle_status,version,published_by,published_at,created_at,updated_at FROM edu.exam_matrices WHERE id=? AND course_id=?",rs->rs.next()?new MatrixMetadata(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),rs.getObject(3,UUID.class),rs.getObject(4,Long.class),rs.getString(5),rs.getString(6),MatrixMode.valueOf(rs.getString(7)),rs.getObject(8,Integer.class),LifecycleStatus.valueOf(rs.getString(9)),rs.getLong(10),rs.getObject(11,UUID.class),rs.getObject(12,LocalDateTime.class),rs.getObject(13,LocalDateTime.class),rs.getObject(14,LocalDateTime.class)):null,id,courseId); if(m==null)throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Matrix not found: "+id);
+        MatrixMetadata m=jdbc.query("SELECT id,course_id,ccct_profile_id,ccct_published_at,title,description,mode,total_question_count,lifecycle_status,version,published_by,published_at,created_at,updated_at FROM edu.exam_matrices WHERE id=? AND course_id=?",rs->rs.next()?new MatrixMetadata(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),rs.getObject(3,UUID.class),rs.getObject(4,LocalDateTime.class),rs.getString(5),rs.getString(6),MatrixMode.valueOf(rs.getString(7)),rs.getObject(8,Integer.class),LifecycleStatus.valueOf(rs.getString(9)),rs.getLong(10),rs.getObject(11,UUID.class),rs.getObject(12,LocalDateTime.class),rs.getObject(13,LocalDateTime.class),rs.getObject(14,LocalDateTime.class)):null,id,courseId); if(m==null)throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Matrix not found: "+id);
         Map<UUID,List<AssetCoverage>> coveragesByLevel=new HashMap<>(); assetCoverages.findByMatrixId(id).forEach(coverage -> coveragesByLevel.computeIfAbsent(coverage.customLearningLevelId(), ignored -> new ArrayList<>()).add(new AssetCoverage(AssetType.valueOf(coverage.assetType()), coverage.percentage())));
         List<LearningLevel> levels=jdbc.query("SELECT id,name,sort_order FROM edu.exam_matrix_custom_learning_levels WHERE matrix_id=? ORDER BY sort_order,id",(rs,n)->new LearningLevel(rs.getObject(1,UUID.class),rs.getString(2),rs.getInt(3),coverageFor(coveragesByLevel,rs.getObject(1,UUID.class))),id); Map<UUID,List<Cell>> cells=new HashMap<>(); jdbc.query("SELECT r.id,c.custom_learning_level_id,c.question_count FROM edu.exam_matrix_rows r JOIN edu.exam_matrix_cells c ON c.row_id=r.id WHERE r.matrix_id=? ORDER BY r.sort_order,r.id",(RowCallbackHandler) rs->cells.computeIfAbsent(rs.getObject(1,UUID.class),x->new ArrayList<>()).add(new Cell(rs.getObject(2,UUID.class),rs.getObject(3,Integer.class))),id);
-        List<Row> rows=jdbc.query("SELECT r.id,r.chapter_id,c.title,r.ccct_item_id,t.group_code,t.title,i.content,i.content_code,r.mapped_learning_outcome_id,CASE WHEN lo.prefix_number IS NULL THEN lo.description ELSE 'LO'||lo.prefix_number||' - '||lo.description END,r.sort_order FROM edu.exam_matrix_rows r LEFT JOIN edu.ccct_items i ON i.id=r.ccct_item_id LEFT JOIN edu.ccct_topics t ON t.id=i.topic_id LEFT JOIN edu.chapters c ON c.chapter_id=r.chapter_id LEFT JOIN edu.learning_outcomes lo ON lo.id=r.mapped_learning_outcome_id WHERE r.matrix_id=? ORDER BY r.sort_order,r.id",(rs,n)->{UUID rowId=rs.getObject(1,UUID.class); List<Cell> rowCells=List.copyOf(cells.getOrDefault(rowId,List.of())); return new Row(rowId,rs.getObject(2,UUID.class),rs.getString(3),rs.getObject(4,UUID.class),rs.getString(5),rs.getString(6),rs.getString(7),rs.getString(8),rs.getObject(9,UUID.class),rs.getString(10),rs.getInt(11),rowCells);},id);
+        List<Row> rows=jdbc.query("""
+                SELECT r.id,r.chapter_id,coalesce(rc.title,c.title),r.ccct_item_id,
+                  coalesce(rt.group_code,t.group_code),coalesce(rt.title,t.title),coalesce(ri.content,i.content),coalesce(ri.content_code,i.content_code),
+                  r.mapped_learning_outcome_id,CASE WHEN lo.prefix_number IS NULL THEN lo.description ELSE 'LO'||lo.prefix_number||' - '||lo.description END,r.sort_order
+                FROM edu.exam_matrix_rows r JOIN edu.exam_matrices m ON m.id=r.matrix_id
+                LEFT JOIN edu.ccct_items i ON m.ccct_published_at IS NULL AND i.id=r.ccct_item_id
+                LEFT JOIN edu.ccct_topics t ON t.id=i.topic_id
+                LEFT JOIN edu.ccct_revision_items ri ON m.ccct_published_at IS NOT NULL AND ri.profile_id=m.ccct_profile_id AND ri.published_at=m.ccct_published_at AND ri.id=r.ccct_item_id
+                LEFT JOIN edu.ccct_revision_topics rt ON rt.profile_id=ri.profile_id AND rt.published_at=ri.published_at AND rt.id=ri.topic_id
+                LEFT JOIN edu.ccct_revision_chapters rc ON rc.profile_id=m.ccct_profile_id AND rc.published_at=m.ccct_published_at AND rc.course_chapter_id=r.chapter_id
+                LEFT JOIN edu.chapters c ON c.chapter_id=r.chapter_id LEFT JOIN edu.learning_outcomes lo ON lo.id=r.mapped_learning_outcome_id
+                WHERE r.matrix_id=? ORDER BY r.sort_order,r.id
+                """,(rs,n)->{UUID rowId=rs.getObject(1,UUID.class); List<Cell> rowCells=List.copyOf(cells.getOrDefault(rowId,List.of())); return new Row(rowId,rs.getObject(2,UUID.class),rs.getString(3),rs.getObject(4,UUID.class),rs.getString(5),rs.getString(6),rs.getString(7),rs.getString(8),rs.getObject(9,UUID.class),rs.getString(10),rs.getInt(11),rowCells);},id);
         List<OutcomeCognitiveLevel> outcomeCognitiveLevels=jdbc.query("SELECT learning_outcome_id,cognitive_level_code FROM edu.exam_matrix_outcome_cognitive_levels WHERE matrix_id=? ORDER BY learning_outcome_id",(rs,n)->new OutcomeCognitiveLevel(rs.getObject(1,UUID.class),rs.getString(2)),id);
-        return new MatrixDetail(m.id,m.courseId,m.ccctProfileId,m.ccctProfileVersion,m.title,m.description,m.mode,m.total,m.status,m.version,m.publishedBy,m.publishedAt,rows,levels,outcomeCognitiveLevels,m.createdAt,m.updatedAt);
+        return new MatrixDetail(m.id,m.courseId,m.ccctProfileId,m.ccctPublishedAt,m.title,m.description,m.mode,m.total,m.status,m.version,m.publishedBy,m.publishedAt,rows,levels,outcomeCognitiveLevels,m.createdAt,m.updatedAt);
     }
-    private void replace(UUID matrixId,MatrixPayload p) {
+    private void replace(UUID matrixId,UUID profileId,MatrixPayload p) {
         for(int i=0;i<safe(p.customLearningLevels()).size();i++) {
             var level=safe(p.customLearningLevels()).get(i);
             jdbc.update("INSERT INTO edu.exam_matrix_custom_learning_levels(id,matrix_id,name,sort_order) VALUES(?,?,?,?)",level.id(),matrixId,level.name().trim(),i);
@@ -96,16 +118,14 @@ public class MatrixService {
         for(var level:safe(p.outcomeCognitiveLevels())) jdbc.update("INSERT INTO edu.exam_matrix_outcome_cognitive_levels(matrix_id,learning_outcome_id,cognitive_level_code) VALUES(?,?,?)",matrixId,level.learningOutcomeId(),level.cognitiveLevelCode());
         for(int i=0;i<safe(p.rows()).size();i++) {
             var row=safe(p.rows()).get(i);
-            UUID chapterId=chapterForItem(p.ccctProfileId(),row.ccctItemId());
+            UUID chapterId=chapterForItem(profileId,row.ccctItemId());
             jdbc.update("INSERT INTO edu.exam_matrix_rows(id,matrix_id,chapter_id,ccct_item_id,mapped_learning_outcome_id,sort_order) VALUES(?,?,?,?,?,?)",row.id(),matrixId,chapterId,row.ccctItemId(),row.mappedLearningOutcomeId(),i);
             for(var cell:safe(row.cells())) jdbc.update("INSERT INTO edu.exam_matrix_cells(row_id,custom_learning_level_id,question_count) VALUES(?,?,?)",row.id(),cell.customLearningLevelId(),p.mode()==MatrixMode.AUTOMATIC?null:cell.questionCount());
         }
     }
     private void validate(UUID courseId,MatrixPayload p) {
-        if(p==null||trim(p.title())==null||p.mode()==null||p.ccctProfileId()==null||p.ccctProfileVersion()==null) throw badRequest("Matrix title, mode, and CCCT profile/version are required");
-        if(!exists("SELECT 1 FROM edu.ccct_profiles WHERE id=? AND course_id=? AND status IN ('DRAFT','PUBLISHED')",p.ccctProfileId(),courseId)) throw badRequest("Matrix CCCT profile must belong to this course and be Draft or Published");
-        Long actual=jdbc.queryForObject("SELECT version FROM edu.ccct_profiles WHERE id=?",Long.class,p.ccctProfileId());
-        if(!Objects.equals(actual,p.ccctProfileVersion())) throw conflict("CCCT changed; refresh the Matrix source before saving");
+        if(p==null||trim(p.title())==null||p.mode()==null) throw badRequest("Matrix title and mode are required");
+        UUID profileId=singleCcct(courseId);
         if(p.mode()==MatrixMode.AUTOMATIC&&(p.totalQuestionCount()==null||p.totalQuestionCount()<=0)) throw badRequest("Automatic Matrix total question count must be greater than zero");
         if(p.mode()==MatrixMode.MANUAL&&p.totalQuestionCount()!=null) throw badRequest("Manual Matrix cannot have a total question count");
         Set<UUID> levels=new HashSet<>();
@@ -130,7 +150,7 @@ public class MatrixService {
         for(var row:safe(p.rows())) {
             if(row==null) throw badRequest("Each Matrix row must be valid");
             if(row.id()==null||!rows.add(row.id())||row.ccctItemId()==null) throw badRequest("Each Matrix row needs a unique id and CCCT content item");
-            if(!exists("SELECT 1 FROM edu.ccct_items i JOIN edu.ccct_topics t ON t.id=i.topic_id JOIN edu.ccct_chapters c ON c.id=t.chapter_id WHERE i.id=? AND c.profile_id=?",row.ccctItemId(),p.ccctProfileId())) throw badRequest("Matrix content item does not belong to the bound CCCT profile");
+            if(!exists("SELECT 1 FROM edu.ccct_items i JOIN edu.ccct_topics t ON t.id=i.topic_id JOIN edu.ccct_chapters c ON c.id=t.chapter_id WHERE i.id=? AND c.profile_id=?",row.ccctItemId(),profileId)) throw badRequest("Matrix content item does not belong to this course CCCT");
             if(row.mappedLearningOutcomeId()==null||!exists("SELECT 1 FROM edu.learning_outcomes WHERE id=? AND course_id=?",row.mappedLearningOutcomeId(),courseId)) throw badRequest("Mapped learning outcome does not belong to this course");
             if(!outcomeIds.contains(row.mappedLearningOutcomeId())) throw badRequest("Each selected LO column needs a Bloom level");
             List<Cell> rowCells=safe(row.cells());
@@ -175,7 +195,7 @@ public class MatrixService {
             }
             rows.add(new RowPayload(row.id(),row.ccctItemId(),row.mappedLearningOutcomeId(),cells));
         }
-        return new MatrixPayload(payload.title(),payload.description(),payload.ccctProfileId(),payload.ccctProfileVersion(),payload.mode(),payload.totalQuestionCount(),rows,levels,assignments,payload.expectedVersion());
+        return new MatrixPayload(payload.title(),payload.description(),payload.mode(),payload.totalQuestionCount(),rows,levels,assignments,payload.expectedVersion());
     }
     private static String cognitiveLevelCodeForName(String name) {
         if(name==null) return null;
@@ -194,14 +214,25 @@ public class MatrixService {
     private static List<AssetCoverage> normalizedCoverages(List<AssetCoverage> value){return value==null||value.isEmpty()?defaults():value;}
     private static List<AssetCoverage> coverageFor(Map<UUID,List<AssetCoverage>> byLevel,UUID levelId){Map<AssetType,Integer> values=new EnumMap<>(AssetType.class);for(var coverage:byLevel.getOrDefault(levelId,List.of()))values.put(coverage.assetType(),coverage.percentage());return ASSET_TYPES.stream().map(type->new AssetCoverage(type,values.getOrDefault(type,type==AssetType.TEXT?100:0))).toList();}
     private static void validateCoverage(List<AssetCoverage> value){if(value==null||value.isEmpty())return;Set<AssetType> types=EnumSet.noneOf(AssetType.class);int total=0;for(var coverage:value){if(coverage==null||coverage.assetType()==null||!types.add(coverage.assetType()))throw badRequest("Each learning level needs one coverage for every asset type");if(coverage.percentage()<0||coverage.percentage()>100)throw badRequest("Asset coverage percentages must be between 0 and 100");total+=coverage.percentage();}if(types.size()!=ASSET_TYPES.size()||total!=100)throw badRequest("Asset coverage percentages must include every asset type and total 100");}
-    private MatrixDetail editable(UUID courseId,UUID id){MatrixDetail m=load(courseId,id);if(m.lifecycleStatus()!=LifecycleStatus.DRAFT)throw conflict("Published Matrix is read-only");return m;} private boolean exists(String sql,UUID id,UUID course){return Boolean.TRUE.equals(jdbc.query(sql,(ResultSetExtractor<Boolean>) rs->rs.next(),id,course));} private UUID chapterForItem(UUID profileId,UUID itemId){return jdbc.query("SELECT c.course_chapter_id FROM edu.ccct_items i JOIN edu.ccct_topics t ON t.id=i.topic_id JOIN edu.ccct_chapters c ON c.id=t.chapter_id WHERE i.id=? AND c.profile_id=?",rs->rs.next()?rs.getObject(1,UUID.class):null,itemId,profileId);} private static <T> List<T> safe(List<T> v){return v==null?List.of():v;} private static String trim(String v){return v==null||v.isBlank()?null:v.trim();} private static ResponseStatusException badRequest(String m){return new ResponseStatusException(HttpStatus.BAD_REQUEST,m);} private static ResponseStatusException conflict(String m){return new ResponseStatusException(HttpStatus.CONFLICT,m);}
-    private record MatrixMetadata(UUID id,UUID courseId,UUID ccctProfileId,Long ccctProfileVersion,String title,String description,MatrixMode mode,Integer total,LifecycleStatus status,long version,UUID publishedBy,LocalDateTime publishedAt,LocalDateTime createdAt,LocalDateTime updatedAt){}
+    private MatrixDetail editable(UUID courseId,UUID id){MatrixDetail m=load(courseId,id);if(m.lifecycleStatus()!=LifecycleStatus.DRAFT)throw conflict("Published Matrix is read-only");return m;}
+    private boolean exists(String sql,UUID id,UUID course){return Boolean.TRUE.equals(jdbc.query(sql,(ResultSetExtractor<Boolean>) rs->rs.next(),id,course));}
+    private UUID chapterForItem(UUID profileId,UUID itemId){return jdbc.query("SELECT c.course_chapter_id FROM edu.ccct_items i JOIN edu.ccct_topics t ON t.id=i.topic_id JOIN edu.ccct_chapters c ON c.id=t.chapter_id WHERE i.id=? AND c.profile_id=?",rs->rs.next()?rs.getObject(1,UUID.class):null,itemId,profileId);}
+    private UUID singleCcct(UUID courseId){
+        UUID profileId = jdbc.query("SELECT id FROM edu.ccct_profiles WHERE course_id=?",rs->rs.next()?rs.getObject(1,UUID.class):null,courseId);
+        if (profileId == null) throw badRequest("Create the course CCCT before creating a Matrix");
+        return profileId;
+    }
+    private static <T> List<T> safe(List<T> v){return v==null?List.of():v;}
+    private static String trim(String v){return v==null||v.isBlank()?null:v.trim();}
+    private static ResponseStatusException badRequest(String m){return new ResponseStatusException(HttpStatus.BAD_REQUEST,m);}
+    private static ResponseStatusException conflict(String m){return new ResponseStatusException(HttpStatus.CONFLICT,m);}
+    private record MatrixMetadata(UUID id,UUID courseId,UUID ccctProfileId,LocalDateTime ccctPublishedAt,String title,String description,MatrixMode mode,Integer total,LifecycleStatus status,long version,UUID publishedBy,LocalDateTime publishedAt,LocalDateTime createdAt,LocalDateTime updatedAt){}
     public enum MatrixMode { MANUAL, AUTOMATIC } public enum LifecycleStatus { DRAFT,PUBLISHED } public enum AssetType { TEXT,IMAGE,CODE_MCQ,CODE_RUNNER }
     public record MatrixList(UUID courseId,List<MatrixSummary> matrices){}
-    public record MatrixSummary(UUID id,UUID courseId,String title,String description,MatrixMode mode,Integer totalQuestionCount,LifecycleStatus lifecycleStatus,long version,UUID publishedBy,LocalDateTime publishedAt,int rowCount,int allocatedQuestionCount,LocalDateTime createdAt,LocalDateTime updatedAt){}
-    public record MatrixDetail(UUID id,UUID courseId,UUID ccctProfileId,Long ccctProfileVersion,String title,String description,MatrixMode mode,Integer totalQuestionCount,LifecycleStatus lifecycleStatus,long version,UUID publishedBy,LocalDateTime publishedAt,List<Row> rows,List<LearningLevel> customLearningLevels,List<OutcomeCognitiveLevel> outcomeCognitiveLevels,LocalDateTime createdAt,LocalDateTime updatedAt) {
-        public MatrixDetail(UUID id,UUID courseId,UUID ccctProfileId,Long ccctProfileVersion,String title,String description,MatrixMode mode,Integer totalQuestionCount,LifecycleStatus lifecycleStatus,long version,UUID publishedBy,LocalDateTime publishedAt,List<Row> rows,List<LearningLevel> customLearningLevels,LocalDateTime createdAt,LocalDateTime updatedAt) {
-            this(id,courseId,ccctProfileId,ccctProfileVersion,title,description,mode,totalQuestionCount,lifecycleStatus,version,publishedBy,publishedAt,rows,customLearningLevels,List.of(),createdAt,updatedAt);
+    public record MatrixSummary(UUID id,UUID courseId,String title,String description,MatrixMode mode,Integer totalQuestionCount,LifecycleStatus lifecycleStatus,long version,UUID publishedBy,@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime publishedAt,int rowCount,int allocatedQuestionCount,@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime createdAt,@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime updatedAt){}
+    public record MatrixDetail(UUID id,UUID courseId,UUID ccctProfileId,@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime ccctPublishedAt,String title,String description,MatrixMode mode,Integer totalQuestionCount,LifecycleStatus lifecycleStatus,long version,UUID publishedBy,@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime publishedAt,List<Row> rows,List<LearningLevel> customLearningLevels,List<OutcomeCognitiveLevel> outcomeCognitiveLevels,@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime createdAt,@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime updatedAt) {
+        public MatrixDetail(UUID id,UUID courseId,UUID ccctProfileId,LocalDateTime ccctPublishedAt,String title,String description,MatrixMode mode,Integer totalQuestionCount,LifecycleStatus lifecycleStatus,long version,UUID publishedBy,LocalDateTime publishedAt,List<Row> rows,List<LearningLevel> customLearningLevels,LocalDateTime createdAt,LocalDateTime updatedAt) {
+            this(id,courseId,ccctProfileId,ccctPublishedAt,title,description,mode,totalQuestionCount,lifecycleStatus,version,publishedBy,publishedAt,rows,customLearningLevels,List.of(),createdAt,updatedAt);
         }
     }
     public record Row(UUID id,UUID chapterId,String chapterName,UUID ccctItemId,String topicGroupCode,String topicGroupName,String contentDetail,String contentCode,UUID mappedLearningOutcomeId,String mappedLearningOutcomeName,int sortOrder,List<Cell> cells){}
@@ -209,9 +240,9 @@ public class MatrixService {
     public record AssetCoverage(AssetType assetType,int percentage){}
     public record LearningLevel(UUID id,String name,int sortOrder,List<AssetCoverage> assetCoverages){}
     public record OutcomeCognitiveLevel(UUID learningOutcomeId,String cognitiveLevelCode){}
-    public record MatrixPayload(String title,String description,UUID ccctProfileId,Long ccctProfileVersion,MatrixMode mode,Integer totalQuestionCount,List<RowPayload> rows,List<LearningLevelPayload> customLearningLevels,List<OutcomeCognitiveLevel> outcomeCognitiveLevels,Long expectedVersion) {
-        public MatrixPayload(String title,String description,UUID ccctProfileId,Long ccctProfileVersion,MatrixMode mode,Integer totalQuestionCount,List<RowPayload> rows,List<LearningLevelPayload> customLearningLevels,Long expectedVersion) {
-            this(title,description,ccctProfileId,ccctProfileVersion,mode,totalQuestionCount,rows,customLearningLevels,List.of(),expectedVersion);
+    public record MatrixPayload(String title,String description,MatrixMode mode,Integer totalQuestionCount,List<RowPayload> rows,List<LearningLevelPayload> customLearningLevels,List<OutcomeCognitiveLevel> outcomeCognitiveLevels,Long expectedVersion) {
+        public MatrixPayload(String title,String description,MatrixMode mode,Integer totalQuestionCount,List<RowPayload> rows,List<LearningLevelPayload> customLearningLevels,Long expectedVersion) {
+            this(title,description,mode,totalQuestionCount,rows,customLearningLevels,List.of(),expectedVersion);
         }
     }
     public record RowPayload(UUID id,UUID ccctItemId,UUID mappedLearningOutcomeId,List<Cell> cells){}

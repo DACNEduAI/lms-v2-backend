@@ -46,15 +46,17 @@ interface CcctProfileRepository {
 
     int insertItems(@Param("items") List<CcctItem> items);
 
-    int deleteChaptersByProfileId(@Param("profileId") UUID profileId);
+    int upsertChapters(@Param("chapters") List<CcctChapter> chapters);
 
-    int deleteDraft(
-            @Param("courseId") UUID courseId,
-            @Param("profileId") UUID profileId);
+    int upsertTopics(@Param("topics") List<CcctTopic> topics);
 
-    int archivePublished(
-            @Param("courseId") UUID courseId,
-            @Param("publishedProfileId") UUID publishedProfileId);
+    int upsertItems(@Param("items") List<CcctItem> items);
+
+    int deleteItemsNotIn(@Param("profileId") UUID profileId, @Param("ids") Collection<UUID> ids);
+
+    int deleteTopicsNotIn(@Param("profileId") UUID profileId, @Param("ids") Collection<UUID> ids);
+
+    int deleteChaptersNotIn(@Param("profileId") UUID profileId, @Param("ids") Collection<UUID> ids);
 
     int publishDraft(
             @Param("courseId") UUID courseId,

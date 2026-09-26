@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 import edu.ai.lms.core.course.adapter.in.request.CcctChapterRequest;
 import edu.ai.lms.core.course.adapter.in.request.CcctItemRequest;
 import edu.ai.lms.core.course.adapter.in.request.CcctTopicRequest;
-import edu.ai.lms.core.course.adapter.in.request.CloneCcctProfileRequest;
 import edu.ai.lms.core.course.adapter.in.request.CreateCcctProfileRequest;
 import edu.ai.lms.core.course.adapter.in.request.PublishCcctProfileRequest;
 import edu.ai.lms.core.course.adapter.in.request.UpdateCcctProfileRequest;
@@ -15,7 +14,6 @@ import edu.ai.lms.core.course.app.port.in.command.CcctChapterValue;
 import edu.ai.lms.core.course.app.port.in.command.CcctItemValue;
 import edu.ai.lms.core.course.app.port.in.command.CcctProfileContent;
 import edu.ai.lms.core.course.app.port.in.command.CcctTopicValue;
-import edu.ai.lms.core.course.app.port.in.command.CloneCcctProfileCommand;
 import edu.ai.lms.core.course.app.port.in.command.CreateCcctProfileCommand;
 import edu.ai.lms.core.course.app.port.in.command.PublishCcctProfileCommand;
 import edu.ai.lms.core.course.app.port.in.command.UpdateCcctProfileCommand;
@@ -53,7 +51,8 @@ public class CcctProfileCommandMapper {
                         Boolean.TRUE.equals(request.structuredCurrent()),
                         request.markdown(),
                         request.name(),
-                        request.template().chapters()));
+                        request.template().chapters()),
+                request.impactToken());
     }
 
     public PublishCcctProfileCommand toPublishCommand(
@@ -61,13 +60,6 @@ public class CcctProfileCommandMapper {
             UUID profileId,
             PublishCcctProfileRequest request) {
         return new PublishCcctProfileCommand(courseId, profileId, request.version());
-    }
-
-    public CloneCcctProfileCommand toCloneCommand(
-            UUID courseId,
-            UUID profileId,
-            CloneCcctProfileRequest request) {
-        return new CloneCcctProfileCommand(courseId, profileId, request.name());
     }
 
     private CcctProfileContent content(

@@ -1,6 +1,7 @@
 package edu.ai.lms.core.course.app.service.ccct;
 
 import java.util.UUID;
+import java.util.List;
 
 import org.springframework.stereotype.Component;
 
@@ -27,4 +28,6 @@ class CcctProfiles {
                     "A CCCT profile with this name already exists in the Course");
         }
     }
+
+    List<CcctProfile> list(UUID courseId) { return loadPort.findAllByCourseId(courseId); }
 }

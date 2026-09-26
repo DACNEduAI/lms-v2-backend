@@ -18,12 +18,11 @@ public final class Quiz3Models {
     public record AssessmentView(UUID id, UUID courseId, String title, String description,
             boolean unlimited, Integer timeLimitMinutes, Double passScore, LocalDateTime startTime,
             LocalDateTime dueTime, Integer attemptLimited, int variantCount, String lifecycleStatus,
-            int currentStep, UUID ccctProfileId, Long ccctProfileVersion, UUID matrixId, Long matrixVersion,
+            int currentStep, UUID ccctProfileId, LocalDateTime ccctPublishedAt, UUID matrixId, Long matrixVersion,
             MatrixMode matrixMode, UUID baseGenerationJobId, long version,
             LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt) { }
     public record SourceOption(UUID id, String name, String lifecycleStatus, long version, MatrixMode matrixMode) { }
-    public record ContextView(AssessmentView assessment, List<SourceOption> ccctProfiles,
-            List<SourceOption> matrices) { }
+    public record ContextView(AssessmentView assessment, List<SourceOption> matrices) { }
     public record SourceSelection(SourceMode mode, UUID sourceId, String draftName, MatrixMode matrixMode) { }
     public record ContextSelection(SourceSelection ccct, SourceSelection matrix) { }
     public record SourceVersion(long version) { }

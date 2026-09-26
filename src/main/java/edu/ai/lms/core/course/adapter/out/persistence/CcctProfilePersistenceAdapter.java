@@ -18,7 +18,6 @@ import edu.ai.lms.core.course.app.domain.CcctMode;
 import edu.ai.lms.core.course.app.domain.CcctProfile;
 import edu.ai.lms.core.course.app.domain.CcctProfileStatus;
 import edu.ai.lms.core.course.app.domain.CcctTopic;
-import edu.ai.lms.core.course.app.port.out.DeleteCcctProfilePort;
 import edu.ai.lms.core.course.app.port.out.LoadCcctProfilePort;
 import edu.ai.lms.core.course.app.port.out.SaveCcctProfilePort;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +25,7 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 class CcctProfilePersistenceAdapter
-        implements SaveCcctProfilePort, LoadCcctProfilePort, DeleteCcctProfilePort {
+        implements SaveCcctProfilePort, LoadCcctProfilePort {
 
     private final CcctProfileRepository repository;
 
@@ -46,8 +45,7 @@ class CcctProfilePersistenceAdapter
         if (repository.updateDraft(profile, expectedVersion) == 0) {
             return false;
         }
-        repository.deleteChaptersByProfileId(profile.getId());
-        insertTree(profile);
+        syncTree(profile);
         return true;
     }
 
@@ -76,17 +74,6 @@ class CcctProfilePersistenceAdapter
             String name,
             UUID excludedProfileId) {
         return repository.existsByCourseIdAndNameExcludingId(courseId, name, excludedProfileId);
-    }
-
-    @Override
-    @Transactional
-    public boolean deleteDraft(UUID courseId, UUID profileId) {
-        return repository.deleteDraft(courseId, profileId) == 1;
-    }
-
-    @Override
-    public boolean archivePublished(UUID courseId, UUID publishedProfileId) {
-        return repository.archivePublished(courseId, publishedProfileId) == 1;
     }
 
     @Override
@@ -125,6 +112,7 @@ class CcctProfilePersistenceAdapter
             for (int topicIndex = 0; topicIndex < topics.size(); topicIndex++) {
                 CcctTopic topic = topics.get(topicIndex);
                 topic.setId(topic.getId() == null ? UUID.randomUUID() : topic.getId());
+                topic.setProfileId(profile.getId());
                 topic.setChapterId(chapter.getId());
                 topic.setOrderIndex(topicIndex);
                 List<CcctItem> items = topic.getItems() == null
@@ -160,6 +148,26 @@ class CcctProfilePersistenceAdapter
         if (!items.isEmpty()) {
             repository.insertItems(items);
         }
+    }
+
+    /**
+     * Keep authored logical IDs stable.  A draft update can edit or move an
+     * item without rebuilding the complete tree, which is essential because
+     * Matrix rows reference those item identities.
+     */
+    private void syncTree(CcctProfile profile) {
+        List<CcctChapter> chapters = profile.getChapters();
+        List<CcctTopic> topics = chapters.stream().flatMap(chapter -> chapter.getTopics().stream()).toList();
+        List<CcctItem> items = topics.stream().flatMap(topic -> topic.getItems().stream()).toList();
+        if (!chapters.isEmpty()) repository.upsertChapters(chapters);
+        // Delete absent leaves/groups before inserting updated positions. This
+        // releases their (parent, order) unique slots without touching any
+        // logical identity that remains in the proposed draft.
+        repository.deleteItemsNotIn(profile.getId(), items.stream().map(CcctItem::getId).toList());
+        repository.deleteTopicsNotIn(profile.getId(), topics.stream().map(CcctTopic::getId).toList());
+        if (!topics.isEmpty()) repository.upsertTopics(topics);
+        if (!items.isEmpty()) repository.upsertItems(items);
+        repository.deleteChaptersNotIn(profile.getId(), chapters.stream().map(CcctChapter::getId).toList());
     }
 
     private CcctProfile loadTree(CcctProfile profile) {

@@ -37,7 +37,7 @@ public final class AssessmentModels {
             LifecycleStatus lifecycleStatus,
             int currentStep,
             UUID ccctProfileId,
-            Long ccctProfileVersion,
+            LocalDateTime ccctPublishedAt,
             UUID examMatrixId,
             Long examMatrixVersion,
             boolean aiGenerationStarted,
@@ -51,12 +51,12 @@ public final class AssessmentModels {
         public AssessmentView(UUID id, UUID courseId, String title, String description, boolean unlimited,
                 Integer timeLimitMinutes, Double passScore, LocalDateTime startTime, LocalDateTime dueTime,
                 Integer attemptLimited, Integer variantCount, Integer optionCount, boolean allowRecentlyUsedQuestions,
-                LifecycleStatus lifecycleStatus, int currentStep, UUID ccctProfileId, Long ccctProfileVersion,
+                LifecycleStatus lifecycleStatus, int currentStep, UUID ccctProfileId, LocalDateTime ccctPublishedAt,
                 UUID examMatrixId, Long examMatrixVersion, boolean aiGenerationStarted, long version, UUID createdBy,
                 UUID publishedBy, LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
             this(id, courseId, title, description, unlimited, timeLimitMinutes, passScore, startTime, dueTime,
                     attemptLimited, variantCount, optionCount, allowRecentlyUsedQuestions, lifecycleStatus, currentStep,
-                    ccctProfileId, ccctProfileVersion, examMatrixId, examMatrixVersion, aiGenerationStarted, version,
+                    ccctProfileId, ccctPublishedAt, examMatrixId, examMatrixVersion, aiGenerationStarted, version,
                     createdBy, publishedBy, publishedAt, createdAt, updatedAt, null);
         }
     }
@@ -80,7 +80,6 @@ public final class AssessmentModels {
 
     public record ContextView(
             AssessmentView assessment,
-            List<SourceOption> ccctProfiles,
             List<SourceOption> examMatrices) {
     }
 

@@ -243,7 +243,8 @@ CREATE TABLE IF NOT EXISTS ccct_profiles
     name             VARCHAR(255) NOT NULL CHECK (btrim(name) <> ''),
     template_title   VARCHAR(255) NOT NULL CHECK (btrim(template_title) <> ''),
     status           VARCHAR(20)  NOT NULL DEFAULT 'DRAFT'
-        CHECK (status IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')),
+        CHECK (status IN ('DRAFT', 'PUBLISHED')),
+    -- Optimistic-lock token only; it is not a user-visible CCCT revision.
     version          BIGINT       NOT NULL DEFAULT 0 CHECK (version >= 0),
     format_version   INTEGER      NOT NULL DEFAULT 2 CHECK (format_version IN (1, 2)),
     structured_current BOOLEAN    NOT NULL DEFAULT FALSE,
@@ -256,11 +257,8 @@ CREATE TABLE IF NOT EXISTS ccct_profiles
     updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_ccct_profile_name_per_course
-    ON ccct_profiles (course_id, lower(btrim(name)));
-CREATE UNIQUE INDEX IF NOT EXISTS uq_ccct_one_published_per_course
-    ON ccct_profiles (course_id)
-    WHERE status = 'PUBLISHED';
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ccct_one_profile_per_course
+    ON ccct_profiles (course_id);
 CREATE INDEX IF NOT EXISTS idx_ccct_profiles_course_updated
     ON ccct_profiles (course_id, updated_at DESC);
 
@@ -309,6 +307,55 @@ CREATE TABLE IF NOT EXISTS ccct_items
 CREATE INDEX IF NOT EXISTS idx_ccct_items_topic
     ON ccct_items (topic_id);
 
+-- Published CCCT revisions are immutable full snapshots.  The editable
+-- ccct_chapters/topics/items tree above is the one working draft.  Item IDs
+-- are logical identities and deliberately survive into revision snapshots.
+CREATE TABLE IF NOT EXISTS ccct_profile_revisions
+(
+    profile_id   UUID        NOT NULL REFERENCES ccct_profiles (id) ON DELETE RESTRICT,
+    published_at TIMESTAMP   NOT NULL,
+    name         VARCHAR(255) NOT NULL,
+    template_title VARCHAR(255) NOT NULL,
+    markdown_content TEXT NOT NULL,
+    created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (profile_id, published_at)
+);
+CREATE TABLE IF NOT EXISTS ccct_revision_chapters
+(
+    profile_id UUID NOT NULL,
+    published_at TIMESTAMP NOT NULL,
+    id UUID NOT NULL,
+    course_chapter_id UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
+    title VARCHAR(255) NOT NULL,
+    order_index INTEGER NOT NULL,
+    PRIMARY KEY (profile_id, published_at, id),
+    FOREIGN KEY (profile_id, published_at) REFERENCES ccct_profile_revisions(profile_id, published_at) ON DELETE RESTRICT
+);
+CREATE TABLE IF NOT EXISTS ccct_revision_topics
+(
+    profile_id UUID NOT NULL,
+    published_at TIMESTAMP NOT NULL,
+    id UUID NOT NULL,
+    chapter_id UUID NOT NULL,
+    group_code VARCHAR(64) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    order_index INTEGER NOT NULL,
+    PRIMARY KEY (profile_id, published_at, id),
+    FOREIGN KEY (profile_id, published_at, chapter_id) REFERENCES ccct_revision_chapters(profile_id, published_at, id) ON DELETE RESTRICT
+);
+CREATE TABLE IF NOT EXISTS ccct_revision_items
+(
+    profile_id UUID NOT NULL,
+    published_at TIMESTAMP NOT NULL,
+    id UUID NOT NULL,
+    topic_id UUID NOT NULL,
+    content_code VARCHAR(128) NOT NULL,
+    content TEXT NOT NULL,
+    order_index INTEGER NOT NULL,
+    PRIMARY KEY (profile_id, published_at, id),
+    FOREIGN KEY (profile_id, published_at, topic_id) REFERENCES ccct_revision_topics(profile_id, published_at, id) ON DELETE RESTRICT
+);
+
 -- Unified course exam matrices. MANUAL stores positive quotas; AUTOMATIC stores
 -- selected cells and allocates the matrix-owned total deterministically.
 CREATE TABLE IF NOT EXISTS exam_matrices
@@ -316,7 +363,7 @@ CREATE TABLE IF NOT EXISTS exam_matrices
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     course_id   UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
     ccct_profile_id UUID     REFERENCES ccct_profiles (id) ON DELETE RESTRICT,
-    ccct_profile_version BIGINT CHECK (ccct_profile_version >= 0),
+    ccct_published_at TIMESTAMP,
     title       VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
     description TEXT, mode VARCHAR(20) NOT NULL DEFAULT 'MANUAL' CHECK(mode IN ('MANUAL','AUTOMATIC')),
     total_question_count INTEGER CHECK(total_question_count IS NULL OR total_question_count > 0),
@@ -361,7 +408,10 @@ CREATE TABLE IF NOT EXISTS exam_matrix_rows
     id                         UUID PRIMARY KEY,
     matrix_id                  UUID NOT NULL REFERENCES exam_matrices (id) ON DELETE CASCADE,
     chapter_id                 UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
-    ccct_item_id               UUID REFERENCES ccct_items (id) ON DELETE RESTRICT,
+    -- The UUID is a stable logical CCCT content identity.  A current draft may
+    -- delete it while a published Matrix continues to resolve it from a
+    -- revision snapshot, so this intentionally is not a FK to working items.
+    ccct_item_id               UUID,
     mapped_learning_outcome_id UUID REFERENCES learning_outcomes (id) ON DELETE SET NULL,
     sort_order                 INTEGER NOT NULL CHECK (sort_order >= 0),
     CONSTRAINT uq_exam_matrix_row_content UNIQUE (matrix_id, ccct_item_id)
@@ -959,7 +1009,7 @@ CREATE TABLE IF NOT EXISTS quiz3_assessments (
     variant_count INTEGER NOT NULL DEFAULT 1 CHECK(variant_count BETWEEN 1 AND 20),
     lifecycle_status VARCHAR(30) NOT NULL DEFAULT 'DRAFT' CHECK(lifecycle_status IN('DRAFT','GENERATING','REVIEW_PENDING','READY_TO_PUBLISH','PUBLISHED','ARCHIVED')),
     current_step INTEGER NOT NULL DEFAULT 1 CHECK(current_step BETWEEN 1 AND 9),
-    ccct_profile_id UUID REFERENCES ccct_profiles(id) ON DELETE RESTRICT, ccct_profile_version BIGINT,
+    ccct_profile_id UUID REFERENCES ccct_profiles(id) ON DELETE RESTRICT, ccct_published_at TIMESTAMP,
     matrix_id UUID REFERENCES exam_matrices(id) ON DELETE RESTRICT, matrix_version BIGINT, base_generation_job_id UUID,
     base_confirmed_by UUID REFERENCES users(id) ON DELETE SET NULL, base_confirmed_at TIMESTAMP,
     created_by UUID REFERENCES users(id) ON DELETE SET NULL, version BIGINT NOT NULL DEFAULT 0 CHECK(version>=0),

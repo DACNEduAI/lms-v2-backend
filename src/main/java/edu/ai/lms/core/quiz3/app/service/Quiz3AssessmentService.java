@@ -35,12 +35,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import edu.ai.lms.core.course.app.domain.CurrentActor;
-import edu.ai.lms.core.course.app.port.in.command.PublishCcctProfileCommand;
-import edu.ai.lms.core.course.app.port.in.usecase.PublishCcctProfileUseCase;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.service.CourseTeacherAccess;
 import edu.ai.lms.core.course.app.service.matrix.MatrixService;
-import edu.ai.lms.core.quiz3.adapter.out.persistence.Quiz3CcctSourceRepository;
 import edu.ai.lms.core.quiz3.api.CodeRunnerContractSnapshotApi;
 import lombok.RequiredArgsConstructor;
 
@@ -51,8 +48,6 @@ public class Quiz3AssessmentService {
     private final ObjectMapper objectMapper;
     private final CourseTeacherAccess access;
     private final LoadSignedInUserPort signedInUserPort;
-    private final PublishCcctProfileUseCase publishCcct;
-    private final Quiz3CcctSourceRepository legacySourceUtilities;
     private final MatrixService matrixService;
     private final Quiz3GenerationDispatcher dispatcher;
     private final Quiz3QBank2RegenerationService qbank2Regeneration;
@@ -109,72 +104,47 @@ public class Quiz3AssessmentService {
     public ContextView context(UUID courseId, UUID assessmentId) {
         requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
-        List<SourceOption> ccct = jdbc.query("""
-                SELECT id, name, status, version FROM edu.ccct_profiles
-                WHERE course_id=? ORDER BY updated_at DESC, id
-                """, (rs, row) -> new SourceOption(rs.getObject(1, UUID.class), rs.getString(2),
-                rs.getString(3), rs.getLong(4), null), courseId);
         List<SourceOption> matrices = matrixService.list(courseId).matrices().stream()
                 .map(matrix -> new SourceOption(matrix.id(), matrix.title(), matrix.lifecycleStatus().name(),
                         matrix.version(), MatrixMode.valueOf(matrix.mode().name())))
                 .toList();
-        return new ContextView(assessment, ccct, matrices);
+        // The course's single CCCT is derived from the selected Matrix.
+        return new ContextView(assessment, matrices);
     }
 
     @Transactional
     public ContextView selectContext(UUID courseId, UUID assessmentId, ContextSelection input) {
-        CurrentActor actor = requireTeacher(courseId);
-        AssessmentView assessment = required(courseId, assessmentId);
-        if (assessment.baseGenerationJobId() != null) throw conflict("Sources cannot change after Quiz3 generation starts");
-        if (input == null || input.ccct() == null || input.matrix() == null) {
-            throw badRequest("CCCT and Matrix selections are required");
-        }
-        UUID ccctId = resolveCcct(courseId, actor.id(), input.ccct());
-        Long ccctVersion = versionOf("edu.ccct_profiles", courseId, ccctId);
-        MatrixSelection matrix = resolveMatrix(courseId, input.matrix(), ccctId, ccctVersion);
-        jdbc.update("""
-                UPDATE edu.quiz3_assessments SET ccct_profile_id=?, ccct_profile_version=?, matrix_id=?, matrix_version=?, current_step=GREATEST(current_step,2), version=version+1,
-                    updated_at=CURRENT_TIMESTAMP WHERE id=? AND course_id=?
-                """, ccctId, ccctVersion, matrix.id(), matrix.version(), assessmentId, courseId);
-        return context(courseId, assessmentId);
-    }
-
-    @Transactional
-    public AssessmentView confirmCcct(UUID courseId, UUID assessmentId, long expectedVersion) {
         requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
-        if (assessment.ccctProfileId() == null) throw badRequest("Select a CCCT first");
-        Map<String, Object> source = jdbc.queryForMap(
-                "SELECT status, version FROM edu.ccct_profiles WHERE id=? AND course_id=?",
-                assessment.ccctProfileId(), courseId);
-        long version = ((Number) source.get("version")).longValue();
-        if (version != expectedVersion) throw conflict("CCCT changed; reload and review it again");
-        if (!"PUBLISHED".equals(source.get("status"))) {
-            publishCcct.publish(new PublishCcctProfileCommand(courseId, assessment.ccctProfileId(), expectedVersion));
-            version = versionOf("edu.ccct_profiles", courseId, assessment.ccctProfileId());
+        if (assessment.baseGenerationJobId() != null) throw conflict("Sources cannot change after Quiz3 generation starts");
+        if (input == null || input.matrix() == null) {
+            throw badRequest("A Matrix selection is required");
         }
+        MatrixSelection matrix = resolveMatrix(courseId, input.matrix());
+        MatrixService.MatrixDetail selected = matrixService.get(courseId, matrix.id());
         jdbc.update("""
-                UPDATE edu.quiz3_assessments SET ccct_profile_version=?, current_step=GREATEST(current_step,4),
-                    version=version+1, updated_at=CURRENT_TIMESTAMP WHERE id=? AND course_id=?
-                """, version, assessmentId, courseId);
-        return required(courseId, assessmentId);
+                UPDATE edu.quiz3_assessments SET ccct_profile_id=?, ccct_published_at=?,
+                    matrix_id=?, matrix_version=?, current_step=GREATEST(current_step,2), version=version+1,
+                    updated_at=CURRENT_TIMESTAMP WHERE id=? AND course_id=?
+                """, selected.ccctProfileId(), selected.ccctPublishedAt(), matrix.id(), matrix.version(), assessmentId, courseId);
+        return context(courseId, assessmentId);
     }
 
     @Transactional
     public AssessmentView confirmMatrix(UUID courseId, UUID assessmentId, long expectedVersion) {
         requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
-        if (assessment.currentStep() < 4) throw badRequest("Confirm CCCT before Matrix");
+        if (assessment.currentStep() < 2) throw badRequest("Select a Matrix before confirming it");
         if (assessment.matrixId() == null) throw badRequest("Select a Matrix first");
         MatrixService.MatrixDetail matrix = matrixService.get(courseId, assessment.matrixId());
         if (matrix.version() != expectedVersion) throw conflict("Matrix changed; reload and review it again");
-        if (!Objects.equals(matrix.ccctProfileId(), assessment.ccctProfileId())
-                || !Objects.equals(matrix.ccctProfileVersion(), assessment.ccctProfileVersion())) {
-            throw conflict("Matrix and CCCT sources do not match; refresh and save the Matrix or confirm the matching CCCT");
-        }
-        matrixService.validateConfirmable(matrix);
         if (matrix.lifecycleStatus() == MatrixService.LifecycleStatus.DRAFT) matrix = matrixService.publish(courseId, assessment.matrixId(), new MatrixService.PublishRequest(expectedVersion));
-        jdbc.update("UPDATE edu.quiz3_assessments SET matrix_version=?, current_step=GREATEST(current_step,5),version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND course_id=?", matrix.version(), assessmentId, courseId);
+        if (matrix.ccctPublishedAt() == null) throw conflict("The published Matrix has no CCCT revision snapshot");
+        jdbc.update("""
+                UPDATE edu.quiz3_assessments SET ccct_profile_id=?,ccct_published_at=?,
+                    matrix_version=?, current_step=GREATEST(current_step,5),version=version+1,updated_at=CURRENT_TIMESTAMP
+                WHERE id=? AND course_id=?
+                """, matrix.ccctProfileId(), matrix.ccctPublishedAt(), matrix.version(), assessmentId, courseId);
         return required(courseId, assessmentId);
     }
 
@@ -455,7 +425,10 @@ public class Quiz3AssessmentService {
         long matrixVersion=assessment.matrixVersion();
         MatrixService.MatrixDetail selectedMatrix=matrixService.get(assessment.courseId(),matrixId);
         if(selectedMatrix.version()!=matrixVersion)throw conflict("Matrix changed; reload and review it again");
-        if(!Objects.equals(selectedMatrix.ccctProfileId(),assessment.ccctProfileId()) || !Objects.equals(selectedMatrix.ccctProfileVersion(),assessment.ccctProfileVersion())) throw conflict("Matrix and CCCT must reference the same confirmed profile version; refresh and confirm both sources again");
+        if(!Objects.equals(selectedMatrix.ccctProfileId(),assessment.ccctProfileId())
+                || !Objects.equals(selectedMatrix.ccctPublishedAt(),assessment.ccctPublishedAt())) {
+            throw conflict("Matrix and CCCT revision snapshot no longer match the confirmed Quiz3 source");
+        }
         root.put("quizName",assessment.title()+" - 001");
         ObjectNode matrix=createGenerationMatrix(objectMapper,matrixId,selectedMatrix.title());
         root.set("matrix",matrix);
@@ -463,11 +436,18 @@ public class Quiz3AssessmentService {
         List<Map<String,Object>> cells;
         List<Integer> allocated;
         cells=jdbc.queryForList("""
-            SELECT r.id row_id,r.chapter_id,c.title chapter_name,r.mapped_learning_outcome_id lo_id,
+            SELECT r.id row_id,r.chapter_id,coalesce(rc.title,c.title) chapter_name,r.mapped_learning_outcome_id lo_id,
                    lo.prefix_number,lo.description,l.id level_id,l.name level_name,ec.question_count,
-                   i.id content_item_id,t.group_code,t.title topic_group_name,i.content_code content_code,i.content content_detail
-            FROM edu.exam_matrix_rows r JOIN edu.chapters c ON c.chapter_id=r.chapter_id
-            JOIN edu.ccct_items i ON i.id=r.ccct_item_id JOIN edu.ccct_topics t ON t.id=i.topic_id
+                   coalesce(ri.id,i.id) content_item_id,coalesce(rt.group_code,t.group_code) group_code,
+                   coalesce(rt.title,t.title) topic_group_name,coalesce(ri.content_code,i.content_code) content_code,
+                   coalesce(ri.content,i.content) content_detail
+            FROM edu.exam_matrix_rows r JOIN edu.exam_matrices m ON m.id=r.matrix_id
+            LEFT JOIN edu.chapters c ON c.chapter_id=r.chapter_id
+            LEFT JOIN edu.ccct_revision_chapters rc ON rc.profile_id=m.ccct_profile_id AND rc.published_at=m.ccct_published_at AND rc.course_chapter_id=r.chapter_id
+            LEFT JOIN edu.ccct_items i ON m.ccct_published_at IS NULL AND i.id=r.ccct_item_id
+            LEFT JOIN edu.ccct_topics t ON t.id=i.topic_id
+            LEFT JOIN edu.ccct_revision_items ri ON m.ccct_published_at IS NOT NULL AND ri.profile_id=m.ccct_profile_id AND ri.published_at=m.ccct_published_at AND ri.id=r.ccct_item_id
+            LEFT JOIN edu.ccct_revision_topics rt ON rt.profile_id=ri.profile_id AND rt.published_at=ri.published_at AND rt.id=ri.topic_id
             JOIN edu.learning_outcomes lo ON lo.id=r.mapped_learning_outcome_id
             JOIN edu.exam_matrix_cells ec ON ec.row_id=r.id
             JOIN edu.exam_matrix_custom_learning_levels l ON l.id=ec.custom_learning_level_id
@@ -725,16 +705,13 @@ public class Quiz3AssessmentService {
     private static String allocationKey(String row,String level,String outcome,String assetType,String questionType){return key(row,level,outcome)+"/"+assetType+"/"+questionType;}
     private UUID baseQuiz(UUID assessmentId){UUID id=jdbc.query("SELECT quiz_id FROM edu.quiz3_assessment_variants WHERE assessment_id=? AND variant_kind='BASE'",rs->rs.next()?rs.getObject(1,UUID.class):null,assessmentId);
         if(id==null)throw conflict("Quiz 001 has not been generated");return id;}
-    private UUID resolveCcct(UUID courseId,UUID actor,SourceSelection selection){return switch(selection.mode()){
-        case USE_EXISTING->requiredSource(selection,"CCCT");case COPY_AS_DRAFT->legacySourceUtilities.cloneCcct(courseId,requiredSource(selection,"CCCT"),actor);
-        case CREATE_NEW_DRAFT->legacySourceUtilities.createCcctDraft(courseId,requiredName(selection,"CCCT"),actor);};}
-    private MatrixSelection resolveMatrix(UUID courseId,SourceSelection selection,UUID ccctProfileId,Long ccctProfileVersion){
+    private MatrixSelection resolveMatrix(UUID courseId,SourceSelection selection){
         MatrixService.MatrixDetail matrix=switch(selection.mode()){
             case USE_EXISTING->matrixService.get(courseId,requiredSource(selection,"Matrix"));
             case COPY_AS_DRAFT->matrixService.copyAsDraft(courseId,requiredSource(selection,"Matrix"),new MatrixService.CopyRequest(selection.draftName()));
             case CREATE_NEW_DRAFT->{MatrixService.MatrixMode mode=requiredMatrixMode(selection);
                 yield matrixService.create(courseId,new MatrixService.MatrixPayload(requiredName(selection,"Matrix"),null,
-                    ccctProfileId,ccctProfileVersion,mode,mode==MatrixService.MatrixMode.AUTOMATIC?1:null,List.of(),List.of(),null));}};
+                    mode,mode==MatrixService.MatrixMode.AUTOMATIC?1:null,List.of(),List.of(),List.of(),null));}};
         return new MatrixSelection(matrix.id(),matrix.version());
     }
     private UUID requiredSource(SourceSelection source,String label){if(source==null||source.sourceId()==null)throw badRequest(label+" source is required");return source.sourceId();}
@@ -748,12 +725,12 @@ public class Quiz3AssessmentService {
     private static MatrixService.MatrixMode requiredMatrixMode(SourceSelection selection){if(selection.matrixMode()==null)throw badRequest("Matrix mode is required when creating a Matrix draft");return MatrixService.MatrixMode.valueOf(selection.matrixMode().name());}
     private static String baseSelect(){return """
             SELECT a.id,a.course_id,a.title,a.description,a.unlimited,a.time_limit_minutes,a.pass_score,a.start_time,a.due_time,
-                   a.attempt_limited,a.variant_count,a.lifecycle_status,a.current_step,a.ccct_profile_id,a.ccct_profile_version,
+                   a.attempt_limited,a.variant_count,a.lifecycle_status,a.current_step,a.ccct_profile_id,a.ccct_published_at,
                    a.matrix_id,a.matrix_version,m.mode,a.base_generation_job_id,a.version,a.published_at,a.created_at,a.updated_at
             FROM edu.quiz3_assessments a LEFT JOIN edu.exam_matrices m ON m.id=a.matrix_id""";}
     private static AssessmentView mapAssessment(java.sql.ResultSet rs)throws java.sql.SQLException{return new AssessmentView(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),rs.getString(3),rs.getString(4),rs.getBoolean(5),
             (Integer)rs.getObject(6),rs.getObject(7)==null?null:rs.getDouble(7),rs.getObject(8,LocalDateTime.class),rs.getObject(9,LocalDateTime.class),(Integer)rs.getObject(10),rs.getInt(11),rs.getString(12),rs.getInt(13),
-            rs.getObject(14,UUID.class),(Long)rs.getObject(15),rs.getObject(16,UUID.class),(Long)rs.getObject(17),rs.getString(18)==null?null:MatrixMode.valueOf(rs.getString(18)),rs.getObject(19,UUID.class),rs.getLong(20),rs.getObject(21,LocalDateTime.class),rs.getObject(22,LocalDateTime.class),rs.getObject(23,LocalDateTime.class));}
+            rs.getObject(14,UUID.class),rs.getObject(15,LocalDateTime.class),rs.getObject(16,UUID.class),(Long)rs.getObject(17),rs.getString(18)==null?null:MatrixMode.valueOf(rs.getString(18)),rs.getObject(19,UUID.class),rs.getLong(20),rs.getObject(21,LocalDateTime.class),rs.getObject(22,LocalDateTime.class),rs.getObject(23,LocalDateTime.class));}
     private record MatrixSelection(UUID id,long version) { }
     private static void validateConfiguration(Configuration input){if(input==null||input.title()==null||input.title().isBlank())throw badRequest("Title is required");
         if(input.variantCount()!=null&&(input.variantCount()<1||input.variantCount()>20))throw badRequest("variantCount must be between 1 and 20");
