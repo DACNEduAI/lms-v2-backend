@@ -194,7 +194,6 @@ class Quiz3AssessmentServiceValidationUT {
                 null, 2L, null, null, null);
         var context = new Quiz3Models.ContextView(
                 assessment,
-                List.of(new Quiz3Models.SourceOption(UUID.randomUUID(), "Profile", "PUBLISHED", 3L, null)),
                 List.of(new Quiz3Models.SourceOption(matrixId, "Matrix", "DRAFT", 4L,
                         Quiz3Models.MatrixMode.MANUAL)));
 

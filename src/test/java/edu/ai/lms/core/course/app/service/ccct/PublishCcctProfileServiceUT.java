@@ -17,6 +17,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.jdbc.core.JdbcTemplate;
+
 import edu.ai.lms.common.api.Roles;
 import edu.ai.lms.core.course.app.domain.CcctProfile;
 import edu.ai.lms.core.course.app.domain.CcctProfileStatus;
@@ -41,11 +43,13 @@ class PublishCcctProfileServiceUT {
     private LoadCcctProfilePort loadPort;
     @Mock
     private CcctActivity activity;
+    @Mock
+    private JdbcTemplate jdbc;
     @InjectMocks
     private PublishCcctProfileService service;
 
     @Test
-    void rejectsStaleVersionBeforeArchivingCurrentPublishedProfile() {
+    void rejectsStaleVersionBeforePublishingDraft() {
         UUID courseId = UUID.randomUUID();
         UUID profileId = UUID.randomUUID();
         Course course = Course.builder().id(courseId).build();
@@ -61,12 +65,11 @@ class PublishCcctProfileServiceUT {
                 new PublishCcctProfileCommand(courseId, profileId, 2)))
                 .isInstanceOf(CcctConflictException.class);
 
-        verify(savePort, never()).archivePublished(any(), any());
         verify(savePort, never()).publishDraft(any(), any(), anyLong(), any());
     }
 
     @Test
-    void archivesPreviousProfileAndReturnsReloadedPublishedProfile() {
+    void publishesDraftAndReturnsReloadedPublishedProfile() {
         UUID courseId = UUID.randomUUID();
         UUID profileId = UUID.randomUUID();
         Course course = Course.builder().id(courseId).build();
@@ -80,7 +83,6 @@ class PublishCcctProfileServiceUT {
                 .status(CcctProfileStatus.PUBLISHED)
                 .version(4)
                 .build();
-        UUID previousPublishedId = UUID.randomUUID();
         when(access.requireCourseTeacher(courseId)).thenReturn(context(course));
         when(profiles.require(courseId, profileId)).thenReturn(draft);
         when(savePort.publishDraft(
@@ -88,11 +90,6 @@ class PublishCcctProfileServiceUT {
                 org.mockito.ArgumentMatchers.eq(profileId),
                 org.mockito.ArgumentMatchers.eq(3L),
                 any())).thenReturn(true);
-        when(loadPort.findPublishedByCourseId(courseId))
-                .thenReturn(Optional.of(CcctProfile.builder()
-                        .id(previousPublishedId)
-                        .status(CcctProfileStatus.PUBLISHED)
-                        .build()));
         when(loadPort.findByCourseIdAndId(courseId, profileId))
                 .thenReturn(Optional.of(published));
 
@@ -100,7 +97,6 @@ class PublishCcctProfileServiceUT {
                 new PublishCcctProfileCommand(courseId, profileId, 3)))
                 .isSameAs(published);
         verify(validator).validatePublish(course, draft);
-        verify(savePort).archivePublished(courseId, previousPublishedId);
     }
 
     private CcctAccess.CourseActor context(Course course) {
