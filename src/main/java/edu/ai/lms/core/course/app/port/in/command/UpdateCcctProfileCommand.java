@@ -6,5 +6,6 @@ public record UpdateCcctProfileCommand(
         UUID courseId,
         UUID profileId,
         long version,
-        CcctProfileContent content) {
+        CcctProfileContent content,
+        String impactToken) {
 }

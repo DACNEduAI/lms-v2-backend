@@ -23,6 +23,9 @@ public class CreateCcctProfileService implements CreateCcctProfileUseCase {
     @Transactional
     public CcctProfile create(CreateCcctProfileCommand command) {
         var context = access.requireCourseTeacher(command.courseId());
+        if (!profiles.list(command.courseId()).isEmpty()) {
+            throw new edu.ai.lms.core.course.app.exception.CcctConflictException("A course has exactly one CCCT");
+        }
         validator.validateDraft(context.course(), command.content());
         String name = validator.normalizeName(command.content().name());
         profiles.requireUniqueName(command.courseId(), name, null);

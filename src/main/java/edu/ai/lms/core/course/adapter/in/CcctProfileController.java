@@ -1,11 +1,11 @@
 package edu.ai.lms.core.course.adapter.in;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,19 +16,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 import edu.ai.lms.core.course.adapter.in.mapper.CcctProfileCommandMapper;
 import edu.ai.lms.core.course.adapter.in.mapper.CcctProfileResponseMapper;
-import edu.ai.lms.core.course.adapter.in.request.CloneCcctProfileRequest;
 import edu.ai.lms.core.course.adapter.in.request.CreateCcctProfileRequest;
 import edu.ai.lms.core.course.adapter.in.request.PublishCcctProfileRequest;
 import edu.ai.lms.core.course.adapter.in.request.UpdateCcctProfileRequest;
 import edu.ai.lms.core.course.adapter.in.response.CcctProfileListResponse;
 import edu.ai.lms.core.course.adapter.in.response.CcctProfileResponse;
-import edu.ai.lms.core.course.app.port.in.usecase.CloneCcctProfileUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.CreateCcctProfileUseCase;
-import edu.ai.lms.core.course.app.port.in.usecase.DeleteCcctProfileUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.GetCcctProfileUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.ListCcctProfilesUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.PublishCcctProfileUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.UpdateCcctProfileUseCase;
+import edu.ai.lms.core.course.app.service.ccct.CcctRevisionService;
+import edu.ai.lms.core.course.app.service.ccct.UpdateCcctProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -45,12 +44,12 @@ public class CcctProfileController {
     private final CreateCcctProfileUseCase createUseCase;
     private final UpdateCcctProfileUseCase updateUseCase;
     private final PublishCcctProfileUseCase publishUseCase;
-    private final CloneCcctProfileUseCase cloneUseCase;
     private final GetCcctProfileUseCase getUseCase;
     private final ListCcctProfilesUseCase listUseCase;
-    private final DeleteCcctProfileUseCase deleteUseCase;
     private final CcctProfileCommandMapper commandMapper;
     private final CcctProfileResponseMapper responseMapper;
+    private final CcctRevisionService revisions;
+    private final UpdateCcctProfileService updateService;
 
     @Operation(summary = "List CCCT profiles in a Course")
     @ApiResponses({
@@ -97,7 +96,15 @@ public class CcctProfileController {
         return ResponseEntity.ok(responseMapper.toDetail(profile));
     }
 
-    @Operation(summary = "Publish a CCCT draft and archive the previous published profile")
+    @PostMapping("/{profileId}/change-impact")
+    public UpdateCcctProfileService.ChangeImpact changeImpact(
+            @PathVariable UUID courseId, @PathVariable UUID profileId,
+            @Valid @RequestBody UpdateCcctProfileRequest request) {
+        return updateService.preview(courseId, profileId,
+                commandMapper.toUpdateCommand(courseId, profileId, request).content());
+    }
+
+    @Operation(summary = "Publish a CCCT draft as an immutable revision")
     @PostMapping("/{profileId}/publish")
     public ResponseEntity<CcctProfileResponse> publish(
             @PathVariable UUID courseId,
@@ -108,23 +115,20 @@ public class CcctProfileController {
         return ResponseEntity.ok(responseMapper.toDetail(profile));
     }
 
-    @Operation(summary = "Clone a CCCT profile into a new draft")
-    @PostMapping("/{profileId}/clone")
-    public ResponseEntity<CcctProfileResponse> cloneProfile(
-            @PathVariable UUID courseId,
-            @PathVariable UUID profileId,
-            @Valid @RequestBody CloneCcctProfileRequest request) {
-        var profile = cloneUseCase.cloneProfile(
-                commandMapper.toCloneCommand(courseId, profileId, request));
-        return ResponseEntity.status(HttpStatus.CREATED).body(responseMapper.toDetail(profile));
+    @PostMapping("/{profileId}/unpublish")
+    public ResponseEntity<CcctProfileResponse> unpublish(@PathVariable UUID courseId, @PathVariable UUID profileId) {
+        return ResponseEntity.ok(responseMapper.toDetail(revisions.unpublish(courseId, profileId)));
     }
 
-    @Operation(summary = "Delete a CCCT draft")
-    @DeleteMapping("/{profileId}")
-    public ResponseEntity<Void> delete(
-            @PathVariable UUID courseId,
-            @PathVariable UUID profileId) {
-        deleteUseCase.delete(courseId, profileId);
-        return ResponseEntity.noContent().build();
+    @GetMapping("/{profileId}/revisions")
+    public List<CcctRevisionService.RevisionView> revisions(@PathVariable UUID courseId, @PathVariable UUID profileId) {
+        return revisions.revisions(courseId, profileId);
     }
+
+    @GetMapping("/{profileId}/revisions/{publishedAt}")
+    public CcctRevisionService.RevisionDocument revision(
+            @PathVariable UUID courseId, @PathVariable UUID profileId, @PathVariable java.time.LocalDateTime publishedAt) {
+        return revisions.revision(courseId, profileId, publishedAt);
+    }
+
 }

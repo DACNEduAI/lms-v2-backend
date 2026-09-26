@@ -22,5 +22,6 @@ public record UpdateCcctProfileRequest(
         String markdown,
         @NotNull(message = "template is required")
         @Valid
-        CcctTemplateRequest template) {
+        CcctTemplateRequest template,
+        String impactToken) {
 }

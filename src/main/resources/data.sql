@@ -816,13 +816,13 @@ VALUES ('c1111111-1111-1111-1111-111111111111', 7);
 INSERT INTO quiz3_assessments
     (id, course_id, title, description, unlimited, time_limit_minutes, pass_score,
      start_time, due_time, attempt_limited, variant_count, lifecycle_status, current_step,
-     ccct_profile_id, ccct_profile_version, matrix_id, matrix_version,
+     ccct_profile_id, ccct_published_at, matrix_id, matrix_version,
      base_confirmed_by, base_confirmed_at, created_by, version, published_by, published_at)
 VALUES
     ('f9000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
      'Quiz3 Student Attempt Demo', 'Published Quiz3 base assessment for student attempt testing.',
      true, NULL, 5.0, NULL, NULL, NULL, 1, 'PUBLISHED', 9,
-     'e1000001-0000-4000-8000-000000000001', 0,
+     'e1000001-0000-4000-8000-000000000001', NULL,
      'b3000001-0000-4000-8000-000000000001', 0,
      '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP,
      '11111111-1111-1111-1111-111111111111', 1,
@@ -1031,10 +1031,38 @@ VALUES
 
 -- Matrix fixtures now bind the one seeded CCCT and use one CLL relation per
 -- selected content-detail row. Existing fixture row IDs are retained.
+-- The published Quiz3 fixture below is deliberately pinned to this immutable
+-- CCCT snapshot while the course's editable CCCT remains a working draft.
+INSERT INTO ccct_profile_revisions (profile_id, published_at, name, template_title, markdown_content)
+SELECT id, TIMESTAMP '2026-09-26 00:00:00.000001', name, template_title, markdown_content
+FROM ccct_profiles WHERE id = 'e1000001-0000-4000-8000-000000000001';
+
+INSERT INTO ccct_revision_chapters (profile_id, published_at, id, course_chapter_id, title, order_index)
+SELECT profile_id, TIMESTAMP '2026-09-26 00:00:00.000001', id, course_chapter_id, title, order_index
+FROM ccct_chapters WHERE profile_id = 'e1000001-0000-4000-8000-000000000001';
+
+INSERT INTO ccct_revision_topics (profile_id, published_at, id, chapter_id, group_code, title, order_index)
+SELECT profile_id, TIMESTAMP '2026-09-26 00:00:00.000001', id, chapter_id, group_code, title, order_index
+FROM ccct_topics WHERE profile_id = 'e1000001-0000-4000-8000-000000000001';
+
+INSERT INTO ccct_revision_items (profile_id, published_at, id, topic_id, content_code, content, order_index)
+SELECT 'e1000001-0000-4000-8000-000000000001', TIMESTAMP '2026-09-26 00:00:00.000001', i.id, i.topic_id, i.content_code, i.content, i.order_index
+FROM ccct_items i JOIN ccct_topics t ON t.id=i.topic_id
+WHERE t.profile_id = 'e1000001-0000-4000-8000-000000000001';
+
 UPDATE exam_matrices
 SET ccct_profile_id = 'e1000001-0000-4000-8000-000000000001',
-    ccct_profile_version = 0
+    ccct_published_at = NULL
 WHERE course_id = 'c1111111-1111-1111-1111-111111111111';
+
+UPDATE exam_matrices
+SET lifecycle_status = 'PUBLISHED', ccct_published_at = TIMESTAMP '2026-09-26 00:00:00.000001',
+    published_by = '11111111-1111-1111-1111-111111111111', published_at = CURRENT_TIMESTAMP
+WHERE id = 'b3000001-0000-4000-8000-000000000001';
+
+UPDATE quiz3_assessments
+SET ccct_published_at = TIMESTAMP '2026-09-26 00:00:00.000001'
+WHERE id = 'f9000001-0000-4000-8000-000000000001';
 
 UPDATE exam_matrix_rows r
 SET ccct_item_id = (
