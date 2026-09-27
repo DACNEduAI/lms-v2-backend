@@ -11,7 +11,6 @@ import org.apache.ibatis.annotations.Param;
 import edu.ai.lms.core.course.app.domain.CcctChapter;
 import edu.ai.lms.core.course.app.domain.CcctItem;
 import edu.ai.lms.core.course.app.domain.CcctProfile;
-import edu.ai.lms.core.course.app.domain.CcctTopic;
 
 @Mapper
 interface CcctProfileRepository {
@@ -30,9 +29,7 @@ interface CcctProfileRepository {
 
     List<CcctChapter> findChaptersByProfileId(@Param("profileId") UUID profileId);
 
-    List<CcctTopic> findTopicsByChapterIds(@Param("chapterIds") Collection<UUID> chapterIds);
-
-    List<CcctItem> findItemsByTopicIds(@Param("topicIds") Collection<UUID> topicIds);
+    List<CcctItem> findItemsByChapterIds(@Param("chapterIds") Collection<UUID> chapterIds);
 
     int insertProfile(CcctProfile profile);
 
@@ -42,19 +39,13 @@ interface CcctProfileRepository {
 
     int insertChapters(@Param("chapters") List<CcctChapter> chapters);
 
-    int insertTopics(@Param("topics") List<CcctTopic> topics);
-
     int insertItems(@Param("items") List<CcctItem> items);
 
     int upsertChapters(@Param("chapters") List<CcctChapter> chapters);
 
-    int upsertTopics(@Param("topics") List<CcctTopic> topics);
-
     int upsertItems(@Param("items") List<CcctItem> items);
 
     int deleteItemsNotIn(@Param("profileId") UUID profileId, @Param("ids") Collection<UUID> ids);
-
-    int deleteTopicsNotIn(@Param("profileId") UUID profileId, @Param("ids") Collection<UUID> ids);
 
     int deleteChaptersNotIn(@Param("profileId") UUID profileId, @Param("ids") Collection<UUID> ids);
 

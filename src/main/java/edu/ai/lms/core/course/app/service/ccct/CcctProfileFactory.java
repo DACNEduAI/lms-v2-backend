@@ -1,7 +1,6 @@
 package edu.ai.lms.core.course.app.service.ccct;
 
 import java.util.UUID;
-import java.util.stream.IntStream;
 
 import org.springframework.stereotype.Component;
 
@@ -11,7 +10,6 @@ import edu.ai.lms.core.course.app.domain.CcctChapter;
 import edu.ai.lms.core.course.app.domain.CcctItem;
 import edu.ai.lms.core.course.app.domain.CcctProfile;
 import edu.ai.lms.core.course.app.domain.CcctProfileStatus;
-import edu.ai.lms.core.course.app.domain.CcctTopic;
 import edu.ai.lms.core.course.app.port.in.command.CcctProfileContent;
 
 @Component
@@ -34,23 +32,15 @@ class CcctProfileFactory {
                 .chapters(content.chapters().stream().map(chapter -> CcctChapter.builder()
                         .id(chapter.id())
                         .courseChapterId(chapter.courseChapterId())
+                        .chapterCode(chapter.chapterCode().trim())
                         .title(chapter.title().trim())
-                        .topics(chapter.topics().stream().map(topic -> CcctTopic.builder()
-                                .id(topic.id())
-                                .groupCode(topic.groupCode().trim().toLowerCase(java.util.Locale.ROOT))
-                                .title(topic.title().trim())
-                                .items(IntStream.range(0, topic.items().size()).mapToObj(itemIndex -> {
-                                    var item = topic.items().get(itemIndex);
-                                    String code = item.contentCode() == null || item.contentCode().isBlank()
-                                            ? topic.groupCode().trim().toLowerCase(java.util.Locale.ROOT) + ".item-" + (itemIndex + 1)
-                                            : item.contentCode().trim().toLowerCase(java.util.Locale.ROOT);
-                                    return CcctItem.builder()
-                                            .id(item.id())
-                                            .contentCode(code)
-                                            .content(item.content().trim())
-                                            .build();
-                                }).toList())
-                                .build()).toList())
+                        .items(java.util.stream.IntStream.range(0, chapter.items().size()).mapToObj(itemIndex -> {
+                            var item = chapter.items().get(itemIndex);
+                            String code = item.contentCode() == null || item.contentCode().isBlank()
+                                    ? chapter.chapterCode().trim() + ".item" + (itemIndex + 1)
+                                    : item.contentCode().trim();
+                            return CcctItem.builder().id(item.id()).contentCode(code).content(item.content().trim()).build();
+                        }).toList())
                         .build()).toList())
                 .build();
         profile.setMarkdownContent(markdownSerializer.serialize(profile));
@@ -81,15 +71,10 @@ class CcctProfileFactory {
                 .createdBy(createdBy)
                 .chapters(source.getChapters().stream().map(chapter -> CcctChapter.builder()
                         .courseChapterId(chapter.getCourseChapterId())
+                        .chapterCode(chapter.getChapterCode())
                         .title(chapter.getTitle())
-                        .topics(chapter.getTopics().stream().map(topic -> CcctTopic.builder()
-                                .groupCode(topic.getGroupCode())
-                                .title(topic.getTitle())
-                                .items(topic.getItems().stream().map(item -> CcctItem.builder()
-                                        .contentCode(item.getContentCode())
-                                        .content(item.getContent())
-                                        .build()).toList())
-                                .build()).toList())
+                        .items(chapter.getItems().stream().map(item -> CcctItem.builder()
+                                .contentCode(item.getContentCode()).content(item.getContent()).build()).toList())
                         .build()).toList())
                 .build();
     }

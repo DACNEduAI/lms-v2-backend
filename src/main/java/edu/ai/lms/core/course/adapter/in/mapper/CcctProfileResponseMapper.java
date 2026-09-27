@@ -11,7 +11,6 @@ import edu.ai.lms.core.course.adapter.in.response.CcctProfileListResponse;
 import edu.ai.lms.core.course.adapter.in.response.CcctProfileResponse;
 import edu.ai.lms.core.course.adapter.in.response.CcctProfileSummaryResponse;
 import edu.ai.lms.core.course.adapter.in.response.CcctTemplateResponse;
-import edu.ai.lms.core.course.adapter.in.response.CcctTopicResponse;
 import edu.ai.lms.core.course.app.domain.CcctProfile;
 
 @Component
@@ -33,15 +32,10 @@ public class CcctProfileResponseMapper {
                         profile.getChapters().stream().map(chapter -> new CcctChapterResponse(
                                 chapter.getId(),
                                 chapter.getCourseChapterId(),
+                                chapter.getChapterCode(),
                                 chapter.getTitle(),
-                                chapter.getTopics().stream().map(topic -> new CcctTopicResponse(
-                                        topic.getId(),
-                                        topic.getGroupCode(),
-                                        topic.getTitle(),
-                                        topic.getItems().stream().map(item -> new CcctItemResponse(
-                                                item.getId(),
-                                                item.getContentCode(),
-                                                item.getContent())).toList())).toList())).toList()),
+                                chapter.getItems().stream().map(item -> new CcctItemResponse(
+                                        item.getId(), item.getContentCode(), item.getContent())).toList())).toList()),
                 profile.getCreatedBy(),
                 profile.getPublishedAt(),
                 profile.getCreatedAt(),

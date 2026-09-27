@@ -101,8 +101,8 @@ public class UpdateCcctProfileService implements UpdateCcctProfileUseCase {
     }
 
     private Set<UUID> removedItems(CcctProfile current, CcctProfileContent proposed) {
-        Set<UUID> before = current.getChapters().stream().flatMap(c -> c.getTopics().stream()).flatMap(t -> t.getItems().stream()).map(i -> i.getId()).collect(Collectors.toCollection(LinkedHashSet::new));
-        Set<UUID> after = proposed.chapters().stream().flatMap(c -> c.topics().stream()).flatMap(t -> t.items().stream()).map(i -> i.id()).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Set<UUID> before = current.getChapters().stream().flatMap(c -> c.getItems().stream()).map(i -> i.getId()).collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<UUID> after = proposed.chapters().stream().flatMap(c -> c.items().stream()).map(i -> i.id()).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
         before.removeAll(after); return before;
     }
     private static String token(UUID profileId, long lockVersion, Set<UUID> removed) { try { String value=profileId+":"+lockVersion+":"+removed.stream().sorted().map(UUID::toString).collect(Collectors.joining(",")); return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8))); } catch (Exception e) { throw new IllegalStateException(e); } }

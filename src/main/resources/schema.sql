@@ -139,6 +139,27 @@ CREATE TABLE IF NOT EXISTS image_assets
     pending_storage_key VARCHAR(1024) UNIQUE
 );
 
+CREATE TABLE IF NOT EXISTS asset_generation_jobs
+(
+    id UUID PRIMARY KEY,
+    asset_id UUID NOT NULL UNIQUE REFERENCES assets(id) ON DELETE CASCADE,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    requested_by UUID,
+    prompt TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'READY_FOR_REVIEW', 'FAILED')),
+    attempt INTEGER NOT NULL DEFAULT 1,
+    callback_event_id UUID,
+    error_message VARCHAR(1000),
+    error_details TEXT,
+    tikz_source TEXT,
+    model VARCHAR(255),
+    parameters JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_asset_generation_jobs_queue ON asset_generation_jobs(status, created_at);
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_material_uploaded_original_file_name_per_course
     ON materials (course_id, LOWER(BTRIM(original_file_name)))
     WHERE status = 'UPLOADED';
@@ -267,9 +288,11 @@ CREATE TABLE IF NOT EXISTS ccct_chapters
     id                UUID PRIMARY KEY,
     profile_id        UUID         NOT NULL REFERENCES ccct_profiles (id) ON DELETE CASCADE,
     course_chapter_id UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
+    chapter_code      VARCHAR(64)  NOT NULL CHECK (chapter_code ~ '^[a-z][A-Za-z0-9]*$'),
     title             VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
     order_index       INTEGER      NOT NULL CHECK (order_index >= 0),
-    CONSTRAINT uq_ccct_chapter_order UNIQUE (profile_id, order_index)
+    CONSTRAINT uq_ccct_chapter_order UNIQUE (profile_id, order_index),
+    CONSTRAINT uq_ccct_chapter_code UNIQUE (profile_id, chapter_code)
 );
 
 CREATE INDEX IF NOT EXISTS idx_ccct_chapters_profile
@@ -277,35 +300,56 @@ CREATE INDEX IF NOT EXISTS idx_ccct_chapters_profile
 CREATE INDEX IF NOT EXISTS idx_ccct_chapters_course_chapter
     ON ccct_chapters (course_chapter_id);
 
-CREATE TABLE IF NOT EXISTS ccct_topics
-(
-    id          UUID PRIMARY KEY,
-    profile_id  UUID         NOT NULL REFERENCES ccct_profiles (id) ON DELETE CASCADE,
-    chapter_id  UUID         NOT NULL REFERENCES ccct_chapters (id) ON DELETE CASCADE,
-    group_code  VARCHAR(64)  NOT NULL CHECK (group_code ~ '^[a-z0-9]+([-_][a-z0-9]+)*$'),
-    title       VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
-    order_index INTEGER      NOT NULL CHECK (order_index >= 0),
-    CONSTRAINT uq_ccct_topic_order UNIQUE (chapter_id, order_index),
-    CONSTRAINT uq_ccct_topic_group_code UNIQUE (profile_id, group_code)
-);
-
-CREATE INDEX IF NOT EXISTS idx_ccct_topics_chapter
-    ON ccct_topics (chapter_id);
-
 CREATE TABLE IF NOT EXISTS ccct_items
 (
     id              UUID PRIMARY KEY,
-    topic_id        UUID        NOT NULL REFERENCES ccct_topics (id) ON DELETE CASCADE,
+    chapter_id      UUID        NOT NULL REFERENCES ccct_chapters (id) ON DELETE CASCADE,
     content_code    VARCHAR(128) NOT NULL,
     content         TEXT        NOT NULL CHECK (btrim(content) <> ''),
     order_index     INTEGER     NOT NULL CHECK (order_index >= 0),
-    CONSTRAINT uq_ccct_item_order UNIQUE (topic_id, order_index),
-    CONSTRAINT ck_ccct_item_content_code CHECK (content_code ~ '^[a-z0-9]+([._-][a-z0-9]+)*$'),
-    CONSTRAINT uq_ccct_item_code UNIQUE (topic_id, content_code)
+    CONSTRAINT uq_ccct_item_order UNIQUE (chapter_id, order_index),
+    CONSTRAINT ck_ccct_item_content_code CHECK (content_code ~ '^[a-z][A-Za-z0-9]*\.[a-z][A-Za-z0-9]*$'),
+    CONSTRAINT uq_ccct_item_code UNIQUE (chapter_id, content_code)
 );
 
-CREATE INDEX IF NOT EXISTS idx_ccct_items_topic
-    ON ccct_items (topic_id);
+CREATE INDEX IF NOT EXISTS idx_ccct_items_chapter
+    ON ccct_items (chapter_id);
+
+-- Immutable snapshots used by published CCCT/Matrix sources.
+CREATE TABLE IF NOT EXISTS ccct_profile_revisions
+(
+    profile_id UUID NOT NULL REFERENCES ccct_profiles (id) ON DELETE RESTRICT,
+    published_at TIMESTAMP NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    template_title VARCHAR(255) NOT NULL,
+    markdown_content TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (profile_id, published_at)
+);
+CREATE TABLE IF NOT EXISTS ccct_revision_chapters
+(
+    profile_id UUID NOT NULL,
+    published_at TIMESTAMP NOT NULL,
+    id UUID NOT NULL,
+    course_chapter_id UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
+    chapter_code VARCHAR(64) NOT NULL CHECK (chapter_code ~ '^[a-z][A-Za-z0-9]*$'),
+    title VARCHAR(255) NOT NULL,
+    order_index INTEGER NOT NULL,
+    PRIMARY KEY (profile_id, published_at, id),
+    FOREIGN KEY (profile_id, published_at) REFERENCES ccct_profile_revisions(profile_id, published_at) ON DELETE RESTRICT
+);
+CREATE TABLE IF NOT EXISTS ccct_revision_items
+(
+    profile_id UUID NOT NULL,
+    published_at TIMESTAMP NOT NULL,
+    id UUID NOT NULL,
+    chapter_id UUID NOT NULL,
+    content_code VARCHAR(128) NOT NULL CHECK (content_code ~ '^[a-z][A-Za-z0-9]*\.[a-z][A-Za-z0-9]*$'),
+    content TEXT NOT NULL,
+    order_index INTEGER NOT NULL,
+    PRIMARY KEY (profile_id, published_at, id),
+    FOREIGN KEY (profile_id, published_at, chapter_id) REFERENCES ccct_revision_chapters(profile_id, published_at, id) ON DELETE RESTRICT
+);
 
 -- Published CCCT revisions are immutable full snapshots.  The editable
 -- ccct_chapters/topics/items tree above is the one working draft.  Item IDs

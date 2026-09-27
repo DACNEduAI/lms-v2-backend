@@ -17,11 +17,10 @@ import edu.ai.lms.core.course.app.port.in.command.CcctProfileContent;
 
 @Component
 class CcctValidator {
-    private static final Pattern GROUP_CODE = Pattern.compile("[a-z0-9]+(?:[-_][a-z0-9]+)*");
-    private static final Pattern CONTENT_CODE = Pattern.compile("[a-z0-9]+(?:[._-][a-z0-9]+)*");
+    private static final Pattern CODE_SEGMENT = Pattern.compile("[a-z][A-Za-z0-9]*");
+    private static final Pattern CONTENT_CODE = Pattern.compile("[a-z][A-Za-z0-9]*\\.[a-z][A-Za-z0-9]*");
     static final int MAX_CHAPTERS = 100;
-    static final int MAX_TOPICS_PER_CHAPTER = 200;
-    static final int MAX_ITEMS_PER_TOPIC = 500;
+    static final int MAX_ITEMS_PER_CHAPTER = 500;
     static final int MAX_PAYLOAD_BYTES = 2 * 1024 * 1024;
 
     void validateDraft(Course course, CcctProfileContent content) {
@@ -44,7 +43,7 @@ class CcctValidator {
         }
 
         Set<UUID> nodeIds = new HashSet<>();
-        Set<String> groupCodes = new HashSet<>();
+        Set<String> chapterCodes = new HashSet<>();
         Set<String> contentCodes = new HashSet<>();
         if (content.chapters().size() != course.getChapters().size()) {
             invalid("CCCT must contain every Course Chapter exactly once");
@@ -65,37 +64,19 @@ class CcctValidator {
             if (!chapter.title().trim().equals(courseChapter.getTitle().trim())) {
                 invalid("CCCT chapter titles must match the Course Chapters");
             }
-            if (chapter.topics().size() > MAX_TOPICS_PER_CHAPTER) {
-                invalid("A chapter cannot contain more than "
-                        + MAX_TOPICS_PER_CHAPTER + " topics");
-            }
-            payloadBytes += utf8(chapter.title());
-            for (var topic : chapter.topics()) {
-                uniqueNodeId(nodeIds, topic.id());
-                String groupCode = topic.groupCode() == null ? "" : topic.groupCode().trim();
-                if (groupCode.length() > 64
-                        || !groupCode.equals(groupCode.toLowerCase(Locale.ROOT))
-                        || !GROUP_CODE.matcher(groupCode).matches()) {
-                    invalid("Topic Group ID must be a lowercase slug using letters, digits, hyphens, or underscores");
-                }
-                if (!groupCodes.add(groupCode)) {
-                    invalid("Topic Group IDs must be unique within the CCCT profile");
-                }
-                required(topic.title(), "Topic title", 255);
-                if (topic.items().size() > MAX_ITEMS_PER_TOPIC) {
-                    invalid("A topic cannot contain more than "
-                            + MAX_ITEMS_PER_TOPIC + " items");
-                }
-                payloadBytes += utf8(topic.title()) + utf8(groupCode);
-                for (var item : topic.items()) {
+            String chapterCode = chapter.chapterCode() == null ? "" : chapter.chapterCode().trim();
+            if (chapterCode.length() > 64 || !CODE_SEGMENT.matcher(chapterCode).matches()) invalid("Chapter Code must be camelCase");
+            if (!chapterCodes.add(chapterCode)) invalid("Chapter Codes must be unique within the CCCT profile");
+            if (chapter.items().size() > MAX_ITEMS_PER_CHAPTER) invalid("A chapter cannot contain more than " + MAX_ITEMS_PER_CHAPTER + " content details");
+            payloadBytes += utf8(chapter.title()) + utf8(chapterCode);
+            for (var item : chapter.items()) {
                     uniqueNodeId(nodeIds, item.id());
                     String contentCode = item.contentCode() == null ? "" : item.contentCode().trim();
                     if (!contentCode.isBlank()) {
-                        if (!contentCode.equals(contentCode.toLowerCase(Locale.ROOT))
-                                || contentCode.length() > 128
+                        if (contentCode.length() > 128
                                 || !CONTENT_CODE.matcher(contentCode).matches()
-                                || !contentCode.startsWith(groupCode + ".")) {
-                            invalid("Content Code must be a lowercase code prefixed by its Group Code, for example big-o.concept");
+                                || !contentCode.startsWith(chapterCode + ".")) {
+                            invalid("Content Code must be dotted camelCase and prefixed by its Chapter Code, for example binaryTrees.treeTraversal");
                         }
                         if (!contentCodes.add(contentCode)) {
                             invalid("Content Codes must be unique within the CCCT profile");
@@ -107,7 +88,6 @@ class CcctValidator {
                         throw new CcctPayloadTooLargeException(
                                 "CCCT payload cannot exceed 2 MB");
                     }
-                }
             }
         }
         if (payloadBytes > MAX_PAYLOAD_BYTES) {

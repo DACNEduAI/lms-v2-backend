@@ -6,10 +6,11 @@ import java.util.UUID;
 public record CcctChapterValue(
         UUID id,
         UUID courseChapterId,
+        String chapterCode,
         String title,
-        List<CcctTopicValue> topics) {
+        List<CcctItemValue> items) {
 
     public CcctChapterValue {
-        topics = topics == null ? List.of() : List.copyOf(topics);
+        items = items == null ? List.of() : List.copyOf(items);
     }
 }

@@ -28,22 +28,14 @@
     <id property="id" column="id"/>
     <result property="profileId" column="profile_id"/>
     <result property="courseChapterId" column="course_chapter_id"/>
-    <result property="title" column="title"/>
-    <result property="orderIndex" column="order_index"/>
-  </resultMap>
-
-  <resultMap id="CcctTopicResultMap" type="edu.ai.lms.core.course.app.domain.CcctTopic">
-    <id property="id" column="id"/>
-    <result property="profileId" column="profile_id"/>
-    <result property="chapterId" column="chapter_id"/>
-    <result property="groupCode" column="group_code"/>
+    <result property="chapterCode" column="chapter_code"/>
     <result property="title" column="title"/>
     <result property="orderIndex" column="order_index"/>
   </resultMap>
 
   <resultMap id="CcctItemResultMap" type="edu.ai.lms.core.course.app.domain.CcctItem">
     <id property="id" column="id"/>
-    <result property="topicId" column="topic_id"/>
+    <result property="chapterId" column="chapter_id"/>
     <result property="contentCode" column="content_code"/>
     <result property="content" column="content"/>
     <result property="orderIndex" column="order_index"/>
@@ -85,30 +77,20 @@
   </select>
 
   <select id="findChaptersByProfileId" resultMap="CcctChapterResultMap">
-    SELECT id, profile_id, course_chapter_id, title, order_index
+    SELECT id, profile_id, course_chapter_id, chapter_code, title, order_index
     FROM edu.ccct_chapters
     WHERE profile_id = #{profileId}
     ORDER BY order_index
   </select>
 
-  <select id="findTopicsByChapterIds" resultMap="CcctTopicResultMap">
-    SELECT id, profile_id, chapter_id, group_code, title, order_index
-    FROM edu.ccct_topics
+  <select id="findItemsByChapterIds" resultMap="CcctItemResultMap">
+    SELECT id, chapter_id, content_code, content, order_index
+    FROM edu.ccct_items
     WHERE chapter_id IN
     <foreach collection="chapterIds" item="chapterId" open="(" separator="," close=")">
       #{chapterId}
     </foreach>
     ORDER BY chapter_id, order_index
-  </select>
-
-  <select id="findItemsByTopicIds" resultMap="CcctItemResultMap">
-    SELECT id, topic_id, content_code, content, order_index
-    FROM edu.ccct_items
-    WHERE topic_id IN
-    <foreach collection="topicIds" item="topicId" open="(" separator="," close=")">
-      #{topicId}
-    </foreach>
-    ORDER BY topic_id, order_index
   </select>
 
   <insert id="insertProfile">
@@ -146,57 +128,37 @@
 
   <insert id="insertChapters">
     INSERT INTO edu.ccct_chapters
-      (id, profile_id, course_chapter_id, title, order_index)
+      (id, profile_id, course_chapter_id, chapter_code, title, order_index)
     VALUES
     <foreach collection="chapters" item="chapter" separator=",">
-      (#{chapter.id}, #{chapter.profileId}, #{chapter.courseChapterId},
+      (#{chapter.id}, #{chapter.profileId}, #{chapter.courseChapterId}, #{chapter.chapterCode},
        #{chapter.title}, #{chapter.orderIndex})
-    </foreach>
-  </insert>
-
-  <insert id="insertTopics">
-    INSERT INTO edu.ccct_topics (id, profile_id, chapter_id, group_code, title, order_index)
-    VALUES
-    <foreach collection="topics" item="topic" separator=",">
-      (#{topic.id}, (SELECT profile_id FROM edu.ccct_chapters WHERE id = #{topic.chapterId}),
-       #{topic.chapterId}, #{topic.groupCode}, #{topic.title}, #{topic.orderIndex})
     </foreach>
   </insert>
 
   <insert id="insertItems">
     INSERT INTO edu.ccct_items
-      (id, topic_id, content_code, content, order_index)
+      (id, chapter_id, content_code, content, order_index)
     VALUES
     <foreach collection="items" item="item" separator=",">
-      (#{item.id}, #{item.topicId}, #{item.contentCode}, #{item.content}, #{item.orderIndex})
+      (#{item.id}, #{item.chapterId}, #{item.contentCode}, #{item.content}, #{item.orderIndex})
     </foreach>
   </insert>
 
   <insert id="upsertChapters">
-    INSERT INTO edu.ccct_chapters (id, profile_id, course_chapter_id, title, order_index)
-    VALUES <foreach collection="chapters" item="chapter" separator=",">(#{chapter.id},#{chapter.profileId},#{chapter.courseChapterId},#{chapter.title},#{chapter.orderIndex})</foreach>
-    ON CONFLICT (id) DO UPDATE SET course_chapter_id=EXCLUDED.course_chapter_id,title=EXCLUDED.title,order_index=EXCLUDED.order_index
-  </insert>
-
-  <insert id="upsertTopics">
-    INSERT INTO edu.ccct_topics (id, profile_id, chapter_id, group_code, title, order_index)
-    VALUES <foreach collection="topics" item="topic" separator=",">(#{topic.id},#{topic.profileId},#{topic.chapterId},#{topic.groupCode},#{topic.title},#{topic.orderIndex})</foreach>
-    ON CONFLICT (id) DO UPDATE SET chapter_id=EXCLUDED.chapter_id,group_code=EXCLUDED.group_code,title=EXCLUDED.title,order_index=EXCLUDED.order_index
+    INSERT INTO edu.ccct_chapters (id, profile_id, course_chapter_id, chapter_code, title, order_index)
+    VALUES <foreach collection="chapters" item="chapter" separator=",">(#{chapter.id},#{chapter.profileId},#{chapter.courseChapterId},#{chapter.chapterCode},#{chapter.title},#{chapter.orderIndex})</foreach>
+    ON CONFLICT (id) DO UPDATE SET course_chapter_id=EXCLUDED.course_chapter_id,chapter_code=EXCLUDED.chapter_code,title=EXCLUDED.title,order_index=EXCLUDED.order_index
   </insert>
 
   <insert id="upsertItems">
-    INSERT INTO edu.ccct_items (id, topic_id, content_code, content, order_index)
-    VALUES <foreach collection="items" item="item" separator=",">(#{item.id},#{item.topicId},#{item.contentCode},#{item.content},#{item.orderIndex})</foreach>
-    ON CONFLICT (id) DO UPDATE SET topic_id=EXCLUDED.topic_id,content_code=EXCLUDED.content_code,content=EXCLUDED.content,order_index=EXCLUDED.order_index
+    INSERT INTO edu.ccct_items (id, chapter_id, content_code, content, order_index)
+    VALUES <foreach collection="items" item="item" separator=",">(#{item.id},#{item.chapterId},#{item.contentCode},#{item.content},#{item.orderIndex})</foreach>
+    ON CONFLICT (id) DO UPDATE SET chapter_id=EXCLUDED.chapter_id,content_code=EXCLUDED.content_code,content=EXCLUDED.content,order_index=EXCLUDED.order_index
   </insert>
 
   <delete id="deleteItemsNotIn">
-    DELETE FROM edu.ccct_items WHERE topic_id IN (SELECT id FROM edu.ccct_topics WHERE profile_id=#{profileId})
-    <choose><when test="ids != null and ids.size() > 0">AND id NOT IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach></when></choose>
-  </delete>
-
-  <delete id="deleteTopicsNotIn">
-    DELETE FROM edu.ccct_topics WHERE profile_id=#{profileId}
+    DELETE FROM edu.ccct_items WHERE chapter_id IN (SELECT id FROM edu.ccct_chapters WHERE profile_id=#{profileId})
     <choose><when test="ids != null and ids.size() > 0">AND id NOT IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach></when></choose>
   </delete>
 

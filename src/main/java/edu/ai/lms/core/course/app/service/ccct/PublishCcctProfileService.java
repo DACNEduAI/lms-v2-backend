@@ -61,31 +61,7 @@ public class PublishCcctProfileService implements PublishCcctProfileUseCase {
     }
 
     private void snapshot(CcctProfile profile, LocalDateTime publishedAt) {
-        jdbc.update("""
-                INSERT INTO edu.ccct_profile_revisions
-                    (profile_id,published_at,name,template_title,markdown_content)
-                VALUES (?,?,?,?,?)
-                """, profile.getId(), publishedAt, profile.getName(), profile.getTemplateTitle(), profile.getMarkdownContent());
-        for (var chapter : profile.getChapters()) {
-            jdbc.update("""
-                    INSERT INTO edu.ccct_revision_chapters
-                      (profile_id,published_at,id,course_chapter_id,title,order_index)
-                    VALUES (?,?,?,?,?,?)
-                    """, profile.getId(), publishedAt, chapter.getId(), chapter.getCourseChapterId(), chapter.getTitle(), chapter.getOrderIndex());
-            for (var topic : chapter.getTopics()) {
-                jdbc.update("""
-                        INSERT INTO edu.ccct_revision_topics
-                          (profile_id,published_at,id,chapter_id,group_code,title,order_index)
-                        VALUES (?,?,?,?,?,?,?)
-                        """, profile.getId(), publishedAt, topic.getId(), chapter.getId(), topic.getGroupCode(), topic.getTitle(), topic.getOrderIndex());
-                for (var item : topic.getItems()) {
-                    jdbc.update("""
-                            INSERT INTO edu.ccct_revision_items
-                              (profile_id,published_at,id,topic_id,content_code,content,order_index)
-                            VALUES (?,?,?,?,?,?,?)
-                            """, profile.getId(), publishedAt, item.getId(), topic.getId(), item.getContentCode(), item.getContent(), item.getOrderIndex());
-                }
-            }
-        }
+        // The flattened CCCT migration retires the legacy revision tables.
+        // Published profiles remain the authoritative snapshot for this model.
     }
 }
