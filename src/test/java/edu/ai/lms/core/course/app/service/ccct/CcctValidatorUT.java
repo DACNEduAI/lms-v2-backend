@@ -41,7 +41,7 @@ class CcctValidatorUT {
         UUID chapterId = UUID.randomUUID();
         String multibyte = "ế".repeat(1_100_000);
         var content = content(List.of(new CcctChapterValue(null, chapterId, "Chapter",
-                List.of(new CcctTopicValue(null, "topic", "Topic", List.of(new CcctItemValue(null, multibyte)))))));
+                List.of(new CcctTopicValue(null, "topic", "Topic", List.of(new CcctItemValue(null, "topic.large-content", multibyte)))))));
 
         assertThatThrownBy(() -> validator.validateDraft(course(chapterId), content))
                 .isInstanceOf(CcctPayloadTooLargeException.class);
@@ -88,11 +88,30 @@ class CcctValidatorUT {
                 List.of(new CcctTopicValue(null, "Invalid Group", "Topic", List.of())))));
         assertThatThrownBy(() -> validator.validateDraft(course(chapterId), invalid))
                 .isInstanceOf(CcctValidationException.class)
-                .hasMessageContaining("lowercase slug");
+                .hasMessageContaining("lowercase kebab-case");
 
         var duplicate = content(List.of(new CcctChapterValue(null, chapterId, "Chapter", List.of(
-                new CcctTopicValue(null, "same_group", "One", List.of()),
-                new CcctTopicValue(null, "same_group", "Two", List.of())))));
+                new CcctTopicValue(null, "same-group", "One", List.of()),
+                new CcctTopicValue(null, "same-group", "Two", List.of())))));
+        assertThatThrownBy(() -> validator.validateDraft(course(chapterId), duplicate))
+                .isInstanceOf(CcctValidationException.class)
+                .hasMessageContaining("unique within the CCCT profile");
+    }
+
+    @Test
+    void requiresSemanticLowercaseKebabContentCodesUniqueAcrossTheProfile() {
+        UUID chapterId = UUID.randomUUID();
+        var invalid = content(List.of(new CcctChapterValue(null, chapterId, "Chapter",
+                List.of(new CcctTopicValue(null, "big-o", "Big O",
+                        List.of(new CcctItemValue(null, "big-o.analysis.detail", "Analysis")))))));
+        assertThatThrownBy(() -> validator.validateDraft(course(chapterId), invalid))
+                .isInstanceOf(CcctValidationException.class)
+                .hasMessageContaining("group-code.content-key");
+
+        var duplicate = content(List.of(new CcctChapterValue(null, chapterId, "Chapter", List.of(
+                new CcctTopicValue(null, "big-o", "Big O", List.of(
+                        new CcctItemValue(null, "big-o.concept", "Concept"),
+                        new CcctItemValue(null, "big-o.concept", "Duplicate")))))));
         assertThatThrownBy(() -> validator.validateDraft(course(chapterId), duplicate))
                 .isInstanceOf(CcctValidationException.class)
                 .hasMessageContaining("unique within the CCCT profile");

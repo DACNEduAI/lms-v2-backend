@@ -147,9 +147,11 @@ public class MatrixService {
         Map<UUID,String> cognitiveLevelByCll=new HashMap<>();
         for(var level:safe(p.customLearningLevels())) if(level!=null&&level.id()!=null) cognitiveLevelByCll.put(level.id(),cognitiveLevelCodeForName(level.name()));
         Set<UUID> rows=new HashSet<>();
+        Set<UUID> contentItems=new HashSet<>();
         for(var row:safe(p.rows())) {
             if(row==null) throw badRequest("Each Matrix row must be valid");
             if(row.id()==null||!rows.add(row.id())||row.ccctItemId()==null) throw badRequest("Each Matrix row needs a unique id and CCCT content item");
+            if(!contentItems.add(row.ccctItemId())) throw badRequest("A CCCT Content Detail can appear only once in a Matrix");
             if(!exists("SELECT 1 FROM edu.ccct_items i JOIN edu.ccct_topics t ON t.id=i.topic_id JOIN edu.ccct_chapters c ON c.id=t.chapter_id WHERE i.id=? AND c.profile_id=?",row.ccctItemId(),profileId)) throw badRequest("Matrix content item does not belong to this course CCCT");
             if(row.mappedLearningOutcomeId()==null||!exists("SELECT 1 FROM edu.learning_outcomes WHERE id=? AND course_id=?",row.mappedLearningOutcomeId(),courseId)) throw badRequest("Mapped learning outcome does not belong to this course");
             if(!outcomeIds.contains(row.mappedLearningOutcomeId())) throw badRequest("Each selected LO column needs a Bloom level");

@@ -17,8 +17,8 @@ import edu.ai.lms.core.course.app.port.in.command.CcctProfileContent;
 
 @Component
 class CcctValidator {
-    private static final Pattern GROUP_CODE = Pattern.compile("[a-z0-9]+(?:[-_][a-z0-9]+)*");
-    private static final Pattern CONTENT_CODE = Pattern.compile("[a-z0-9]+(?:[._-][a-z0-9]+)*");
+    private static final Pattern GROUP_CODE = Pattern.compile("[a-z0-9]+(?:-[a-z0-9]+)*");
+    private static final Pattern CONTENT_KEY = Pattern.compile("[a-z0-9]+(?:-[a-z0-9]+)*");
     static final int MAX_CHAPTERS = 100;
     static final int MAX_TOPICS_PER_CHAPTER = 200;
     static final int MAX_ITEMS_PER_TOPIC = 500;
@@ -76,7 +76,7 @@ class CcctValidator {
                 if (groupCode.length() > 64
                         || !groupCode.equals(groupCode.toLowerCase(Locale.ROOT))
                         || !GROUP_CODE.matcher(groupCode).matches()) {
-                    invalid("Topic Group ID must be a lowercase slug using letters, digits, hyphens, or underscores");
+                    invalid("Topic Group ID must use lowercase kebab-case, for example big-o");
                 }
                 if (!groupCodes.add(groupCode)) {
                     invalid("Topic Group IDs must be unique within the CCCT profile");
@@ -90,16 +90,15 @@ class CcctValidator {
                 for (var item : topic.items()) {
                     uniqueNodeId(nodeIds, item.id());
                     String contentCode = item.contentCode() == null ? "" : item.contentCode().trim();
-                    if (!contentCode.isBlank()) {
-                        if (!contentCode.equals(contentCode.toLowerCase(Locale.ROOT))
-                                || contentCode.length() > 128
-                                || !CONTENT_CODE.matcher(contentCode).matches()
-                                || !contentCode.startsWith(groupCode + ".")) {
-                            invalid("Content Code must be a lowercase code prefixed by its Group Code, for example big-o.concept");
-                        }
-                        if (!contentCodes.add(contentCode)) {
-                            invalid("Content Codes must be unique within the CCCT profile");
-                        }
+                    String prefix = groupCode + ".";
+                    String contentKey = contentCode.startsWith(prefix) ? contentCode.substring(prefix.length()) : "";
+                    if (!contentCode.equals(contentCode.toLowerCase(Locale.ROOT))
+                            || contentCode.length() > 128
+                            || !CONTENT_KEY.matcher(contentKey).matches()) {
+                        invalid("Content Code must use group-code.content-key lowercase kebab-case, for example big-o.core-concept");
+                    }
+                    if (!contentCodes.add(contentCode)) {
+                        invalid("Content Codes must be unique within the CCCT profile");
                     }
                     required(item.content(), "Item content", Integer.MAX_VALUE);
                     payloadBytes += utf8(contentCode) + utf8(item.content());

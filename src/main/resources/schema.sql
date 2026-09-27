@@ -282,7 +282,7 @@ CREATE TABLE IF NOT EXISTS ccct_topics
     id          UUID PRIMARY KEY,
     profile_id  UUID         NOT NULL REFERENCES ccct_profiles (id) ON DELETE CASCADE,
     chapter_id  UUID         NOT NULL REFERENCES ccct_chapters (id) ON DELETE CASCADE,
-    group_code  VARCHAR(64)  NOT NULL CHECK (group_code ~ '^[a-z0-9]+([-_][a-z0-9]+)*$'),
+    group_code  VARCHAR(64)  NOT NULL CHECK (group_code ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
     title       VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
     order_index INTEGER      NOT NULL CHECK (order_index >= 0),
     CONSTRAINT uq_ccct_topic_order UNIQUE (chapter_id, order_index),
@@ -300,7 +300,7 @@ CREATE TABLE IF NOT EXISTS ccct_items
     content         TEXT        NOT NULL CHECK (btrim(content) <> ''),
     order_index     INTEGER     NOT NULL CHECK (order_index >= 0),
     CONSTRAINT uq_ccct_item_order UNIQUE (topic_id, order_index),
-    CONSTRAINT ck_ccct_item_content_code CHECK (content_code ~ '^[a-z0-9]+([._-][a-z0-9]+)*$'),
+    CONSTRAINT ck_ccct_item_content_code CHECK (content_code ~ '^[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]+(-[a-z0-9]+)*$'),
     CONSTRAINT uq_ccct_item_code UNIQUE (topic_id, content_code)
 );
 

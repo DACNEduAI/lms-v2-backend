@@ -21,6 +21,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
 class Quiz3AssessmentServiceValidationUT {
+
+    @Test
+    void mapsBloomCodesToTheTeacherContentScopeSuffix() {
+        assertEquals(1, Quiz3AssessmentService.cognitiveLevelNumber("REMEMBER"));
+        assertEquals(2, Quiz3AssessmentService.cognitiveLevelNumber("UNDERSTAND"));
+        assertEquals(3, Quiz3AssessmentService.cognitiveLevelNumber("APPLY"));
+        assertEquals(4, Quiz3AssessmentService.cognitiveLevelNumber("ANALYZE"));
+        assertEquals(5, Quiz3AssessmentService.cognitiveLevelNumber("EVALUATE"));
+        assertEquals(6, Quiz3AssessmentService.cognitiveLevelNumber("CREATE"));
+    }
     @Test
     void formatsGroupedLearningOutcomeWithItsGroupCode() {
         assertEquals("L.O.1.1 - Define Big O", Quiz3AssessmentService.formatLearningOutcome("L.O.1", 1, "Define Big O"));

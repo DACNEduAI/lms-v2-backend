@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
@@ -440,7 +441,7 @@ public class Quiz3AssessmentService {
                    lo.prefix_number,lo.description,l.id level_id,l.name level_name,ec.question_count,
                    coalesce(ri.id,i.id) content_item_id,coalesce(rt.group_code,t.group_code) group_code,
                    coalesce(rt.title,t.title) topic_group_name,coalesce(ri.content_code,i.content_code) content_code,
-                   coalesce(ri.content,i.content) content_detail
+                   coalesce(ri.content,i.content) content_detail,ocl.cognitive_level_code
             FROM edu.exam_matrix_rows r JOIN edu.exam_matrices m ON m.id=r.matrix_id
             LEFT JOIN edu.chapters c ON c.chapter_id=r.chapter_id
             LEFT JOIN edu.ccct_revision_chapters rc ON rc.profile_id=m.ccct_profile_id AND rc.published_at=m.ccct_published_at AND rc.course_chapter_id=r.chapter_id
@@ -451,6 +452,8 @@ public class Quiz3AssessmentService {
             JOIN edu.learning_outcomes lo ON lo.id=r.mapped_learning_outcome_id
             JOIN edu.exam_matrix_cells ec ON ec.row_id=r.id
             JOIN edu.exam_matrix_custom_learning_levels l ON l.id=ec.custom_learning_level_id
+            LEFT JOIN edu.exam_matrix_outcome_cognitive_levels ocl
+              ON ocl.matrix_id=r.matrix_id AND ocl.learning_outcome_id=r.mapped_learning_outcome_id
             WHERE r.matrix_id=? ORDER BY r.sort_order,r.id,l.sort_order,l.id
             """,matrixId);
         String mode=selectedMatrix.mode().name();
@@ -473,6 +476,13 @@ public class Quiz3AssessmentService {
             });
             ObjectNode node=row.withArray("cells").addObject(); node.put("customLearningLevelId",String.valueOf(cell.get("level_id")));
             node.put("customLearningLevelName",String.valueOf(cell.get("level_name"))); node.put("questionCount",count);
+            String cognitiveLevelCode=cognitiveLevelCode(cell.get("cognitive_level_code"),cell.get("level_name"));
+            if(cognitiveLevelCode!=null){
+                node.put("cognitiveLevelCode",cognitiveLevelCode);
+                String contentCode=Objects.toString(cell.get("content_code"),"");
+                Integer levelNumber=cognitiveLevelNumber(cognitiveLevelCode);
+                if(!contentCode.isBlank()&&levelNumber!=null)node.put("contentScopeCode",contentCode+"."+levelNumber);
+            }
             ArrayNode allocations=node.putArray("assetAllocations");
             for (AssetAllocation allocation : allocateAssetCoverage(count,coverageByLevel.get((UUID)cell.get("level_id")))) {
                 ObjectNode value=allocations.addObject(); value.put("assetType",allocation.assetType());
@@ -483,6 +493,25 @@ public class Quiz3AssessmentService {
         }
         ArrayNode materials=root.putArray("materialIds"); materialIds.forEach(id->materials.add(id.toString()));
         root.put("idempotencyKey","quiz3-base-"+assessment.id()+"-matrix-"+matrixVersion+"-job-"+jobId); return root;
+    }
+
+    private static String cognitiveLevelCode(Object storedCode,Object levelName){
+        String stored=Objects.toString(storedCode,"").trim().toUpperCase(Locale.ROOT);
+        if(cognitiveLevelNumber(stored)!=null)return stored;
+        return switch(Objects.toString(levelName,"").trim().toLowerCase(Locale.ROOT)){
+            case "remember","recall","recognize"->"REMEMBER";
+            case "understand","comprehend"->"UNDERSTAND";
+            case "apply","implement","implementation"->"APPLY";
+            case "analyze","analyse","analysis"->"ANALYZE";
+            case "evaluate","evaluation"->"EVALUATE";
+            case "create","creating","synthesize","design"->"CREATE";
+            default->null;
+        };
+    }
+
+    static Integer cognitiveLevelNumber(String code){
+        if(code==null)return null;
+        return switch(code){case "REMEMBER"->1;case "UNDERSTAND"->2;case "APPLY"->3;case "ANALYZE"->4;case "EVALUATE"->5;case "CREATE"->6;default->null;};
     }
 
     static ObjectNode createGenerationMatrix(ObjectMapper objectMapper,UUID matrixId,String matrixName){
