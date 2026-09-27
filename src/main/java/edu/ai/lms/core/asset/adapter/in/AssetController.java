@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import edu.ai.lms.core.asset.app.domain.Asset;
 import edu.ai.lms.core.asset.app.domain.ImageAsset;
 import edu.ai.lms.core.asset.app.service.ImageAssetService;
+import edu.ai.lms.core.asset.app.service.AssetImageGenerationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -30,10 +31,19 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AssetController {
     private final ImageAssetService images;
+    private final AssetImageGenerationService generation;
     @GetMapping public List<ImageResponse> list(@PathVariable UUID courseId) { return images.list(courseId).stream().map(image -> ImageResponse.from(image, images.downloadUrl(courseId, image.asset().id()))).toList(); }
     @PostMapping("/images") public ResponseEntity<UploadResponse> create(@PathVariable UUID courseId, @Valid @RequestBody CreateImageRequest request) {
         var created = images.create(courseId, new ImageAssetService.CreateImage(request.name(), request.originalFileName(), request.contentType(), request.description(), request.prompt(), request.tags()));
         return ResponseEntity.status(HttpStatus.CREATED).body(new UploadResponse(ImageResponse.from(created.image(), null), created.presignedUploadUrl()));
+    }
+    @PostMapping("/image-generations") public ResponseEntity<GenerationResponse> generate(@PathVariable UUID courseId, @Valid @RequestBody GenerateImageRequest request) {
+        var accepted = generation.start(courseId, request.prompt());
+        return ResponseEntity.accepted().body(new GenerationResponse(accepted.jobId(), accepted.assetId(), accepted.status(), null));
+    }
+    @GetMapping("/image-generations/{jobId}") public GenerationResponse generation(@PathVariable UUID courseId, @PathVariable UUID jobId) {
+        var view = generation.view(courseId, jobId);
+        return new GenerationResponse(view.jobId(), view.assetId(), view.status(), view.errorMessage());
     }
     @PatchMapping("/{assetId}") public ImageResponse update(@PathVariable UUID courseId, @PathVariable UUID assetId, @Valid @RequestBody UpdateImageRequest request) {
         var image = images.update(courseId, assetId, new ImageAssetService.UpdateImage(request.name(), request.description(), request.prompt(), request.tags()));
@@ -53,6 +63,8 @@ public class AssetController {
     @DeleteMapping("/{assetId}") public ResponseEntity<Void> delete(@PathVariable UUID courseId, @PathVariable UUID assetId) { images.delete(courseId, assetId); return ResponseEntity.noContent().build(); }
 
     public record CreateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType, @NotBlank @Size(max = 5000) String description, @Size(max = 5000) String prompt, List<String> tags) {}
+    public record GenerateImageRequest(@NotBlank @Size(max = 5000) String prompt) {}
+    public record GenerationResponse(UUID jobId, UUID assetId, String status, String errorMessage) {}
     public record UpdateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 5000) String description, @Size(max = 5000) String prompt, List<String> tags) {}
     public record ReplacementImageRequest(@NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType) {}
     public record PublicationRequest(@NotNull Asset.PublicationStatus status) {}
