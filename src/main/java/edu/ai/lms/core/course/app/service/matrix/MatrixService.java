@@ -94,18 +94,17 @@ public class MatrixService {
         Map<UUID,List<AssetCoverage>> coveragesByLevel=new HashMap<>(); assetCoverages.findByMatrixId(id).forEach(coverage -> coveragesByLevel.computeIfAbsent(coverage.customLearningLevelId(), ignored -> new ArrayList<>()).add(new AssetCoverage(AssetType.valueOf(coverage.assetType()), coverage.percentage())));
         List<LearningLevel> levels=jdbc.query("SELECT id,name,sort_order FROM edu.exam_matrix_custom_learning_levels WHERE matrix_id=? ORDER BY sort_order,id",(rs,n)->new LearningLevel(rs.getObject(1,UUID.class),rs.getString(2),rs.getInt(3),coverageFor(coveragesByLevel,rs.getObject(1,UUID.class))),id); Map<UUID,List<Cell>> cells=new HashMap<>(); jdbc.query("SELECT r.id,c.custom_learning_level_id,c.question_count FROM edu.exam_matrix_rows r JOIN edu.exam_matrix_cells c ON c.row_id=r.id WHERE r.matrix_id=? ORDER BY r.sort_order,r.id",(RowCallbackHandler) rs->cells.computeIfAbsent(rs.getObject(1,UUID.class),x->new ArrayList<>()).add(new Cell(rs.getObject(2,UUID.class),rs.getObject(3,Integer.class))),id);
         List<Row> rows=jdbc.query("""
-                SELECT r.id,r.chapter_id,coalesce(rc.title,c.title),r.ccct_item_id,
-                  coalesce(rt.group_code,t.group_code),coalesce(rt.title,t.title),coalesce(ri.content,i.content),coalesce(ri.content_code,i.content_code),
+                SELECT r.id,r.chapter_id,coalesce(rc.title,cc.title,c.title),r.ccct_item_id,
+                  coalesce(rc.chapter_code,cc.chapter_code),coalesce(ri.content,i.content),coalesce(ri.content_code,i.content_code),
                   r.mapped_learning_outcome_id,CASE WHEN lo.prefix_number IS NULL THEN lo.description ELSE 'LO'||lo.prefix_number||' - '||lo.description END,r.sort_order
                 FROM edu.exam_matrix_rows r JOIN edu.exam_matrices m ON m.id=r.matrix_id
                 LEFT JOIN edu.ccct_items i ON m.ccct_published_at IS NULL AND i.id=r.ccct_item_id
-                LEFT JOIN edu.ccct_topics t ON t.id=i.topic_id
+                LEFT JOIN edu.ccct_chapters cc ON cc.id=i.chapter_id
                 LEFT JOIN edu.ccct_revision_items ri ON m.ccct_published_at IS NOT NULL AND ri.profile_id=m.ccct_profile_id AND ri.published_at=m.ccct_published_at AND ri.id=r.ccct_item_id
-                LEFT JOIN edu.ccct_revision_topics rt ON rt.profile_id=ri.profile_id AND rt.published_at=ri.published_at AND rt.id=ri.topic_id
-                LEFT JOIN edu.ccct_revision_chapters rc ON rc.profile_id=m.ccct_profile_id AND rc.published_at=m.ccct_published_at AND rc.course_chapter_id=r.chapter_id
+                LEFT JOIN edu.ccct_revision_chapters rc ON rc.profile_id=ri.profile_id AND rc.published_at=ri.published_at AND rc.id=ri.chapter_id
                 LEFT JOIN edu.chapters c ON c.chapter_id=r.chapter_id LEFT JOIN edu.learning_outcomes lo ON lo.id=r.mapped_learning_outcome_id
                 WHERE r.matrix_id=? ORDER BY r.sort_order,r.id
-                """,(rs,n)->{UUID rowId=rs.getObject(1,UUID.class); List<Cell> rowCells=List.copyOf(cells.getOrDefault(rowId,List.of())); return new Row(rowId,rs.getObject(2,UUID.class),rs.getString(3),rs.getObject(4,UUID.class),rs.getString(5),rs.getString(6),rs.getString(7),rs.getString(8),rs.getObject(9,UUID.class),rs.getString(10),rs.getInt(11),rowCells);},id);
+                """,(rs,n)->{UUID rowId=rs.getObject(1,UUID.class); List<Cell> rowCells=List.copyOf(cells.getOrDefault(rowId,List.of())); return new Row(rowId,rs.getObject(2,UUID.class),rs.getString(3),rs.getObject(4,UUID.class),rs.getString(5),rs.getString(6),rs.getString(7),rs.getObject(8,UUID.class),rs.getString(9),rs.getInt(10),rowCells);},id);
         List<OutcomeCognitiveLevel> outcomeCognitiveLevels=jdbc.query("SELECT learning_outcome_id,cognitive_level_code FROM edu.exam_matrix_outcome_cognitive_levels WHERE matrix_id=? ORDER BY learning_outcome_id",(rs,n)->new OutcomeCognitiveLevel(rs.getObject(1,UUID.class),rs.getString(2)),id);
         return new MatrixDetail(m.id,m.courseId,m.ccctProfileId,m.ccctPublishedAt,m.title,m.description,m.mode,m.total,m.status,m.version,m.publishedBy,m.publishedAt,rows,levels,outcomeCognitiveLevels,m.createdAt,m.updatedAt);
     }
@@ -150,7 +149,7 @@ public class MatrixService {
         for(var row:safe(p.rows())) {
             if(row==null) throw badRequest("Each Matrix row must be valid");
             if(row.id()==null||!rows.add(row.id())||row.ccctItemId()==null) throw badRequest("Each Matrix row needs a unique id and CCCT content item");
-            if(!exists("SELECT 1 FROM edu.ccct_items i JOIN edu.ccct_topics t ON t.id=i.topic_id JOIN edu.ccct_chapters c ON c.id=t.chapter_id WHERE i.id=? AND c.profile_id=?",row.ccctItemId(),profileId)) throw badRequest("Matrix content item does not belong to this course CCCT");
+            if(!exists("SELECT 1 FROM edu.ccct_items i JOIN edu.ccct_chapters c ON c.id=i.chapter_id WHERE i.id=? AND c.profile_id=?",row.ccctItemId(),profileId)) throw badRequest("Matrix content item does not belong to this course CCCT");
             if(row.mappedLearningOutcomeId()==null||!exists("SELECT 1 FROM edu.learning_outcomes WHERE id=? AND course_id=?",row.mappedLearningOutcomeId(),courseId)) throw badRequest("Mapped learning outcome does not belong to this course");
             if(!outcomeIds.contains(row.mappedLearningOutcomeId())) throw badRequest("Each selected LO column needs a Bloom level");
             List<Cell> rowCells=safe(row.cells());
@@ -216,7 +215,7 @@ public class MatrixService {
     private static void validateCoverage(List<AssetCoverage> value){if(value==null||value.isEmpty())return;Set<AssetType> types=EnumSet.noneOf(AssetType.class);int total=0;for(var coverage:value){if(coverage==null||coverage.assetType()==null||!types.add(coverage.assetType()))throw badRequest("Each learning level needs one coverage for every asset type");if(coverage.percentage()<0||coverage.percentage()>100)throw badRequest("Asset coverage percentages must be between 0 and 100");total+=coverage.percentage();}if(types.size()!=ASSET_TYPES.size()||total!=100)throw badRequest("Asset coverage percentages must include every asset type and total 100");}
     private MatrixDetail editable(UUID courseId,UUID id){MatrixDetail m=load(courseId,id);if(m.lifecycleStatus()!=LifecycleStatus.DRAFT)throw conflict("Published Matrix is read-only");return m;}
     private boolean exists(String sql,UUID id,UUID course){return Boolean.TRUE.equals(jdbc.query(sql,(ResultSetExtractor<Boolean>) rs->rs.next(),id,course));}
-    private UUID chapterForItem(UUID profileId,UUID itemId){return jdbc.query("SELECT c.course_chapter_id FROM edu.ccct_items i JOIN edu.ccct_topics t ON t.id=i.topic_id JOIN edu.ccct_chapters c ON c.id=t.chapter_id WHERE i.id=? AND c.profile_id=?",rs->rs.next()?rs.getObject(1,UUID.class):null,itemId,profileId);}
+    private UUID chapterForItem(UUID profileId,UUID itemId){return jdbc.query("SELECT c.course_chapter_id FROM edu.ccct_items i JOIN edu.ccct_chapters c ON c.id=i.chapter_id WHERE i.id=? AND c.profile_id=?",rs->rs.next()?rs.getObject(1,UUID.class):null,itemId,profileId);}
     private UUID singleCcct(UUID courseId){
         UUID profileId = jdbc.query("SELECT id FROM edu.ccct_profiles WHERE course_id=?",rs->rs.next()?rs.getObject(1,UUID.class):null,courseId);
         if (profileId == null) throw badRequest("Create the course CCCT before creating a Matrix");
@@ -235,7 +234,7 @@ public class MatrixService {
             this(id,courseId,ccctProfileId,ccctPublishedAt,title,description,mode,totalQuestionCount,lifecycleStatus,version,publishedBy,publishedAt,rows,customLearningLevels,List.of(),createdAt,updatedAt);
         }
     }
-    public record Row(UUID id,UUID chapterId,String chapterName,UUID ccctItemId,String topicGroupCode,String topicGroupName,String contentDetail,String contentCode,UUID mappedLearningOutcomeId,String mappedLearningOutcomeName,int sortOrder,List<Cell> cells){}
+    public record Row(UUID id,UUID chapterId,String chapterName,UUID ccctItemId,String chapterCode,String contentDetail,String contentCode,UUID mappedLearningOutcomeId,String mappedLearningOutcomeName,int sortOrder,List<Cell> cells){}
     public record Cell(UUID customLearningLevelId,Integer questionCount){}
     public record AssetCoverage(AssetType assetType,int percentage){}
     public record LearningLevel(UUID id,String name,int sortOrder,List<AssetCoverage> assetCoverages){}

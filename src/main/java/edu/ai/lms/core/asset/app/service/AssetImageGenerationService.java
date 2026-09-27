@@ -64,19 +64,26 @@ public class AssetImageGenerationService {
         if (jobs.markProcessing(jobId) != 1) return;
         AssetGenerationJobRow job = jobs.findForUpdate(jobId);
         try {
+            if ("UPLOAD_ANALYSIS".equals(job.getGenerationMode())) {
+                MetadataResponse response = aiWebClient.post().uri("/assets/images/analyze")
+                        .bodyValue(Map.of("imageUrl", storage.createDownloadLink(job.getOutputStorageKey()), "contentType", imageContentType(job)))
+                        .retrieve().bodyToMono(MetadataResponse.class).block();
+                completeUploadAnalysis(job, response);
+                return;
+            }
             Map<String, Object> request = new HashMap<>();
             request.put("jobId", job.getId()); request.put("courseId", job.getCourseId()); request.put("assetId", job.getAssetId()); request.put("prompt", job.getPrompt());
             request.put("uploadUrl", uploadUrl); request.put("webhookUrl", webhookUrl); request.put("webhookSecret", webhookSecret); request.put("attempt", job.getAttempt());
             if (job.getErrorDetails() != null && !job.getErrorDetails().isBlank()) request.put("previousRenderError", job.getErrorDetails());
             aiWebClient.post().uri("/assets/images/generate").bodyValue(request).retrieve().toBodilessEntity().block();
-        } catch (Exception exception) { jobs.fail(jobId, "Unable to send image generation request", message(exception)); }
+        } catch (Exception exception) { jobs.fail(jobId, "UPLOAD_ANALYSIS".equals(job.getGenerationMode()) ? "Unable to analyze uploaded image" : "Unable to send image generation request", message(exception)); }
     }
 
     @Scheduled(fixedDelayString = "${asset.generation.dispatch-delay-ms:5000}")
     public void recoverPending() {
         for (AssetGenerationJobRow job : jobs.findPending()) {
             ImageAsset image = assets.findImage(job.getCourseId(), job.getAssetId()).orElse(null);
-            if (image != null) dispatch(job.getId(), storage.createUploadLink(job.getOutputStorageKey(), "image/png"));
+            if (image != null) dispatch(job.getId(), "UPLOAD_ANALYSIS".equals(job.getGenerationMode()) ? null : storage.createUploadLink(job.getOutputStorageKey(), "image/png"));
         }
     }
 
@@ -110,11 +117,29 @@ public class AssetImageGenerationService {
     }
 
     @Transactional
+    public Accepted analyzeUpload(UUID courseId, UUID assetId) {
+        access.requireCourseTeacher(courseId);
+        ImageAsset image = assets.findImage(courseId, assetId).orElseThrow(() -> new AssetValidationException("Image asset not found"));
+        if (image.asset().prompt() != null) throw new AssetValidationException("Only uploaded images can be analyzed");
+        if (image.asset().publicationStatus() != Asset.PublicationStatus.DRAFT || image.asset().uploadStatus() != Asset.UploadStatus.UPLOADED) throw new AssetValidationException("Only uploaded draft images can be analyzed");
+        AssetGenerationJobRow existing = jobs.findForAsset(courseId, assetId);
+        if (existing != null) {
+            if (!"FAILED".equals(existing.getStatus()) || jobs.retry(existing.getId()) != 1) throw new AssetValidationException("Image metadata analysis is already in progress or complete");
+            AssetGenerationJobRow retried = jobs.find(courseId, existing.getId());
+            return new Accepted(retried.getId(), retried.getAssetId(), retried.getStatus());
+        }
+        AssetGenerationJobRow job = new AssetGenerationJobRow();
+        job.setId(UUID.randomUUID()); job.setAssetId(assetId); job.setCourseId(courseId); job.setPrompt(""); job.setStatus("PENDING"); job.setAttempt(1);
+        job.setParametersJson("{}"); job.setGenerationMode("UPLOAD_ANALYSIS"); job.setOutputStorageKey(image.storageKey()); jobs.insert(job);
+        return new Accepted(job.getId(), assetId, job.getStatus());
+    }
+
+    @Transactional
     public String improveDescription(UUID courseId, UUID assetId) {
         access.requireCourseTeacher(courseId);
         ImageAsset image = assets.findImage(courseId, assetId).orElseThrow(() -> new AssetValidationException("Image asset not found"));
-        if (!image.aiGenerated()) throw new AssetValidationException("Only AI-generated images can improve their description");
         if (image.asset().publicationStatus() != Asset.PublicationStatus.DRAFT) throw new AssetValidationException("Published images cannot improve their description");
+        if (!image.aiGenerated()) return improveUploadedDescription(courseId, image);
         AssetGenerationJobRow job = jobs.findForAsset(courseId, assetId);
         if (job == null || job.getTikzSource() == null || job.getTikzSource().isBlank()) throw new AssetValidationException("No generated TikZ source is available for this image");
         DescriptionResponse response;
@@ -128,6 +153,37 @@ public class AssetImageGenerationService {
         Asset a = image.asset();
         assets.saveImage(new ImageAsset(new Asset(a.id(), a.courseId(), a.type(), a.name(), description, a.prompt(), a.tags(), a.publicationStatus(), a.uploadStatus(), a.createdAt(), LocalDateTime.now()), image.originalFileName(), image.contentType(), image.byteSize(), image.storageKey(), image.pendingReplacement(), image.aiGenerated()));
         return description;
+    }
+
+    private String improveUploadedDescription(UUID courseId, ImageAsset image) {
+        DescriptionResponse response;
+        try {
+            response = aiWebClient.post().uri("/assets/images/improve-uploaded-description")
+                    .bodyValue(Map.of("imageUrl", storage.createDownloadLink(image.storageKey()), "contentType", image.contentType()))
+                    .retrieve().bodyToMono(DescriptionResponse.class).block();
+        } catch (Exception exception) {
+            throw new AssetValidationException("Unable to improve image description: " + message(exception));
+        }
+        String description = clean(response == null ? null : response.description(), null);
+        if (description == null || description.length() > 5000) throw new AssetValidationException("AI returned an invalid image description");
+        Asset a = image.asset();
+        assets.saveImage(new ImageAsset(new Asset(a.id(), a.courseId(), a.type(), a.name(), description, null, a.tags(), a.publicationStatus(), a.uploadStatus(), a.createdAt(), LocalDateTime.now()), image.originalFileName(), image.contentType(), image.byteSize(), image.storageKey(), image.pendingReplacement(), false));
+        return description;
+    }
+
+    private void completeUploadAnalysis(AssetGenerationJobRow job, MetadataResponse response) {
+        ImageAsset image = assets.findImage(job.getCourseId(), job.getAssetId()).orElseThrow();
+        String name = clean(response == null ? null : response.assetName(), null);
+        String description = clean(response == null ? null : response.description(), null);
+        if (name == null || name.length() > 255 || description == null || description.length() > 5000) throw new AssetValidationException("AI returned invalid image metadata");
+        Asset a = image.asset();
+        assets.saveImage(new ImageAsset(new Asset(a.id(), a.courseId(), a.type(), name, description, null, normalizeTags(response.usageTags()), a.publicationStatus(), a.uploadStatus(), a.createdAt(), LocalDateTime.now()), image.originalFileName(), image.contentType(), image.byteSize(), image.storageKey(), image.pendingReplacement(), false));
+        job.setTikzSource(null); job.setModel(null); job.setParametersJson("{}"); jobs.complete(job);
+    }
+
+    private String imageContentType(AssetGenerationJobRow job) {
+        ImageAsset image = assets.findImage(job.getCourseId(), job.getAssetId()).orElseThrow();
+        return image.contentType();
     }
 
     @Transactional
@@ -158,5 +214,6 @@ public class AssetImageGenerationService {
     public record Accepted(UUID jobId, UUID assetId, String status) {}
     public record View(UUID jobId, UUID assetId, String status, String errorMessage, String errorDetails) {}
     public record DescriptionResponse(String description) {}
+    public record MetadataResponse(String assetName, String description, List<String> usageTags) {}
     public record Completion(UUID eventId, UUID jobId, UUID assetId, int attempt, String status, String errorMessage, String errorDetails, String assetName, String description, List<String> usageTags, String tikzSource, String model, Map<String, Object> parameters) {}
 }

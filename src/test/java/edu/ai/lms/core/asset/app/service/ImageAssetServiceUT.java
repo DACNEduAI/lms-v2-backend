@@ -14,7 +14,6 @@ import edu.ai.lms.core.asset.app.exception.AssetValidationException;
 import edu.ai.lms.core.asset.app.port.out.AssetRepository;
 import edu.ai.lms.core.course.app.service.CourseTeacherAccess;
 import edu.ai.lms.core.material.api.CourseAssetStorageApi;
-import edu.ai.lms.core.material.api.StoredObjectMetadata;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -22,7 +21,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -88,70 +86,27 @@ class ImageAssetServiceUT {
                 .isInstanceOf(AssetValidationException.class);
     }
 
-    @Test void promotesOnlyVerifiedDraftReplacement() {
-        ImageAsset original = image(Asset.PublicationStatus.DRAFT, null);
-        when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(original));
-        when(storage.createUploadLink(any(), eq("image/jpeg"))).thenReturn("https://upload");
-
-        ImageAssetService.ReplacementUpload upload = service.beginReplacement(courseId, assetId,
-                new ImageAssetService.ReplacementImage("replacement.jpg", "image/jpeg"));
-        ArgumentCaptor<ImageAsset> staged = ArgumentCaptor.forClass(ImageAsset.class);
-        verify(assets).saveImage(staged.capture());
-        ImageAsset pending = staged.getValue();
-        assertThat(upload.presignedUploadUrl()).isEqualTo("https://upload");
-        assertThat(pending.pendingReplacement().storageKey()).contains("/replacements/");
-
-        when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(pending));
-        when(storage.inspect(pending.pendingReplacement().storageKey())).thenReturn(new StoredObjectMetadata(true, 42, "image/jpeg"));
-
-        ImageAsset promoted = service.confirmReplacement(courseId, assetId);
-
-        assertThat(promoted.originalFileName()).isEqualTo("replacement.jpg");
-        assertThat(promoted.byteSize()).isEqualTo(42);
-        assertThat(promoted.pendingReplacement()).isNull();
-        assertThat(promoted.asset().publicationStatus()).isEqualTo(Asset.PublicationStatus.DRAFT);
-        verify(storage).delete("courses/source.png");
-    }
-
-    @Test void rejectsReplacementOperationsForPublishedImages() {
-        ImageAsset published = image(Asset.PublicationStatus.PUBLISHED, null);
-        when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(published));
-
+    @Test void rejectsReplacementOperationsForEveryImageAsset() {
         assertThatThrownBy(() -> service.beginReplacement(courseId, assetId,
                 new ImageAssetService.ReplacementImage("replacement.png", "image/png")))
                 .isInstanceOf(AssetValidationException.class)
-                .hasMessage("Unpublish the image asset before editing it");
+                .hasMessage("Image assets cannot be replaced; create a new image asset instead");
         assertThatThrownBy(() -> service.confirmReplacement(courseId, assetId))
                 .isInstanceOf(AssetValidationException.class)
-                .hasMessage("Unpublish the image asset before editing it");
+                .hasMessage("Image assets cannot be replaced; create a new image asset instead");
     }
 
-    @Test void rejectsInvalidReplacementWithoutChangingCurrentImage() {
-        ImageAsset.PendingReplacement pending = new ImageAsset.PendingReplacement("replacement.png", "image/png", "courses/replacement.png");
-        ImageAsset original = image(Asset.PublicationStatus.DRAFT, pending);
-        when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(original));
-        when(storage.inspect(pending.storageKey())).thenReturn(StoredObjectMetadata.missing());
+    @Test void createsUploadWithNullPromptAndPendingMetadata() {
+        when(assets.createImage(any())).thenAnswer(call -> call.getArgument(0));
+        when(storage.createUploadLink(any(), eq("image/png"))).thenReturn("https://upload");
 
-        assertThatThrownBy(() -> service.confirmReplacement(courseId, assetId)).isInstanceOf(AssetValidationException.class);
+        ImageAssetService.UploadCreated created = service.createUpload(courseId,
+                new ImageAssetService.UploadImage("diagram.png", "image/png"));
 
-        ArgumentCaptor<ImageAsset> saved = ArgumentCaptor.forClass(ImageAsset.class);
-        verify(assets).saveImage(saved.capture());
-        assertThat(saved.getValue().storageKey()).isEqualTo("courses/source.png");
-        assertThat(saved.getValue().pendingReplacement()).isNull();
-        verify(storage).delete(pending.storageKey());
-    }
-
-    @Test void rejectsReplacementOperationsForAiGeneratedImages() {
-        ImageAsset generated = image(Asset.PublicationStatus.DRAFT, null, true);
-        when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(generated));
-
-        assertThatThrownBy(() -> service.beginReplacement(courseId, assetId,
-                new ImageAssetService.ReplacementImage("replacement.png", "image/png")))
-                .isInstanceOf(AssetValidationException.class)
-                .hasMessage("AI-generated images cannot be replaced");
-        assertThatThrownBy(() -> service.confirmReplacement(courseId, assetId))
-                .isInstanceOf(AssetValidationException.class)
-                .hasMessage("AI-generated images cannot be replaced");
+        assertThat(created.image().asset().prompt()).isNull();
+        assertThat(created.image().asset().name()).isEqualTo("Analyzing uploaded image");
+        assertThat(created.image().asset().uploadStatus()).isEqualTo(Asset.UploadStatus.PENDING);
+        assertThat(created.presignedUploadUrl()).isEqualTo("https://upload");
     }
 
     private ImageAsset image(Asset.PublicationStatus status, ImageAsset.PendingReplacement pending) {

@@ -46,6 +46,12 @@ public class ImageAssetService {
     }
 
     @Transactional
+    public UploadCreated createUpload(UUID courseId, UploadImage input) {
+        return create(courseId, new CreateImage("Analyzing uploaded image", input.originalFileName(), input.contentType(),
+                "AI metadata analysis is in progress.", null, List.of()));
+    }
+
+    @Transactional
     public ImageAsset confirm(UUID courseId, UUID assetId) {
         access.requireCourseTeacher(courseId);
         ImageAsset image = require(courseId, assetId);
@@ -82,42 +88,12 @@ public class ImageAssetService {
 
     @Transactional
     public ReplacementUpload beginReplacement(UUID courseId, UUID assetId, ReplacementImage input) {
-        access.requireCourseTeacher(courseId);
-        validateImageFile(input.originalFileName(), input.contentType());
-        ImageAsset image = require(courseId, assetId);
-        rejectPublishedEdit(image);
-        rejectGeneratedReplacement(image);
-        if (image.asset().uploadStatus() != Asset.UploadStatus.UPLOADED) throw new AssetValidationException("Only uploaded images can be replaced");
-        if (image.pendingReplacement() != null) {
-            try { storage.delete(image.pendingReplacement().storageKey()); } catch (RuntimeException ignored) { }
-        }
-        String contentType = normalizeContentType(input.contentType());
-        String pendingKey = "courses/" + courseId + "/assets/" + assetId + "/replacements/" + UUID.randomUUID() + "/source." + extension(input.originalFileName(), contentType);
-        ImageAsset.PendingReplacement pending = new ImageAsset.PendingReplacement(input.originalFileName().trim(), contentType, pendingKey);
-        ImageAsset staged = new ImageAsset(image.asset(), image.originalFileName(), image.contentType(), image.byteSize(), image.storageKey(), pending, image.aiGenerated());
-        assets.saveImage(staged);
-        return new ReplacementUpload(storage.createUploadLink(pendingKey, contentType));
+        throw new AssetValidationException("Image assets cannot be replaced; create a new image asset instead");
     }
 
     @Transactional
     public ImageAsset confirmReplacement(UUID courseId, UUID assetId) {
-        access.requireCourseTeacher(courseId);
-        ImageAsset image = require(courseId, assetId);
-        ImageAsset.PendingReplacement pending = image.pendingReplacement();
-        rejectPublishedEdit(image);
-        rejectGeneratedReplacement(image);
-        if (pending == null) throw new AssetValidationException("No image replacement is pending");
-        StoredObjectMetadata object = storage.inspect(pending.storageKey());
-        if (!object.exists() || object.contentLength() <= 0 || object.contentLength() > MAX_BYTES || !sameContentType(pending.contentType(), object.contentType())) {
-            try { storage.delete(pending.storageKey()); } catch (RuntimeException ignored) { }
-            assets.saveImage(new ImageAsset(image.asset(), image.originalFileName(), image.contentType(), image.byteSize(), image.storageKey(), null, image.aiGenerated()));
-            throw new AssetValidationException("Invalid replacement image upload");
-        }
-        Asset current = image.asset();
-        Asset updated = new Asset(current.id(), current.courseId(), current.type(), current.name(), current.description(), current.prompt(), current.tags(), current.publicationStatus(), current.uploadStatus(), current.createdAt(), LocalDateTime.now());
-        ImageAsset promoted = assets.saveImage(new ImageAsset(updated, pending.originalFileName(), pending.contentType(), object.contentLength(), pending.storageKey(), null, image.aiGenerated()));
-        try { storage.delete(image.storageKey()); } catch (RuntimeException ignored) { }
-        return promoted;
+        throw new AssetValidationException("Image assets cannot be replaced; create a new image asset instead");
     }
 
     @Transactional
@@ -143,6 +119,7 @@ public class ImageAssetService {
     private static String blankToNull(String value) { return value == null || value.isBlank() ? null : value.trim(); }
     private static List<String> normalizeTags(List<String> tags) { return tags == null ? List.of() : tags.stream().filter(t -> t != null && !t.isBlank()).map(t -> t.trim().toLowerCase(Locale.ROOT)).distinct().limit(30).toList(); }
     public record CreateImage(String name, String originalFileName, String contentType, String description, String prompt, List<String> tags) {}
+    public record UploadImage(String originalFileName, String contentType) {}
     public record UpdateImage(String name, String description, String prompt, List<String> tags) {}
     public record ReplacementImage(String originalFileName, String contentType) {}
     public record UploadCreated(ImageAsset image, String presignedUploadUrl) {}

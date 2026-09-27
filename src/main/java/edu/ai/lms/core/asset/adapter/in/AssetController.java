@@ -37,6 +37,10 @@ public class AssetController {
         var created = images.create(courseId, new ImageAssetService.CreateImage(request.name(), request.originalFileName(), request.contentType(), request.description(), request.prompt(), request.tags()));
         return ResponseEntity.status(HttpStatus.CREATED).body(new UploadResponse(ImageResponse.from(created.image(), null), created.presignedUploadUrl()));
     }
+    @PostMapping("/images/upload") public ResponseEntity<UploadResponse> createUpload(@PathVariable UUID courseId, @Valid @RequestBody UploadImageRequest request) {
+        var created = images.createUpload(courseId, new ImageAssetService.UploadImage(request.originalFileName(), request.contentType()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new UploadResponse(ImageResponse.from(created.image(), null), created.presignedUploadUrl()));
+    }
     @PostMapping("/image-generations") public ResponseEntity<GenerationResponse> generate(@PathVariable UUID courseId, @Valid @RequestBody GenerateImageRequest request) {
         var accepted = generation.start(courseId, request.prompt());
         return ResponseEntity.accepted().body(new GenerationResponse(accepted.jobId(), accepted.assetId(), accepted.status(), null, null));
@@ -56,6 +60,10 @@ public class AssetController {
     @PostMapping("/{assetId}/ai-improve-description") public DescriptionResponse improveDescription(@PathVariable UUID courseId, @PathVariable UUID assetId) {
         return new DescriptionResponse(generation.improveDescription(courseId, assetId));
     }
+    @PostMapping("/{assetId}/upload-analysis") public ResponseEntity<GenerationResponse> analyzeUpload(@PathVariable UUID courseId, @PathVariable UUID assetId) {
+        var accepted = generation.analyzeUpload(courseId, assetId);
+        return ResponseEntity.accepted().body(new GenerationResponse(accepted.jobId(), accepted.assetId(), accepted.status(), null, null));
+    }
     @PatchMapping("/{assetId}") public ImageResponse update(@PathVariable UUID courseId, @PathVariable UUID assetId, @Valid @RequestBody UpdateImageRequest request) {
         var image = images.update(courseId, assetId, new ImageAssetService.UpdateImage(request.name(), request.description(), request.prompt(), request.tags()));
         return ImageResponse.from(image, images.downloadUrl(courseId, assetId));
@@ -74,6 +82,7 @@ public class AssetController {
     @DeleteMapping("/{assetId}") public ResponseEntity<Void> delete(@PathVariable UUID courseId, @PathVariable UUID assetId) { images.delete(courseId, assetId); return ResponseEntity.noContent().build(); }
 
     public record CreateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType, @NotBlank @Size(max = 5000) String description, @Size(max = 5000) String prompt, List<String> tags) {}
+    public record UploadImageRequest(@NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType) {}
     public record GenerateImageRequest(@NotBlank @Size(max = 5000) String prompt) {}
     public record GenerationResponse(UUID jobId, UUID assetId, String status, String errorMessage, String errorDetails) {}
     public record DescriptionResponse(String description) {}

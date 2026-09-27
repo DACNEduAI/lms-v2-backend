@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS asset_generation_jobs
     tikz_source TEXT,
     model VARCHAR(255),
     parameters JSONB NOT NULL DEFAULT '{}'::jsonb,
-    generation_mode VARCHAR(32) NOT NULL DEFAULT 'INITIAL' CHECK (generation_mode IN ('INITIAL', 'REGENERATE')),
+    generation_mode VARCHAR(32) NOT NULL DEFAULT 'INITIAL' CHECK (generation_mode IN ('INITIAL', 'REGENERATE', 'UPLOAD_ANALYSIS')),
     output_storage_key VARCHAR(1024) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -351,55 +351,6 @@ CREATE TABLE IF NOT EXISTS ccct_revision_items
     order_index INTEGER NOT NULL,
     PRIMARY KEY (profile_id, published_at, id),
     FOREIGN KEY (profile_id, published_at, chapter_id) REFERENCES ccct_revision_chapters(profile_id, published_at, id) ON DELETE RESTRICT
-);
-
--- Published CCCT revisions are immutable full snapshots.  The editable
--- ccct_chapters/topics/items tree above is the one working draft.  Item IDs
--- are logical identities and deliberately survive into revision snapshots.
-CREATE TABLE IF NOT EXISTS ccct_profile_revisions
-(
-    profile_id   UUID        NOT NULL REFERENCES ccct_profiles (id) ON DELETE RESTRICT,
-    published_at TIMESTAMP   NOT NULL,
-    name         VARCHAR(255) NOT NULL,
-    template_title VARCHAR(255) NOT NULL,
-    markdown_content TEXT NOT NULL,
-    created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (profile_id, published_at)
-);
-CREATE TABLE IF NOT EXISTS ccct_revision_chapters
-(
-    profile_id UUID NOT NULL,
-    published_at TIMESTAMP NOT NULL,
-    id UUID NOT NULL,
-    course_chapter_id UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
-    title VARCHAR(255) NOT NULL,
-    order_index INTEGER NOT NULL,
-    PRIMARY KEY (profile_id, published_at, id),
-    FOREIGN KEY (profile_id, published_at) REFERENCES ccct_profile_revisions(profile_id, published_at) ON DELETE RESTRICT
-);
-CREATE TABLE IF NOT EXISTS ccct_revision_topics
-(
-    profile_id UUID NOT NULL,
-    published_at TIMESTAMP NOT NULL,
-    id UUID NOT NULL,
-    chapter_id UUID NOT NULL,
-    group_code VARCHAR(64) NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    order_index INTEGER NOT NULL,
-    PRIMARY KEY (profile_id, published_at, id),
-    FOREIGN KEY (profile_id, published_at, chapter_id) REFERENCES ccct_revision_chapters(profile_id, published_at, id) ON DELETE RESTRICT
-);
-CREATE TABLE IF NOT EXISTS ccct_revision_items
-(
-    profile_id UUID NOT NULL,
-    published_at TIMESTAMP NOT NULL,
-    id UUID NOT NULL,
-    topic_id UUID NOT NULL,
-    content_code VARCHAR(128) NOT NULL,
-    content TEXT NOT NULL,
-    order_index INTEGER NOT NULL,
-    PRIMARY KEY (profile_id, published_at, id),
-    FOREIGN KEY (profile_id, published_at, topic_id) REFERENCES ccct_revision_topics(profile_id, published_at, id) ON DELETE RESTRICT
 );
 
 -- Unified course exam matrices. MANUAL stores positive quotas; AUTOMATIC stores

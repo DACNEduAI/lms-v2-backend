@@ -1,6 +1,7 @@
 package edu.ai.lms.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
@@ -41,6 +42,19 @@ class MatrixDateFormatUT {
 
         var nonMatrixJson = objectMapper.readTree(objectMapper.writeValueAsString(new NonMatrixDate(timestamp)));
         assertEquals("26-09-2026 00:00:00", nonMatrixJson.get("timestamp").asText());
+    }
+
+    @Test
+    void serializesMatrixRowsWithChapterFieldsAndNoLegacyTopicGroupFields() throws Exception {
+        MatrixService.Row row = new MatrixService.Row(
+                UUID.randomUUID(), UUID.randomUUID(), "Trees", UUID.randomUUID(), "binaryTrees",
+                "Traverse a binary tree", "binaryTrees.traversal", UUID.randomUUID(), "LO1", 0, List.of());
+
+        var rowJson = objectMapper.readTree(objectMapper.writeValueAsString(row));
+        assertEquals("binaryTrees", rowJson.get("chapterCode").asText());
+        assertEquals("Traverse a binary tree", rowJson.get("contentDetail").asText());
+        assertFalse(rowJson.has("topicGroupCode"));
+        assertFalse(rowJson.has("topicGroupName"));
     }
 
     private static ObjectMapper objectMapper() {

@@ -25,7 +25,7 @@
     <result property="aiGenerated" column="ai_generated" />
   </resultMap>
 
-  <sql id="imageColumns">a.id, a.course_id, a.type, a.name, a.description, a.prompt, a.tags::text AS tags_json, a.publication_status, a.upload_status, a.created_at, a.updated_at, i.original_file_name, i.content_type, i.byte_size, i.storage_key, i.pending_original_file_name, i.pending_content_type, i.pending_storage_key, EXISTS (SELECT 1 FROM edu.asset_generation_jobs g WHERE g.asset_id = a.id) AS ai_generated</sql>
+  <sql id="imageColumns">a.id, a.course_id, a.type, a.name, a.description, a.prompt, a.tags::text AS tags_json, a.publication_status, a.upload_status, a.created_at, a.updated_at, i.original_file_name, i.content_type, i.byte_size, i.storage_key, i.pending_original_file_name, i.pending_content_type, i.pending_storage_key, (a.prompt IS NOT NULL) AS ai_generated</sql>
 
   <insert id="insertAsset" parameterType="edu.ai.lms.core.asset.adapter.out.persistence.AssetImageRow">
     INSERT INTO edu.assets (id, course_id, type, name, description, prompt, tags, publication_status, upload_status)

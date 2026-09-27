@@ -418,7 +418,7 @@ public class Quiz3AssessmentService {
     }
 
     private ObjectNode buildSnapshot(AssessmentView assessment,UUID jobId,List<UUID> materialIds){
-        ObjectNode root=objectMapper.createObjectNode(); root.put("jobId",jobId.toString()); root.put("assessmentId",assessment.id().toString()); root.put("contractVersion",4);
+        ObjectNode root=objectMapper.createObjectNode(); root.put("jobId",jobId.toString()); root.put("assessmentId",assessment.id().toString()); root.put("contractVersion",5);
         ObjectNode course=root.putObject("course"); course.put("id",assessment.courseId().toString());
         course.put("name",jdbc.queryForObject("SELECT course_name FROM edu.courses WHERE id=?",String.class,assessment.courseId()));
         UUID matrixId=assessment.matrixId();
@@ -436,18 +436,16 @@ public class Quiz3AssessmentService {
         List<Map<String,Object>> cells;
         List<Integer> allocated;
         cells=jdbc.queryForList("""
-            SELECT r.id row_id,r.chapter_id,coalesce(rc.title,c.title) chapter_name,r.mapped_learning_outcome_id lo_id,
+            SELECT r.id row_id,r.chapter_id,coalesce(rc.title,cc.title,c.title) chapter_name,r.mapped_learning_outcome_id lo_id,
                    lo.prefix_number,lo.description,l.id level_id,l.name level_name,ec.question_count,
-                   coalesce(ri.id,i.id) content_item_id,coalesce(rt.group_code,t.group_code) group_code,
-                   coalesce(rt.title,t.title) topic_group_name,coalesce(ri.content_code,i.content_code) content_code,
+                   coalesce(ri.id,i.id) content_item_id,coalesce(ri.content_code,i.content_code) content_code,
                    coalesce(ri.content,i.content) content_detail
             FROM edu.exam_matrix_rows r JOIN edu.exam_matrices m ON m.id=r.matrix_id
             LEFT JOIN edu.chapters c ON c.chapter_id=r.chapter_id
-            LEFT JOIN edu.ccct_revision_chapters rc ON rc.profile_id=m.ccct_profile_id AND rc.published_at=m.ccct_published_at AND rc.course_chapter_id=r.chapter_id
             LEFT JOIN edu.ccct_items i ON m.ccct_published_at IS NULL AND i.id=r.ccct_item_id
-            LEFT JOIN edu.ccct_topics t ON t.id=i.topic_id
+            LEFT JOIN edu.ccct_chapters cc ON cc.id=i.chapter_id
             LEFT JOIN edu.ccct_revision_items ri ON m.ccct_published_at IS NOT NULL AND ri.profile_id=m.ccct_profile_id AND ri.published_at=m.ccct_published_at AND ri.id=r.ccct_item_id
-            LEFT JOIN edu.ccct_revision_topics rt ON rt.profile_id=ri.profile_id AND rt.published_at=ri.published_at AND rt.id=ri.topic_id
+            LEFT JOIN edu.ccct_revision_chapters rc ON rc.profile_id=ri.profile_id AND rc.published_at=ri.published_at AND rc.id=ri.chapter_id
             JOIN edu.learning_outcomes lo ON lo.id=r.mapped_learning_outcome_id
             JOIN edu.exam_matrix_cells ec ON ec.row_id=r.id
             JOIN edu.exam_matrix_custom_learning_levels l ON l.id=ec.custom_learning_level_id
@@ -469,7 +467,7 @@ public class Quiz3AssessmentService {
                 ObjectNode lo=node.putObject("learningOutcome"); lo.put("id",String.valueOf(cell.get("lo_id")));
                 Object prefix=cell.get("prefix_number"); String description=String.valueOf(cell.get("description"));
                 lo.put("name",prefix==null?description:"LO"+prefix+" - "+description);
-                ObjectNode content=node.putObject("content"); content.put("id",String.valueOf(cell.get("content_item_id"))); content.put("groupId",String.valueOf(cell.get("group_code"))); content.put("groupName",String.valueOf(cell.get("topic_group_name"))); content.put("detail",String.valueOf(cell.get("content_detail"))); content.put("contentCode",String.valueOf(cell.get("content_code"))); node.putArray("cells"); return node;
+                ObjectNode content=node.putObject("content"); content.put("id",String.valueOf(cell.get("content_item_id"))); content.put("detail",String.valueOf(cell.get("content_detail"))); content.put("contentCode",String.valueOf(cell.get("content_code"))); node.putArray("cells"); return node;
             });
             ObjectNode node=row.withArray("cells").addObject(); node.put("customLearningLevelId",String.valueOf(cell.get("level_id")));
             node.put("customLearningLevelName",String.valueOf(cell.get("level_name"))); node.put("questionCount",count);
