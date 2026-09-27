@@ -39,11 +39,15 @@ public class AssetController {
     }
     @PostMapping("/image-generations") public ResponseEntity<GenerationResponse> generate(@PathVariable UUID courseId, @Valid @RequestBody GenerateImageRequest request) {
         var accepted = generation.start(courseId, request.prompt());
-        return ResponseEntity.accepted().body(new GenerationResponse(accepted.jobId(), accepted.assetId(), accepted.status(), null));
+        return ResponseEntity.accepted().body(new GenerationResponse(accepted.jobId(), accepted.assetId(), accepted.status(), null, null));
     }
     @GetMapping("/image-generations/{jobId}") public GenerationResponse generation(@PathVariable UUID courseId, @PathVariable UUID jobId) {
         var view = generation.view(courseId, jobId);
-        return new GenerationResponse(view.jobId(), view.assetId(), view.status(), view.errorMessage());
+        return new GenerationResponse(view.jobId(), view.assetId(), view.status(), view.errorMessage(), view.errorDetails());
+    }
+    @PostMapping("/image-generations/{jobId}/regenerate") public ResponseEntity<GenerationResponse> regenerate(@PathVariable UUID courseId, @PathVariable UUID jobId) {
+        var accepted = generation.regenerate(courseId, jobId);
+        return ResponseEntity.accepted().body(new GenerationResponse(accepted.jobId(), accepted.assetId(), accepted.status(), null, null));
     }
     @PatchMapping("/{assetId}") public ImageResponse update(@PathVariable UUID courseId, @PathVariable UUID assetId, @Valid @RequestBody UpdateImageRequest request) {
         var image = images.update(courseId, assetId, new ImageAssetService.UpdateImage(request.name(), request.description(), request.prompt(), request.tags()));
@@ -64,7 +68,7 @@ public class AssetController {
 
     public record CreateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType, @NotBlank @Size(max = 5000) String description, @Size(max = 5000) String prompt, List<String> tags) {}
     public record GenerateImageRequest(@NotBlank @Size(max = 5000) String prompt) {}
-    public record GenerationResponse(UUID jobId, UUID assetId, String status, String errorMessage) {}
+    public record GenerationResponse(UUID jobId, UUID assetId, String status, String errorMessage, String errorDetails) {}
     public record UpdateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 5000) String description, @Size(max = 5000) String prompt, List<String> tags) {}
     public record ReplacementImageRequest(@NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType) {}
     public record PublicationRequest(@NotNull Asset.PublicationStatus status) {}

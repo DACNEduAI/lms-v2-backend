@@ -3,6 +3,7 @@ package edu.ai.lms.core.asset.app.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -54,7 +55,7 @@ public class AssetImageGenerationService {
         access.requireCourseTeacher(courseId);
         AssetGenerationJobRow row = jobs.find(courseId, jobId);
         if (row == null) throw new AssetValidationException("Asset generation job not found");
-        return new View(row.getId(), row.getAssetId(), row.getStatus(), row.getErrorMessage());
+        return new View(row.getId(), row.getAssetId(), row.getStatus(), row.getErrorMessage(), row.getErrorDetails());
     }
 
     @Async
@@ -62,11 +63,12 @@ public class AssetImageGenerationService {
         if (jobs.markProcessing(jobId) != 1) return;
         AssetGenerationJobRow job = jobs.findForUpdate(jobId);
         try {
-            aiWebClient.post().uri("/assets/images/generate").bodyValue(Map.of(
-                    "jobId", job.getId(), "courseId", job.getCourseId(), "assetId", job.getAssetId(), "prompt", job.getPrompt(),
-                    "uploadUrl", uploadUrl, "webhookUrl", webhookUrl,
-                    "webhookSecret", webhookSecret, "attempt", job.getAttempt())).retrieve().toBodilessEntity().block();
-        } catch (Exception exception) { jobs.fail(jobId, message(exception)); }
+            Map<String, Object> request = new HashMap<>();
+            request.put("jobId", job.getId()); request.put("courseId", job.getCourseId()); request.put("assetId", job.getAssetId()); request.put("prompt", job.getPrompt());
+            request.put("uploadUrl", uploadUrl); request.put("webhookUrl", webhookUrl); request.put("webhookSecret", webhookSecret); request.put("attempt", job.getAttempt());
+            if (job.getErrorDetails() != null && !job.getErrorDetails().isBlank()) request.put("previousRenderError", job.getErrorDetails());
+            aiWebClient.post().uri("/assets/images/generate").bodyValue(request).retrieve().toBodilessEntity().block();
+        } catch (Exception exception) { jobs.fail(jobId, "Unable to send image generation request", message(exception)); }
     }
 
     @Scheduled(fixedDelayString = "${asset.generation.dispatch-delay-ms:5000}")
@@ -78,13 +80,28 @@ public class AssetImageGenerationService {
     }
 
     @Transactional
+    public Accepted regenerate(UUID courseId, UUID jobId) {
+        access.requireCourseTeacher(courseId);
+        AssetGenerationJobRow job = jobs.find(courseId, jobId);
+        if (job == null) throw new AssetValidationException("Asset generation job not found");
+        if (!"FAILED".equals(job.getStatus()) || jobs.retry(jobId) != 1) {
+            throw new AssetValidationException("Only failed image generation jobs can be regenerated");
+        }
+        AssetGenerationJobRow retried = jobs.find(courseId, jobId);
+        return new Accepted(retried.getId(), retried.getAssetId(), retried.getStatus());
+    }
+
+    @Transactional
     public void complete(Completion completion) {
         AssetGenerationJobRow job = jobs.findForUpdate(completion.jobId());
         if (job == null || !job.getAssetId().equals(completion.assetId()) || job.getAttempt() != completion.attempt() || !"PROCESSING".equals(job.getStatus())) return;
-        if ("FAILED".equals(completion.status())) { jobs.fail(job.getId(), completion.errorMessage() == null ? "Image generation failed" : completion.errorMessage().substring(0, Math.min(1000, completion.errorMessage().length()))); return; }
+        if ("FAILED".equals(completion.status())) {
+            jobs.fail(job.getId(), shortMessage(completion.errorMessage()), detailMessage(completion.errorDetails()));
+            return;
+        }
         ImageAsset current = assets.findImage(job.getCourseId(), job.getAssetId()).orElseThrow();
         var object = storage.inspect(current.storageKey());
-        if (!object.exists() || object.contentLength() <= 0 || object.contentLength() > 10L * 1024 * 1024 || !"image/png".equalsIgnoreCase(object.contentType())) { jobs.fail(job.getId(), "Generated PNG upload is unavailable or invalid"); return; }
+        if (!object.exists() || object.contentLength() <= 0 || object.contentLength() > 10L * 1024 * 1024 || !"image/png".equalsIgnoreCase(object.contentType())) { jobs.fail(job.getId(), "Generated PNG upload is unavailable or invalid", "The generated PNG upload was missing, empty, too large, or had an unexpected content type."); return; }
         Asset a = current.asset();
         Asset updated = new Asset(a.id(), a.courseId(), a.type(), clean(completion.assetName(), PENDING_NAME), clean(completion.description(), PENDING_DESCRIPTION), a.prompt(), normalizeTags(completion.usageTags()), Asset.PublicationStatus.DRAFT, Asset.UploadStatus.UPLOADED, a.createdAt(), LocalDateTime.now());
         assets.saveImage(new ImageAsset(updated, "generated-image.png", "image/png", object.contentLength(), current.storageKey(), null));
@@ -94,8 +111,10 @@ public class AssetImageGenerationService {
     private String toJson(Map<String, Object> value) { try { return objectMapper.writeValueAsString(value == null ? Map.of() : value); } catch (Exception e) { return "{}"; } }
     private static String clean(String value, String fallback) { return value == null || value.isBlank() ? fallback : value.trim(); }
     private static List<String> normalizeTags(List<String> tags) { return tags == null ? List.of() : tags.stream().filter(t -> t != null && !t.isBlank()).map(t -> t.trim().toLowerCase()).distinct().limit(30).toList(); }
-    private static String message(Exception e) { String value = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage(); return value.substring(0, Math.min(1000, value.length())); }
+    private static String shortMessage(String value) { return clean(value, "Image generation failed").substring(0, Math.min(1000, clean(value, "Image generation failed").length())); }
+    private static String detailMessage(String value) { return clean(value, "No additional error details were provided.").substring(0, Math.min(5000, clean(value, "No additional error details were provided.").length())); }
+    private static String message(Exception e) { String value = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage(); return value.substring(0, Math.min(5000, value.length())); }
     public record Accepted(UUID jobId, UUID assetId, String status) {}
-    public record View(UUID jobId, UUID assetId, String status, String errorMessage) {}
-    public record Completion(UUID eventId, UUID jobId, UUID assetId, int attempt, String status, String errorMessage, String assetName, String description, List<String> usageTags, String tikzSource, String model, Map<String, Object> parameters) {}
+    public record View(UUID jobId, UUID assetId, String status, String errorMessage, String errorDetails) {}
+    public record Completion(UUID eventId, UUID jobId, UUID assetId, int attempt, String status, String errorMessage, String errorDetails, String assetName, String description, List<String> usageTags, String tikzSource, String model, Map<String, Object> parameters) {}
 }

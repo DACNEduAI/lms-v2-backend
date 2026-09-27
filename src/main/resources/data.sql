@@ -1037,18 +1037,14 @@ INSERT INTO ccct_profile_revisions (profile_id, published_at, name, template_tit
 SELECT id, TIMESTAMP '2026-09-26 00:00:00.000001', name, template_title, markdown_content
 FROM ccct_profiles WHERE id = 'e1000001-0000-4000-8000-000000000001';
 
-INSERT INTO ccct_revision_chapters (profile_id, published_at, id, course_chapter_id, title, order_index)
-SELECT profile_id, TIMESTAMP '2026-09-26 00:00:00.000001', id, course_chapter_id, title, order_index
+INSERT INTO ccct_revision_chapters (profile_id, published_at, id, course_chapter_id, chapter_code, title, order_index)
+SELECT profile_id, TIMESTAMP '2026-09-26 00:00:00.000001', id, course_chapter_id, chapter_code, title, order_index
 FROM ccct_chapters WHERE profile_id = 'e1000001-0000-4000-8000-000000000001';
 
-INSERT INTO ccct_revision_topics (profile_id, published_at, id, chapter_id, group_code, title, order_index)
-SELECT profile_id, TIMESTAMP '2026-09-26 00:00:00.000001', id, chapter_id, group_code, title, order_index
-FROM ccct_topics WHERE profile_id = 'e1000001-0000-4000-8000-000000000001';
-
-INSERT INTO ccct_revision_items (profile_id, published_at, id, topic_id, content_code, content, order_index)
-SELECT 'e1000001-0000-4000-8000-000000000001', TIMESTAMP '2026-09-26 00:00:00.000001', i.id, i.topic_id, i.content_code, i.content, i.order_index
-FROM ccct_items i JOIN ccct_topics t ON t.id=i.topic_id
-WHERE t.profile_id = 'e1000001-0000-4000-8000-000000000001';
+INSERT INTO ccct_revision_items (profile_id, published_at, id, chapter_id, content_code, content, order_index)
+SELECT 'e1000001-0000-4000-8000-000000000001', TIMESTAMP '2026-09-26 00:00:00.000001', i.id, i.chapter_id, i.content_code, i.content, i.order_index
+FROM ccct_items i JOIN ccct_chapters c ON c.id=i.chapter_id
+WHERE c.profile_id = 'e1000001-0000-4000-8000-000000000001';
 
 UPDATE exam_matrices
 SET ccct_profile_id = 'e1000001-0000-4000-8000-000000000001',

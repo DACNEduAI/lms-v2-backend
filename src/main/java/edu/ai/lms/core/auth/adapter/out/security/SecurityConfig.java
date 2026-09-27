@@ -56,12 +56,13 @@ public class SecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         // Public endpoints - Authentication
                         .requestMatchers("/api/auth/**").permitAll()
-                        // Service-to-service callback; authenticated by HMAC in the controller.
+                        // Service-to-service callbacks; each controller verifies its own signature or shared secret.
                         .requestMatchers("/api/internal/webhooks/quiz-generation",
                                 "/api/internal/webhooks/quiz-generation/progress",
                                 "/api/internal/webhooks/assessment-question-generation",
                                 "/api/internal/webhooks/quiz3-generation",
-                                "/api/internal/webhooks/quiz3-generation/progress").permitAll()
+                                "/api/internal/webhooks/quiz3-generation/progress",
+                                "/api/internal/assets/image-generations/callback").permitAll()
                         // Swagger UI endpoints
                         .requestMatchers(
                                 "/v3/api-docs/**",

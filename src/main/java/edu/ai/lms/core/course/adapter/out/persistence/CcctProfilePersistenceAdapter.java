@@ -17,7 +17,6 @@ import edu.ai.lms.core.course.app.domain.CcctItem;
 import edu.ai.lms.core.course.app.domain.CcctMode;
 import edu.ai.lms.core.course.app.domain.CcctProfile;
 import edu.ai.lms.core.course.app.domain.CcctProfileStatus;
-import edu.ai.lms.core.course.app.domain.CcctTopic;
 import edu.ai.lms.core.course.app.port.out.LoadCcctProfilePort;
 import edu.ai.lms.core.course.app.port.out.SaveCcctProfilePort;
 import lombok.RequiredArgsConstructor;
@@ -105,26 +104,13 @@ class CcctProfilePersistenceAdapter
             chapter.setId(chapter.getId() == null ? UUID.randomUUID() : chapter.getId());
             chapter.setProfileId(profile.getId());
             chapter.setOrderIndex(chapterIndex);
-            List<CcctTopic> topics = chapter.getTopics() == null
-                    ? new ArrayList<>()
-                    : chapter.getTopics();
-            chapter.setTopics(topics);
-            for (int topicIndex = 0; topicIndex < topics.size(); topicIndex++) {
-                CcctTopic topic = topics.get(topicIndex);
-                topic.setId(topic.getId() == null ? UUID.randomUUID() : topic.getId());
-                topic.setProfileId(profile.getId());
-                topic.setChapterId(chapter.getId());
-                topic.setOrderIndex(topicIndex);
-                List<CcctItem> items = topic.getItems() == null
-                        ? new ArrayList<>()
-                        : topic.getItems();
-                topic.setItems(items);
-                for (int itemIndex = 0; itemIndex < items.size(); itemIndex++) {
-                    CcctItem item = items.get(itemIndex);
-                    item.setId(item.getId() == null ? UUID.randomUUID() : item.getId());
-                    item.setTopicId(topic.getId());
-                    item.setOrderIndex(itemIndex);
-                }
+            List<CcctItem> items = chapter.getItems() == null ? new ArrayList<>() : chapter.getItems();
+            chapter.setItems(items);
+            for (int itemIndex = 0; itemIndex < items.size(); itemIndex++) {
+                CcctItem item = items.get(itemIndex);
+                item.setId(item.getId() == null ? UUID.randomUUID() : item.getId());
+                item.setChapterId(chapter.getId());
+                item.setOrderIndex(itemIndex);
             }
         }
     }
@@ -135,16 +121,7 @@ class CcctProfilePersistenceAdapter
             return;
         }
         repository.insertChapters(chapters);
-        List<CcctTopic> topics = chapters.stream()
-                .flatMap(chapter -> chapter.getTopics().stream())
-                .toList();
-        if (topics.isEmpty()) {
-            return;
-        }
-        repository.insertTopics(topics);
-        List<CcctItem> items = topics.stream()
-                .flatMap(topic -> topic.getItems().stream())
-                .toList();
+        List<CcctItem> items = chapters.stream().flatMap(chapter -> chapter.getItems().stream()).toList();
         if (!items.isEmpty()) {
             repository.insertItems(items);
         }
@@ -157,15 +134,12 @@ class CcctProfilePersistenceAdapter
      */
     private void syncTree(CcctProfile profile) {
         List<CcctChapter> chapters = profile.getChapters();
-        List<CcctTopic> topics = chapters.stream().flatMap(chapter -> chapter.getTopics().stream()).toList();
-        List<CcctItem> items = topics.stream().flatMap(topic -> topic.getItems().stream()).toList();
+        List<CcctItem> items = chapters.stream().flatMap(chapter -> chapter.getItems().stream()).toList();
         if (!chapters.isEmpty()) repository.upsertChapters(chapters);
         // Delete absent leaves/groups before inserting updated positions. This
         // releases their (parent, order) unique slots without touching any
         // logical identity that remains in the proposed draft.
         repository.deleteItemsNotIn(profile.getId(), items.stream().map(CcctItem::getId).toList());
-        repository.deleteTopicsNotIn(profile.getId(), topics.stream().map(CcctTopic::getId).toList());
-        if (!topics.isEmpty()) repository.upsertTopics(topics);
         if (!items.isEmpty()) repository.upsertItems(items);
         repository.deleteChaptersNotIn(profile.getId(), chapters.stream().map(CcctChapter::getId).toList());
     }
@@ -183,30 +157,10 @@ class CcctProfilePersistenceAdapter
                         Function.identity(),
                         (left, right) -> left,
                         LinkedHashMap::new));
-        List<CcctTopic> topics = repository.findTopicsByChapterIds(chaptersById.keySet());
-        topics.forEach(topic -> {
-            CcctChapter chapter = chaptersById.get(topic.getChapterId());
-            if (chapter == null) {
-                throw new IllegalStateException("CCCT topic has no loaded chapter: " + topic.getId());
-            }
-            chapter.getTopics().add(topic);
-        });
-        if (topics.isEmpty()) {
-            return profile;
-        }
-
-        Map<UUID, CcctTopic> topicsById = topics.stream()
-                .collect(Collectors.toMap(
-                        CcctTopic::getId,
-                        Function.identity(),
-                        (left, right) -> left,
-                        LinkedHashMap::new));
-        repository.findItemsByTopicIds(topicsById.keySet()).forEach(item -> {
-            CcctTopic topic = topicsById.get(item.getTopicId());
-            if (topic == null) {
-                throw new IllegalStateException("CCCT item has no loaded topic: " + item.getId());
-            }
-            topic.getItems().add(item);
+        repository.findItemsByChapterIds(chaptersById.keySet()).forEach(item -> {
+            CcctChapter chapter = chaptersById.get(item.getChapterId());
+            if (chapter == null) throw new IllegalStateException("CCCT item has no loaded chapter: " + item.getId());
+            chapter.getItems().add(item);
         });
         return profile;
     }

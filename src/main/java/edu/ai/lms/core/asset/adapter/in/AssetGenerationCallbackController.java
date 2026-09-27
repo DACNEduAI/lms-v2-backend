@@ -24,7 +24,7 @@ public class AssetGenerationCallbackController {
     @PostMapping("/callback")
     public void callback(@RequestHeader(value = "Authorization", required = false) String authorization, @RequestBody CompletionRequest request) {
         if (secret.isBlank() || !("Bearer " + secret).equals(authorization)) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid generation callback");
-        generation.complete(new AssetImageGenerationService.Completion(request.eventId(), request.jobId(), request.assetId(), request.attempt(), request.status(), request.errorMessage(), request.assetName(), request.description(), request.usageTags(), request.tikzSource(), request.model(), request.parameters()));
+        generation.complete(new AssetImageGenerationService.Completion(request.eventId(), request.jobId(), request.assetId(), request.attempt(), request.status(), request.errorMessage(), request.errorDetails(), request.assetName(), request.description(), request.usageTags(), request.tikzSource(), request.model(), request.parameters()));
     }
-    public record CompletionRequest(UUID eventId, UUID jobId, UUID assetId, int attempt, String status, String errorMessage, String assetName, String description, List<String> usageTags, String tikzSource, String model, Map<String, Object> parameters) {}
+    public record CompletionRequest(UUID eventId, UUID jobId, UUID assetId, int attempt, String status, String errorMessage, String errorDetails, String assetName, String description, List<String> usageTags, String tikzSource, String model, Map<String, Object> parameters) {}
 }

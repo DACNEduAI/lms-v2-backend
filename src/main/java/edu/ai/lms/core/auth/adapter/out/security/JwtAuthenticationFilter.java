@@ -21,8 +21,21 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String ASSET_GENERATION_CALLBACK = "/api/internal/assets/image-generations/callback";
+
     private final TokenAuthenticationApi tokenAuthenticationApi;
     private final SecurityErrorResponseWriter errorResponseWriter;
+
+    /**
+     * The image-generation callback authenticates with its own shared secret in
+     * the Authorization header.  It is not a user JWT; letting this filter parse
+     * it as one would reject a valid callback before its controller can verify
+     * that shared secret.
+     */
+    @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        return ASSET_GENERATION_CALLBACK.equals(request.getRequestURI());
+    }
 
     @Override
     protected void doFilterInternal(

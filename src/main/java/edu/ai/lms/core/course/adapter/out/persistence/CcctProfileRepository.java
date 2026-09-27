@@ -43,13 +43,9 @@ interface CcctProfileRepository {
 
     int upsertChapters(@Param("chapters") List<CcctChapter> chapters);
 
-    int upsertTopics(@Param("topics") List<CcctTopic> topics);
-
     int upsertItems(@Param("items") List<CcctItem> items);
 
     int deleteItemsNotIn(@Param("profileId") UUID profileId, @Param("ids") Collection<UUID> ids);
-
-    int deleteTopicsNotIn(@Param("profileId") UUID profileId, @Param("ids") Collection<UUID> ids);
 
     int deleteChaptersNotIn(@Param("profileId") UUID profileId, @Param("ids") Collection<UUID> ids);
 

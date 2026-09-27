@@ -13,5 +13,6 @@ public interface AssetGenerationJobMapper {
     List<AssetGenerationJobRow> findPending();
     int markProcessing(@Param("id") UUID id);
     int complete(AssetGenerationJobRow row);
-    int fail(@Param("id") UUID id, @Param("message") String message);
+    int fail(@Param("id") UUID id, @Param("message") String message, @Param("details") String details);
+    int retry(@Param("id") UUID id);
 }
