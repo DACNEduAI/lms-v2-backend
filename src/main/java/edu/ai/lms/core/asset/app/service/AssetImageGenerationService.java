@@ -46,6 +46,7 @@ public class AssetImageGenerationService {
         AssetGenerationJobRow job = new AssetGenerationJobRow();
         job.setId(UUID.randomUUID()); job.setAssetId(upload.image().asset().id()); job.setCourseId(courseId);
         job.setPrompt(prompt.trim()); job.setStatus("PENDING"); job.setAttempt(1); job.setParametersJson("{}");
+        job.setGenerationMode("INITIAL"); job.setOutputStorageKey(upload.image().storageKey());
         jobs.insert(job);
         return new Accepted(job.getId(), upload.image().asset().id(), "PENDING");
     }
@@ -75,7 +76,7 @@ public class AssetImageGenerationService {
     public void recoverPending() {
         for (AssetGenerationJobRow job : jobs.findPending()) {
             ImageAsset image = assets.findImage(job.getCourseId(), job.getAssetId()).orElse(null);
-            if (image != null) dispatch(job.getId(), storage.createUploadLink(image.storageKey(), "image/png"));
+            if (image != null) dispatch(job.getId(), storage.createUploadLink(job.getOutputStorageKey(), "image/png"));
         }
     }
 
@@ -92,6 +93,44 @@ public class AssetImageGenerationService {
     }
 
     @Transactional
+    public Accepted regenerateAsset(UUID courseId, UUID assetId, String prompt) {
+        access.requireCourseTeacher(courseId);
+        if (prompt == null || prompt.isBlank() || prompt.length() > 5000) throw new AssetValidationException("Prompt must contain between 1 and 5000 characters");
+        ImageAsset image = assets.findImage(courseId, assetId).orElseThrow(() -> new AssetValidationException("Image asset not found"));
+        if (!image.aiGenerated()) throw new AssetValidationException("Only AI-generated images can be regenerated");
+        if (image.asset().publicationStatus() != Asset.PublicationStatus.DRAFT) throw new AssetValidationException("Published images cannot be regenerated");
+        AssetGenerationJobRow job = jobs.findForAsset(courseId, assetId);
+        if (job == null) throw new AssetValidationException("Asset generation job not found");
+        String outputStorageKey = "courses/" + courseId + "/assets/" + assetId + "/generations/" + UUID.randomUUID() + "/generated-image.png";
+        if (jobs.restart(job.getId(), prompt.trim(), outputStorageKey) != 1) throw new AssetValidationException("Image generation is already in progress");
+        Asset a = image.asset();
+        assets.saveImage(new ImageAsset(new Asset(a.id(), a.courseId(), a.type(), a.name(), a.description(), prompt.trim(), a.tags(), a.publicationStatus(), a.uploadStatus(), a.createdAt(), LocalDateTime.now()), image.originalFileName(), image.contentType(), image.byteSize(), image.storageKey(), image.pendingReplacement(), image.aiGenerated()));
+        AssetGenerationJobRow restarted = jobs.find(courseId, job.getId());
+        return new Accepted(restarted.getId(), restarted.getAssetId(), restarted.getStatus());
+    }
+
+    @Transactional
+    public String improveDescription(UUID courseId, UUID assetId) {
+        access.requireCourseTeacher(courseId);
+        ImageAsset image = assets.findImage(courseId, assetId).orElseThrow(() -> new AssetValidationException("Image asset not found"));
+        if (!image.aiGenerated()) throw new AssetValidationException("Only AI-generated images can improve their description");
+        if (image.asset().publicationStatus() != Asset.PublicationStatus.DRAFT) throw new AssetValidationException("Published images cannot improve their description");
+        AssetGenerationJobRow job = jobs.findForAsset(courseId, assetId);
+        if (job == null || job.getTikzSource() == null || job.getTikzSource().isBlank()) throw new AssetValidationException("No generated TikZ source is available for this image");
+        DescriptionResponse response;
+        try {
+            response = aiWebClient.post().uri("/assets/images/improve-description").bodyValue(Map.of("tikzSource", job.getTikzSource())).retrieve().bodyToMono(DescriptionResponse.class).block();
+        } catch (Exception exception) {
+            throw new AssetValidationException("Unable to improve image description: " + message(exception));
+        }
+        String description = clean(response == null ? null : response.description(), null);
+        if (description == null || description.length() > 5000) throw new AssetValidationException("AI returned an invalid image description");
+        Asset a = image.asset();
+        assets.saveImage(new ImageAsset(new Asset(a.id(), a.courseId(), a.type(), a.name(), description, a.prompt(), a.tags(), a.publicationStatus(), a.uploadStatus(), a.createdAt(), LocalDateTime.now()), image.originalFileName(), image.contentType(), image.byteSize(), image.storageKey(), image.pendingReplacement(), image.aiGenerated()));
+        return description;
+    }
+
+    @Transactional
     public void complete(Completion completion) {
         AssetGenerationJobRow job = jobs.findForUpdate(completion.jobId());
         if (job == null || !job.getAssetId().equals(completion.assetId()) || job.getAttempt() != completion.attempt() || !"PROCESSING".equals(job.getStatus())) return;
@@ -100,11 +139,13 @@ public class AssetImageGenerationService {
             return;
         }
         ImageAsset current = assets.findImage(job.getCourseId(), job.getAssetId()).orElseThrow();
-        var object = storage.inspect(current.storageKey());
+        var object = storage.inspect(job.getOutputStorageKey());
         if (!object.exists() || object.contentLength() <= 0 || object.contentLength() > 10L * 1024 * 1024 || !"image/png".equalsIgnoreCase(object.contentType())) { jobs.fail(job.getId(), "Generated PNG upload is unavailable or invalid", "The generated PNG upload was missing, empty, too large, or had an unexpected content type."); return; }
         Asset a = current.asset();
-        Asset updated = new Asset(a.id(), a.courseId(), a.type(), clean(completion.assetName(), PENDING_NAME), clean(completion.description(), PENDING_DESCRIPTION), a.prompt(), normalizeTags(completion.usageTags()), Asset.PublicationStatus.DRAFT, Asset.UploadStatus.UPLOADED, a.createdAt(), LocalDateTime.now());
-        assets.saveImage(new ImageAsset(updated, "generated-image.png", "image/png", object.contentLength(), current.storageKey(), null));
+        boolean regeneration = "REGENERATE".equals(job.getGenerationMode());
+        Asset updated = new Asset(a.id(), a.courseId(), a.type(), regeneration ? a.name() : clean(completion.assetName(), PENDING_NAME), clean(completion.description(), PENDING_DESCRIPTION), a.prompt(), normalizeTags(completion.usageTags()), Asset.PublicationStatus.DRAFT, Asset.UploadStatus.UPLOADED, a.createdAt(), LocalDateTime.now());
+        assets.saveImage(new ImageAsset(updated, "generated-image.png", "image/png", object.contentLength(), job.getOutputStorageKey(), null, current.aiGenerated()));
+        if (!current.storageKey().equals(job.getOutputStorageKey())) { try { storage.delete(current.storageKey()); } catch (RuntimeException ignored) { } }
         job.setCallbackEventId(completion.eventId()); job.setTikzSource(completion.tikzSource()); job.setModel(completion.model()); job.setParametersJson(toJson(completion.parameters())); jobs.complete(job);
     }
 
@@ -116,5 +157,6 @@ public class AssetImageGenerationService {
     private static String message(Exception e) { String value = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage(); return value.substring(0, Math.min(5000, value.length())); }
     public record Accepted(UUID jobId, UUID assetId, String status) {}
     public record View(UUID jobId, UUID assetId, String status, String errorMessage, String errorDetails) {}
+    public record DescriptionResponse(String description) {}
     public record Completion(UUID eventId, UUID jobId, UUID assetId, int attempt, String status, String errorMessage, String errorDetails, String assetName, String description, List<String> usageTags, String tikzSource, String model, Map<String, Object> parameters) {}
 }

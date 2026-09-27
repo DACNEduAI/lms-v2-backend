@@ -27,7 +27,7 @@ class AssetPersistenceAdapterUT {
         List<String> tags = List.of("data-structure", "quote \"and comma, tag", "unicode 三");
         Asset asset = new Asset(assetId, courseId, Asset.Type.IMAGE, "Tree", "A tree", null,
                 tags, Asset.PublicationStatus.DRAFT, Asset.UploadStatus.PENDING, now, now);
-        ImageAsset image = new ImageAsset(asset, "tree.png", "image/png", 0, "assets/tree.png", null);
+        ImageAsset image = new ImageAsset(asset, "tree.png", "image/png", 0, "assets/tree.png", null, false);
 
         when(mapper.findImage(courseId, assetId)).thenReturn(rowFor(image));
 
@@ -50,11 +50,27 @@ class AssetPersistenceAdapterUT {
         List<String> tags = List.of("one, tag", "a \"quoted\" tag", "unicode 三");
         Asset asset = new Asset(assetId, courseId, Asset.Type.IMAGE, "Tree", "A tree", null,
                 tags, Asset.PublicationStatus.DRAFT, Asset.UploadStatus.UPLOADED, now, now);
-        AssetImageRow row = rowFor(new ImageAsset(asset, "tree.png", "image/png", 42, "assets/tree.png", null));
+        AssetImageRow row = rowFor(new ImageAsset(asset, "tree.png", "image/png", 42, "assets/tree.png", null, false));
         row.setTagsJson(objectMapper.writeValueAsString(tags));
         when(mapper.findImages(courseId)).thenReturn(List.of(row));
 
         assertThat(adapter.findImages(courseId).getFirst().asset().tags()).containsExactlyElementsOf(tags);
+    }
+
+    @Test
+    void readsAiGenerationOriginFromTheAssetQuery() {
+        AssetRepositoryMapper mapper = Mockito.mock(AssetRepositoryMapper.class);
+        AssetPersistenceAdapter adapter = new AssetPersistenceAdapter(mapper, new ObjectMapper());
+        UUID courseId = UUID.randomUUID();
+        UUID assetId = UUID.randomUUID();
+        LocalDateTime now = LocalDateTime.now();
+        Asset asset = new Asset(assetId, courseId, Asset.Type.IMAGE, "Tree", "A tree", null,
+                List.of(), Asset.PublicationStatus.DRAFT, Asset.UploadStatus.UPLOADED, now, now);
+        AssetImageRow row = rowFor(new ImageAsset(asset, "tree.png", "image/png", 42, "assets/tree.png", null, false));
+        row.setAiGenerated(true);
+        when(mapper.findImages(courseId)).thenReturn(List.of(row));
+
+        assertThat(adapter.findImages(courseId).getFirst().aiGenerated()).isTrue();
     }
 
     private static AssetImageRow rowFor(ImageAsset image) {

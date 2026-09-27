@@ -41,18 +41,28 @@ class ImageAssetServiceUT {
         lenient().when(assets.saveImage(any())).thenAnswer(call -> call.getArgument(0));
     }
 
-    @Test void updatesMetadataWithoutChangingPublishedLifecycle() {
-        ImageAsset original = image(Asset.PublicationStatus.PUBLISHED, null);
+    @Test void updatesDraftMetadata() {
+        ImageAsset original = image(Asset.PublicationStatus.DRAFT, null);
         when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(original));
 
         ImageAsset updated = service.update(courseId, assetId,
                 new ImageAssetService.UpdateImage("New title", "Updated description", "  prompt  ", List.of("Graph", "graph", " ")));
 
         assertThat(updated.asset().name()).isEqualTo("New title");
-        assertThat(updated.asset().publicationStatus()).isEqualTo(Asset.PublicationStatus.PUBLISHED);
+        assertThat(updated.asset().publicationStatus()).isEqualTo(Asset.PublicationStatus.DRAFT);
         assertThat(updated.asset().uploadStatus()).isEqualTo(Asset.UploadStatus.UPLOADED);
         assertThat(updated.asset().tags()).containsExactly("graph");
         assertThat(updated.storageKey()).isEqualTo("courses/source.png");
+    }
+
+    @Test void rejectsUpdatesToPublishedImagesUntilTheyAreUnpublished() {
+        ImageAsset published = image(Asset.PublicationStatus.PUBLISHED, null);
+        when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(published));
+
+        assertThatThrownBy(() -> service.update(courseId, assetId,
+                new ImageAssetService.UpdateImage("New title", "Updated description", null, List.of())))
+                .isInstanceOf(AssetValidationException.class)
+                .hasMessage("Unpublish the image asset before editing it");
     }
 
     @Test void acceptsProseMetadataUpToFiveThousandCharacters() {
@@ -78,8 +88,8 @@ class ImageAssetServiceUT {
                 .isInstanceOf(AssetValidationException.class);
     }
 
-    @Test void promotesOnlyVerifiedReplacementAndKeepsPublishedStatus() {
-        ImageAsset original = image(Asset.PublicationStatus.PUBLISHED, null);
+    @Test void promotesOnlyVerifiedDraftReplacement() {
+        ImageAsset original = image(Asset.PublicationStatus.DRAFT, null);
         when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(original));
         when(storage.createUploadLink(any(), eq("image/jpeg"))).thenReturn("https://upload");
 
@@ -99,8 +109,21 @@ class ImageAssetServiceUT {
         assertThat(promoted.originalFileName()).isEqualTo("replacement.jpg");
         assertThat(promoted.byteSize()).isEqualTo(42);
         assertThat(promoted.pendingReplacement()).isNull();
-        assertThat(promoted.asset().publicationStatus()).isEqualTo(Asset.PublicationStatus.PUBLISHED);
+        assertThat(promoted.asset().publicationStatus()).isEqualTo(Asset.PublicationStatus.DRAFT);
         verify(storage).delete("courses/source.png");
+    }
+
+    @Test void rejectsReplacementOperationsForPublishedImages() {
+        ImageAsset published = image(Asset.PublicationStatus.PUBLISHED, null);
+        when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(published));
+
+        assertThatThrownBy(() -> service.beginReplacement(courseId, assetId,
+                new ImageAssetService.ReplacementImage("replacement.png", "image/png")))
+                .isInstanceOf(AssetValidationException.class)
+                .hasMessage("Unpublish the image asset before editing it");
+        assertThatThrownBy(() -> service.confirmReplacement(courseId, assetId))
+                .isInstanceOf(AssetValidationException.class)
+                .hasMessage("Unpublish the image asset before editing it");
     }
 
     @Test void rejectsInvalidReplacementWithoutChangingCurrentImage() {
@@ -118,8 +141,25 @@ class ImageAssetServiceUT {
         verify(storage).delete(pending.storageKey());
     }
 
+    @Test void rejectsReplacementOperationsForAiGeneratedImages() {
+        ImageAsset generated = image(Asset.PublicationStatus.DRAFT, null, true);
+        when(assets.findImage(courseId, assetId)).thenReturn(Optional.of(generated));
+
+        assertThatThrownBy(() -> service.beginReplacement(courseId, assetId,
+                new ImageAssetService.ReplacementImage("replacement.png", "image/png")))
+                .isInstanceOf(AssetValidationException.class)
+                .hasMessage("AI-generated images cannot be replaced");
+        assertThatThrownBy(() -> service.confirmReplacement(courseId, assetId))
+                .isInstanceOf(AssetValidationException.class)
+                .hasMessage("AI-generated images cannot be replaced");
+    }
+
     private ImageAsset image(Asset.PublicationStatus status, ImageAsset.PendingReplacement pending) {
+        return image(status, pending, false);
+    }
+
+    private ImageAsset image(Asset.PublicationStatus status, ImageAsset.PendingReplacement pending, boolean aiGenerated) {
         Asset asset = new Asset(assetId, courseId, Asset.Type.IMAGE, "Title", "Description", null, List.of("tree"), status, Asset.UploadStatus.UPLOADED, LocalDateTime.now(), LocalDateTime.now());
-        return new ImageAsset(asset, "source.png", "image/png", 12, "courses/source.png", pending);
+        return new ImageAsset(asset, "source.png", "image/png", 12, "courses/source.png", pending, aiGenerated);
     }
 }

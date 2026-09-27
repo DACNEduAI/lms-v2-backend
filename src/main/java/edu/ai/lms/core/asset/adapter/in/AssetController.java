@@ -49,6 +49,13 @@ public class AssetController {
         var accepted = generation.regenerate(courseId, jobId);
         return ResponseEntity.accepted().body(new GenerationResponse(accepted.jobId(), accepted.assetId(), accepted.status(), null, null));
     }
+    @PostMapping("/{assetId}/image-generations") public ResponseEntity<GenerationResponse> regenerateAsset(@PathVariable UUID courseId, @PathVariable UUID assetId, @Valid @RequestBody GenerateImageRequest request) {
+        var accepted = generation.regenerateAsset(courseId, assetId, request.prompt());
+        return ResponseEntity.accepted().body(new GenerationResponse(accepted.jobId(), accepted.assetId(), accepted.status(), null, null));
+    }
+    @PostMapping("/{assetId}/ai-improve-description") public DescriptionResponse improveDescription(@PathVariable UUID courseId, @PathVariable UUID assetId) {
+        return new DescriptionResponse(generation.improveDescription(courseId, assetId));
+    }
     @PatchMapping("/{assetId}") public ImageResponse update(@PathVariable UUID courseId, @PathVariable UUID assetId, @Valid @RequestBody UpdateImageRequest request) {
         var image = images.update(courseId, assetId, new ImageAssetService.UpdateImage(request.name(), request.description(), request.prompt(), request.tags()));
         return ImageResponse.from(image, images.downloadUrl(courseId, assetId));
@@ -69,13 +76,14 @@ public class AssetController {
     public record CreateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType, @NotBlank @Size(max = 5000) String description, @Size(max = 5000) String prompt, List<String> tags) {}
     public record GenerateImageRequest(@NotBlank @Size(max = 5000) String prompt) {}
     public record GenerationResponse(UUID jobId, UUID assetId, String status, String errorMessage, String errorDetails) {}
+    public record DescriptionResponse(String description) {}
     public record UpdateImageRequest(@NotBlank @Size(max = 255) String name, @NotBlank @Size(max = 5000) String description, @Size(max = 5000) String prompt, List<String> tags) {}
     public record ReplacementImageRequest(@NotBlank @Size(max = 255) String originalFileName, @NotBlank String contentType) {}
     public record PublicationRequest(@NotNull Asset.PublicationStatus status) {}
     public record DownloadResponse(String url) {}
     public record UploadResponse(ImageResponse asset, String presignedUploadUrl) {}
     public record ReplacementUploadResponse(String presignedUploadUrl) {}
-    public record ImageResponse(UUID id, UUID courseId, String type, String name, String description, String prompt, List<String> tags, Asset.PublicationStatus publicationStatus, Asset.UploadStatus uploadStatus, String originalFileName, String contentType, long byteSize, String previewUrl, java.time.LocalDateTime createdAt, java.time.LocalDateTime updatedAt) {
-        static ImageResponse from(ImageAsset image, String previewUrl) { Asset a = image.asset(); return new ImageResponse(a.id(), a.courseId(), a.type().name(), a.name(), a.description(), a.prompt(), a.tags(), a.publicationStatus(), a.uploadStatus(), image.originalFileName(), image.contentType(), image.byteSize(), previewUrl, a.createdAt(), a.updatedAt()); }
+    public record ImageResponse(UUID id, UUID courseId, String type, String name, String description, String prompt, List<String> tags, Asset.PublicationStatus publicationStatus, Asset.UploadStatus uploadStatus, String originalFileName, String contentType, long byteSize, boolean aiGenerated, String previewUrl, java.time.LocalDateTime createdAt, java.time.LocalDateTime updatedAt) {
+        static ImageResponse from(ImageAsset image, String previewUrl) { Asset a = image.asset(); return new ImageResponse(a.id(), a.courseId(), a.type().name(), a.name(), a.description(), a.prompt(), a.tags(), a.publicationStatus(), a.uploadStatus(), image.originalFileName(), image.contentType(), image.byteSize(), image.aiGenerated(), previewUrl, a.createdAt(), a.updatedAt()); }
     }
 }

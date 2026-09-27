@@ -14,4 +14,5 @@ class AssetImageRow {
     private String uploadStatus; private LocalDateTime createdAt; private LocalDateTime updatedAt;
     private String originalFileName; private String contentType; private long byteSize; private String storageKey;
     private String pendingOriginalFileName; private String pendingContentType; private String pendingStorageKey;
+    private boolean aiGenerated;
 }

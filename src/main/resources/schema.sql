@@ -154,6 +154,8 @@ CREATE TABLE IF NOT EXISTS asset_generation_jobs
     tikz_source TEXT,
     model VARCHAR(255),
     parameters JSONB NOT NULL DEFAULT '{}'::jsonb,
+    generation_mode VARCHAR(32) NOT NULL DEFAULT 'INITIAL' CHECK (generation_mode IN ('INITIAL', 'REGENERATE')),
+    output_storage_key VARCHAR(1024) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP
