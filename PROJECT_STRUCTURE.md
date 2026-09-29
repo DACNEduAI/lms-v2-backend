@@ -415,37 +415,21 @@ Material status and ingestion status are separate concepts. `Material` tracks th
 upload lifecycle, while `MaterialIndexJob` tracks `INGEST`/`DELETE` work through
 `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`, or `CANCELLED`.
 
-### 6.5 `quiz`: quizzes, questions, answers, and AI generation
+### 6.5 `quiz3`: quizzes, questions, answers, and AI generation
 
-`quiz` owns manual quiz authoring and asynchronous AI quiz generation.
+`quiz3` owns AI assessment authoring, generation, review, variants, and publication.
 
-- REST entry points: `QuizController`, `QuestionController`,
-  `AnswerController`, `QuizGenerationController`, and the internal webhook
-  controller.
-- Public API: attempt policy and answer-key views used by `attempt`.
-- Public event: `QuizDeadlineApproachingEvent`.
-- Integrations: current actor from `auth`, membership/outcomes/context from
-  `course`, and material validation/image storage from `material`.
-- Schedulers: hourly deadline reminder, generation jobs, and a 30-second
-  generation recovery scan.
-- Realtime: job progress is available by polling and SSE.
-- Owned tables: `quizzes`, `quiz_generation_jobs`, `questions`,
-  `question_images`, `answers`, `quiz_learning_outcomes`, and
-  `question_learning_outcomes`.
+- REST entry points include Quiz3 assessment, question, variant, and internal
+  webhook controllers.
+- Generation persists `quiz3_generation_jobs`, dispatches to `/quiz3/generate`,
+  and receives signed completion and progress callbacks at
+  `/api/internal/webhooks/quiz3-generation`.
+- Generated quiz rows remain in shared `quizzes`, `questions`, and `answers`;
+  Quiz3-specific ownership and provenance use `quiz3_*` tables.
+- Question-AI editing uses the dedicated internal AI specialist endpoints.
 
-AI generation is durable at the application level:
-
-1. Validate requester, course context, outcomes, and selected materials.
-2. Persist a generation job and schedule it through Quartz.
-3. Call the AI service at `/quiz-gen/generate`, supplying a callback URL.
-4. Receive the signed callback at
-   `/api/internal/webhooks/quiz-generation`.
-5. Validate and persist generated quiz content, update job status, and notify
-   polling/SSE clients.
-6. Recovery handles stale leases/retries according to configuration.
-
-Question images use the material module's storage capability; quiz code should
-not instantiate an S3 client directly.
+Quiz3 validates the published Matrix snapshot and selected materials before
+dispatch, persists exact generation quotas, and recovers stale generation leases.
 
 ### 6.6 `attempt`: taking and scoring quizzes
 

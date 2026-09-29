@@ -27,6 +27,7 @@ public class ImageAssetService {
     private final AssetRepository assets;
     private final CourseTeacherAccess access;
     private final CourseAssetStorageApi storage;
+    private final AssetVectorSyncService vectors;
 
     @Transactional(readOnly = true)
     public List<ImageAsset> list(UUID courseId) { access.requireCourseTeacher(courseId); return assets.findImages(courseId); }
@@ -72,7 +73,10 @@ public class ImageAssetService {
         ImageAsset image = require(courseId, assetId);
         if (image.asset().uploadStatus() != Asset.UploadStatus.UPLOADED) throw new AssetValidationException("Only uploaded images can be published");
         Asset a = image.asset();
-        return assets.saveImage(withAsset(image, new Asset(a.id(), a.courseId(), a.type(), a.name(), a.description(), a.prompt(), a.tags(), status, a.uploadStatus(), a.createdAt(), LocalDateTime.now()), image.byteSize()));
+        ImageAsset updated = withAsset(image, new Asset(a.id(), a.courseId(), a.type(), a.name(), a.description(), a.prompt(), a.tags(), status, a.uploadStatus(), a.createdAt(), LocalDateTime.now()), image.byteSize());
+        if (status == Asset.PublicationStatus.PUBLISHED) vectors.upsert(updated);
+        else vectors.delete(assetId);
+        return assets.saveImage(updated);
     }
 
     @Transactional
@@ -100,6 +104,7 @@ public class ImageAssetService {
     public void delete(UUID courseId, UUID assetId) {
         access.requireCourseTeacher(courseId);
         ImageAsset image = require(courseId, assetId);
+        vectors.delete(assetId);
         storage.delete(image.storageKey());
         if (!assets.delete(courseId, assetId)) throw new AssetNotFoundException("Asset not found");
     }

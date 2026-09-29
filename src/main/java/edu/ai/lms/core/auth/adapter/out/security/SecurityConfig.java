@@ -57,10 +57,7 @@ public class SecurityConfig {
                         // Public endpoints - Authentication
                         .requestMatchers("/api/auth/**").permitAll()
                         // Service-to-service callbacks; each controller verifies its own signature or shared secret.
-                        .requestMatchers("/api/internal/webhooks/quiz-generation",
-                                "/api/internal/webhooks/quiz-generation/progress",
-                                "/api/internal/webhooks/assessment-question-generation",
-                                "/api/internal/webhooks/quiz3-generation",
+                        .requestMatchers("/api/internal/webhooks/quiz3-generation",
                                 "/api/internal/webhooks/quiz3-generation/progress",
                                 "/api/internal/assets/image-generations/callback").permitAll()
                         // Swagger UI endpoints

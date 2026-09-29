@@ -42,7 +42,7 @@ class WebClientConfigUT {
         });
         WebClientConfig config = configured();
 
-        config.aiWebClient(builder).post().uri("/quiz-gen/drafts/generate")
+        config.aiWebClient(builder).post().uri("/quiz3/generate")
                 .header(CorrelationIdFilter.HEADER_NAME, "batch-456")
                 .retrieve().toBodilessEntity().block();
 
