@@ -39,6 +39,11 @@
     SELECT <include refid="imageColumns" /> FROM edu.assets a JOIN edu.image_assets i ON i.asset_id = a.id
     WHERE a.course_id = #{courseId} AND a.type = 'IMAGE' ORDER BY a.updated_at DESC
   </select>
+  <select id="findPublishedUploadedImages" resultMap="AssetImageRowMap">
+    SELECT <include refid="imageColumns" /> FROM edu.assets a JOIN edu.image_assets i ON i.asset_id = a.id
+    WHERE a.type = 'IMAGE' AND a.publication_status = 'PUBLISHED' AND a.upload_status = 'UPLOADED'
+    ORDER BY a.course_id, a.updated_at, a.id
+  </select>
   <select id="findImage" resultMap="AssetImageRowMap">
     SELECT <include refid="imageColumns" /> FROM edu.assets a JOIN edu.image_assets i ON i.asset_id = a.id
     WHERE a.course_id = #{courseId} AND a.id = #{assetId} AND a.type = 'IMAGE'

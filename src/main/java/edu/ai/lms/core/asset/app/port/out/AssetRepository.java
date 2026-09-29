@@ -10,6 +10,7 @@ import edu.ai.lms.core.asset.app.domain.ImageAsset;
 public interface AssetRepository {
     ImageAsset createImage(ImageAsset image);
     List<ImageAsset> findImages(UUID courseId);
+    List<ImageAsset> findPublishedUploadedImages();
     Optional<ImageAsset> findImage(UUID courseId, UUID assetId);
     ImageAsset saveImage(ImageAsset image);
     boolean delete(UUID courseId, UUID assetId);

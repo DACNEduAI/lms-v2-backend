@@ -19,6 +19,7 @@ class AssetPersistenceAdapter implements AssetRepository {
     private final ObjectMapper objectMapper;
     @Override public ImageAsset createImage(ImageAsset image) { AssetImageRow row = toRow(image); mapper.insertAsset(row); mapper.insertImage(row); return require(image.asset().courseId(), image.asset().id()); }
     @Override public List<ImageAsset> findImages(UUID courseId) { return mapper.findImages(courseId).stream().map(this::toDomain).toList(); }
+    @Override public List<ImageAsset> findPublishedUploadedImages() { return mapper.findPublishedUploadedImages().stream().map(this::toDomain).toList(); }
     @Override public Optional<ImageAsset> findImage(UUID courseId, UUID assetId) { return Optional.ofNullable(mapper.findImage(courseId, assetId)).map(this::toDomain); }
     @Override public ImageAsset saveImage(ImageAsset image) { AssetImageRow row = toRow(image); mapper.updateAsset(row); mapper.updateImage(row); return require(image.asset().courseId(), image.asset().id()); }
     @Override public boolean delete(UUID courseId, UUID assetId) { return mapper.delete(courseId, assetId) == 1; }
