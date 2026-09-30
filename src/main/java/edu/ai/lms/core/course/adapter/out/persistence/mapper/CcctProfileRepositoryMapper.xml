@@ -8,9 +8,6 @@
     <result property="courseId" column="course_id"/>
     <result property="name" column="name"/>
     <result property="templateTitle" column="template_title"/>
-    <result property="status" column="status"
-            javaType="edu.ai.lms.core.course.app.domain.CcctProfileStatus"
-            typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
     <result property="version" column="version"/>
     <result property="formatVersion" column="format_version"/>
     <result property="structuredCurrent" column="structured_current"/>
@@ -19,7 +16,6 @@
             typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
     <result property="markdownContent" column="markdown_content"/>
     <result property="createdBy" column="created_by"/>
-    <result property="publishedAt" column="published_at"/>
     <result property="createdAt" column="created_at"/>
     <result property="updatedAt" column="updated_at"/>
   </resultMap>
@@ -42,25 +38,17 @@
   </resultMap>
 
   <select id="findByCourseIdAndId" resultMap="CcctProfileResultMap">
-    SELECT id, course_id, name, template_title, status, version, format_version,
+    SELECT id, course_id, name, template_title, version, format_version,
            structured_current, last_mode,
-           markdown_content, created_by, published_at, created_at, updated_at
+           markdown_content, created_by, created_at, updated_at
     FROM edu.ccct_profiles
     WHERE course_id = #{courseId} AND id = #{profileId}
   </select>
 
-  <select id="findPublishedByCourseId" resultMap="CcctProfileResultMap">
-    SELECT id, course_id, name, template_title, status, version, format_version,
-           structured_current, last_mode,
-           markdown_content, created_by, published_at, created_at, updated_at
-    FROM edu.ccct_profiles
-    WHERE course_id = #{courseId} AND status = 'PUBLISHED'
-  </select>
-
   <select id="findAllByCourseId" resultMap="CcctProfileResultMap">
-    SELECT id, course_id, name, template_title, status, version, format_version,
+    SELECT id, course_id, name, template_title, version, format_version,
            structured_current, last_mode,
-           markdown_content, created_by, published_at, created_at, updated_at
+           markdown_content, created_by, created_at, updated_at
     FROM edu.ccct_profiles
     WHERE course_id = #{courseId}
     ORDER BY updated_at DESC, id
@@ -95,17 +83,14 @@
 
   <insert id="insertProfile">
     INSERT INTO edu.ccct_profiles
-      (id, course_id, name, template_title, status, version, format_version,
+      (id, course_id, name, template_title, version, format_version,
        structured_current, last_mode,
-       markdown_content, created_by, published_at, created_at, updated_at)
+       markdown_content, created_by, created_at, updated_at)
     VALUES
-      (#{id}, #{courseId}, #{name}, #{templateTitle},
-       #{status, javaType=edu.ai.lms.core.course.app.domain.CcctProfileStatus,
-                  typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-       #{version}, #{formatVersion}, #{structuredCurrent},
+      (#{id}, #{courseId}, #{name}, #{templateTitle}, #{version}, #{formatVersion}, #{structuredCurrent},
        #{lastMode, javaType=edu.ai.lms.core.course.app.domain.CcctMode,
                     typeHandler=org.apache.ibatis.type.EnumTypeHandler},
-       #{markdownContent}, #{createdBy}, #{publishedAt}, NOW(), NOW())
+       #{markdownContent}, #{createdBy}, NOW(), NOW())
   </insert>
 
   <update id="updateDraft">
@@ -122,7 +107,6 @@
         updated_at = NOW()
     WHERE id = #{profile.id}
       AND course_id = #{profile.courseId}
-      AND status = 'DRAFT'
       AND version = #{expectedVersion}
   </update>
 
@@ -167,15 +151,4 @@
     <choose><when test="ids != null and ids.size() > 0">AND id NOT IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach></when></choose>
   </delete>
 
-  <update id="publishDraft">
-    UPDATE edu.ccct_profiles
-    SET status = 'PUBLISHED',
-        published_at = #{publishedAt},
-        version = version + 1,
-        updated_at = NOW()
-    WHERE course_id = #{courseId}
-      AND id = #{profileId}
-      AND status = 'DRAFT'
-      AND version = #{expectedVersion}
-  </update>
 </mapper>

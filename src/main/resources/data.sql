@@ -508,11 +508,11 @@ VALUES
 -- schema.sql recreates the development database at every BE startup, then this
 -- script restores this selectable DRAFT profile with stable UUIDs.
 INSERT INTO ccct_profiles
-    (id, course_id, name, template_title, status, version, format_version,
+    (id, course_id, name, template_title, version, format_version,
      structured_current, last_mode, markdown_content, created_by)
 VALUES
     ('e1000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
-     'CCCT – Data Structures and Algorithms', 'CCCT – Data Structures and Algorithms', 'DRAFT', 0, 2,
+     'CCCT – Data Structures and Algorithms', 'CCCT – Data Structures and Algorithms', 0, 2,
      true, 'STRUCTURED',
      '# CCCT – Data Structures and Algorithms
 
@@ -816,26 +816,26 @@ VALUES ('c1111111-1111-1111-1111-111111111111', 7);
 INSERT INTO quiz3_assessments
     (id, course_id, title, description, unlimited, time_limit_minutes, pass_score,
      start_time, due_time, attempt_limited, variant_count, lifecycle_status, current_step,
-     ccct_profile_id, ccct_published_at, matrix_id, matrix_version,
+     ccct_profile_id, ccct_snapshot_at, matrix_id,
      base_confirmed_by, base_confirmed_at, created_by, version, published_by, published_at)
 VALUES
     ('f9000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
      'Quiz3 Student Attempt Demo', 'Published Quiz3 base assessment for student attempt testing.',
      true, NULL, 5.0, NULL, NULL, NULL, 1, 'PUBLISHED', 9,
      'e1000001-0000-4000-8000-000000000001', NULL,
-     'b3000001-0000-4000-8000-000000000001', 0,
+     'b3000001-0000-4000-8000-000000000001',
      '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP,
      '11111111-1111-1111-1111-111111111111', 1,
      '11111111-1111-1111-1111-111111111111', CURRENT_TIMESTAMP);
 
 INSERT INTO quiz3_generation_jobs
-    (id, assessment_id, course_id, matrix_id, matrix_version,
+    (id, assessment_id, course_id, matrix_id,
      requested_by, request_snapshot, payload_hash, idempotency_key, status, phase,
      attempt_count, generated_question_count, total_question_count, completed_at)
 VALUES
     ('f9000001-0000-4000-8000-000000000002', 'f9000001-0000-4000-8000-000000000001',
      'c1111111-1111-1111-1111-111111111111',
-     'b3000001-0000-4000-8000-000000000001', 0,
+     'b3000001-0000-4000-8000-000000000001',
      '11111111-1111-1111-1111-111111111111',
      CAST('{"matrix":{"rows":[{"id":"b3000021-0000-4000-8000-000000000001","learningOutcome":{"id":"81111111-1111-1111-1111-111111111111"},"cells":[{"customLearningLevelId":"b3000011-0000-4000-8000-000000000002","questionCount":1}]},{"id":"b3000021-0000-4000-8000-000000000002","learningOutcome":{"id":"84444444-4444-4444-4444-444444444444"},"cells":[{"customLearningLevelId":"b3000011-0000-4000-8000-000000000003","questionCount":2}]}]}}' AS jsonb),
      'a333333333333333333333333333333333333333333333333333333333333333',
@@ -1031,33 +1031,34 @@ VALUES
 
 -- Matrix fixtures now bind the one seeded CCCT and use one CLL relation per
 -- selected content-detail row. Existing fixture row IDs are retained.
--- The published Quiz3 fixture below is deliberately pinned to this immutable
--- CCCT snapshot while the course's editable CCCT remains a working draft.
-INSERT INTO ccct_profile_revisions (profile_id, published_at, name, template_title, markdown_content)
-SELECT id, TIMESTAMP '2026-09-26 00:00:00.000001', name, template_title, markdown_content
+UPDATE exam_matrices
+SET ccct_profile_id = 'e1000001-0000-4000-8000-000000000001',
+    ccct_snapshot_at = NULL
+WHERE course_id = 'c1111111-1111-1111-1111-111111111111';
+
+-- The published Quiz3 fixture is pinned to a Matrix-owned immutable CCCT
+-- snapshot; the course profile itself remains editable.
+INSERT INTO matrix_ccct_snapshots (matrix_id, profile_id, snapshot_at, name, template_title, markdown_content)
+SELECT 'b3000001-0000-4000-8000-000000000001', id,
+       TIMESTAMP '2026-09-26 00:00:00.000001', name, template_title, markdown_content
 FROM ccct_profiles WHERE id = 'e1000001-0000-4000-8000-000000000001';
 
-INSERT INTO ccct_revision_chapters (profile_id, published_at, id, course_chapter_id, chapter_code, title, order_index)
-SELECT profile_id, TIMESTAMP '2026-09-26 00:00:00.000001', id, course_chapter_id, chapter_code, title, order_index
+INSERT INTO matrix_ccct_snapshot_chapters (matrix_id, id, course_chapter_id, chapter_code, title, order_index)
+SELECT 'b3000001-0000-4000-8000-000000000001', id, course_chapter_id, chapter_code, title, order_index
 FROM ccct_chapters WHERE profile_id = 'e1000001-0000-4000-8000-000000000001';
 
-INSERT INTO ccct_revision_items (profile_id, published_at, id, chapter_id, content_code, content, order_index)
-SELECT 'e1000001-0000-4000-8000-000000000001', TIMESTAMP '2026-09-26 00:00:00.000001', i.id, i.chapter_id, i.content_code, i.content, i.order_index
-FROM ccct_items i JOIN ccct_chapters c ON c.id=i.chapter_id
+INSERT INTO matrix_ccct_snapshot_items (matrix_id, id, chapter_id, content_code, content, order_index)
+SELECT 'b3000001-0000-4000-8000-000000000001', i.id, i.chapter_id, i.content_code, i.content, i.order_index
+FROM ccct_items i JOIN ccct_chapters c ON c.id = i.chapter_id
 WHERE c.profile_id = 'e1000001-0000-4000-8000-000000000001';
 
 UPDATE exam_matrices
-SET ccct_profile_id = 'e1000001-0000-4000-8000-000000000001',
-    ccct_published_at = NULL
-WHERE course_id = 'c1111111-1111-1111-1111-111111111111';
-
-UPDATE exam_matrices
-SET lifecycle_status = 'PUBLISHED', ccct_published_at = TIMESTAMP '2026-09-26 00:00:00.000001',
+SET lifecycle_status = 'PUBLISHED', ccct_snapshot_at = TIMESTAMP '2026-09-26 00:00:00.000001',
     published_by = '11111111-1111-1111-1111-111111111111', published_at = CURRENT_TIMESTAMP
 WHERE id = 'b3000001-0000-4000-8000-000000000001';
 
 UPDATE quiz3_assessments
-SET ccct_published_at = TIMESTAMP '2026-09-26 00:00:00.000001'
+SET ccct_snapshot_at = TIMESTAMP '2026-09-26 00:00:00.000001'
 WHERE id = 'f9000001-0000-4000-8000-000000000001';
 
 UPDATE exam_matrix_rows r

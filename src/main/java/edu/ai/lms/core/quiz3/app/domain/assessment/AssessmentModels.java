@@ -37,9 +37,8 @@ public final class AssessmentModels {
             LifecycleStatus lifecycleStatus,
             int currentStep,
             UUID ccctProfileId,
-            LocalDateTime ccctPublishedAt,
+            LocalDateTime ccctSnapshotAt,
             UUID examMatrixId,
-            Long examMatrixVersion,
             boolean aiGenerationStarted,
             long version,
             UUID createdBy,
@@ -51,12 +50,12 @@ public final class AssessmentModels {
         public AssessmentView(UUID id, UUID courseId, String title, String description, boolean unlimited,
                 Integer timeLimitMinutes, Double passScore, LocalDateTime startTime, LocalDateTime dueTime,
                 Integer attemptLimited, Integer variantCount, Integer optionCount, boolean allowRecentlyUsedQuestions,
-                LifecycleStatus lifecycleStatus, int currentStep, UUID ccctProfileId, LocalDateTime ccctPublishedAt,
-                UUID examMatrixId, Long examMatrixVersion, boolean aiGenerationStarted, long version, UUID createdBy,
+                LifecycleStatus lifecycleStatus, int currentStep, UUID ccctProfileId, LocalDateTime ccctSnapshotAt,
+                UUID examMatrixId, boolean aiGenerationStarted, long version, UUID createdBy,
                 UUID publishedBy, LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
             this(id, courseId, title, description, unlimited, timeLimitMinutes, passScore, startTime, dueTime,
                     attemptLimited, variantCount, optionCount, allowRecentlyUsedQuestions, lifecycleStatus, currentStep,
-                    ccctProfileId, ccctPublishedAt, examMatrixId, examMatrixVersion, aiGenerationStarted, version,
+                    ccctProfileId, ccctSnapshotAt, examMatrixId, aiGenerationStarted, version,
                     createdBy, publishedBy, publishedAt, createdAt, updatedAt, null);
         }
     }

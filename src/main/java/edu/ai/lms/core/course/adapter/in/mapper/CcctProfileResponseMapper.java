@@ -21,7 +21,6 @@ public class CcctProfileResponseMapper {
                 profile.getId(),
                 profile.getCourseId(),
                 profile.getName(),
-                profile.getStatus(),
                 profile.getVersion(),
                 profile.getFormatVersion(),
                 profile.isStructuredCurrent(),
@@ -37,7 +36,6 @@ public class CcctProfileResponseMapper {
                                 chapter.getItems().stream().map(item -> new CcctItemResponse(
                                         item.getId(), item.getContentCode(), item.getContent())).toList())).toList()),
                 profile.getCreatedBy(),
-                profile.getPublishedAt(),
                 profile.getCreatedAt(),
                 profile.getUpdatedAt());
     }
@@ -47,7 +45,6 @@ public class CcctProfileResponseMapper {
                 .map(profile -> new CcctProfileSummaryResponse(
                         profile.getId(),
                         profile.getName(),
-                        profile.getStatus(),
                         profile.getVersion(),
                         profile.getFormatVersion(),
                         profile.getLastMode(),

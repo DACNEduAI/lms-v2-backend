@@ -15,5 +15,6 @@ public class CourseAssetStorageService implements CourseAssetStorageApi {
     @Override public String createUploadLink(String storageKey, String contentType) { return storage.createUploadLink(storageKey, contentType); }
     @Override public String createDownloadLink(String storageKey) { return storage.createDownloadLink(storageKey, null); }
     @Override public StoredObjectMetadata inspect(String storageKey) { return storage.inspect(storageKey); }
+    @Override public byte[] read(String storageKey) { return storage.readFile(storageKey); }
     @Override public void delete(String storageKey) { storage.deleteFile(storageKey); }
 }

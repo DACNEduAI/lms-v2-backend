@@ -1,6 +1,5 @@
 package edu.ai.lms.core.course.adapter.in;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -17,16 +16,13 @@ import org.springframework.web.bind.annotation.RestController;
 import edu.ai.lms.core.course.adapter.in.mapper.CcctProfileCommandMapper;
 import edu.ai.lms.core.course.adapter.in.mapper.CcctProfileResponseMapper;
 import edu.ai.lms.core.course.adapter.in.request.CreateCcctProfileRequest;
-import edu.ai.lms.core.course.adapter.in.request.PublishCcctProfileRequest;
 import edu.ai.lms.core.course.adapter.in.request.UpdateCcctProfileRequest;
 import edu.ai.lms.core.course.adapter.in.response.CcctProfileListResponse;
 import edu.ai.lms.core.course.adapter.in.response.CcctProfileResponse;
 import edu.ai.lms.core.course.app.port.in.usecase.CreateCcctProfileUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.GetCcctProfileUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.ListCcctProfilesUseCase;
-import edu.ai.lms.core.course.app.port.in.usecase.PublishCcctProfileUseCase;
 import edu.ai.lms.core.course.app.port.in.usecase.UpdateCcctProfileUseCase;
-import edu.ai.lms.core.course.app.service.ccct.CcctRevisionService;
 import edu.ai.lms.core.course.app.service.ccct.UpdateCcctProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -43,12 +39,10 @@ import lombok.RequiredArgsConstructor;
 public class CcctProfileController {
     private final CreateCcctProfileUseCase createUseCase;
     private final UpdateCcctProfileUseCase updateUseCase;
-    private final PublishCcctProfileUseCase publishUseCase;
     private final GetCcctProfileUseCase getUseCase;
     private final ListCcctProfilesUseCase listUseCase;
     private final CcctProfileCommandMapper commandMapper;
     private final CcctProfileResponseMapper responseMapper;
-    private final CcctRevisionService revisions;
     private final UpdateCcctProfileService updateService;
 
     @Operation(summary = "List CCCT profiles in a Course")
@@ -60,12 +54,6 @@ public class CcctProfileController {
     @GetMapping
     public ResponseEntity<CcctProfileListResponse> list(@PathVariable UUID courseId) {
         return ResponseEntity.ok(responseMapper.toList(courseId, listUseCase.list(courseId)));
-    }
-
-    @Operation(summary = "Get the current published CCCT profile")
-    @GetMapping("/published")
-    public ResponseEntity<CcctProfileResponse> getPublished(@PathVariable UUID courseId) {
-        return ResponseEntity.ok(responseMapper.toDetail(getUseCase.getPublished(courseId)));
     }
 
     @Operation(summary = "Get a CCCT profile with its complete tree")
@@ -102,33 +90,6 @@ public class CcctProfileController {
             @Valid @RequestBody UpdateCcctProfileRequest request) {
         return updateService.preview(courseId, profileId,
                 commandMapper.toUpdateCommand(courseId, profileId, request).content());
-    }
-
-    @Operation(summary = "Publish a CCCT draft as an immutable revision")
-    @PostMapping("/{profileId}/publish")
-    public ResponseEntity<CcctProfileResponse> publish(
-            @PathVariable UUID courseId,
-            @PathVariable UUID profileId,
-            @Valid @RequestBody PublishCcctProfileRequest request) {
-        var profile = publishUseCase.publish(
-                commandMapper.toPublishCommand(courseId, profileId, request));
-        return ResponseEntity.ok(responseMapper.toDetail(profile));
-    }
-
-    @PostMapping("/{profileId}/unpublish")
-    public ResponseEntity<CcctProfileResponse> unpublish(@PathVariable UUID courseId, @PathVariable UUID profileId) {
-        return ResponseEntity.ok(responseMapper.toDetail(revisions.unpublish(courseId, profileId)));
-    }
-
-    @GetMapping("/{profileId}/revisions")
-    public List<CcctRevisionService.RevisionView> revisions(@PathVariable UUID courseId, @PathVariable UUID profileId) {
-        return revisions.revisions(courseId, profileId);
-    }
-
-    @GetMapping("/{profileId}/revisions/{publishedAt}")
-    public CcctRevisionService.RevisionDocument revision(
-            @PathVariable UUID courseId, @PathVariable UUID profileId, @PathVariable java.time.LocalDateTime publishedAt) {
-        return revisions.revision(courseId, profileId, publishedAt);
     }
 
 }

@@ -22,11 +22,11 @@ class MatrixDateFormatUT {
         MatrixService.MatrixDetail matrix = new MatrixService.MatrixDetail(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), timestamp,
                 "Matrix", null, MatrixService.MatrixMode.MANUAL, null,
-                MatrixService.LifecycleStatus.PUBLISHED, 1, UUID.randomUUID(), timestamp,
+                MatrixService.LifecycleStatus.PUBLISHED, UUID.randomUUID(), timestamp,
                 List.of(), List.of(), List.of(), timestamp, timestamp);
 
         var matrixJson = objectMapper.readTree(objectMapper.writeValueAsString(matrix));
-        assertEquals("2026-09-26T00:00:00", matrixJson.get("ccctPublishedAt").asText());
+        assertEquals("2026-09-26T00:00:00", matrixJson.get("ccctSnapshotAt").asText());
         assertEquals("2026-09-26T00:00:00", matrixJson.get("publishedAt").asText());
         assertEquals("2026-09-26T00:00:00", matrixJson.get("createdAt").asText());
         assertEquals("2026-09-26T00:00:00", matrixJson.get("updatedAt").asText());
@@ -34,7 +34,7 @@ class MatrixDateFormatUT {
         MatrixService.MatrixSummary summary = new MatrixService.MatrixSummary(
                 UUID.randomUUID(), UUID.randomUUID(), "Matrix", null,
                 MatrixService.MatrixMode.MANUAL, null, MatrixService.LifecycleStatus.PUBLISHED,
-                1, UUID.randomUUID(), timestamp, 1, 1, timestamp, timestamp);
+                UUID.randomUUID(), timestamp, 1, 1, timestamp, timestamp);
         var summaryJson = objectMapper.readTree(objectMapper.writeValueAsString(summary));
         assertEquals("2026-09-26T00:00:00", summaryJson.get("publishedAt").asText());
         assertEquals("2026-09-26T00:00:00", summaryJson.get("createdAt").asText());

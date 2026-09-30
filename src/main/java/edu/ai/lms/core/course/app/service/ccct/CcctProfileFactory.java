@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import edu.ai.lms.core.course.app.domain.CcctChapter;
 import edu.ai.lms.core.course.app.domain.CcctItem;
 import edu.ai.lms.core.course.app.domain.CcctProfile;
-import edu.ai.lms.core.course.app.domain.CcctProfileStatus;
 import edu.ai.lms.core.course.app.port.in.command.CcctProfileContent;
 
 @Component
@@ -22,7 +21,6 @@ class CcctProfileFactory {
                 .courseId(courseId)
                 .name(content.name().trim())
                 .templateTitle(content.name().trim())
-                .status(CcctProfileStatus.DRAFT)
                 .version(0)
                 .formatVersion(content.formatVersion())
                 .structuredCurrent(content.structuredCurrent())
@@ -62,7 +60,6 @@ class CcctProfileFactory {
                 .courseId(courseId)
                 .name(name.trim())
                 .templateTitle(name.trim())
-                .status(CcctProfileStatus.DRAFT)
                 .version(0)
                 .formatVersion(source.getFormatVersion())
                 .structuredCurrent(source.isStructuredCurrent())

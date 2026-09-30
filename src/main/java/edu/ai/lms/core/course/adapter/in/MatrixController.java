@@ -16,6 +16,6 @@ public class MatrixController {
  @PostMapping("/allocation-preview") public MatrixService.AllocationPreview allocationPreview(@PathVariable UUID courseId,@RequestBody MatrixService.AllocationPreviewRequest request){return service.previewAllocation(request);}
  @PutMapping("/{matrixId}") public MatrixService.MatrixDetail update(@PathVariable UUID courseId,@PathVariable UUID matrixId,@RequestBody MatrixService.MatrixPayload payload){return service.update(courseId,matrixId,payload);}
  @PostMapping("/{matrixId}/copy") public ResponseEntity<MatrixService.MatrixDetail> copy(@PathVariable UUID courseId,@PathVariable UUID matrixId,@RequestBody(required=false) MatrixService.CopyRequest request){return ResponseEntity.status(HttpStatus.CREATED).body(service.copyAsDraft(courseId,matrixId,request));}
- @PostMapping("/{matrixId}/publish") public MatrixService.MatrixDetail publish(@PathVariable UUID courseId,@PathVariable UUID matrixId,@RequestBody MatrixService.PublishRequest request){return service.publish(courseId,matrixId,request);}
+ @PostMapping("/{matrixId}/publish") public MatrixService.MatrixDetail publish(@PathVariable UUID courseId,@PathVariable UUID matrixId){return service.publish(courseId,matrixId);}
  @DeleteMapping("/{matrixId}") public ResponseEntity<Void> delete(@PathVariable UUID courseId,@PathVariable UUID matrixId){service.delete(courseId,matrixId);return ResponseEntity.noContent().build();}
 }

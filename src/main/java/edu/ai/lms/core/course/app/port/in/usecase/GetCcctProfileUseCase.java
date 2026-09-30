@@ -7,5 +7,4 @@ import edu.ai.lms.core.course.app.domain.CcctProfile;
 public interface GetCcctProfileUseCase {
     CcctProfile get(UUID courseId, UUID profileId);
 
-    CcctProfile getPublished(UUID courseId);
 }

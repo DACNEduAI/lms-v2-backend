@@ -234,6 +234,8 @@ public class S3StorageAdapter implements CreateDownloadLinkPort, CreateUploadLin
         return s3Client.getObjectAsBytes(request).asByteArray();
     }
 
+    public byte[] readFile(String key) { return readFile(bucketName, key); }
+
     /**
      * Builds a public URL for object access. This URL is only usable for publicly
      * readable objects.

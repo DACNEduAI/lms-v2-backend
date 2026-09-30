@@ -30,11 +30,11 @@ class Quiz3AssessmentServiceValidationUT {
     @Test
     void serializesQuestionAssetTypesInTheReviewMetadataContract() {
         var metadata = new Quiz3Models.QuestionMetadata(UUID.randomUUID(), "Chapter", UUID.randomUUID(), "L.O.1.1 - Outcome",
-                UUID.randomUUID(), "Understand", "IMAGE", "TEXT", "AUTO_SELECTED", List.of(), List.of());
+                UUID.randomUUID(), "Understand", "IMAGE", "IMAGE", "AUTO_SELECTED", List.of(), List.of(), null);
         var json = new ObjectMapper().valueToTree(metadata);
 
         assertEquals("IMAGE", json.path("requestedAssetType").asText());
-        assertEquals("TEXT", json.path("effectiveAssetType").asText());
+        assertEquals("IMAGE", json.path("effectiveAssetType").asText());
     }
 
     @Test
@@ -64,8 +64,8 @@ class Quiz3AssessmentServiceValidationUT {
         assertEquals(List.of(2, 2, 1, 1), allocations.stream()
                 .map(Quiz3AssessmentService.AssetAllocation::questionCount).toList());
         assertEquals("TEXT", allocations.get(0).assetType());
-        assertEquals("TEXT", allocations.get(1).effectiveAssetType());
-        assertEquals("IMAGE_MEDIA_NOT_SUPPORTED", allocations.get(1).fallbackReason());
+        assertEquals("IMAGE", allocations.get(1).effectiveAssetType());
+        assertEquals(null, allocations.get(1).fallbackReason());
     }
 
     @Test
@@ -190,19 +190,18 @@ class Quiz3AssessmentServiceValidationUT {
         var assessment = new Quiz3Models.AssessmentView(
                 assessmentId, courseId, "Assessment", "", false, null, 10.0,
                 null, null, null, 1, "DRAFT", 1,
-                null, null, matrixId, 4L, Quiz3Models.MatrixMode.MANUAL,
+                null, null, matrixId, Quiz3Models.MatrixMode.MANUAL,
                 null, 2L, null, null, null);
         var context = new Quiz3Models.ContextView(
                 assessment,
-                List.of(new Quiz3Models.SourceOption(UUID.randomUUID(), "Profile", "PUBLISHED", 3L, null)),
-                List.of(new Quiz3Models.SourceOption(matrixId, "Matrix", "DRAFT", 4L,
+                List.of(new Quiz3Models.SourceOption(matrixId, "Matrix", "DRAFT",
                         Quiz3Models.MatrixMode.MANUAL)));
 
         var json = new ObjectMapper().valueToTree(context);
         var assessmentJson = json.path("assessment");
 
         assertTrue(assessmentJson.has("matrixId"));
-        assertTrue(assessmentJson.has("matrixVersion"));
+        assertFalse(assessmentJson.has("matrixVersion"));
         assertTrue(assessmentJson.has("matrixMode"));
         assertFalse(assessmentJson.has("matrix2Id"));
         assertFalse(assessmentJson.has("matrix3Id"));

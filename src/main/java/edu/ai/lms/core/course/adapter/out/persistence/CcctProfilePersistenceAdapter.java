@@ -16,7 +16,6 @@ import edu.ai.lms.core.course.app.domain.CcctChapter;
 import edu.ai.lms.core.course.app.domain.CcctItem;
 import edu.ai.lms.core.course.app.domain.CcctMode;
 import edu.ai.lms.core.course.app.domain.CcctProfile;
-import edu.ai.lms.core.course.app.domain.CcctProfileStatus;
 import edu.ai.lms.core.course.app.port.out.LoadCcctProfilePort;
 import edu.ai.lms.core.course.app.port.out.SaveCcctProfilePort;
 import lombok.RequiredArgsConstructor;
@@ -56,12 +55,6 @@ class CcctProfilePersistenceAdapter
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<CcctProfile> findPublishedByCourseId(UUID courseId) {
-        return repository.findPublishedByCourseId(courseId).map(this::loadTree);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<CcctProfile> findAllByCourseId(UUID courseId) {
         return repository.findAllByCourseId(courseId);
     }
@@ -75,18 +68,8 @@ class CcctProfilePersistenceAdapter
         return repository.existsByCourseIdAndNameExcludingId(courseId, name, excludedProfileId);
     }
 
-    @Override
-    public boolean publishDraft(
-            UUID courseId,
-            UUID profileId,
-            long expectedVersion,
-            java.time.LocalDateTime publishedAt) {
-        return repository.publishDraft(courseId, profileId, expectedVersion, publishedAt) == 1;
-    }
-
     private void prepareNewProfile(CcctProfile profile) {
         profile.setId(profile.getId() == null ? UUID.randomUUID() : profile.getId());
-        profile.setStatus(profile.getStatus() == null ? CcctProfileStatus.DRAFT : profile.getStatus());
         profile.setLastMode(profile.getLastMode() == null ? CcctMode.STRUCTURED : profile.getLastMode());
         profile.setFormatVersion(profile.getFormatVersion() == 0 ? 2 : profile.getFormatVersion());
         profile.setMarkdownContent(profile.getMarkdownContent() == null ? "" : profile.getMarkdownContent());

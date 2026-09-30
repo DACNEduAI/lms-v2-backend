@@ -51,6 +51,27 @@ public class AssetImageGenerationService {
         return new Accepted(job.getId(), upload.image().asset().id(), "PENDING");
     }
 
+    /** System-owned Quiz3 visual job. It reuses the established six-candidate renderer callback lifecycle. */
+    @Transactional
+    public Accepted startQuiz3Visual(UUID courseId, String prompt) {
+        if (prompt == null || prompt.isBlank() || prompt.length() > 5000) throw new AssetValidationException("Quiz3 visual prompt must contain between 1 and 5000 characters");
+        UUID assetId = UUID.randomUUID();
+        String outputKey = "courses/" + courseId + "/assets/" + assetId + "/generations/" + UUID.randomUUID() + "/generated-image.png";
+        Asset asset = new Asset(assetId,courseId,Asset.Type.IMAGE,PENDING_NAME,PENDING_DESCRIPTION,prompt.trim(),List.of(),Asset.PublicationStatus.DRAFT,Asset.UploadStatus.PENDING,LocalDateTime.now(),LocalDateTime.now());
+        assets.createImage(new ImageAsset(asset,"generated-image.png","image/png",0,outputKey,null,true));
+        AssetGenerationJobRow job = new AssetGenerationJobRow();
+        job.setId(UUID.randomUUID()); job.setAssetId(assetId); job.setCourseId(courseId); job.setPrompt(prompt.trim()); job.setStatus("PENDING"); job.setAttempt(1); job.setParametersJson("{}"); job.setGenerationMode("QUIZ3_VISUAL"); job.setOutputStorageKey(outputKey); jobs.insert(job);
+        return new Accepted(job.getId(),assetId,"PENDING");
+    }
+
+    @Transactional
+    public ImageAsset publishQuiz3Visual(UUID courseId, UUID assetId) {
+        ImageAsset image = assets.findImage(courseId,assetId).orElseThrow(() -> new AssetValidationException("Quiz3 image asset not found"));
+        Asset a=image.asset();
+        if(a.uploadStatus()!=Asset.UploadStatus.UPLOADED) throw new AssetValidationException("Quiz3 image is not uploaded");
+        return assets.saveImage(new ImageAsset(new Asset(a.id(),a.courseId(),a.type(),a.name(),a.description(),a.prompt(),a.tags(),Asset.PublicationStatus.PUBLISHED,a.uploadStatus(),a.createdAt(),LocalDateTime.now()),image.originalFileName(),image.contentType(),image.byteSize(),image.storageKey(),image.pendingReplacement(),true));
+    }
+
     @Transactional(readOnly = true)
     public View view(UUID courseId, UUID jobId) {
         access.requireCourseTeacher(courseId);

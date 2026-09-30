@@ -360,7 +360,7 @@ public class Quiz3QuestionAiService {
                     artifact.spec(), artifact.prompt(), artifact.critic(), artifact.uploaded() == null ? null : artifact.uploaded().storageKey());
             if (artifact.uploaded() != null) richAssets.save(new Quiz3RichContentAsset(UUID.randomUUID(), questionId,
                     artifact.uploaded().storageKey(), artifact.uploaded().mediaType(), artifact.uploaded().byteSize(),
-                    artifact.uploaded().sha256(), artifact.id(), null, null));
+                    artifact.uploaded().sha256(), null, artifact.id(), null, null));
         }
     }
 

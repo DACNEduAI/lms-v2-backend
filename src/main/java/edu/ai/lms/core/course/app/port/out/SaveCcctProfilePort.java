@@ -1,6 +1,5 @@
 package edu.ai.lms.core.course.app.port.out;
 
-import java.time.LocalDateTime;
 import edu.ai.lms.core.course.app.domain.CcctProfile;
 import java.util.UUID;
 
@@ -9,9 +8,4 @@ public interface SaveCcctProfilePort {
 
     boolean replaceDraft(CcctProfile profile, long expectedVersion);
 
-    boolean publishDraft(
-            UUID courseId,
-            UUID profileId,
-            long expectedVersion,
-            LocalDateTime publishedAt);
 }

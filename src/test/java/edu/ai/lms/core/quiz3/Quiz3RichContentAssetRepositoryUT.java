@@ -20,7 +20,7 @@ class Quiz3RichContentAssetRepositoryUT {
         NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
         Quiz3RichContentAssetRepository repository = new Quiz3RichContentAssetRepository(jdbc);
         repository.save(new Quiz3RichContentAsset(UUID.randomUUID(), UUID.randomUUID(), "quiz3/rich-content/a.svg",
-                "image/svg+xml", 10, "0".repeat(64), UUID.randomUUID(), null, null));
+                "image/svg+xml", 10, "0".repeat(64), null, UUID.randomUUID(), null, null));
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
         verify(jdbc).update(sql.capture(), any(org.springframework.jdbc.core.namedparam.SqlParameterSource.class));

@@ -9,5 +9,6 @@ public interface CourseAssetStorageApi {
     String createUploadLink(String storageKey, String contentType);
     String createDownloadLink(String storageKey);
     StoredObjectMetadata inspect(String storageKey);
+    byte[] read(String storageKey);
     void delete(String storageKey);
 }

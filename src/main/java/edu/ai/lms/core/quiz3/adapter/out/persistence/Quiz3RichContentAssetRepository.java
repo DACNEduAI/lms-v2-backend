@@ -26,8 +26,8 @@ public class Quiz3RichContentAssetRepository {
     public void save(Quiz3RichContentAsset asset) {
         jdbc.update("""
                 INSERT INTO edu.quiz3_rich_content_assets
-                    (id, question_id, storage_key, media_type, byte_size, sha256, ai_artifact_id)
-                VALUES (:id, :questionId, :storageKey, :mediaType, :byteSize, :sha256, :aiArtifactId)
+                    (id, question_id, storage_key, media_type, byte_size, sha256, source_asset_id, ai_artifact_id)
+                VALUES (:id, :questionId, :storageKey, :mediaType, :byteSize, :sha256, :sourceAssetId, :aiArtifactId)
                 """, parameters(asset));
     }
 
@@ -40,7 +40,7 @@ public class Quiz3RichContentAssetRepository {
                 Map.of("questionId", questionId), (rs, row) -> new Quiz3RichContentAsset(
                         rs.getObject("id", UUID.class), rs.getObject("question_id", UUID.class),
                         rs.getString("storage_key"), rs.getString("media_type"), rs.getLong("byte_size"),
-                        rs.getString("sha256"), rs.getObject("ai_artifact_id", UUID.class),
+                        rs.getString("sha256"), rs.getObject("source_asset_id", UUID.class), rs.getObject("ai_artifact_id", UUID.class),
                         rs.getObject("created_at", LocalDateTime.class), rs.getObject("updated_at", LocalDateTime.class)));
     }
 
@@ -64,6 +64,6 @@ public class Quiz3RichContentAssetRepository {
                 .addValue("id", asset.id() == null ? UUID.randomUUID() : asset.id())
                 .addValue("questionId", asset.questionId()).addValue("storageKey", asset.storageKey())
                 .addValue("mediaType", asset.mediaType()).addValue("byteSize", asset.byteSize())
-                .addValue("sha256", asset.sha256()).addValue("aiArtifactId", asset.aiArtifactId());
+                .addValue("sha256", asset.sha256()).addValue("sourceAssetId", asset.sourceAssetId()).addValue("aiArtifactId", asset.aiArtifactId());
     }
 }

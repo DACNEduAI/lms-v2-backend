@@ -11,6 +11,7 @@ public record Quiz3RichContentAsset(
         String mediaType,
         long byteSize,
         String sha256,
+        UUID sourceAssetId,
         UUID aiArtifactId,
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {

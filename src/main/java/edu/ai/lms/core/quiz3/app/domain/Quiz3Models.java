@@ -18,10 +18,10 @@ public final class Quiz3Models {
     public record AssessmentView(UUID id, UUID courseId, String title, String description,
             boolean unlimited, Integer timeLimitMinutes, Double passScore, LocalDateTime startTime,
             LocalDateTime dueTime, Integer attemptLimited, int variantCount, String lifecycleStatus,
-            int currentStep, UUID ccctProfileId, LocalDateTime ccctPublishedAt, UUID matrixId, Long matrixVersion,
+            int currentStep, UUID ccctProfileId, LocalDateTime ccctSnapshotAt, UUID matrixId,
             MatrixMode matrixMode, UUID baseGenerationJobId, long version,
             LocalDateTime publishedAt, LocalDateTime createdAt, LocalDateTime updatedAt) { }
-    public record SourceOption(UUID id, String name, String lifecycleStatus, long version, MatrixMode matrixMode) { }
+    public record SourceOption(UUID id, String name, String lifecycleStatus, MatrixMode matrixMode) { }
     public record ContextView(AssessmentView assessment, List<SourceOption> matrices) { }
     public record SourceSelection(SourceMode mode, UUID sourceId, String draftName, MatrixMode matrixMode) { }
     public record ContextSelection(SourceSelection ccct, SourceSelection matrix) { }
@@ -29,15 +29,28 @@ public final class Quiz3Models {
     public record VersionedConfiguration(long version, Configuration configuration) { }
     public record GenerationView(UUID jobId, String status, String phase, int attemptCount,
             UUID quizId, String errorCode, String errorMessage, int generatedQuestionCount,
-            int totalQuestionCount) { }
+            int totalQuestionCount, int processedVisualCount, int totalVisualCount, int failedVisualCount,
+            List<String> visualWarnings) {
+        public GenerationView(UUID jobId, String status, String phase, int attemptCount, UUID quizId,
+                String errorCode, String errorMessage, int generatedQuestionCount, int totalQuestionCount) {
+            this(jobId,status,phase,attemptCount,quizId,errorCode,errorMessage,generatedQuestionCount,totalQuestionCount,0,0,0,List.of());
+        }
+    }
     public record AnswerInput(String content, String contentFormat, boolean correct) { }
     public record QuestionUpdate(long expectedQuestionVersion, String content, String contentFormat,
-            String explanation, String explanationFormat, List<AnswerInput> answers) { }
+            String explanation, String explanationFormat, List<AnswerInput> answers, List<ImageAssetSelection> imageAssetSelections) {
+        public QuestionUpdate(long expectedQuestionVersion, String content, String contentFormat, String explanation, String explanationFormat, List<AnswerInput> answers) {
+            this(expectedQuestionVersion,content,contentFormat,explanation,explanationFormat,answers,List.of());
+        }
+    }
+    public record ImageAssetSelection(String token, UUID assetId) { }
     public record AnswerView(long number, String content, String contentFormat, boolean correct) { }
     public record QuestionMetadata(UUID matrixRowId, String chapter, UUID learningOutcomeId,
             String learningOutcome, UUID customLearningLevelId, String customLearningLevelName,
             String requestedAssetType, String effectiveAssetType, String qbank2SelectionMode,
-            List<String> contentGroupIds, List<UUID> exampleIds) { }
+            List<String> contentGroupIds, List<UUID> exampleIds, VisualMetadata visual) { }
+    public record VisualMetadata(String status, String resolutionAction, UUID sourceAssetId, UUID generatedAssetId,
+            String placement, Integer answerIndex, String errorMessage) { }
     public record QuestionView(UUID id, String content, String contentFormat, String explanation,
             String explanationFormat, String type, int orderIndex, long version,
             QuestionMetadata metadata, List<AnswerView> answers) { }
@@ -53,11 +66,15 @@ public final class Quiz3Models {
     public record GeneratedQuestion(String content, String type, UUID matrixRowId,
             UUID customLearningLevelId, UUID learningOutcomeId, List<GeneratedAnswer> answers,
             Map<String, Object> qbank2Reference, JsonNode codeRunnerContract,
-            String assetType, String effectiveAssetType, String assetFallbackReason) {
+            String assetType, String effectiveAssetType, String assetFallbackReason, Map<String,Object> visual,
+            Map<String,Object> assetResolution) {
         public GeneratedQuestion(String content, String type, UUID matrixRowId,
                 UUID customLearningLevelId, UUID learningOutcomeId, List<GeneratedAnswer> answers,
                 Map<String, Object> qbank2Reference, JsonNode codeRunnerContract) {
-            this(content,type,matrixRowId,customLearningLevelId,learningOutcomeId,answers,qbank2Reference,codeRunnerContract,"TEXT","TEXT",null);
+            this(content,type,matrixRowId,customLearningLevelId,learningOutcomeId,answers,qbank2Reference,codeRunnerContract,"TEXT","TEXT",null,null,null);
+        }
+        public GeneratedQuestion(String content, String type, UUID matrixRowId, UUID customLearningLevelId, UUID learningOutcomeId, List<GeneratedAnswer> answers, Map<String,Object> qbank2Reference, JsonNode codeRunnerContract, String assetType, String effectiveAssetType, String assetFallbackReason) {
+            this(content,type,matrixRowId,customLearningLevelId,learningOutcomeId,answers,qbank2Reference,codeRunnerContract,assetType,effectiveAssetType,assetFallbackReason,null,null);
         }
     }
     public record GeneratedAnswer(String content, boolean isCorrect, String explanation) { }

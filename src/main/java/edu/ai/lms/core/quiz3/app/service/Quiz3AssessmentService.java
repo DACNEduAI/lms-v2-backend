@@ -106,7 +106,7 @@ public class Quiz3AssessmentService {
         AssessmentView assessment = required(courseId, assessmentId);
         List<SourceOption> matrices = matrixService.list(courseId).matrices().stream()
                 .map(matrix -> new SourceOption(matrix.id(), matrix.title(), matrix.lifecycleStatus().name(),
-                        matrix.version(), MatrixMode.valueOf(matrix.mode().name())))
+                        MatrixMode.valueOf(matrix.mode().name())))
                 .toList();
         // The course's single CCCT is derived from the selected Matrix.
         return new ContextView(assessment, matrices);
@@ -123,10 +123,10 @@ public class Quiz3AssessmentService {
         MatrixSelection matrix = resolveMatrix(courseId, input.matrix());
         MatrixService.MatrixDetail selected = matrixService.get(courseId, matrix.id());
         jdbc.update("""
-                UPDATE edu.quiz3_assessments SET ccct_profile_id=?, ccct_published_at=?,
-                    matrix_id=?, matrix_version=?, current_step=GREATEST(current_step,2), version=version+1,
+                UPDATE edu.quiz3_assessments SET ccct_profile_id=?, ccct_snapshot_at=?,
+                    matrix_id=?, current_step=GREATEST(current_step,2), version=version+1,
                     updated_at=CURRENT_TIMESTAMP WHERE id=? AND course_id=?
-                """, selected.ccctProfileId(), selected.ccctPublishedAt(), matrix.id(), matrix.version(), assessmentId, courseId);
+                """, selected.ccctProfileId(), selected.ccctSnapshotAt(), matrix.id(), assessmentId, courseId);
         return context(courseId, assessmentId);
     }
 
@@ -137,14 +137,13 @@ public class Quiz3AssessmentService {
         if (assessment.currentStep() < 2) throw badRequest("Select a Matrix before confirming it");
         if (assessment.matrixId() == null) throw badRequest("Select a Matrix first");
         MatrixService.MatrixDetail matrix = matrixService.get(courseId, assessment.matrixId());
-        if (matrix.version() != expectedVersion) throw conflict("Matrix changed; reload and review it again");
-        if (matrix.lifecycleStatus() == MatrixService.LifecycleStatus.DRAFT) matrix = matrixService.publish(courseId, assessment.matrixId(), new MatrixService.PublishRequest(expectedVersion));
-        if (matrix.ccctPublishedAt() == null) throw conflict("The published Matrix has no CCCT revision snapshot");
+        if (matrix.lifecycleStatus() == MatrixService.LifecycleStatus.DRAFT) matrix = matrixService.publish(courseId, assessment.matrixId());
+        if (matrix.ccctSnapshotAt() == null) throw conflict("The published Matrix has no CCCT snapshot");
         jdbc.update("""
-                UPDATE edu.quiz3_assessments SET ccct_profile_id=?,ccct_published_at=?,
-                    matrix_version=?, current_step=GREATEST(current_step,5),version=version+1,updated_at=CURRENT_TIMESTAMP
+                UPDATE edu.quiz3_assessments SET ccct_profile_id=?,ccct_snapshot_at=?,
+                    current_step=GREATEST(current_step,5),version=version+1,updated_at=CURRENT_TIMESTAMP
                 WHERE id=? AND course_id=?
-                """, matrix.ccctProfileId(), matrix.ccctPublishedAt(), matrix.version(), assessmentId, courseId);
+                """, matrix.ccctProfileId(), matrix.ccctSnapshotAt(), assessmentId, courseId);
         return required(courseId, assessmentId);
     }
 
@@ -173,10 +172,10 @@ public class Quiz3AssessmentService {
         String json = toJson(snapshot);
         jdbc.update("""
                 INSERT INTO edu.quiz3_generation_jobs
-                    (id, assessment_id, course_id, matrix_id,matrix_version,requested_by,
+                    (id, assessment_id, course_id, matrix_id,requested_by,
                      request_snapshot, payload_hash, idempotency_key, total_question_count, next_attempt_at)
-                VALUES (?,?,?,?,?, ?,CAST(? AS jsonb),?,?,?,CURRENT_TIMESTAMP)
-                """, jobId, assessmentId, courseId, assessment.matrixId(), assessment.matrixVersion(),
+                VALUES (?,?,?,?,?,CAST(? AS jsonb),?,?,?,CURRENT_TIMESTAMP)
+                """, jobId, assessmentId, courseId, assessment.matrixId(),
                 actor.id(), json, sha256(json), snapshot.path("idempotencyKey").asText(), total);
         jdbc.update("""
                 UPDATE edu.quiz3_assessments SET base_generation_job_id=?, lifecycle_status='GENERATING',
@@ -196,11 +195,11 @@ public class Quiz3AssessmentService {
         }
         return jdbc.query("""
                 SELECT id,status,phase,attempt_count,quiz_id,error_code,error_message,
-                       generated_question_count,total_question_count
+                       generated_question_count,total_question_count,processed_visual_count,total_visual_count,failed_visual_count,visual_warnings::text
                 FROM edu.quiz3_generation_jobs WHERE id=? AND assessment_id=?
                 """, rs -> rs.next() ? new GenerationView(rs.getObject(1, UUID.class), rs.getString(2),
                 rs.getString(3), rs.getInt(4), rs.getObject(5, UUID.class), rs.getString(6), rs.getString(7),
-                rs.getInt(8), rs.getInt(9)) : null, assessment.baseGenerationJobId(), assessmentId);
+                rs.getInt(8), rs.getInt(9), rs.getInt(10),rs.getInt(11),rs.getInt(12),jsonStrings(rs.getString(13))) : null, assessment.baseGenerationJobId(), assessmentId);
     }
 
     @Transactional
@@ -221,7 +220,7 @@ public class Quiz3AssessmentService {
                 SELECT assessment_id,course_id,request_snapshot::text,status,total_question_count
                 FROM edu.quiz3_generation_jobs WHERE id=? FOR UPDATE
                 """, payload.jobId());
-        if (Set.of("COMPLETED", "FAILED", "TIMED_OUT").contains(String.valueOf(job.get("status")))) return;
+        if (Set.of("COMPLETED", "COMPLETED_WITH_WARNINGS", "FAILED", "TIMED_OUT").contains(String.valueOf(job.get("status")))) return;
         UUID assessmentId = (UUID) job.get("assessment_id");
         if (!assessmentId.equals(payload.assessmentId())) throw badRequest("assessmentId does not match Quiz3 job");
         if ("FAILED".equalsIgnoreCase(payload.status())) {
@@ -261,8 +260,9 @@ public class Quiz3AssessmentService {
                 """, quizId, assessment.title()+" - 001", assessment.description(), assessment.unlimited(),
                 assessment.timeLimitMinutes(), assessment.passScore(), assessment.startTime(), assessment.dueTime(),
                 assessment.attemptLimited(), assessment.courseId(), teacherId);
-        for (int index=0; index<questions.size(); index++) persistQuestion(payload.jobId(), quizId, questions.get(index), index, null,
-                snapshotContent(snapshot, questions.get(index).matrixRowId()));
+        List<UUID> questionIds = new ArrayList<>();
+        for (int index=0; index<questions.size(); index++) questionIds.add(persistQuestion(payload.jobId(), quizId, questions.get(index), index, null,
+                snapshotContent(snapshot, questions.get(index).matrixRowId())));
         UUID variantId = UUID.randomUUID();
         long seed = assessmentId.getMostSignificantBits() ^ assessmentId.getLeastSignificantBits();
         jdbc.update("""
@@ -270,15 +270,19 @@ public class Quiz3AssessmentService {
                     (id,assessment_id,quiz_id,variant_code,order_index,shuffle_seed,variant_kind,coverage_status,coverage_snapshot)
                 VALUES (?,?,?,'001',0,?,'BASE','COMPLIANT',CAST(? AS jsonb))
                 """, variantId, assessmentId, quizId, seed, toJson(Map.of("status","COMPLIANT","questionCount",questions.size())));
-        jdbc.update("""
-                UPDATE edu.quiz3_generation_jobs SET status='COMPLETED',phase='DONE',quiz_id=?,callback_event_id=?,
-                    generated_question_count=total_question_count,completed_at=CURRENT_TIMESTAMP,lease_until=NULL,updated_at=CURRENT_TIMESTAMP
-                WHERE id=?
-                """, quizId, payload.eventId(), payload.jobId());
-        jdbc.update("""
-                UPDATE edu.quiz3_assessments SET lifecycle_status='REVIEW_PENDING',current_step=GREATEST(current_step,6),
-                    version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=?
-                """, assessmentId);
+        int visuals = 0;
+        for (int index=0; index<questions.size(); index++) if (isV6Image(snapshot, questions.get(index))) { persistVisual(payload.jobId(), questionIds.get(index), questions.get(index)); visuals++; }
+        if (visuals > 0) jdbc.update("""
+                UPDATE edu.quiz3_generation_jobs SET status='PROCESSING',phase='VISUAL_GENERATION',quiz_id=?,callback_event_id=?,
+                    generated_question_count=total_question_count,total_visual_count=?,lease_until=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?
+                """, quizId, payload.eventId(), visuals, payload.jobId());
+        else {
+            jdbc.update("""
+                    UPDATE edu.quiz3_generation_jobs SET status='COMPLETED',phase='DONE',quiz_id=?,callback_event_id=?,
+                        generated_question_count=total_question_count,completed_at=CURRENT_TIMESTAMP,lease_until=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?
+                    """, quizId, payload.eventId(), payload.jobId());
+            jdbc.update("UPDATE edu.quiz3_assessments SET lifecycle_status='REVIEW_PENDING',current_step=GREATEST(current_step,6),version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=?", assessmentId);
+        }
     }
 
     public List<VariantView> variants(UUID courseId, UUID assessmentId) {
@@ -418,15 +422,13 @@ public class Quiz3AssessmentService {
     }
 
     private ObjectNode buildSnapshot(AssessmentView assessment,UUID jobId,List<UUID> materialIds){
-        ObjectNode root=objectMapper.createObjectNode(); root.put("jobId",jobId.toString()); root.put("assessmentId",assessment.id().toString()); root.put("contractVersion",5);
+        ObjectNode root=objectMapper.createObjectNode(); root.put("jobId",jobId.toString()); root.put("assessmentId",assessment.id().toString()); root.put("contractVersion",6);
         ObjectNode course=root.putObject("course"); course.put("id",assessment.courseId().toString());
         course.put("name",jdbc.queryForObject("SELECT course_name FROM edu.courses WHERE id=?",String.class,assessment.courseId()));
         UUID matrixId=assessment.matrixId();
-        long matrixVersion=assessment.matrixVersion();
         MatrixService.MatrixDetail selectedMatrix=matrixService.get(assessment.courseId(),matrixId);
-        if(selectedMatrix.version()!=matrixVersion)throw conflict("Matrix changed; reload and review it again");
         if(!Objects.equals(selectedMatrix.ccctProfileId(),assessment.ccctProfileId())
-                || !Objects.equals(selectedMatrix.ccctPublishedAt(),assessment.ccctPublishedAt())) {
+                || !Objects.equals(selectedMatrix.ccctSnapshotAt(),assessment.ccctSnapshotAt())) {
             throw conflict("Matrix and CCCT revision snapshot no longer match the confirmed Quiz3 source");
         }
         root.put("quizName",assessment.title()+" - 001");
@@ -442,10 +444,10 @@ public class Quiz3AssessmentService {
                    coalesce(ri.content,i.content) content_detail
             FROM edu.exam_matrix_rows r JOIN edu.exam_matrices m ON m.id=r.matrix_id
             LEFT JOIN edu.chapters c ON c.chapter_id=r.chapter_id
-            LEFT JOIN edu.ccct_items i ON m.ccct_published_at IS NULL AND i.id=r.ccct_item_id
+            LEFT JOIN edu.ccct_items i ON m.ccct_snapshot_at IS NULL AND i.id=r.ccct_item_id
             LEFT JOIN edu.ccct_chapters cc ON cc.id=i.chapter_id
-            LEFT JOIN edu.ccct_revision_items ri ON m.ccct_published_at IS NOT NULL AND ri.profile_id=m.ccct_profile_id AND ri.published_at=m.ccct_published_at AND ri.id=r.ccct_item_id
-            LEFT JOIN edu.ccct_revision_chapters rc ON rc.profile_id=ri.profile_id AND rc.published_at=ri.published_at AND rc.id=ri.chapter_id
+            LEFT JOIN edu.matrix_ccct_snapshot_items ri ON m.ccct_snapshot_at IS NOT NULL AND ri.matrix_id=m.id AND ri.id=r.ccct_item_id
+            LEFT JOIN edu.matrix_ccct_snapshot_chapters rc ON rc.matrix_id=ri.matrix_id AND rc.id=ri.chapter_id
             JOIN edu.learning_outcomes lo ON lo.id=r.mapped_learning_outcome_id
             JOIN edu.exam_matrix_cells ec ON ec.row_id=r.id
             JOIN edu.exam_matrix_custom_learning_levels l ON l.id=ec.custom_learning_level_id
@@ -480,7 +482,7 @@ public class Quiz3AssessmentService {
             }
         }
         ArrayNode materials=root.putArray("materialIds"); materialIds.forEach(id->materials.add(id.toString()));
-        root.put("idempotencyKey","quiz3-base-"+assessment.id()+"-matrix-"+matrixVersion+"-job-"+jobId); return root;
+        root.put("idempotencyKey","quiz3-base-"+assessment.id()+"-matrix-"+matrixId+"-snapshot-"+assessment.ccctSnapshotAt()+"-job-"+jobId); return root;
     }
 
     static ObjectNode createGenerationMatrix(ObjectMapper objectMapper,UUID matrixId,String matrixName){
@@ -505,7 +507,7 @@ public class Quiz3AssessmentService {
         for (MatrixService.AssetType type:order){int scaled=total*percentages.getOrDefault(type,type==MatrixService.AssetType.TEXT?100:0); counts.add(scaled/100); remainders.add(scaled%100); assigned+=scaled/100;}
         while(assigned<total){int winner=0;for(int index=1;index<remainders.size();index++)if(remainders.get(index)>remainders.get(winner))winner=index;counts.set(winner,counts.get(winner)+1);remainders.set(winner,-1);assigned++;}
         List<AssetAllocation> result=new ArrayList<>();
-        for(int index=0;index<order.size();index++){String asset=order.get(index).name();String type="CODE_RUNNER".equals(asset)?"CODE_RUNNER":"MULTIPLE_CHOICE";String effective="IMAGE".equals(asset)?"TEXT":asset;result.add(new AssetAllocation(asset,type,counts.get(index),effective,"IMAGE".equals(asset)?"IMAGE_MEDIA_NOT_SUPPORTED":null));}
+        for(int index=0;index<order.size();index++){String asset=order.get(index).name();String type="CODE_RUNNER".equals(asset)?"CODE_RUNNER":"MULTIPLE_CHOICE";result.add(new AssetAllocation(asset,type,counts.get(index),asset,null));}
         return result;
     }
     record AssetAllocation(String assetType,String questionType,int questionCount,String effectiveAssetType,String fallbackReason) { }
@@ -547,11 +549,26 @@ public class Quiz3AssessmentService {
                 if(question.codeRunnerContract()==null||question.codeRunnerContract().isNull()) throw badRequest("Quiz3 Code Runner callback needs codeRunnerContract");
             } else throw badRequest("Quiz3 accepts only MULTIPLE_CHOICE or CODE_RUNNER");
             if(question.assetType()==null||question.effectiveAssetType()==null) throw badRequest("Quiz3 callback asset provenance is incomplete");
-            if("IMAGE".equals(question.assetType()) && !"TEXT".equals(question.effectiveAssetType())) throw badRequest("Quiz3 IMAGE questions must use the text fallback");
+            if(isV6Image(snapshot,question)) validateVisual(question);
             actual.merge(allocationKey(question.matrixRowId().toString(),question.customLearningLevelId().toString(),question.learningOutcomeId().toString(),question.assetType(),question.type()),1,Integer::sum);
         }
         if(!expected.equals(actual)) throw badRequest("Quiz3 callback distribution does not match the matrix snapshot");
     }
+
+    private static boolean isV6Image(JsonNode snapshot, GeneratedQuestion question) { return snapshot.path("contractVersion").asInt(5)>=6 && "IMAGE".equals(question.assetType()); }
+    private static void validateVisual(GeneratedQuestion question) {
+        Map<String,Object> visual=question.visual(), resolution=question.assetResolution();
+        if(visual==null || !"AUTO".equals(String.valueOf(visual.get("type"))) || blank(visual.get("brief")) || blank(visual.get("altText"))) throw badRequest("Quiz3 IMAGE needs AUTO visual brief and altText");
+        String placement=String.valueOf(visual.getOrDefault("placement","QUESTION"));
+        if(!Set.of("QUESTION","ANSWER").contains(placement)) throw badRequest("Quiz3 visual placement is invalid");
+        if("ANSWER".equals(placement) && (!(visual.get("answerIndex") instanceof Number index) || index.intValue()<0 || question.answers()==null || index.intValue()>=question.answers().size())) throw badRequest("Quiz3 answer visual target is invalid");
+        if("QUESTION".equals(placement) && visual.containsKey("answerIndex")) throw badRequest("Quiz3 question visual cannot specify answerIndex");
+        if(resolution==null || !Set.of("REUSE_ASSET","GENERATE_FROM_ASSET","GENERATE_NEW").contains(String.valueOf(resolution.get("action")))) throw badRequest("Quiz3 visual resolution is invalid");
+        String action=String.valueOf(resolution.get("action"));
+        if(!"GENERATE_NEW".equals(action) && blank(resolution.get("selectedAssetId"))) throw badRequest("Selected visual asset is missing");
+        if(!"REUSE_ASSET".equals(action) && blank(resolution.get("generationPrompt"))) throw badRequest("Generated visual prompt is missing");
+    }
+    private static boolean blank(Object value) { return value==null || String.valueOf(value).isBlank(); }
 
     private JsonNode snapshotContent(JsonNode snapshot, UUID matrixRowId) {
         for (JsonNode row : snapshot.path("matrix").path("rows")) {
@@ -560,7 +577,7 @@ public class Quiz3AssessmentService {
         return null;
     }
 
-    private void persistQuestion(UUID jobId,UUID quizId,GeneratedQuestion source,int order,UUID sourceQuestionId,JsonNode content){
+    private UUID persistQuestion(UUID jobId,UUID quizId,GeneratedQuestion source,int order,UUID sourceQuestionId,JsonNode content){
         UUID id=UUID.randomUUID(); jdbc.update("""
                 INSERT INTO edu.questions(id,content,content_format,explanation,explanation_format,type,quiz_id,review_status,source_type,source_question_id,order_index)
                 VALUES (?,?,'PLAIN_TEXT',NULL,'PLAIN_TEXT',?,?,'APPROVED',?,?,?)
@@ -588,6 +605,17 @@ public class Quiz3AssessmentService {
                 """,id,jobId,source.matrixRowId(),source.customLearningLevelId(),source.learningOutcomeId(),sourceQuestionId,
                 toJson(allocationSnapshot),source.assetType(),source.effectiveAssetType(),source.assetFallbackReason(),
                 selectionMode,toJson(groupIds),toJson(groupCodes),toJson(exampleIds),reference==null?null:toJson(source.qbank2Reference()));
+        return id;
+    }
+
+    private void persistVisual(UUID jobId, UUID questionId, GeneratedQuestion source) {
+        Map<String,Object> visual=source.visual(), resolution=source.assetResolution(); String placement=String.valueOf(visual.getOrDefault("placement","QUESTION"));
+        Integer answerIndex="ANSWER".equals(placement)?((Number)visual.get("answerIndex")).intValue():null;
+        UUID selected=resolution.get("selectedAssetId")==null?null:UUID.fromString(String.valueOf(resolution.get("selectedAssetId")));
+        jdbc.update("""
+                INSERT INTO edu.quiz3_question_visuals(question_id,generation_job_id,placement,answer_index,visual_brief,alt_text,resolution_action,search_query,candidates,generation_prompt,selected_asset_id,status,selector_warning)
+                VALUES (?,?,?,?,?,?,?, ?,CAST(? AS jsonb),?,?,'PENDING',?)
+                """, questionId,jobId,placement,answerIndex,visual.get("brief"),visual.get("altText"),resolution.get("action"),resolution.get("query"),toJson(resolution.getOrDefault("candidates",List.of())),resolution.get("generationPrompt"),selected,resolution.get("selectorWarning"));
     }
 
     private void cloneVariant(AssessmentView assessment,UUID baseQuiz,int order){
@@ -612,9 +640,18 @@ public class Quiz3AssessmentService {
                     """,sourceId);
             List<GeneratedAnswer> answers=jdbc.query("SELECT content,is_correct,explanation FROM edu.answers WHERE question_id=? ORDER BY answer_number",
                     (rs,row)->new GeneratedAnswer(rs.getString(1),rs.getBoolean(2),rs.getString(3)),sourceId); Collections.shuffle(answers,new Random(seed^index));
-            persistQuestion((UUID)q.get("generation_job_id"),quizId,new GeneratedQuestion(String.valueOf(q.get("content")),String.valueOf(q.get("type")),
+            UUID clonedQuestionId=persistQuestion((UUID)q.get("generation_job_id"),quizId,new GeneratedQuestion(String.valueOf(q.get("content")),String.valueOf(q.get("type")),
                     (UUID)q.get("matrix_row_id"),(UUID)q.get("level_id"),(UUID)q.get("learning_outcome_id"),answers,null,null,
                     String.valueOf(q.get("requested_asset_type")),String.valueOf(q.get("effective_asset_type")),(String)q.get("asset_fallback_reason")),index,sourceId,null);
+            jdbc.update("""
+                    INSERT INTO edu.quiz3_rich_content_assets(id,question_id,storage_key,media_type,byte_size,sha256,source_asset_id,ai_artifact_id)
+                    SELECT gen_random_uuid(),?,storage_key,media_type,byte_size,sha256,source_asset_id,ai_artifact_id FROM edu.quiz3_rich_content_assets WHERE question_id=?
+                    """,clonedQuestionId,sourceId);
+            jdbc.update("""
+                    INSERT INTO edu.quiz3_question_visuals(question_id,generation_job_id,placement,answer_index,visual_brief,alt_text,resolution_action,search_query,candidates,generation_prompt,selected_asset_id,generated_asset_id,asset_generation_job_id,status,attempt_count,error_message,selector_warning)
+                    SELECT ?,generation_job_id,placement,answer_index,visual_brief,alt_text,resolution_action,search_query,candidates,generation_prompt,selected_asset_id,generated_asset_id,NULL,status,attempt_count,error_message,selector_warning
+                    FROM edu.quiz3_question_visuals WHERE question_id=? ON CONFLICT(question_id) DO NOTHING
+                    """,clonedQuestionId,sourceId);
             jdbc.update("""
                     UPDATE edu.quiz3_question_provenance target SET qbank2_selection_mode=source.qbank2_selection_mode,
                         qbank2_content_group_ids=source.qbank2_content_group_ids,qbank2_content_group_codes=source.qbank2_content_group_codes,
@@ -632,19 +669,22 @@ public class Quiz3AssessmentService {
                 SELECT q.id,q.content,q.content_format,q.explanation,q.explanation_format,q.type,q.order_index,q.version,
                        p.matrix_row_id,c.title,p.learning_outcome_id,lo.prefix_number,lo.description,glo.code,
                         p.matrix_custom_learning_level_id,l.name,p.requested_asset_type,p.effective_asset_type,
-                        p.qbank2_selection_mode,p.qbank2_content_group_codes::text,p.qbank2_example_ids::text
+                        p.qbank2_selection_mode,p.qbank2_content_group_codes::text,p.qbank2_example_ids::text,
+                        v.status,v.resolution_action,v.selected_asset_id,v.generated_asset_id,v.placement,v.answer_index,v.error_message
                 FROM edu.questions q JOIN edu.quiz3_question_provenance p ON p.question_id=q.id
                 LEFT JOIN edu.exam_matrix_rows r ON r.id=p.matrix_row_id LEFT JOIN edu.chapters c ON c.chapter_id=r.chapter_id
                 LEFT JOIN edu.learning_outcomes lo ON lo.id=p.learning_outcome_id
                 LEFT JOIN edu.group_learning_outcomes glo ON glo.id=lo.group_learning_outcome_id AND glo.course_id=lo.course_id
                 LEFT JOIN edu.exam_matrix_custom_learning_levels l ON l.id=p.matrix_custom_learning_level_id
+                LEFT JOIN edu.quiz3_question_visuals v ON v.question_id=q.id
                 WHERE q.quiz_id=? ORDER BY q.order_index,q.id
                 """,(rs,row)->{
                     Object prefix=rs.getObject(12);String desc=rs.getString(13);String groupCode=rs.getString(14);
                     String lo=formatLearningOutcome(groupCode,prefix,desc);
                     UUID id=rs.getObject(1,UUID.class);return new QuestionView(id,rs.getString(2),rs.getString(3),rs.getString(4),rs.getString(5),rs.getString(6),
                     rs.getInt(7),rs.getLong(8),new QuestionMetadata(rs.getObject(9,UUID.class),rs.getString(10),rs.getObject(11,UUID.class),lo,
-                     rs.getObject(15,UUID.class),rs.getString(16),rs.getString(17),rs.getString(18),rs.getString(19),jsonStrings(rs.getString(20)),jsonUuids(rs.getString(21))),answers(id));},quizId);
+                     rs.getObject(15,UUID.class),rs.getString(16),rs.getString(17),rs.getString(18),rs.getString(19),jsonStrings(rs.getString(20)),jsonUuids(rs.getString(21)),
+                     rs.getString(22)==null?null:new VisualMetadata(rs.getString(22),rs.getString(23),rs.getObject(24,UUID.class),rs.getObject(25,UUID.class),rs.getString(26),(Integer)rs.getObject(27),rs.getString(28))),answers(id));},quizId);
     }
 
     static String formatLearningOutcome(String groupCode,Object prefix,String description){
@@ -709,8 +749,8 @@ public class Quiz3AssessmentService {
             case COPY_AS_DRAFT->matrixService.copyAsDraft(courseId,requiredSource(selection,"Matrix"),new MatrixService.CopyRequest(selection.draftName()));
             case CREATE_NEW_DRAFT->{MatrixService.MatrixMode mode=requiredMatrixMode(selection);
                 yield matrixService.create(courseId,new MatrixService.MatrixPayload(requiredName(selection,"Matrix"),null,
-                    mode,mode==MatrixService.MatrixMode.AUTOMATIC?1:null,List.of(),List.of(),List.of(),null));}};
-        return new MatrixSelection(matrix.id(),matrix.version());
+                    mode,mode==MatrixService.MatrixMode.AUTOMATIC?1:null,List.of(),List.of(),List.of()));}};
+        return new MatrixSelection(matrix.id());
     }
     private UUID requiredSource(SourceSelection source,String label){if(source==null||source.sourceId()==null)throw badRequest(label+" source is required");return source.sourceId();}
     private String requiredName(SourceSelection source,String label){String name=source==null?null:trim(source.draftName());if(name==null)throw badRequest(label+" Draft name is required");return name;}
@@ -723,13 +763,13 @@ public class Quiz3AssessmentService {
     private static MatrixService.MatrixMode requiredMatrixMode(SourceSelection selection){if(selection.matrixMode()==null)throw badRequest("Matrix mode is required when creating a Matrix draft");return MatrixService.MatrixMode.valueOf(selection.matrixMode().name());}
     private static String baseSelect(){return """
             SELECT a.id,a.course_id,a.title,a.description,a.unlimited,a.time_limit_minutes,a.pass_score,a.start_time,a.due_time,
-                   a.attempt_limited,a.variant_count,a.lifecycle_status,a.current_step,a.ccct_profile_id,a.ccct_published_at,
-                   a.matrix_id,a.matrix_version,m.mode,a.base_generation_job_id,a.version,a.published_at,a.created_at,a.updated_at
+                   a.attempt_limited,a.variant_count,a.lifecycle_status,a.current_step,a.ccct_profile_id,a.ccct_snapshot_at,
+                   a.matrix_id,m.mode,a.base_generation_job_id,a.version,a.published_at,a.created_at,a.updated_at
             FROM edu.quiz3_assessments a LEFT JOIN edu.exam_matrices m ON m.id=a.matrix_id""";}
     private static AssessmentView mapAssessment(java.sql.ResultSet rs)throws java.sql.SQLException{return new AssessmentView(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),rs.getString(3),rs.getString(4),rs.getBoolean(5),
             (Integer)rs.getObject(6),rs.getObject(7)==null?null:rs.getDouble(7),rs.getObject(8,LocalDateTime.class),rs.getObject(9,LocalDateTime.class),(Integer)rs.getObject(10),rs.getInt(11),rs.getString(12),rs.getInt(13),
-            rs.getObject(14,UUID.class),rs.getObject(15,LocalDateTime.class),rs.getObject(16,UUID.class),(Long)rs.getObject(17),rs.getString(18)==null?null:MatrixMode.valueOf(rs.getString(18)),rs.getObject(19,UUID.class),rs.getLong(20),rs.getObject(21,LocalDateTime.class),rs.getObject(22,LocalDateTime.class),rs.getObject(23,LocalDateTime.class));}
-    private record MatrixSelection(UUID id,long version) { }
+            rs.getObject(14,UUID.class),rs.getObject(15,LocalDateTime.class),rs.getObject(16,UUID.class),rs.getString(17)==null?null:MatrixMode.valueOf(rs.getString(17)),rs.getObject(18,UUID.class),rs.getLong(19),rs.getObject(20,LocalDateTime.class),rs.getObject(21,LocalDateTime.class),rs.getObject(22,LocalDateTime.class));}
+    private record MatrixSelection(UUID id) { }
     private static void validateConfiguration(Configuration input){if(input==null||input.title()==null||input.title().isBlank())throw badRequest("Title is required");
         if(input.variantCount()!=null&&(input.variantCount()<1||input.variantCount()>20))throw badRequest("variantCount must be between 1 and 20");
         if(input.dueTime()!=null&&input.startTime()!=null&&!input.dueTime().isAfter(input.startTime()))throw badRequest("Due time must be after start time");}

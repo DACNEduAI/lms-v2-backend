@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS asset_generation_jobs
     tikz_source TEXT,
     model VARCHAR(255),
     parameters JSONB NOT NULL DEFAULT '{}'::jsonb,
-    generation_mode VARCHAR(32) NOT NULL DEFAULT 'INITIAL' CHECK (generation_mode IN ('INITIAL', 'REGENERATE', 'UPLOAD_ANALYSIS')),
+    generation_mode VARCHAR(32) NOT NULL DEFAULT 'INITIAL' CHECK (generation_mode IN ('INITIAL', 'REGENERATE', 'UPLOAD_ANALYSIS','QUIZ3_VISUAL')),
     output_storage_key VARCHAR(1024) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -265,8 +265,6 @@ CREATE TABLE IF NOT EXISTS ccct_profiles
     course_id        UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
     name             VARCHAR(255) NOT NULL CHECK (btrim(name) <> ''),
     template_title   VARCHAR(255) NOT NULL CHECK (btrim(template_title) <> ''),
-    status           VARCHAR(20)  NOT NULL DEFAULT 'DRAFT'
-        CHECK (status IN ('DRAFT', 'PUBLISHED')),
     -- Optimistic-lock token only; it is not a user-visible CCCT revision.
     version          BIGINT       NOT NULL DEFAULT 0 CHECK (version >= 0),
     format_version   INTEGER      NOT NULL DEFAULT 2 CHECK (format_version IN (1, 2)),
@@ -275,7 +273,6 @@ CREATE TABLE IF NOT EXISTS ccct_profiles
         CHECK (last_mode IN ('STRUCTURED', 'MARKDOWN')),
     markdown_content TEXT         NOT NULL DEFAULT '',
     created_by       UUID REFERENCES users (id) ON DELETE SET NULL,
-    published_at     TIMESTAMP,
     created_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -317,40 +314,38 @@ CREATE TABLE IF NOT EXISTS ccct_items
 CREATE INDEX IF NOT EXISTS idx_ccct_items_chapter
     ON ccct_items (chapter_id);
 
--- Immutable snapshots used by published CCCT/Matrix sources.
-CREATE TABLE IF NOT EXISTS ccct_profile_revisions
+-- Immutable CCCT snapshots are owned by the Matrix that publishes them.
+CREATE TABLE IF NOT EXISTS matrix_ccct_snapshots
 (
+    matrix_id UUID PRIMARY KEY,
     profile_id UUID NOT NULL REFERENCES ccct_profiles (id) ON DELETE RESTRICT,
-    published_at TIMESTAMP NOT NULL,
+    snapshot_at TIMESTAMP NOT NULL,
     name VARCHAR(255) NOT NULL,
     template_title VARCHAR(255) NOT NULL,
     markdown_content TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (profile_id, published_at)
+    UNIQUE (matrix_id, snapshot_at)
 );
-CREATE TABLE IF NOT EXISTS ccct_revision_chapters
+CREATE TABLE IF NOT EXISTS matrix_ccct_snapshot_chapters
 (
-    profile_id UUID NOT NULL,
-    published_at TIMESTAMP NOT NULL,
+    matrix_id UUID NOT NULL REFERENCES matrix_ccct_snapshots (matrix_id) ON DELETE CASCADE,
     id UUID NOT NULL,
     course_chapter_id UUID REFERENCES chapters (chapter_id) ON DELETE SET NULL,
     chapter_code VARCHAR(64) NOT NULL CHECK (chapter_code ~ '^[a-z][A-Za-z0-9]*$'),
     title VARCHAR(255) NOT NULL,
     order_index INTEGER NOT NULL,
-    PRIMARY KEY (profile_id, published_at, id),
-    FOREIGN KEY (profile_id, published_at) REFERENCES ccct_profile_revisions(profile_id, published_at) ON DELETE RESTRICT
+    PRIMARY KEY (matrix_id, id)
 );
-CREATE TABLE IF NOT EXISTS ccct_revision_items
+CREATE TABLE IF NOT EXISTS matrix_ccct_snapshot_items
 (
-    profile_id UUID NOT NULL,
-    published_at TIMESTAMP NOT NULL,
+    matrix_id UUID NOT NULL,
     id UUID NOT NULL,
     chapter_id UUID NOT NULL,
     content_code VARCHAR(128) NOT NULL CHECK (content_code ~ '^[a-z][A-Za-z0-9]*\.[a-z][A-Za-z0-9]*$'),
     content TEXT NOT NULL,
     order_index INTEGER NOT NULL,
-    PRIMARY KEY (profile_id, published_at, id),
-    FOREIGN KEY (profile_id, published_at, chapter_id) REFERENCES ccct_revision_chapters(profile_id, published_at, id) ON DELETE RESTRICT
+    PRIMARY KEY (matrix_id, id),
+    FOREIGN KEY (matrix_id, chapter_id) REFERENCES matrix_ccct_snapshot_chapters(matrix_id, id) ON DELETE CASCADE
 );
 
 -- Unified course exam matrices. MANUAL stores positive quotas; AUTOMATIC stores
@@ -360,13 +355,12 @@ CREATE TABLE IF NOT EXISTS exam_matrices
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     course_id   UUID         NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
     ccct_profile_id UUID     REFERENCES ccct_profiles (id) ON DELETE RESTRICT,
-    ccct_published_at TIMESTAMP,
+    ccct_snapshot_at TIMESTAMP,
     title       VARCHAR(255) NOT NULL CHECK (btrim(title) <> ''),
     description TEXT, mode VARCHAR(20) NOT NULL DEFAULT 'MANUAL' CHECK(mode IN ('MANUAL','AUTOMATIC')),
     total_question_count INTEGER CHECK(total_question_count IS NULL OR total_question_count > 0),
     lifecycle_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT'
         CHECK (lifecycle_status IN ('DRAFT', 'PUBLISHED')),
-    version     BIGINT NOT NULL DEFAULT 0 CHECK (version >= 0),
     published_by UUID REFERENCES users (id) ON DELETE SET NULL,
     published_at TIMESTAMP,
     created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -381,12 +375,11 @@ CREATE TABLE IF NOT EXISTS exam_matrix_custom_learning_levels
     sort_order  INTEGER      NOT NULL CHECK (sort_order >= 0)
 );
 
-CREATE TABLE IF NOT EXISTS exam_matrix_outcome_cognitive_levels
+CREATE TABLE IF NOT EXISTS exam_matrix_outcome_learning_levels
 (
-    matrix_id          UUID        NOT NULL REFERENCES exam_matrices (id) ON DELETE CASCADE,
-    learning_outcome_id UUID       NOT NULL REFERENCES learning_outcomes (id) ON DELETE CASCADE,
-    cognitive_level_code VARCHAR(30) NOT NULL CHECK
-        (cognitive_level_code IN ('REMEMBER', 'UNDERSTAND', 'APPLY', 'ANALYZE', 'EVALUATE', 'CREATE')),
+    matrix_id                UUID NOT NULL REFERENCES exam_matrices (id) ON DELETE CASCADE,
+    learning_outcome_id      UUID NOT NULL REFERENCES learning_outcomes (id) ON DELETE CASCADE,
+    custom_learning_level_id UUID NOT NULL REFERENCES exam_matrix_custom_learning_levels (id) ON DELETE CASCADE,
     PRIMARY KEY (matrix_id, learning_outcome_id)
 );
 
@@ -423,6 +416,7 @@ CREATE TABLE IF NOT EXISTS exam_matrix_cells
     CONSTRAINT uq_exam_matrix_cell_per_row UNIQUE (row_id) DEFERRABLE INITIALLY DEFERRED
 );
 CREATE INDEX IF NOT EXISTS exam_matrices_course_idx ON exam_matrices (course_id);
+ALTER TABLE matrix_ccct_snapshots ADD CONSTRAINT fk_matrix_ccct_snapshot_matrix FOREIGN KEY (matrix_id) REFERENCES exam_matrices(id) ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS exam_matrix_rows_matrix_idx ON exam_matrix_rows (matrix_id, sort_order);
 
 -- QBank2 is an independent, course-owned collection of plain-text content groups and examples.
@@ -1006,8 +1000,8 @@ CREATE TABLE IF NOT EXISTS quiz3_assessments (
     variant_count INTEGER NOT NULL DEFAULT 1 CHECK(variant_count BETWEEN 1 AND 20),
     lifecycle_status VARCHAR(30) NOT NULL DEFAULT 'DRAFT' CHECK(lifecycle_status IN('DRAFT','GENERATING','REVIEW_PENDING','READY_TO_PUBLISH','PUBLISHED','ARCHIVED')),
     current_step INTEGER NOT NULL DEFAULT 1 CHECK(current_step BETWEEN 1 AND 9),
-    ccct_profile_id UUID REFERENCES ccct_profiles(id) ON DELETE RESTRICT, ccct_published_at TIMESTAMP,
-    matrix_id UUID REFERENCES exam_matrices(id) ON DELETE RESTRICT, matrix_version BIGINT, base_generation_job_id UUID,
+    ccct_profile_id UUID REFERENCES ccct_profiles(id) ON DELETE RESTRICT, ccct_snapshot_at TIMESTAMP,
+    matrix_id UUID REFERENCES exam_matrices(id) ON DELETE RESTRICT, base_generation_job_id UUID,
     base_confirmed_by UUID REFERENCES users(id) ON DELETE SET NULL, base_confirmed_at TIMESTAMP,
     created_by UUID REFERENCES users(id) ON DELETE SET NULL, version BIGINT NOT NULL DEFAULT 0 CHECK(version>=0),
     published_by UUID REFERENCES users(id) ON DELETE SET NULL, published_at TIMESTAMP,
@@ -1019,15 +1013,17 @@ CREATE INDEX IF NOT EXISTS idx_quiz3_assessments_course_updated ON quiz3_assessm
 
 CREATE TABLE IF NOT EXISTS quiz3_generation_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE, matrix_id UUID REFERENCES exam_matrices(id) ON DELETE RESTRICT, matrix_version BIGINT,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE, matrix_id UUID REFERENCES exam_matrices(id) ON DELETE RESTRICT,
     quiz_id UUID REFERENCES quizzes(id) ON DELETE SET NULL,
     requested_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT, request_snapshot JSONB NOT NULL,
     payload_hash VARCHAR(64) NOT NULL, idempotency_key VARCHAR(255) NOT NULL UNIQUE,
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' CHECK(status IN('PENDING','PROCESSING','COMPLETED','FAILED','TIMED_OUT')),
-    phase VARCHAR(30) NOT NULL DEFAULT 'TEXT_GENERATION' CHECK(phase IN('TEXT_GENERATION','FINALIZING','DONE')),
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' CHECK(status IN('PENDING','PROCESSING','COMPLETED','COMPLETED_WITH_WARNINGS','FAILED','TIMED_OUT')),
+    phase VARCHAR(30) NOT NULL DEFAULT 'TEXT_GENERATION' CHECK(phase IN('TEXT_GENERATION','VISUAL_GENERATION','FINALIZING','DONE')),
     attempt_count INTEGER NOT NULL DEFAULT 0 CHECK(attempt_count>=0), generated_question_count INTEGER NOT NULL DEFAULT 0 CHECK(generated_question_count>=0),
     total_question_count INTEGER NOT NULL CHECK(total_question_count>0), next_attempt_at TIMESTAMPTZ, lease_until TIMESTAMPTZ,
     error_code VARCHAR(100), error_message TEXT, callback_event_id UUID UNIQUE, processing_at TIMESTAMPTZ, completed_at TIMESTAMPTZ,
+    processed_visual_count INTEGER NOT NULL DEFAULT 0, total_visual_count INTEGER NOT NULL DEFAULT 0,
+    failed_visual_count INTEGER NOT NULL DEFAULT 0, visual_warnings JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 ALTER TABLE quiz3_assessments DROP CONSTRAINT IF EXISTS quiz3_assessments_base_generation_job_id_fkey;
@@ -1066,6 +1062,29 @@ CREATE TABLE IF NOT EXISTS quiz3_question_provenance (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_quiz3_provenance_allocation ON quiz3_question_provenance(matrix_row_id,matrix_custom_learning_level_id,learning_outcome_id);
+
+CREATE TABLE IF NOT EXISTS quiz3_question_visuals (
+    question_id UUID PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
+    generation_job_id UUID NOT NULL REFERENCES quiz3_generation_jobs(id) ON DELETE CASCADE,
+    placement VARCHAR(16) NOT NULL CHECK(placement IN('QUESTION','ANSWER')), answer_index INTEGER,
+    visual_brief TEXT NOT NULL, alt_text TEXT NOT NULL,
+    resolution_action VARCHAR(32) NOT NULL CHECK(resolution_action IN('REUSE_ASSET','GENERATE_FROM_ASSET','GENERATE_NEW')),
+    search_query TEXT NOT NULL, candidates JSONB NOT NULL DEFAULT '[]'::jsonb, generation_prompt TEXT,
+    selected_asset_id UUID REFERENCES assets(id) ON DELETE SET NULL, generated_asset_id UUID REFERENCES assets(id) ON DELETE SET NULL,
+    asset_generation_job_id UUID UNIQUE REFERENCES asset_generation_jobs(id) ON DELETE SET NULL,
+    status VARCHAR(20) NOT NULL CHECK(status IN('PENDING','PROCESSING','READY','FAILED')),
+    attempt_count INTEGER NOT NULL DEFAULT 0, error_message TEXT, selector_warning TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK((placement='QUESTION' AND answer_index IS NULL) OR (placement='ANSWER' AND answer_index>=0))
+);
+CREATE INDEX IF NOT EXISTS idx_quiz3_question_visuals_pending ON quiz3_question_visuals(status,generation_job_id);
+
+CREATE TABLE IF NOT EXISTS asset_vector_sync_outbox (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), asset_id UUID NOT NULL UNIQUE REFERENCES assets(id) ON DELETE CASCADE,
+    attempt_count INTEGER NOT NULL DEFAULT 0, last_error TEXT, next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_asset_vector_sync_outbox_pending ON asset_vector_sync_outbox(next_attempt_at);
 
 CREATE TABLE IF NOT EXISTS quiz3_qbank2_regeneration_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), assessment_id UUID NOT NULL REFERENCES quiz3_assessments(id) ON DELETE CASCADE,
@@ -1147,6 +1166,7 @@ CREATE TABLE IF NOT EXISTS quiz3_rich_content_assets (
     media_type VARCHAR(255) NOT NULL,
     byte_size BIGINT NOT NULL CHECK (byte_size >= 0 AND byte_size <= 10485760),
     sha256 CHAR(64) NOT NULL,
+    source_asset_id UUID REFERENCES assets(id) ON DELETE SET NULL,
     ai_artifact_id UUID REFERENCES quiz3_question_ai_artifacts(id) ON DELETE SET NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -1155,6 +1175,8 @@ CREATE INDEX IF NOT EXISTS idx_quiz3_rich_content_assets_question
     ON quiz3_rich_content_assets(question_id);
 CREATE INDEX IF NOT EXISTS idx_quiz3_rich_content_assets_ai_artifact
     ON quiz3_rich_content_assets(ai_artifact_id) WHERE ai_artifact_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_quiz3_rich_content_assets_source_asset
+    ON quiz3_rich_content_assets(source_asset_id) WHERE source_asset_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS code_runner_verifications
 (

@@ -38,7 +38,8 @@ public class Quiz3RichContentService {
             answers.add(new Quiz3Models.AnswerInput(value.content(), value.contentFormat().name(), answer.correct()));
         }
         var rewritten = new Quiz3Models.QuestionUpdate(request.expectedQuestionVersion(), content.content(),
-                content.contentFormat().name(), explanation.content(), explanation.contentFormat().name(), answers);
+                content.contentFormat().name(), explanation.content(), explanation.contentFormat().name(), answers,
+                request.imageAssetSelections());
         List<Quiz3Models.VariantView> result = assessments.updateQuestion(
                 courseId, assessmentId, variantId, questionId, rewritten);
         assets.saveAll(uploads.assetsForQuestion(questionId, prepared.uploadedAssets()));

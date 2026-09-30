@@ -18,8 +18,6 @@ interface CcctProfileRepository {
             @Param("courseId") UUID courseId,
             @Param("profileId") UUID profileId);
 
-    Optional<CcctProfile> findPublishedByCourseId(@Param("courseId") UUID courseId);
-
     List<CcctProfile> findAllByCourseId(@Param("courseId") UUID courseId);
 
     boolean existsByCourseIdAndNameExcludingId(
@@ -49,9 +47,4 @@ interface CcctProfileRepository {
 
     int deleteChaptersNotIn(@Param("profileId") UUID profileId, @Param("ids") Collection<UUID> ids);
 
-    int publishDraft(
-            @Param("courseId") UUID courseId,
-            @Param("profileId") UUID profileId,
-            @Param("expectedVersion") long expectedVersion,
-            @Param("publishedAt") java.time.LocalDateTime publishedAt);
 }

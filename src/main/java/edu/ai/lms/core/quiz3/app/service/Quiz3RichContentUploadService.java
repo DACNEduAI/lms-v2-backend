@@ -77,6 +77,14 @@ public class Quiz3RichContentUploadService {
         return store(bytes, ImageType.SVG);
     }
 
+    /** Copies authorized course-asset bytes into question-owned public storage. */
+    public UploadedAsset snapshotCourseAsset(byte[] bytes, String mediaType) {
+        if (bytes == null || bytes.length == 0 || bytes.length > MAX_IMAGE_BYTES) throw new RichContentValidationException("Course image snapshot is empty or too large");
+        ImageType type = detect(bytes);
+        if (!type.mediaType().equalsIgnoreCase(mediaType)) throw new RichContentValidationException("Course image MIME type does not match its signature");
+        return store(bytes, type);
+    }
+
     public void cleanup(Collection<UploadedAsset> assets) {
         if (assets != null) assets.forEach(asset -> {
             try { storage.delete(asset.storageKey()); } catch (RuntimeException ignored) { }
@@ -93,7 +101,7 @@ public class Quiz3RichContentUploadService {
 
     public List<Quiz3RichContentAsset> assetsForQuestion(UUID questionId, Collection<UploadedAsset> assets) {
         return assets == null ? List.of() : assets.stream().map(asset -> new Quiz3RichContentAsset(UUID.randomUUID(),
-                questionId, asset.storageKey(), asset.mediaType(), asset.byteSize(), asset.sha256(), null, null, null)).toList();
+                questionId, asset.storageKey(), asset.mediaType(), asset.byteSize(), asset.sha256(), null, null, null, null)).toList();
     }
 
     public Set<String> referencedStorageKeys(List<RichTextValue> values,

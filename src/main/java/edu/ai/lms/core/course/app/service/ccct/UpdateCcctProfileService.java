@@ -11,7 +11,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
 import edu.ai.lms.core.course.app.domain.CcctProfile;
-import edu.ai.lms.core.course.app.domain.CcctProfileStatus;
 import edu.ai.lms.core.course.app.exception.CcctConflictException;
 import edu.ai.lms.core.course.app.port.in.command.CcctProfileContent;
 import edu.ai.lms.core.course.app.port.in.command.UpdateCcctProfileCommand;
@@ -112,9 +111,6 @@ public class UpdateCcctProfileService implements UpdateCcctProfileUseCase {
     private void requireEditableVersion(CcctProfile current, long expectedVersion) {
         if (current.getFormatVersion() != 2) {
             throw new CcctConflictException("Legacy CCCT profiles are read-only");
-        }
-        if (current.getStatus() != CcctProfileStatus.DRAFT) {
-            throw new CcctConflictException("Only DRAFT profiles can be updated");
         }
         if (current.getVersion() != expectedVersion) {
             throw new CcctConflictException(

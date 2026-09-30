@@ -21,14 +21,12 @@ public class CcctProfile {
     private UUID courseId;
     private String name;
     private String templateTitle;
-    private CcctProfileStatus status;
     private long version;
     private int formatVersion;
     private boolean structuredCurrent;
     private CcctMode lastMode;
     private String markdownContent;
     private UUID createdBy;
-    private LocalDateTime publishedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
