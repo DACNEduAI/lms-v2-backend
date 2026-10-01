@@ -18,6 +18,7 @@ import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.SaveChapterPort;
+import edu.ai.lms.core.course.app.service.ccct.CcctCourseChapterSynchronizer;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -28,6 +29,7 @@ public class ModifyChapterService implements TeacherModifyChapterUseCase {
     private final LoadChapterPort loadChapterPort;
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInUserPort loadSignedInUserPort;
+    private final CcctCourseChapterSynchronizer ccctSynchronizer;
 
     @Override
     @Transactional
@@ -61,6 +63,7 @@ public class ModifyChapterService implements TeacherModifyChapterUseCase {
 
         // Save the updated chapter
         Chapter savedChapter = saveChapterPort.save(updatedChapter);
+        ccctSynchronizer.chapterRenamed(command.courseId(), savedChapter.getChapterId(), savedChapter.getTitle());
 
         return ModifyChapterResponse.builder()
                 .chapterId(savedChapter.getChapterId())

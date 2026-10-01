@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import edu.ai.lms.common.api.ErrorResponse;
+import edu.ai.lms.core.course.adapter.in.response.ChapterCcctConflictResponse;
+import edu.ai.lms.core.course.app.exception.ChapterCcctSyncConflictException;
 import edu.ai.lms.core.course.app.exception.ChapterNotFoundException;
 import edu.ai.lms.core.course.app.exception.CourseCodeAlreadyExistsException;
 import edu.ai.lms.core.course.app.exception.CourseNotFoundException;
@@ -29,6 +31,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
  */
 @RestControllerAdvice(basePackages = "edu.ai.lms.core.course.adapter.in")
 public class CourseExceptionHandler {
+
+    @ExceptionHandler(ChapterCcctSyncConflictException.class)
+    public ResponseEntity<ChapterCcctConflictResponse> handleChapterCcctSyncConflict(
+            ChapterCcctSyncConflictException ex) {
+        var affected = ex.getAffectedMatrices().stream()
+                .map(value -> new ChapterCcctConflictResponse.AffectedMatrix(
+                        value.id(), value.title(), value.affectedRowCount()))
+                .toList();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ChapterCcctConflictResponse(
+                HttpStatus.CONFLICT.value(), "Chapter CCCT Conflict", ex.getMessage(), affected));
+    }
 
     /**
      * Handles validation errors from @Valid annotations.

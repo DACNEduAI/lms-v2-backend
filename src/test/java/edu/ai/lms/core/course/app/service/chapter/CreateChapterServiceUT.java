@@ -35,6 +35,7 @@ import edu.ai.lms.core.course.app.port.in.command.CreateChapterCommand;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.port.out.SaveChapterPort;
+import edu.ai.lms.core.course.app.service.ccct.CcctCourseChapterSynchronizer;
 
 @ExtendWith(MockitoExtension.class)
 class CreateChapterServiceUT {
@@ -47,6 +48,9 @@ class CreateChapterServiceUT {
 
     @Mock
     private LoadSignedInUserPort loadSignedInUserPort;
+
+    @Mock
+    private CcctCourseChapterSynchronizer ccctSynchronizer;
 
     @InjectMocks
     private CreateChapterService createChapterService;

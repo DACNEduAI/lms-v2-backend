@@ -118,13 +118,13 @@ class CcctProfilePersistenceAdapter
     private void syncTree(CcctProfile profile) {
         List<CcctChapter> chapters = profile.getChapters();
         List<CcctItem> items = chapters.stream().flatMap(chapter -> chapter.getItems().stream()).toList();
-        if (!chapters.isEmpty()) repository.upsertChapters(chapters);
-        // Delete absent leaves/groups before inserting updated positions. This
-        // releases their (parent, order) unique slots without touching any
-        // logical identity that remains in the proposed draft.
+        // Delete absent leaves/chapters before inserting updated positions.
+        // This releases a removed Chapter's unique order slot when the
+        // remaining Chapter positions are compacted by a course edit.
         repository.deleteItemsNotIn(profile.getId(), items.stream().map(CcctItem::getId).toList());
-        if (!items.isEmpty()) repository.upsertItems(items);
         repository.deleteChaptersNotIn(profile.getId(), chapters.stream().map(CcctChapter::getId).toList());
+        if (!chapters.isEmpty()) repository.upsertChapters(chapters);
+        if (!items.isEmpty()) repository.upsertItems(items);
     }
 
     private CcctProfile loadTree(CcctProfile profile) {

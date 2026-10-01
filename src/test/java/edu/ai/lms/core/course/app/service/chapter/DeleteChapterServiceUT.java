@@ -35,6 +35,7 @@ import edu.ai.lms.core.course.app.port.out.DeleteChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.course.app.service.ccct.CcctCourseChapterSynchronizer;
 
 @ExtendWith(MockitoExtension.class)
 class DeleteChapterServiceUT {
@@ -50,6 +51,9 @@ class DeleteChapterServiceUT {
 
     @Mock
     private LoadSignedInUserPort loadSignedInUserPort;
+
+    @Mock
+    private CcctCourseChapterSynchronizer ccctSynchronizer;
 
     @InjectMocks
     private DeleteChapterService deleteChapterService;

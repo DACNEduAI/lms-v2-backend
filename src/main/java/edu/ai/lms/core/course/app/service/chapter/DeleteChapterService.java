@@ -17,6 +17,7 @@ import edu.ai.lms.core.course.app.port.out.DeleteChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadChapterPort;
 import edu.ai.lms.core.course.app.port.out.LoadCoursePort;
 import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
+import edu.ai.lms.core.course.app.service.ccct.CcctCourseChapterSynchronizer;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -27,6 +28,7 @@ public class DeleteChapterService implements TeacherDeleteChapterUseCase {
     private final LoadChapterPort loadChapterPort;
     private final LoadCoursePort loadCoursePort;
     private final LoadSignedInUserPort loadSignedInUserPort;
+    private final CcctCourseChapterSynchronizer ccctSynchronizer;
 
     @Override
     @Transactional
@@ -49,7 +51,10 @@ public class DeleteChapterService implements TeacherDeleteChapterUseCase {
                 .orElseThrow(() -> new ChapterNotFoundException(
                         "Chapter not found with number: " + chapterId + " in course: " + courseId));
 
-        // Delete the chapter
+        ccctSynchronizer.ensureChapterDeletable(courseId, chapterId);
+        ccctSynchronizer.chapterDeleted(courseId, chapterId);
+
+        // Delete the chapter after its CCCT branch has been safely removed.
         deleteChapterPort.deleteByKey(courseId, chapterId);
 
         return DeleteChapterResponse.builder()

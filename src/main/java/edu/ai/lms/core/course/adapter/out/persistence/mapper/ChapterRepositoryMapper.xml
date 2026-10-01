@@ -17,7 +17,7 @@
     SELECT chapter_id, title, description, course_id, created_at, updated_at
     FROM edu.chapters
     WHERE course_id = #{courseId}
-    ORDER BY chapter_id
+    ORDER BY created_at, chapter_id
   </select>
 
   <select id="findByChapterIdAndCourseId" resultMap="ChapterResultMap">
