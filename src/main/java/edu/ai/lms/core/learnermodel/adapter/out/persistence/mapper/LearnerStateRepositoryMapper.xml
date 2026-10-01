@@ -17,6 +17,8 @@
       <arg column="learning_outcome_id" javaType="java.util.UUID" />
       <arg column="probability" javaType="java.lang.Double" />
       <arg column="prediction_status" javaType="edu.ai.lms.core.learnermodel.app.domain.LearnerStateOutcomeStatus" typeHandler="edu.ai.lms.core.learnermodel.adapter.out.persistence.mybatis.LearnerStateOutcomeStatusTypeHandler" />
+      <arg column="akt_pykt_probability" javaType="java.lang.Double" />
+      <arg column="akt_pykt_prediction_status" javaType="edu.ai.lms.core.learnermodel.app.domain.PredictionStatus" typeHandler="edu.ai.lms.core.learnermodel.adapter.out.persistence.mybatis.PredictionStatusTypeHandler" />
     </constructor>
   </resultMap>
 
@@ -31,10 +33,10 @@
   </insert>
 
   <insert id="insertOutcomes">
-    INSERT INTO edu.learner_state_outcomes (learner_state_id, learning_outcome_id, probability, prediction_status)
+    INSERT INTO edu.learner_state_outcomes (learner_state_id, learning_outcome_id, probability, prediction_status, akt_pykt_probability, akt_pykt_prediction_status)
     VALUES
     <foreach collection="outcomes" item="outcome" separator=",">
-      (#{stateId}, #{outcome.learningOutcomeId}, #{outcome.probability}, #{outcome.status, javaType=edu.ai.lms.core.learnermodel.app.domain.LearnerStateOutcomeStatus, typeHandler=edu.ai.lms.core.learnermodel.adapter.out.persistence.mybatis.LearnerStateOutcomeStatusTypeHandler})
+      (#{stateId}, #{outcome.learningOutcomeId}, #{outcome.probability}, #{outcome.status, javaType=edu.ai.lms.core.learnermodel.app.domain.LearnerStateOutcomeStatus, typeHandler=edu.ai.lms.core.learnermodel.adapter.out.persistence.mybatis.LearnerStateOutcomeStatusTypeHandler}, #{outcome.aktPyktProbability}, #{outcome.aktPyktStatus, javaType=edu.ai.lms.core.learnermodel.app.domain.PredictionStatus, typeHandler=edu.ai.lms.core.learnermodel.adapter.out.persistence.mybatis.PredictionStatusTypeHandler})
     </foreach>
   </insert>
 
@@ -54,7 +56,7 @@
   </select>
 
   <select id="findOutcomes" resultMap="OutcomeMap">
-    SELECT learning_outcome_id, probability, prediction_status
+    SELECT learning_outcome_id, probability, prediction_status, akt_pykt_probability, akt_pykt_prediction_status
     FROM edu.learner_state_outcomes
     WHERE learner_state_id = #{stateId}
     ORDER BY learning_outcome_id ASC

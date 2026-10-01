@@ -83,6 +83,10 @@ public class LearnerStateService implements GetLearnerStateHistoryUseCase, GetLa
         if (modelResults.isEmpty()) {
             return List.of();
         }
+        LearnerModelPredictionResult aktPyktResult = modelResults.stream()
+                .filter(result -> result.model() == LearnerModelType.AKT_PYKT)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("AKT-pyKT prediction result is required"));
         return modelResults.getFirst().predictions().stream().map(reference -> {
             List<LearningOutcomePrediction> perModel = modelResults.stream()
                     .map(result -> result.predictions().stream()
@@ -92,13 +96,20 @@ public class LearnerStateService implements GetLearnerStateHistoryUseCase, GetLa
                                     "Model result omitted learning outcome " + reference.learningOutcomeId())))
                     .toList();
             boolean allNumeric = perModel.stream().allMatch(item -> item.probability() != null);
+            LearningOutcomePrediction aktPykt = aktPyktResult.predictions().stream()
+                    .filter(item -> item.learningOutcomeId().equals(reference.learningOutcomeId()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException(
+                            "AKT-pyKT result omitted learning outcome " + reference.learningOutcomeId()));
             if (!allNumeric) {
                 return new LearnerStateOutcome(reference.learningOutcomeId(), null,
-                        LearnerStateOutcomeStatus.INSUFFICIENT_PREDICTION);
+                        LearnerStateOutcomeStatus.INSUFFICIENT_PREDICTION,
+                        aktPykt.probability(), aktPykt.status());
             }
             double mean = perModel.stream().mapToDouble(LearningOutcomePrediction::probability).average()
                     .orElseThrow();
-            return new LearnerStateOutcome(reference.learningOutcomeId(), mean, LearnerStateOutcomeStatus.PREDICTED);
+            return new LearnerStateOutcome(reference.learningOutcomeId(), mean, LearnerStateOutcomeStatus.PREDICTED,
+                    aktPykt.probability(), aktPykt.status());
         }).toList();
     }
 }

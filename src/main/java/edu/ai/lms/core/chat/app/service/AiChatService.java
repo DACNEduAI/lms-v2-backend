@@ -242,6 +242,12 @@ public class AiChatService {
     private PythonChatRequest.LearnerState learnerState(UUID courseId) {
         try {
             return latestLearnerStateUseCase.getLatest(courseId).map(state -> {
+                // Snapshots created before AKT-pyKT persistence have no trusted
+                // model-specific context. Do not fall back to the aggregate mean.
+                if (state.outcomes().isEmpty() || state.outcomes().stream()
+                        .noneMatch(item -> item.aktPyktStatus() != null)) {
+                    return null;
+                }
                 var outcomesById = learningOutcomeCatalogApi.findByIds(courseId,
                                 state.outcomes().stream().map(item -> item.learningOutcomeId()).toList())
                         .stream().collect(java.util.stream.Collectors.toMap(LearningOutcomeView::id, outcome -> outcome));
@@ -253,8 +259,8 @@ public class AiChatService {
                                     .learning_outcome_id(item.learningOutcomeId().toString())
                                     .code(outcome.code())
                                     .description(outcome.description())
-                                    .probability(item.probability())
-                                    .status(item.status().name())
+                                    .probability(item.aktPyktProbability())
+                                    .status(item.aktPyktStatus() == null ? null : item.aktPyktStatus().name())
                                     .build();
                         })
                         .filter(java.util.Objects::nonNull)

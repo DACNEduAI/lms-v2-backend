@@ -5,6 +5,8 @@ import java.util.UUID;
 public record LearnerStateOutcome(
         UUID learningOutcomeId,
         Double probability,
-        LearnerStateOutcomeStatus status
+        LearnerStateOutcomeStatus status,
+        Double aktPyktProbability,
+        PredictionStatus aktPyktStatus
 ) {
 }

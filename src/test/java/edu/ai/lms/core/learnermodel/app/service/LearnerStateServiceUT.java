@@ -61,6 +61,9 @@ class LearnerStateServiceUT {
         assertThat(state.getValue().outcomes()).extracting(item -> item.probability())
                 .containsExactly(0.5, 0.6);
         assertThat(state.getValue().outcomes()).allMatch(item -> item.status() == LearnerStateOutcomeStatus.PREDICTED);
+        assertThat(state.getValue().outcomes()).extracting(item -> item.aktPyktProbability())
+                .containsExactly(0.8, 0.3);
+        assertThat(state.getValue().outcomes()).allMatch(item -> item.aktPyktStatus() == PredictionStatus.PREDICTED);
     }
 
     @Test
@@ -84,6 +87,34 @@ class LearnerStateServiceUT {
         assertThat(state.getValue().outcomes()).singleElement().satisfies(item -> {
             assertThat(item.probability()).isNull();
             assertThat(item.status()).isEqualTo(LearnerStateOutcomeStatus.INSUFFICIENT_PREDICTION);
+            assertThat(item.aktPyktProbability()).isEqualTo(0.8);
+            assertThat(item.aktPyktStatus()).isEqualTo(PredictionStatus.PREDICTED);
+        });
+    }
+
+    @Test
+    void persistsAktPyktUnavailableStatusWithoutFallingBackToTheAggregate() {
+        UUID studentId = UUID.randomUUID();
+        UUID courseId = UUID.randomUUID();
+        UUID attemptId = UUID.randomUUID();
+        UUID outcome = UUID.randomUUID();
+        AttemptFinishedEvent event = new AttemptFinishedEvent(attemptId, studentId, courseId, LocalDateTime.now());
+        when(statePort.existsForAttempt(attemptId)).thenReturn(false);
+        stub(event, LearnerModelType.DKT_CUSTOM, outcome, null, 0.2, 0.0);
+        stub(event, LearnerModelType.DKT_PYKT, outcome, null, 0.4, 0.0);
+        stub(event, LearnerModelType.AKT_CUSTOM, outcome, null, 0.6, 0.0);
+        stub(event, LearnerModelType.AKT_PYKT, outcome, null, null, 0.0);
+        when(statePort.saveIfAbsent(any())).thenReturn(true);
+
+        service.onAttemptFinished(event);
+
+        ArgumentCaptor<LearnerState> state = ArgumentCaptor.forClass(LearnerState.class);
+        verify(statePort).saveIfAbsent(state.capture());
+        assertThat(state.getValue().outcomes()).singleElement().satisfies(item -> {
+            assertThat(item.probability()).isNull();
+            assertThat(item.status()).isEqualTo(LearnerStateOutcomeStatus.INSUFFICIENT_PREDICTION);
+            assertThat(item.aktPyktProbability()).isNull();
+            assertThat(item.aktPyktStatus()).isEqualTo(PredictionStatus.INSUFFICIENT_OUTCOME_HISTORY);
         });
     }
 

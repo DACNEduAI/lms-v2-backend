@@ -769,12 +769,21 @@ CREATE TABLE IF NOT EXISTS learner_state_outcomes
     learning_outcome_id UUID        NOT NULL,
     probability         DOUBLE PRECISION,
     prediction_status   VARCHAR(50) NOT NULL,
+    akt_pykt_probability DOUBLE PRECISION,
+    akt_pykt_prediction_status VARCHAR(50),
     PRIMARY KEY (learner_state_id, learning_outcome_id),
     CONSTRAINT ck_learner_state_outcome_value CHECK (
         (prediction_status = 'PREDICTED' AND probability IS NOT NULL
             AND probability >= 0.0 AND probability <= 1.0)
         OR
         (prediction_status = 'INSUFFICIENT_PREDICTION' AND probability IS NULL)
+    ),
+    CONSTRAINT ck_learner_state_outcome_akt_pykt_value CHECK (
+        (akt_pykt_prediction_status IS NULL AND akt_pykt_probability IS NULL)
+        OR (akt_pykt_prediction_status = 'PREDICTED' AND akt_pykt_probability IS NOT NULL
+            AND akt_pykt_probability >= 0.0 AND akt_pykt_probability <= 1.0)
+        OR (akt_pykt_prediction_status IN ('INSUFFICIENT_HISTORY', 'INSUFFICIENT_OUTCOME_HISTORY')
+            AND akt_pykt_probability IS NULL)
     )
 );
 

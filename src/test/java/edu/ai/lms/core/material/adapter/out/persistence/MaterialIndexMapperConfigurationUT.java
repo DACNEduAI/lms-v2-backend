@@ -2,6 +2,7 @@ package edu.ai.lms.core.material.adapter.out.persistence;
 
 import edu.ai.lms.core.material.adapter.out.persistence.mybatis.DocumentIndexStatusTypeHandler;
 import edu.ai.lms.core.learnermodel.adapter.out.persistence.mybatis.LearnerStateOutcomeStatusTypeHandler;
+import edu.ai.lms.core.learnermodel.adapter.out.persistence.mybatis.PredictionStatusTypeHandler;
 import edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialIndexJobOperationTypeHandler;
 import edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialIndexJobStatusTypeHandler;
 import edu.ai.lms.core.material.adapter.out.persistence.mybatis.MaterialIngestionStatusTypeHandler;
@@ -69,6 +70,13 @@ class MaterialIndexMapperConfigurationUT {
         assertEquals(LearnerStateOutcomeStatusTypeHandler.class,
                 outcomeMap.getConstructorResultMappings().stream()
                         .filter(mapping -> "prediction_status".equals(mapping.getColumn()))
+                        .findFirst()
+                        .orElseThrow()
+                        .getTypeHandler()
+                        .getClass());
+        assertEquals(PredictionStatusTypeHandler.class,
+                outcomeMap.getConstructorResultMappings().stream()
+                        .filter(mapping -> "akt_pykt_prediction_status".equals(mapping.getColumn()))
                         .findFirst()
                         .orElseThrow()
                         .getTypeHandler()
