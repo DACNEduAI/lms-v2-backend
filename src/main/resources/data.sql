@@ -589,10 +589,10 @@ VALUES
     ('e4000001-0000-4000-8000-000000000014', 'e2000001-0000-4000-8000-000000000007', 'stackQueue.item2', 'Hiện thực và ứng dụng của Stack, Queue', 1),
     ('e4000001-0000-4000-8000-000000000015', 'e2000001-0000-4000-8000-000000000008', 'searching.item1', 'Tìm kiếm tuần tự và tìm kiếm nhị phân', 0),
     ('e4000001-0000-4000-8000-000000000016', 'e2000001-0000-4000-8000-000000000008', 'searching.item2', 'Điều kiện áp dụng và độ phức tạp tìm kiếm', 1),
-    ('e4000001-0000-4000-8000-000000000017', 'e2000001-0000-4000-8000-000000000009', 'balancedTree.item1', 'Cây AVL, cân bằng cây và các phép quay', 0),
-    ('e4000001-0000-4000-8000-000000000018', 'e2000001-0000-4000-8000-000000000009', 'balancedTree.item2', 'Cây B/B+ và ứng dụng tổ chức dữ liệu', 1),
-    ('e4000001-0000-4000-8000-000000000019', 'e2000001-0000-4000-8000-000000000010', 'linkedList.item1', 'Danh sách liên kết đơn, đôi và vòng', 0),
-    ('e4000001-0000-4000-8000-000000000020', 'e2000001-0000-4000-8000-000000000010', 'linkedList.item2', 'Chèn, xóa, duyệt và tìm kiếm trên danh sách', 1);
+    ('e4000001-0000-4000-8000-000000000017', 'e2000001-0000-4000-8000-000000000009', 'balancedTrees.item1', 'Cây AVL, cân bằng cây và các phép quay', 0),
+    ('e4000001-0000-4000-8000-000000000018', 'e2000001-0000-4000-8000-000000000009', 'balancedTrees.item2', 'Cây B/B+ và ứng dụng tổ chức dữ liệu', 1),
+    ('e4000001-0000-4000-8000-000000000019', 'e2000001-0000-4000-8000-000000000010', 'linkedLists.item1', 'Danh sách liên kết đơn, đôi và vòng', 0),
+    ('e4000001-0000-4000-8000-000000000020', 'e2000001-0000-4000-8000-000000000010', 'linkedLists.item2', 'Chèn, xóa, duyệt và tìm kiếm trên danh sách', 1);
 
 UPDATE ccct_profiles
 SET markdown_content = regexp_replace(markdown_content, E'\\s+—\\s+Learn and exam', '', 'g')
@@ -1089,65 +1089,45 @@ WHERE cell.row_id = ranked.row_id
 UPDATE ccct_profiles
 SET markdown_content = '# CCCT – Data Structures and Algorithms
 
-## Cây nhị phân
+## Cây nhị phân [binaryTrees]
+- Khái niệm, biểu diễn và các phép duyệt cây nhị phân [binaryTrees.traversal]
+- Cây nhị phân tìm kiếm: tìm kiếm, chèn và xóa [binaryTrees.searchInsertDelete]
 
-### [binary-tree] Cây nhị phân và BST
-- Khái niệm, biểu diễn và các phép duyệt cây nhị phân
-- Cây nhị phân tìm kiếm: tìm kiếm, chèn và xóa
+## Độ phức tạp giải thuật [complexity]
+- Ký hiệu Big-O, Big-Ω và Big-Θ [complexity.bigO]
+- Phân tích độ phức tạp vòng lặp và giải thuật đệ quy [complexity.recursion]
 
-## Độ phức tạp giải thuật
+## Đồ thị [graphs]
+- Ma trận kề và danh sách kề [graphs.representations]
+- Duyệt đồ thị BFS và DFS [graphs.traversal]
 
-### [complexity] Phân tích độ phức tạp
-- Ký hiệu Big-O, Big-Ω và Big-Θ
-- Phân tích độ phức tạp vòng lặp và giải thuật đệ quy
+## Heap [heap]
+- Max-Heap, Min-Heap và biểu diễn bằng mảng [heap.item1]
+- Chèn, xóa, vun đống và hàng đợi ưu tiên [heap.item2]
 
-## Đồ thị
+## Giới thiệu [foundations]
+- Cấu trúc dữ liệu, kiểu dữ liệu trừu tượng và giải thuật [foundations.item1]
+- Mảng, con trỏ và đánh giá hiệu quả giải thuật [foundations.item2]
 
-### [graphs] Biểu diễn và duyệt đồ thị
-- Ma trận kề và danh sách kề
-- Duyệt đồ thị BFS và DFS
+## Sắp xếp [sorting]
+- Selection sort, insertion sort và bubble sort [sorting.item1]
+- Merge sort, quicksort, heapsort và độ phức tạp [sorting.item2]
 
-## Heap
+## Chồng và Hàng [stackQueue]
+- Stack, Queue và các thao tác cơ bản [stackQueue.item1]
+- Hiện thực và ứng dụng của Stack, Queue [stackQueue.item2]
 
-### [heap] Heap và hàng đợi ưu tiên
-- Max-Heap, Min-Heap và biểu diễn bằng mảng
-- Chèn, xóa, vun đống và hàng đợi ưu tiên
+## Tìm kiếm [searching]
+- Tìm kiếm tuần tự và tìm kiếm nhị phân [searching.item1]
+- Điều kiện áp dụng và độ phức tạp tìm kiếm [searching.item2]
 
-## Giới thiệu
+## Cấu trúc cây nâng cao [balancedTrees]
+- Cây AVL, cân bằng cây và các phép quay [balancedTrees.item1]
+- Cây B/B+ và ứng dụng tổ chức dữ liệu [balancedTrees.item2]
 
-### [foundations] Nền tảng cấu trúc dữ liệu và giải thuật
-- Cấu trúc dữ liệu, kiểu dữ liệu trừu tượng và giải thuật
-- Mảng, con trỏ và đánh giá hiệu quả giải thuật
-
-## Sắp xếp
-
-### [sorting] Các giải thuật sắp xếp
-- Selection sort, insertion sort và bubble sort
-- Merge sort, quicksort, heapsort và độ phức tạp
-
-## Chồng và Hàng
-
-### [stack-queue] Stack và Queue
-- Stack, Queue và các thao tác cơ bản
-- Hiện thực và ứng dụng của Stack, Queue
-
-## Tìm kiếm
-
-### [searching] Các giải thuật tìm kiếm
-- Tìm kiếm tuần tự và tìm kiếm nhị phân
-- Điều kiện áp dụng và độ phức tạp tìm kiếm
-
-## Cấu trúc cây nâng cao
-
-### [balanced-tree] Cây cân bằng và cây đa nhánh
-- Cây AVL, cân bằng cây và các phép quay
-- Cây B/B+ và ứng dụng tổ chức dữ liệu
-
-## Danh sách
-
-### [linked-list] Danh sách liên kết
-- Danh sách liên kết đơn, đôi và vòng
-- Chèn, xóa, duyệt và tìm kiếm trên danh sách'
+## Danh sách [linkedLists]
+- Danh sách liên kết đơn, đôi và vòng [linkedLists.item1]
+- Chèn, xóa, duyệt và tìm kiếm trên danh sách [linkedLists.item2]'
 WHERE id = 'e1000001-0000-4000-8000-000000000001';
 
 COMMIT;
