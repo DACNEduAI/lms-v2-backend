@@ -45,7 +45,7 @@ class AiChatServiceUT {
 
         PythonChatRequest.LearnerState payload = learnerState(courseId);
 
-        assertThat(payload.outcomes()).singleElement().satisfies(outcome -> {
+        assertThat(payload.getOutcomes()).singleElement().satisfies(outcome -> {
             assertThat(outcome.getProbability()).isEqualTo(0.80);
             assertThat(outcome.getStatus()).isEqualTo("PREDICTED");
         });
@@ -76,7 +76,7 @@ class AiChatServiceUT {
 
         PythonChatRequest.LearnerState payload = learnerState(courseId);
 
-        assertThat(payload.outcomes()).singleElement().satisfies(outcome -> {
+        assertThat(payload.getOutcomes()).singleElement().satisfies(outcome -> {
             assertThat(outcome.getProbability()).isNull();
             assertThat(outcome.getStatus()).isEqualTo("INSUFFICIENT_OUTCOME_HISTORY");
         });
