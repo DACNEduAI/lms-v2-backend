@@ -103,11 +103,11 @@ class SubmitAttemptServiceUT {
                         .questionId(questionId)
                         .ktQuestionId(1L)
                         .questionType(QuestionAnswerKey.QuestionType.MULTIPLE_CHOICE)
-                        .questionContent("Question one")
-                        .questionContentFormat("PLAIN_TEXT")
+                        .questionContent("<p>Question one</p>")
+                        .questionContentFormat("TIPTAP_HTML")
                         .answers(List.of(
-                                new QuestionAnswerKey.AnswerSnapshot(1L, "A", "PLAIN_TEXT", false),
-                                new QuestionAnswerKey.AnswerSnapshot(2L, "B", "PLAIN_TEXT", true)))
+                                new QuestionAnswerKey.AnswerSnapshot(1L, "<p>A</p>", "TIPTAP_HTML", false),
+                                new QuestionAnswerKey.AnswerSnapshot(2L, "<p>B</p>", "TIPTAP_HTML", true)))
                         .learningOutcomes(List.of(new QuestionAnswerKey.LearningOutcomeSnapshot(
                                 UUID.randomUUID(), 1L)))
                         .build(),
@@ -146,9 +146,13 @@ class SubmitAttemptServiceUT {
         assertEquals(1L, result.getKtQuestionId());
         assertEquals(0, result.getInteractionOrder());
         assertTrue(result.getCorrect());
+        assertEquals("<p>Question one</p>", result.getQuestionContent());
+        assertEquals("TIPTAP_HTML", result.getQuestionContentFormat());
         assertEquals(2L, result.getStudentAnswerNumber());
-        assertEquals("B", result.getStudentAnswerContent());
+        assertEquals("<p>B</p>", result.getStudentAnswerContent());
+        assertEquals("TIPTAP_HTML", result.getStudentAnswerContentFormat());
         assertEquals(2L, result.getCorrectAnswerNumber());
+        assertEquals("TIPTAP_HTML", result.getCorrectAnswerContentFormat());
         assertTrue(result.getSnapshotComplete());
         assertEquals(1, result.getLearningOutcomeMappingCount());
         AttemptQuestionResult trueFalseResult = resultCaptor.getValue().get(1);

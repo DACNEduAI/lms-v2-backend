@@ -8,6 +8,9 @@
     <id property="id" column="id" />
     <result property="ktQuestionId" column="kt_question_id" />
     <result property="content" column="content" />
+    <result property="contentFormat" column="content_format" javaType="edu.ai.lms.core.quiz3.app.domain.richcontent.RichContentFormat" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
+    <result property="explanation" column="explanation" />
+    <result property="explanationFormat" column="explanation_format" javaType="edu.ai.lms.core.quiz3.app.domain.richcontent.RichContentFormat" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="type" column="type" javaType="edu.ai.lms.core.quiz3.app.domain.Question$QuestionType" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
 
     <result property="quizId" column="quiz_id" />
@@ -53,13 +56,13 @@
   </delete>
 
   <select id="getById" resultMap="QuestionResultMap">
-    SELECT id, kt_question_id, content, type, quiz_id, review_status, source_type, source_question_id, version, reviewed_by, reviewed_at, created_at, updated_at
+    SELECT id, kt_question_id, content, content_format, explanation, explanation_format, type, quiz_id, review_status, source_type, source_question_id, version, reviewed_by, reviewed_at, created_at, updated_at
     FROM edu.questions
     WHERE id = #{questionId}
   </select>
 
   <select id="getByQuizId" resultMap="QuestionResultMap">
-    SELECT id, kt_question_id, content, type, quiz_id, review_status, source_type, source_question_id, version, reviewed_by, reviewed_at, created_at, updated_at
+    SELECT id, kt_question_id, content, content_format, explanation, explanation_format, type, quiz_id, review_status, source_type, source_question_id, version, reviewed_by, reviewed_at, created_at, updated_at
     FROM edu.questions
     WHERE quiz_id = #{quizId}
     ORDER BY order_index, created_at, id
