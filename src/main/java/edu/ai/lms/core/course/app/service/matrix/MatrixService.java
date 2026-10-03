@@ -120,8 +120,9 @@ public class MatrixService {
             for(var cell:safe(row.cells())) jdbc.update("INSERT INTO edu.exam_matrix_cells(row_id,custom_learning_level_id,question_count) VALUES(?,?,?)",row.id(),cell.customLearningLevelId(),p.mode()==MatrixMode.AUTOMATIC?null:cell.questionCount());
         }
     }
-    private void validate(UUID courseId,MatrixPayload p) {
+    void validate(UUID courseId,MatrixPayload p) {
         if(p==null||trim(p.title())==null||p.mode()==null) throw badRequest("Matrix title and mode are required");
+        if(safe(p.rows()).isEmpty()) throw badRequest("Matrix needs at least one CCCT content row");
         UUID profileId=singleCcct(courseId);
         if(p.mode()==MatrixMode.AUTOMATIC&&(p.totalQuestionCount()==null||p.totalQuestionCount()<=0)) throw badRequest("Automatic Matrix total question count must be greater than zero");
         if(p.mode()==MatrixMode.MANUAL&&p.totalQuestionCount()!=null) throw badRequest("Manual Matrix cannot have a total question count");

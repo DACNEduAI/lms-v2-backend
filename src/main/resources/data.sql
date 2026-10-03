@@ -516,60 +516,61 @@ VALUES
      true, 'STRUCTURED',
      '# CCCT – Data Structures and Algorithms
 
-## Cây nhị phân
-- Khái niệm, biểu diễn và các phép duyệt cây nhị phân — Learn and exam
-- Cây nhị phân tìm kiếm và các thao tác tìm kiếm, chèn, xóa — Learn and exam
+## Giới thiệu
+- Khái niệm cấu trúc dữ liệu, kiểu dữ liệu trừu tượng và giải thuật — Learn and exam
+- Mảng, con trỏ và cách đánh giá hiệu quả giải thuật — Learn and exam
 
 ## Độ phức tạp giải thuật
 - Ký hiệu Big-O, Big-Ω và Big-Θ — Learn and exam
 - Phân tích độ phức tạp vòng lặp và giải thuật đệ quy — Learn and exam
 
-## Đồ thị
-- Biểu diễn đồ thị bằng ma trận kề và danh sách kề — Learn and exam
-- Duyệt đồ thị BFS, DFS và ứng dụng — Learn and exam
-
-## Heap
-- Max-Heap, Min-Heap và biểu diễn bằng mảng — Learn and exam
-- Thao tác chèn, xóa, vun đống và ứng dụng hàng đợi ưu tiên — Learn and exam
-
-## Giới thiệu
-- Khái niệm cấu trúc dữ liệu, kiểu dữ liệu trừu tượng và giải thuật — Learn and exam
-- Mảng, con trỏ và cách đánh giá hiệu quả giải thuật — Learn and exam
-
-## Sắp xếp
-- Các giải thuật sắp xếp cơ bản: selection, insertion và bubble sort — Learn and exam
-- Merge sort, quicksort, heapsort và so sánh độ phức tạp — Learn and exam
+## Danh sách
+- Danh sách liên kết đơn, đôi và vòng — Learn and exam
+- Các thao tác chèn, xóa, duyệt và tìm kiếm trên danh sách — Learn and exam
 
 ## Chồng và Hàng
 - Stack, Queue và các thao tác push, pop, enqueue, dequeue — Learn and exam
 - Hiện thực bằng mảng, danh sách liên kết và các ứng dụng — Learn and exam
 
-## Tìm kiếm
-- Tìm kiếm tuần tự và tìm kiếm nhị phân — Learn and exam
-- Điều kiện áp dụng và phân tích độ phức tạp tìm kiếm — Learn and exam
+## Cây nhị phân
+- Khái niệm, biểu diễn và các phép duyệt cây nhị phân — Learn and exam
+- Cây nhị phân tìm kiếm và các thao tác tìm kiếm, chèn, xóa — Learn and exam
 
 ## Cấu trúc cây nâng cao
 - Cây AVL, cân bằng cây và các phép quay — Learn and exam
 - Cây B/B+ và ứng dụng tổ chức dữ liệu — Learn and exam
 
-## Danh sách
-- Danh sách liên kết đơn, đôi và vòng — Learn and exam
-- Các thao tác chèn, xóa, duyệt và tìm kiếm trên danh sách — Learn and exam',
+## Heap
+- Max-Heap, Min-Heap và biểu diễn bằng mảng — Learn and exam
+- Thao tác chèn, xóa, vun đống và ứng dụng hàng đợi ưu tiên — Learn and exam
+
+## Sắp xếp
+- Các giải thuật sắp xếp cơ bản: selection, insertion và bubble sort — Learn and exam
+- Merge sort, quicksort, heapsort và so sánh độ phức tạp — Learn and exam
+
+## Đồ thị
+- Biểu diễn đồ thị bằng ma trận kề và danh sách kề — Learn and exam
+- Duyệt đồ thị BFS, DFS và ứng dụng — Learn and exam
+
+## Tìm kiếm
+- Tìm kiếm tuần tự và tìm kiếm nhị phân — Learn and exam
+- Điều kiện áp dụng và phân tích độ phức tạp tìm kiếm — Learn and exam
+',
      '11111111-1111-1111-1111-111111111111');
 
 -- Format v2 requires every course chapter in its persisted order.
 INSERT INTO ccct_chapters (id, profile_id, course_chapter_id, chapter_code, title, order_index)
 VALUES
-    ('e2000001-0000-4000-8000-000000000001', 'e1000001-0000-4000-8000-000000000001', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'binaryTrees', 'Cây nhị phân', 0),
+    ('e2000001-0000-4000-8000-000000000005', 'e1000001-0000-4000-8000-000000000001', '8a01575f-a418-4107-b1b1-5eef75c5b72d', 'foundations', 'Giới thiệu', 0),
     ('e2000001-0000-4000-8000-000000000002', 'e1000001-0000-4000-8000-000000000001', '5e055691-371a-4de5-b61a-f6d06712c36a', 'complexity', 'Độ phức tạp giải thuật', 1),
-    ('e2000001-0000-4000-8000-000000000003', 'e1000001-0000-4000-8000-000000000001', '6967be86-ae45-4e55-8faa-71318f50bbf6', 'graphs', 'Đồ thị', 2),
-    ('e2000001-0000-4000-8000-000000000004', 'e1000001-0000-4000-8000-000000000001', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'heap', 'Heap', 3),
-    ('e2000001-0000-4000-8000-000000000005', 'e1000001-0000-4000-8000-000000000001', '8a01575f-a418-4107-b1b1-5eef75c5b72d', 'foundations', 'Giới thiệu', 4),
-    ('e2000001-0000-4000-8000-000000000006', 'e1000001-0000-4000-8000-000000000001', 'a8c06712-6aa5-4993-901b-77008af766d3', 'sorting', 'Sắp xếp', 5),
-    ('e2000001-0000-4000-8000-000000000007', 'e1000001-0000-4000-8000-000000000001', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'stackQueue', 'Chồng và Hàng', 6),
-    ('e2000001-0000-4000-8000-000000000008', 'e1000001-0000-4000-8000-000000000001', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'searching', 'Tìm kiếm', 7),
-    ('e2000001-0000-4000-8000-000000000009', 'e1000001-0000-4000-8000-000000000001', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'balancedTrees', 'Cấu trúc cây nâng cao', 8),
-    ('e2000001-0000-4000-8000-000000000010', 'e1000001-0000-4000-8000-000000000001', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'linkedLists', 'Danh sách', 9);
+    ('e2000001-0000-4000-8000-000000000010', 'e1000001-0000-4000-8000-000000000001', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'linkedLists', 'Danh sách', 2),
+    ('e2000001-0000-4000-8000-000000000007', 'e1000001-0000-4000-8000-000000000001', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'stackQueue', 'Chồng và Hàng', 3),
+    ('e2000001-0000-4000-8000-000000000001', 'e1000001-0000-4000-8000-000000000001', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'binaryTrees', 'Cây nhị phân', 4),
+    ('e2000001-0000-4000-8000-000000000009', 'e1000001-0000-4000-8000-000000000001', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'balancedTrees', 'Cấu trúc cây nâng cao', 5),
+    ('e2000001-0000-4000-8000-000000000004', 'e1000001-0000-4000-8000-000000000001', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'heap', 'Heap', 6),
+    ('e2000001-0000-4000-8000-000000000006', 'e1000001-0000-4000-8000-000000000001', 'a8c06712-6aa5-4993-901b-77008af766d3', 'sorting', 'Sắp xếp', 7),
+    ('e2000001-0000-4000-8000-000000000003', 'e1000001-0000-4000-8000-000000000001', '6967be86-ae45-4e55-8faa-71318f50bbf6', 'graphs', 'Đồ thị', 8),
+    ('e2000001-0000-4000-8000-000000000008', 'e1000001-0000-4000-8000-000000000001', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'searching', 'Tìm kiếm', 9);
 
 INSERT INTO ccct_items (id, chapter_id, content_code, content, order_index)
 VALUES
@@ -1089,45 +1090,45 @@ WHERE cell.row_id = ranked.row_id
 UPDATE ccct_profiles
 SET markdown_content = '# CCCT – Data Structures and Algorithms
 
-## Cây nhị phân [binaryTrees]
-- Khái niệm, biểu diễn và các phép duyệt cây nhị phân [binaryTrees.traversal]
-- Cây nhị phân tìm kiếm: tìm kiếm, chèn và xóa [binaryTrees.searchInsertDelete]
+## Giới thiệu [foundations]
+- Cấu trúc dữ liệu, kiểu dữ liệu trừu tượng và giải thuật [foundations.item1]
+- Mảng, con trỏ và đánh giá hiệu quả giải thuật [foundations.item2]
 
 ## Độ phức tạp giải thuật [complexity]
 - Ký hiệu Big-O, Big-Ω và Big-Θ [complexity.bigO]
 - Phân tích độ phức tạp vòng lặp và giải thuật đệ quy [complexity.recursion]
 
-## Đồ thị [graphs]
-- Ma trận kề và danh sách kề [graphs.representations]
-- Duyệt đồ thị BFS và DFS [graphs.traversal]
-
-## Heap [heap]
-- Max-Heap, Min-Heap và biểu diễn bằng mảng [heap.item1]
-- Chèn, xóa, vun đống và hàng đợi ưu tiên [heap.item2]
-
-## Giới thiệu [foundations]
-- Cấu trúc dữ liệu, kiểu dữ liệu trừu tượng và giải thuật [foundations.item1]
-- Mảng, con trỏ và đánh giá hiệu quả giải thuật [foundations.item2]
-
-## Sắp xếp [sorting]
-- Selection sort, insertion sort và bubble sort [sorting.item1]
-- Merge sort, quicksort, heapsort và độ phức tạp [sorting.item2]
+## Danh sách [linkedLists]
+- Danh sách liên kết đơn, đôi và vòng [linkedLists.item1]
+- Chèn, xóa, duyệt và tìm kiếm trên danh sách [linkedLists.item2]
 
 ## Chồng và Hàng [stackQueue]
 - Stack, Queue và các thao tác cơ bản [stackQueue.item1]
 - Hiện thực và ứng dụng của Stack, Queue [stackQueue.item2]
 
-## Tìm kiếm [searching]
-- Tìm kiếm tuần tự và tìm kiếm nhị phân [searching.item1]
-- Điều kiện áp dụng và độ phức tạp tìm kiếm [searching.item2]
+## Cây nhị phân [binaryTrees]
+- Khái niệm, biểu diễn và các phép duyệt cây nhị phân [binaryTrees.traversal]
+- Cây nhị phân tìm kiếm: tìm kiếm, chèn và xóa [binaryTrees.searchInsertDelete]
 
 ## Cấu trúc cây nâng cao [balancedTrees]
 - Cây AVL, cân bằng cây và các phép quay [balancedTrees.item1]
 - Cây B/B+ và ứng dụng tổ chức dữ liệu [balancedTrees.item2]
 
-## Danh sách [linkedLists]
-- Danh sách liên kết đơn, đôi và vòng [linkedLists.item1]
-- Chèn, xóa, duyệt và tìm kiếm trên danh sách [linkedLists.item2]'
+## Heap [heap]
+- Max-Heap, Min-Heap và biểu diễn bằng mảng [heap.item1]
+- Chèn, xóa, vun đống và hàng đợi ưu tiên [heap.item2]
+
+## Sắp xếp [sorting]
+- Selection sort, insertion sort và bubble sort [sorting.item1]
+- Merge sort, quicksort, heapsort và độ phức tạp [sorting.item2]
+
+## Đồ thị [graphs]
+- Ma trận kề và danh sách kề [graphs.representations]
+- Duyệt đồ thị BFS và DFS [graphs.traversal]
+
+## Tìm kiếm [searching]
+- Tìm kiếm tuần tự và tìm kiếm nhị phân [searching.item1]
+- Điều kiện áp dụng và độ phức tạp tìm kiếm [searching.item2]'
 WHERE id = 'e1000001-0000-4000-8000-000000000001';
 
 COMMIT;
