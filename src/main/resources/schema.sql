@@ -1051,6 +1051,25 @@ CREATE TABLE IF NOT EXISTS quiz3_assessment_variants (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz3_base_variant ON quiz3_assessment_variants(assessment_id) WHERE variant_kind='BASE';
 
+-- Manual Quiz3 rich-content repair audit. The backfill command never runs during normal application startup.
+CREATE TABLE IF NOT EXISTS quiz3_rich_content_backfill_audit (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    run_id UUID NOT NULL,
+    entity_type VARCHAR(30) NOT NULL CHECK(entity_type IN('QUESTION','ANSWER','ATTEMPT_RECORD')),
+    field_name VARCHAR(40) NOT NULL,
+    question_id UUID NOT NULL,
+    answer_number BIGINT,
+    attempt_id UUID,
+    before_content TEXT,
+    before_format VARCHAR(40),
+    after_content TEXT NOT NULL,
+    after_format VARCHAR(40) NOT NULL,
+    restored_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_quiz3_rich_content_backfill_run
+    ON quiz3_rich_content_backfill_audit(run_id,id);
+
 CREATE TABLE IF NOT EXISTS quiz3_question_provenance (
     question_id UUID PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
     generation_job_id UUID NOT NULL REFERENCES quiz3_generation_jobs(id) ON DELETE RESTRICT,
