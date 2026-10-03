@@ -24,13 +24,14 @@ public class OwaspRichContentSanitizer implements SanitizeRichContentPort {
     private final PolicyFactory policy = new HtmlPolicyBuilder()
             .allowElements("p", "br", "h1", "h2", "h3", "h4", "h5", "h6", "strong", "em", "u", "s",
                     "code", "pre", "blockquote", "hr", "ul", "ol", "li", "input", "table", "thead",
-                    "tbody", "tr", "th", "td", "a", "img", "span", "div", "mark")
+                    "tbody", "tr", "th", "td", "colgroup", "col", "a", "img", "span", "div", "mark", "sub", "sup")
             .allowAttributes("class").onElements("span", "div", "p", "table", "thead", "tbody", "tr", "th", "td",
                     "ul", "ol", "li", "blockquote", "pre", "code")
             .allowAttributes("style").onElements("span", "p", "h1", "h2", "h3", "h4", "h5", "h6", "img")
             .allowAttributes("href", "target", "rel").onElements("a")
             .allowAttributes("src", "alt", "title", "width", "height", "data-image-width", "data-image-layout").onElements("img")
             .allowAttributes("colspan", "rowspan", "colwidth").onElements("th", "td")
+            .allowAttributes("span", "width").onElements("col")
             .allowAttributes("type", "checked", "data-checked").onElements("input", "li")
             .allowAttributes("data-type", "data-latex", "data-ai-artifact-id", "data-ai-artifact-type")
                 .onElements("span", "div")

@@ -122,6 +122,14 @@ public class Quiz3RichContentUploadService {
         return referenced;
     }
 
+    public Set<String> publicUrls(Collection<Quiz3RichContentAsset> existingAssets,
+            Collection<UploadedAsset> uploadedAssets) {
+        Set<String> urls = new LinkedHashSet<>();
+        if (existingAssets != null) existingAssets.forEach(asset -> urls.add(storage.publicUrl(asset.storageKey())));
+        if (uploadedAssets != null) uploadedAssets.forEach(asset -> urls.add(asset.publicUrl()));
+        return urls;
+    }
+
     private Set<String> pendingIds(List<RichTextValue> values) {
         Set<String> result = new LinkedHashSet<>();
         values.stream().filter(value -> value.contentFormat() == RichContentFormat.TIPTAP_HTML).forEach(value -> {

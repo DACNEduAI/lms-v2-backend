@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import edu.ai.lms.core.asset.adapter.out.persistence.AssetGenerationJobMapper;
 import edu.ai.lms.core.asset.adapter.out.persistence.AssetGenerationJobRow;
@@ -32,11 +33,13 @@ public class Quiz3VisualCoordinator {
     private final CourseAssetStorageApi courseStorage;
     private final Quiz3RichContentUploadService uploads;
     private final Quiz3RichContentAssetRepository richAssets;
+    private final Quiz3RichContentNormalizer normalizer;
+    private final TransactionTemplate transactions;
 
     @Scheduled(fixedDelayString = "${quiz3.visual.dispatch-delay-ms:2000}")
     public void dispatch() {
         List<UUID> ids=jdbc.query("SELECT question_id FROM edu.quiz3_question_visuals WHERE status IN ('PENDING','PROCESSING') ORDER BY created_at LIMIT 20",(rs,row)->rs.getObject(1,UUID.class));
-        ids.forEach(id -> { try { advance(id); } catch (RuntimeException ignored) { /* transient dependency; retry next tick */ } });
+        ids.forEach(id -> { try { transactions.executeWithoutResult(status -> advance(id)); } catch (RuntimeException ignored) { /* transient dependency; retry next tick */ } });
     }
 
     @Transactional
@@ -69,9 +72,26 @@ public class Quiz3VisualCoordinator {
     private static boolean reusable(ImageAsset image) { return image!=null && image.asset().publicationStatus()==Asset.PublicationStatus.PUBLISHED && image.asset().uploadStatus()==Asset.UploadStatus.UPLOADED; }
     private void snapshot(Row row,ImageAsset source,UUID sourceAssetId) {
         Quiz3RichContentUploadService.UploadedAsset copy=uploads.snapshotCourseAsset(courseStorage.read(source.storageKey()),source.contentType());
+        uploads.cleanupAfterRollback(List.of(copy));
         String image="<img src=\""+escape(copy.publicUrl())+"\" alt=\""+escape(row.altText())+"\" data-image-layout=\"block\" />";
-        if("QUESTION".equals(row.placement())) jdbc.update("UPDATE edu.questions SET content=COALESCE(content,'') || ?,content_format='TIPTAP_HTML',updated_at=CURRENT_TIMESTAMP WHERE id=?",image,row.questionId());
-        else jdbc.update("UPDATE edu.answers SET content=COALESCE(content,'') || ?,content_format='TIPTAP_HTML' WHERE question_id=? AND answer_number=(SELECT answer_number FROM edu.answers WHERE question_id=? ORDER BY answer_number OFFSET ? LIMIT 1)",image,row.questionId(),row.questionId(),row.answerIndex());
+        var allowedImageUrls=uploads.publicUrls(richAssets.findByQuestionId(row.questionId()),List.of(copy));
+        if("QUESTION".equals(row.placement())) {
+            ContentRow current=jdbc.query("SELECT content,content_format FROM edu.questions WHERE id=?",
+                    rs->rs.next()?new ContentRow(rs.getString(1),rs.getString(2),null):null,row.questionId());
+            if(current==null) throw new IllegalStateException("Quiz3 visual question is missing");
+            var normalized=normalizer.appendOwnedImage(current.content(),current.contentFormat(),image,allowedImageUrls::contains);
+            jdbc.update("UPDATE edu.questions SET content=?,content_format=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                    normalized.content(),normalized.contentFormat().name(),row.questionId());
+        } else {
+            ContentRow current=jdbc.query("""
+                    SELECT content,content_format,answer_number FROM edu.answers WHERE question_id=?
+                    ORDER BY answer_number OFFSET ? LIMIT 1
+                    """,rs->rs.next()?new ContentRow(rs.getString(1),rs.getString(2),rs.getLong(3)):null,row.questionId(),row.answerIndex());
+            if(current==null) throw new IllegalStateException("Quiz3 visual answer is missing");
+            var normalized=normalizer.appendOwnedImage(current.content(),current.contentFormat(),image,allowedImageUrls::contains);
+            jdbc.update("UPDATE edu.answers SET content=?,content_format=?,updated_at=CURRENT_TIMESTAMP WHERE question_id=? AND answer_number=?",
+                    normalized.content(),normalized.contentFormat().name(),row.questionId(),current.answerNumber());
+        }
         richAssets.save(new Quiz3RichContentAsset(UUID.randomUUID(),row.questionId(),copy.storageKey(),copy.mediaType(),copy.byteSize(),copy.sha256(),sourceAssetId,null,null,null));
         jdbc.update("UPDATE edu.quiz3_question_visuals SET status='READY',error_message=NULL,updated_at=CURRENT_TIMESTAMP WHERE question_id=?",row.questionId());
         jdbc.update("UPDATE edu.quiz3_question_provenance SET effective_asset_type='IMAGE',asset_fallback_reason=NULL WHERE question_id=?",row.questionId());
@@ -98,5 +118,6 @@ public class Quiz3VisualCoordinator {
         jdbc.update("UPDATE edu.quiz3_assessments SET lifecycle_status='REVIEW_PENDING',current_step=GREATEST(current_step,6),version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=(SELECT assessment_id FROM edu.quiz3_generation_jobs WHERE id=?)",jobId);
     }
     private static String escape(String value) { return value==null?"":value.replace("&","&amp;").replace("\"","&quot;").replace("<","&lt;").replace(">","&gt;"); }
+    private record ContentRow(String content,String contentFormat,Long answerNumber) { }
     private record Row(UUID questionId,UUID jobId,UUID courseId,String placement,Integer answerIndex,String altText,String action,UUID selectedAssetId,UUID generatedAssetId,UUID assetJobId,String status,String generationPrompt) { }
 }

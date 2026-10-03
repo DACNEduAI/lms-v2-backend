@@ -7,22 +7,24 @@
   <resultMap id="AnswerResultMap" type="edu.ai.lms.core.quiz3.app.domain.Answer">
     <id property="answerNumber" column="answer_number" />
     <result property="content" column="content" />
+    <result property="contentFormat" column="content_format" javaType="edu.ai.lms.core.quiz3.app.domain.richcontent.RichContentFormat" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="isCorrect" column="is_correct" />
     <result property="explanation" column="explanation" />
+    <result property="explanationFormat" column="explanation_format" javaType="edu.ai.lms.core.quiz3.app.domain.richcontent.RichContentFormat" typeHandler="org.apache.ibatis.type.EnumTypeHandler" />
     <result property="questionId" column="question_id" />
     <result property="createdAt" column="created_at" />
     <result property="updatedAt" column="updated_at" />
   </resultMap>
 
   <select id="getByQuestionId" resultMap="AnswerResultMap">
-    SELECT answer_number, content, is_correct, explanation, question_id, created_at, updated_at
+    SELECT answer_number, content, content_format, is_correct, explanation, explanation_format, question_id, created_at, updated_at
     FROM edu.answers
     WHERE question_id = #{questionId}
     ORDER BY answer_number
   </select>
 
   <select id="getByAnswerNumberAndQuestionId" resultMap="AnswerResultMap">
-    SELECT answer_number, content, is_correct, explanation, question_id, created_at, updated_at
+    SELECT answer_number, content, content_format, is_correct, explanation, explanation_format, question_id, created_at, updated_at
     FROM edu.answers
     WHERE answer_number = #{answerNumber}
       AND question_id = #{questionId}

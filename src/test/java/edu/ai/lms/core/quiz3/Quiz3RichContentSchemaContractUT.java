@@ -20,4 +20,17 @@ class Quiz3RichContentSchemaContractUT {
                 .doesNotContain("REFERENCES question_ai_artifacts");
         assertThat(schema).doesNotContain("CREATE TABLE IF NOT EXISTS rich_content_assets");
     }
+
+    @Test
+    void resetSchemaAndManualMigrationProvideAuditedBackfillRecovery() throws Exception {
+        String schema = Files.readString(Path.of("src/main/resources/schema.sql"));
+        String migration = Files.readString(Path.of(
+                "src/main/resources/db/manual/V20261002_01__quiz3_rich_content_backfill_audit.sql"));
+
+        for (String contract : new String[] { "quiz3_rich_content_backfill_audit", "run_id UUID NOT NULL",
+                "before_content TEXT", "after_content TEXT NOT NULL", "restored_at TIMESTAMP" }) {
+            assertThat(schema).contains(contract);
+            assertThat(migration).contains(contract);
+        }
+    }
 }

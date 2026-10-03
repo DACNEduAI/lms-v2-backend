@@ -68,10 +68,12 @@ class GetAttemptQuizSessionServiceUT {
 
         assertEquals(attemptId, response.getAttemptId());
         assertEquals(questionId, response.getQuestions().getFirst().getQuestionId());
+        assertEquals(RichContentFormat.TIPTAP_HTML, response.getQuestions().getFirst().getContentFormat());
         assertEquals(learningOutcomeId, response.getQuestions().getFirst().getLearningOutcomes().getFirst().getId());
         assertEquals("LO1.1", response.getQuestions().getFirst().getLearningOutcomes().getFirst().getCode());
         assertEquals(7L, response.getQuestions().getFirst().getAnswers().getFirst().getAnswerNumber());
         assertEquals("Answer", response.getQuestions().getFirst().getAnswers().getFirst().getContent());
+        assertEquals(RichContentFormat.TIPTAP_HTML, response.getQuestions().getFirst().getAnswers().getFirst().getContentFormat());
         assertNull(response.getDueTime());
         verify(attemptAutoCloseService).isAlreadyStartedAttemptExpiredValidation(eq(studentId), eq(courseId), eq(quizId), any(LocalDateTime.class));
     }

@@ -22,6 +22,7 @@ public class Quiz3RichContentService {
     private final Quiz3AssessmentService assessments;
     private final Quiz3RichContentAssetRepository assets;
     private final Quiz3RichContentUploadService uploads;
+    private final Quiz3RichContentNormalizer normalizer;
 
     @Transactional
     public List<Quiz3Models.VariantView> update(UUID courseId, UUID assessmentId, UUID variantId,
@@ -29,22 +30,28 @@ public class Quiz3RichContentService {
         var existing = assets.findByQuestionId(questionId);
         var prepared = uploads.prepare(values(request), images, existing);
         uploads.cleanupAfterRollback(prepared.uploadedAssets());
+        var allowedImageUrls = uploads.publicUrls(existing, prepared.uploadedAssets());
+        var normalizedValues = prepared.values().stream()
+                .map(value -> normalizer.normalizeDeclared(value.content(), value.contentFormat().name(), allowedImageUrls::contains))
+                .toList();
         int index = 0;
-        RichTextValue content = prepared.values().get(index++);
-        RichTextValue explanation = prepared.values().get(index++);
+        RichTextValue content = normalizedValues.get(index++);
+        RichTextValue explanation = normalizedValues.get(index++);
         List<Quiz3Models.AnswerInput> answers = new ArrayList<>();
-        for (Quiz3Models.AnswerInput answer : request.answers()) {
-            RichTextValue value = prepared.values().get(index++);
+        List<Quiz3Models.AnswerInput> requestedAnswers = request.answers() == null ? List.of() : request.answers();
+        for (Quiz3Models.AnswerInput answer : requestedAnswers) {
+            RichTextValue value = normalizedValues.get(index++);
             answers.add(new Quiz3Models.AnswerInput(value.content(), value.contentFormat().name(), answer.correct()));
         }
+        String explanationContent = request.explanation() == null ? null : explanation.content();
         var rewritten = new Quiz3Models.QuestionUpdate(request.expectedQuestionVersion(), content.content(),
-                content.contentFormat().name(), explanation.content(), explanation.contentFormat().name(), answers,
+                content.contentFormat().name(), explanationContent, explanation.contentFormat().name(), answers,
                 request.imageAssetSelections());
         List<Quiz3Models.VariantView> result = assessments.updateQuestion(
                 courseId, assessmentId, variantId, questionId, rewritten);
         assets.saveAll(uploads.assetsForQuestion(questionId, prepared.uploadedAssets()));
         assets.retainForQuestion(questionId, uploads.referencedStorageKeys(
-                prepared.values(), existing, prepared.uploadedAssets()));
+                normalizedValues, existing, prepared.uploadedAssets()));
         return result;
     }
 

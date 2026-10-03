@@ -39,6 +39,7 @@ import edu.ai.lms.core.course.app.port.out.LoadSignedInUserPort;
 import edu.ai.lms.core.course.app.service.CourseTeacherAccess;
 import edu.ai.lms.core.course.app.service.matrix.MatrixService;
 import edu.ai.lms.core.quiz3.api.CodeRunnerContractSnapshotApi;
+import edu.ai.lms.core.quiz3.app.domain.richcontent.RichTextValue;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -53,6 +54,9 @@ public class Quiz3AssessmentService {
     private final Quiz3QBank2RegenerationService qbank2Regeneration;
     private final Quiz3ReleaseCoordinator releases;
     private final CodeRunnerContractSnapshotApi codeRunnerContracts;
+    private final Quiz3RichContentNormalizer richContentNormalizer;
+    private final Quiz3RichContentAssetRepository richContentAssets;
+    private final Quiz3RichContentUploadService richContentUploads;
 
     public List<AssessmentView> list(UUID courseId) {
         requireTeacher(courseId);
@@ -578,11 +582,21 @@ public class Quiz3AssessmentService {
     }
 
     private UUID persistQuestion(UUID jobId,UUID quizId,GeneratedQuestion source,int order,UUID sourceQuestionId,JsonNode content){
+        RichTextValue questionContent=richContentNormalizer.normalizeAi(source.content());
         UUID id=UUID.randomUUID(); jdbc.update("""
                 INSERT INTO edu.questions(id,content,content_format,explanation,explanation_format,type,quiz_id,review_status,source_type,source_question_id,order_index)
-                VALUES (?,?,'PLAIN_TEXT',NULL,'PLAIN_TEXT',?,?,'APPROVED',?,?,?)
-                """,id,source.content(),source.type(),quizId,sourceQuestionId==null?"AI_GENERATED":"QUIZ_CLONE",sourceQuestionId,order);
-        for(GeneratedAnswer answer:source.answers()==null?List.<GeneratedAnswer>of():source.answers()) jdbc.update("INSERT INTO edu.answers(content,is_correct,explanation,question_id) VALUES (?,?,?,?)",answer.content(),answer.isCorrect(),answer.explanation(),id);
+                VALUES (?,?,?,NULL,'TIPTAP_HTML',?,?,'APPROVED',?,?,?)
+                """,id,questionContent.content(),questionContent.contentFormat().name(),source.type(),quizId,
+                sourceQuestionId==null?"AI_GENERATED":"QUIZ_CLONE",sourceQuestionId,order);
+        for(GeneratedAnswer answer:source.answers()==null?List.<GeneratedAnswer>of():source.answers()) {
+            RichTextValue answerContent=richContentNormalizer.normalizeAi(answer.content());
+            RichTextValue answerExplanation=answer.explanation()==null?null:richContentNormalizer.normalizeAi(answer.explanation());
+            jdbc.update("""
+                    INSERT INTO edu.answers(content,is_correct,explanation,content_format,explanation_format,question_id)
+                    VALUES (?,?,?,?,?,?)
+                    """,answerContent.content(),answer.isCorrect(),answerExplanation==null?null:answerExplanation.content(),
+                    answerContent.contentFormat().name(),answerExplanation==null?"TIPTAP_HTML":answerExplanation.contentFormat().name(),id);
+        }
         if("CODE_RUNNER".equals(source.type())) {
             if(sourceQuestionId==null) codeRunnerContracts.createQuestionRevision(id,source.codeRunnerContract().toString());
             else codeRunnerContracts.cloneLatestQuestionRevision(sourceQuestionId,id);
@@ -634,35 +648,82 @@ public class Quiz3AssessmentService {
         Collections.shuffle(questionIds,new Random(seed));
         for(int index=0;index<questionIds.size();index++){
             UUID sourceId=questionIds.get(index); Map<String,Object> q=jdbc.queryForMap("""
-                    SELECT q.content,q.type,p.generation_job_id,p.matrix_row_id,p.matrix_custom_learning_level_id level_id,p.learning_outcome_id,
-                           p.requested_asset_type,p.effective_asset_type,p.asset_fallback_reason
-                    FROM edu.questions q JOIN edu.quiz3_question_provenance p ON p.question_id=q.id WHERE q.id=?
+                    SELECT q.content,q.content_format,q.explanation,q.explanation_format,q.type
+                    FROM edu.questions q WHERE q.id=?
                     """,sourceId);
-            List<GeneratedAnswer> answers=jdbc.query("SELECT content,is_correct,explanation FROM edu.answers WHERE question_id=? ORDER BY answer_number",
-                    (rs,row)->new GeneratedAnswer(rs.getString(1),rs.getBoolean(2),rs.getString(3)),sourceId); Collections.shuffle(answers,new Random(seed^index));
-            UUID clonedQuestionId=persistQuestion((UUID)q.get("generation_job_id"),quizId,new GeneratedQuestion(String.valueOf(q.get("content")),String.valueOf(q.get("type")),
-                    (UUID)q.get("matrix_row_id"),(UUID)q.get("level_id"),(UUID)q.get("learning_outcome_id"),answers,null,null,
-                    String.valueOf(q.get("requested_asset_type")),String.valueOf(q.get("effective_asset_type")),(String)q.get("asset_fallback_reason")),index,sourceId,null);
+            List<ClonedAnswer> answers=jdbc.query("""
+                    SELECT content,content_format,is_correct,explanation,explanation_format
+                    FROM edu.answers WHERE question_id=? ORDER BY answer_number
+                    """,(rs,row)->new ClonedAnswer(row,rs.getString(1),rs.getString(2),rs.getBoolean(3),rs.getString(4),rs.getString(5)),sourceId);
+            Integer sourceVisualAnswerIndex=jdbc.query("SELECT answer_index FROM edu.quiz3_question_visuals WHERE question_id=? AND placement='ANSWER'",
+                    rs->rs.next()?(Integer)rs.getObject(1):null,sourceId);
+            Collections.shuffle(answers,new Random(seed^index));
+            Integer clonedVisualAnswerIndex=sourceVisualAnswerIndex==null?null:answerIndex(answers,sourceVisualAnswerIndex);
+            var sourceAssets=richContentAssets.findByQuestionId(sourceId);
+            var allowedImageUrls=richContentUploads.publicUrls(sourceAssets,List.of());
+            UUID clonedQuestionId=persistClonedQuestion(quizId,sourceId,index,new ClonedQuestion(
+                    (String)q.get("content"),(String)q.get("content_format"),(String)q.get("explanation"),
+                    (String)q.get("explanation_format"),(String)q.get("type"),answers),allowedImageUrls);
             jdbc.update("""
                     INSERT INTO edu.quiz3_rich_content_assets(id,question_id,storage_key,media_type,byte_size,sha256,source_asset_id,ai_artifact_id)
                     SELECT gen_random_uuid(),?,storage_key,media_type,byte_size,sha256,source_asset_id,ai_artifact_id FROM edu.quiz3_rich_content_assets WHERE question_id=?
                     """,clonedQuestionId,sourceId);
             jdbc.update("""
                     INSERT INTO edu.quiz3_question_visuals(question_id,generation_job_id,placement,answer_index,visual_brief,alt_text,resolution_action,search_query,candidates,generation_prompt,selected_asset_id,generated_asset_id,asset_generation_job_id,status,attempt_count,error_message,selector_warning)
-                    SELECT ?,generation_job_id,placement,answer_index,visual_brief,alt_text,resolution_action,search_query,candidates,generation_prompt,selected_asset_id,generated_asset_id,NULL,status,attempt_count,error_message,selector_warning
+                    SELECT ?,generation_job_id,placement,CASE WHEN placement='ANSWER' THEN ? ELSE answer_index END,visual_brief,alt_text,resolution_action,search_query,candidates,generation_prompt,selected_asset_id,generated_asset_id,NULL,status,attempt_count,error_message,selector_warning
                     FROM edu.quiz3_question_visuals WHERE question_id=? ON CONFLICT(question_id) DO NOTHING
-                    """,clonedQuestionId,sourceId);
-            jdbc.update("""
-                    UPDATE edu.quiz3_question_provenance target SET qbank2_selection_mode=source.qbank2_selection_mode,
-                        qbank2_content_group_ids=source.qbank2_content_group_ids,qbank2_content_group_codes=source.qbank2_content_group_codes,
-                        qbank2_example_ids=source.qbank2_example_ids,qbank2_reference_snapshot=source.qbank2_reference_snapshot
-                    FROM edu.quiz3_question_provenance source
-                    WHERE target.question_id=(SELECT id FROM edu.questions WHERE quiz_id=? AND source_question_id=?)
-                      AND source.question_id=?
-                    """,quizId,sourceId,sourceId);
+                    """,clonedQuestionId,clonedVisualAnswerIndex,sourceId);
         }
         recalculateCoverageInternal(assessment.id(),variantId);
     }
+
+    private UUID persistClonedQuestion(UUID quizId,UUID sourceQuestionId,int order,ClonedQuestion source,Set<String> allowedImageUrls){
+        RichTextValue content=richContentNormalizer.normalizeDeclared(source.content(),source.contentFormat(),allowedImageUrls::contains);
+        RichTextValue explanation=source.explanation()==null?null:richContentNormalizer.normalizeDeclared(
+                source.explanation(),source.explanationFormat(),allowedImageUrls::contains);
+        UUID id=UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO edu.questions(id,content,content_format,explanation,explanation_format,type,quiz_id,review_status,source_type,source_question_id,order_index)
+                VALUES (?,?,?,?,?,?,?,'APPROVED','QUIZ_CLONE',?,?)
+                """,id,content.content(),content.contentFormat().name(),explanation==null?null:explanation.content(),
+                explanation==null?"TIPTAP_HTML":explanation.contentFormat().name(),source.type(),quizId,sourceQuestionId,order);
+        for(ClonedAnswer answer:source.answers()){
+            RichTextValue answerContent=richContentNormalizer.normalizeDeclared(answer.content(),answer.contentFormat(),allowedImageUrls::contains);
+            RichTextValue answerExplanation=answer.explanation()==null?null:richContentNormalizer.normalizeDeclared(
+                    answer.explanation(),answer.explanationFormat(),allowedImageUrls::contains);
+            jdbc.update("""
+                    INSERT INTO edu.answers(content,is_correct,explanation,content_format,explanation_format,question_id)
+                    VALUES (?,?,?,?,?,?)
+                    """,answerContent.content(),answer.correct(),answerExplanation==null?null:answerExplanation.content(),
+                    answerContent.contentFormat().name(),answerExplanation==null?"TIPTAP_HTML":answerExplanation.contentFormat().name(),id);
+        }
+        jdbc.update("""
+                INSERT INTO edu.question_learning_outcomes(question_id,learning_outcome_id)
+                SELECT ?,learning_outcome_id FROM edu.question_learning_outcomes WHERE question_id=?
+                ON CONFLICT DO NOTHING
+                """,id,sourceQuestionId);
+        jdbc.update("""
+                INSERT INTO edu.quiz3_question_provenance(question_id,generation_job_id,matrix_row_id,matrix_custom_learning_level_id,
+                    learning_outcome_id,source_question_id,allocation_snapshot,requested_asset_type,effective_asset_type,asset_fallback_reason,
+                    qbank2_selection_mode,qbank2_content_group_ids,qbank2_content_group_codes,qbank2_example_ids,qbank2_reference_snapshot)
+                SELECT ?,generation_job_id,matrix_row_id,matrix_custom_learning_level_id,learning_outcome_id,?,allocation_snapshot,
+                    requested_asset_type,effective_asset_type,asset_fallback_reason,qbank2_selection_mode,qbank2_content_group_ids,
+                    qbank2_content_group_codes,qbank2_example_ids,qbank2_reference_snapshot
+                FROM edu.quiz3_question_provenance WHERE question_id=?
+                """,id,sourceQuestionId,sourceQuestionId);
+        if("CODE_RUNNER".equals(source.type())) codeRunnerContracts.cloneLatestQuestionRevision(sourceQuestionId,id);
+        return id;
+    }
+
+    private static int answerIndex(List<ClonedAnswer> answers,int sourceIndex){
+        for(int index=0;index<answers.size();index++) if(answers.get(index).sourceIndex()==sourceIndex) return index;
+        throw new IllegalStateException("Quiz3 answer visual points to a missing source answer");
+    }
+
+    private record ClonedQuestion(String content,String contentFormat,String explanation,String explanationFormat,
+            String type,List<ClonedAnswer> answers) { }
+    private record ClonedAnswer(int sourceIndex,String content,String contentFormat,boolean correct,
+            String explanation,String explanationFormat) { }
 
     private List<QuestionView> questions(UUID quizId){
         return jdbc.query("""
