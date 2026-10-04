@@ -29,12 +29,13 @@ class Quiz3AssessmentServiceValidationUT {
 
     @Test
     void serializesQuestionAssetTypesInTheReviewMetadataContract() {
-        var metadata = new Quiz3Models.QuestionMetadata(UUID.randomUUID(), "Chapter", UUID.randomUUID(), "L.O.1.1 - Outcome",
+        var metadata = new Quiz3Models.QuestionMetadata(UUID.randomUUID(), "Chapter", "Big O notation", UUID.randomUUID(), "L.O.1.1 - Outcome",
                 UUID.randomUUID(), "Understand", "IMAGE", "IMAGE", "AUTO_SELECTED", List.of(), List.of(), null);
         var json = new ObjectMapper().valueToTree(metadata);
 
         assertEquals("IMAGE", json.path("requestedAssetType").asText());
         assertEquals("IMAGE", json.path("effectiveAssetType").asText());
+        assertEquals("Big O notation", json.path("contentDetail").asText());
     }
 
     @Test
@@ -207,6 +208,7 @@ class Quiz3AssessmentServiceValidationUT {
         assertFalse(assessmentJson.has("matrix3Id"));
         assertFalse(assessmentJson.has("matrixSourceType"));
         assertTrue(json.has("matrices"));
+        assertFalse(json.path("matrices").get(0).has("version"));
         assertFalse(json.has("matrix2s"));
         assertFalse(json.has("matrix3s"));
     }

@@ -135,7 +135,7 @@ public class Quiz3AssessmentService {
     }
 
     @Transactional
-    public AssessmentView confirmMatrix(UUID courseId, UUID assessmentId, long expectedVersion) {
+    public AssessmentView confirmMatrix(UUID courseId, UUID assessmentId) {
         requireTeacher(courseId);
         AssessmentView assessment = required(courseId, assessmentId);
         if (assessment.currentStep() < 2) throw badRequest("Select a Matrix before confirming it");
@@ -728,24 +728,30 @@ public class Quiz3AssessmentService {
     private List<QuestionView> questions(UUID quizId){
         return jdbc.query("""
                 SELECT q.id,q.content,q.content_format,q.explanation,q.explanation_format,q.type,q.order_index,q.version,
-                       p.matrix_row_id,c.title,p.learning_outcome_id,lo.prefix_number,lo.description,glo.code,
+                       p.matrix_row_id,c.title,
+                       COALESCE(NULLIF(p.allocation_snapshot #>> '{content,detail}',''),NULLIF(COALESCE(ri.content,i.content),'')),
+                       p.learning_outcome_id,lo.prefix_number,lo.description,glo.code,
                         p.matrix_custom_learning_level_id,l.name,p.requested_asset_type,p.effective_asset_type,
                         p.qbank2_selection_mode,p.qbank2_content_group_codes::text,p.qbank2_example_ids::text,
                         v.status,v.resolution_action,v.selected_asset_id,v.generated_asset_id,v.placement,v.answer_index,v.error_message
                 FROM edu.questions q JOIN edu.quiz3_question_provenance p ON p.question_id=q.id
-                LEFT JOIN edu.exam_matrix_rows r ON r.id=p.matrix_row_id LEFT JOIN edu.chapters c ON c.chapter_id=r.chapter_id
+                LEFT JOIN edu.exam_matrix_rows r ON r.id=p.matrix_row_id
+                LEFT JOIN edu.exam_matrices m ON m.id=r.matrix_id
+                LEFT JOIN edu.chapters c ON c.chapter_id=r.chapter_id
+                LEFT JOIN edu.ccct_items i ON m.ccct_snapshot_at IS NULL AND i.id=r.ccct_item_id
+                LEFT JOIN edu.matrix_ccct_snapshot_items ri ON m.ccct_snapshot_at IS NOT NULL AND ri.matrix_id=m.id AND ri.id=r.ccct_item_id
                 LEFT JOIN edu.learning_outcomes lo ON lo.id=p.learning_outcome_id
                 LEFT JOIN edu.group_learning_outcomes glo ON glo.id=lo.group_learning_outcome_id AND glo.course_id=lo.course_id
                 LEFT JOIN edu.exam_matrix_custom_learning_levels l ON l.id=p.matrix_custom_learning_level_id
                 LEFT JOIN edu.quiz3_question_visuals v ON v.question_id=q.id
                 WHERE q.quiz_id=? ORDER BY q.order_index,q.id
                 """,(rs,row)->{
-                    Object prefix=rs.getObject(12);String desc=rs.getString(13);String groupCode=rs.getString(14);
+                    Object prefix=rs.getObject(13);String desc=rs.getString(14);String groupCode=rs.getString(15);
                     String lo=formatLearningOutcome(groupCode,prefix,desc);
                     UUID id=rs.getObject(1,UUID.class);return new QuestionView(id,rs.getString(2),rs.getString(3),rs.getString(4),rs.getString(5),rs.getString(6),
-                    rs.getInt(7),rs.getLong(8),new QuestionMetadata(rs.getObject(9,UUID.class),rs.getString(10),rs.getObject(11,UUID.class),lo,
-                     rs.getObject(15,UUID.class),rs.getString(16),rs.getString(17),rs.getString(18),rs.getString(19),jsonStrings(rs.getString(20)),jsonUuids(rs.getString(21)),
-                     rs.getString(22)==null?null:new VisualMetadata(rs.getString(22),rs.getString(23),rs.getObject(24,UUID.class),rs.getObject(25,UUID.class),rs.getString(26),(Integer)rs.getObject(27),rs.getString(28))),answers(id));},quizId);
+                    rs.getInt(7),rs.getLong(8),new QuestionMetadata(rs.getObject(9,UUID.class),rs.getString(10),rs.getString(11),rs.getObject(12,UUID.class),lo,
+                     rs.getObject(16,UUID.class),rs.getString(17),rs.getString(18),rs.getString(19),rs.getString(20),jsonStrings(rs.getString(21)),jsonUuids(rs.getString(22)),
+                     rs.getString(23)==null?null:new VisualMetadata(rs.getString(23),rs.getString(24),rs.getObject(25,UUID.class),rs.getObject(26,UUID.class),rs.getString(27),(Integer)rs.getObject(28),rs.getString(29))),answers(id));},quizId);
     }
 
     static String formatLearningOutcome(String groupCode,Object prefix,String description){
@@ -807,7 +813,9 @@ public class Quiz3AssessmentService {
     private MatrixSelection resolveMatrix(UUID courseId,SourceSelection selection){
         MatrixService.MatrixDetail matrix=switch(selection.mode()){
             case USE_EXISTING->matrixService.get(courseId,requiredSource(selection,"Matrix"));
-            case COPY_AS_DRAFT->matrixService.copyAsDraft(courseId,requiredSource(selection,"Matrix"),new MatrixService.CopyRequest(selection.draftName()));
+            case COPY_AS_DRAFT->{MatrixService.MatrixDetail source=matrixService.get(courseId,requiredSource(selection,"Matrix"));
+                matrixService.validateConfirmable(source);
+                yield matrixService.copyAsDraft(courseId,source.id(),new MatrixService.CopyRequest(selection.draftName()));}
             case CREATE_NEW_DRAFT->{MatrixService.MatrixMode mode=requiredMatrixMode(selection);
                 yield matrixService.create(courseId,new MatrixService.MatrixPayload(requiredName(selection,"Matrix"),null,
                     mode,mode==MatrixService.MatrixMode.AUTOMATIC?1:null,List.of(),List.of(),List.of()));}};

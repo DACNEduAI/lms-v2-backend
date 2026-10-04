@@ -108,17 +108,13 @@ VALUES
 INSERT INTO exam_matrices (id, course_id, title, description)
 VALUES
     ('b3000001-0000-4000-8000-000000000001', 'c1111111-1111-1111-1111-111111111111',
-     'Matrix 2 - DSA midterm sample', 'Sample Matrix 2 with direct row-to-LO mapping.'),
-    ('b3000001-0000-4000-8000-000000000002', 'c1111111-1111-1111-1111-111111111111',
-     'Matrix 2 - DSA final sample', 'Second Matrix 2 sample for the course tab.');
+     'Matrix 2 - DSA midterm sample', 'Sample Matrix 2 with direct row-to-LO mapping.');
 
 INSERT INTO exam_matrix_custom_learning_levels (id, matrix_id, name, sort_order)
 VALUES
     ('b3000011-0000-4000-8000-000000000001', 'b3000001-0000-4000-8000-000000000001', 'Understand', 0),
     ('b3000011-0000-4000-8000-000000000002', 'b3000001-0000-4000-8000-000000000001', 'Apply', 1),
-    ('b3000011-0000-4000-8000-000000000003', 'b3000001-0000-4000-8000-000000000001', 'Advanced application', 2),
-    ('b3000011-0000-4000-8000-000000000011', 'b3000001-0000-4000-8000-000000000002', 'Recall', 0),
-    ('b3000011-0000-4000-8000-000000000012', 'b3000001-0000-4000-8000-000000000002', 'Problem solving', 1);
+    ('b3000011-0000-4000-8000-000000000003', 'b3000001-0000-4000-8000-000000000001', 'Advanced application', 2);
 
 INSERT INTO exam_matrix_rows
     (id, matrix_id, chapter_id, mapped_learning_outcome_id, sort_order)
@@ -126,21 +122,14 @@ VALUES
     ('b3000021-0000-4000-8000-000000000001', 'b3000001-0000-4000-8000-000000000001',
      '5e055691-371a-4de5-b61a-f6d06712c36a', '81111111-1111-1111-1111-111111111111', 0),
     ('b3000021-0000-4000-8000-000000000002', 'b3000001-0000-4000-8000-000000000001',
-     'fe369f65-27f3-4314-9885-2099b0ca2fd8', '84444444-4444-4444-4444-444444444444', 1),
-    ('b3000021-0000-4000-8000-000000000011', 'b3000001-0000-4000-8000-000000000002',
-     '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', '85555555-5555-5555-5555-555555555555', 0),
-    ('b3000021-0000-4000-8000-000000000012', 'b3000001-0000-4000-8000-000000000002',
-     'a8c06712-6aa5-4993-901b-77008af766d3', '86666666-6666-6666-6666-666666666666', 1);
+     'fe369f65-27f3-4314-9885-2099b0ca2fd8', '84444444-4444-4444-4444-444444444444', 1);
 
 INSERT INTO exam_matrix_cells (row_id, custom_learning_level_id, question_count)
 VALUES
     ('b3000021-0000-4000-8000-000000000001', 'b3000011-0000-4000-8000-000000000001', 0),
     ('b3000021-0000-4000-8000-000000000001', 'b3000011-0000-4000-8000-000000000002', 1),
     ('b3000021-0000-4000-8000-000000000002', 'b3000011-0000-4000-8000-000000000001', 0),
-    ('b3000021-0000-4000-8000-000000000002', 'b3000011-0000-4000-8000-000000000003', 2),
-    ('b3000021-0000-4000-8000-000000000011', 'b3000011-0000-4000-8000-000000000011', 1),
-    ('b3000021-0000-4000-8000-000000000011', 'b3000011-0000-4000-8000-000000000012', 2),
-    ('b3000021-0000-4000-8000-000000000012', 'b3000011-0000-4000-8000-000000000012', 3);
+    ('b3000021-0000-4000-8000-000000000002', 'b3000011-0000-4000-8000-000000000003', 2);
 
 -- Matrix 2 dedicated to Quiz3 Code Runner. Both allocated cells use
 -- CODE_RUNNER, so a new assessment produces two C++17 questions by default.
@@ -167,84 +156,133 @@ VALUES
     ('b3000021-0000-4000-8000-000000000021', 'b3000011-0000-4000-8000-000000000021', 1),
     ('b3000021-0000-4000-8000-000000000022', 'b3000011-0000-4000-8000-000000000021', 1);
 
--- Manual 22-question DSA final exam matrix. Every DSA learning outcome is
--- represented by one row; the level totals are 5 Understand, 13 Apply, and 4
--- Advanced application questions.
-INSERT INTO exam_matrices (id, course_id, title, description)
+-- Matrix recreated from the published one-question image Matrix in the local
+-- database.  Its CCCT snapshot is inserted after the source CCCT seed below.
+INSERT INTO exam_matrices (id, course_id, title, description, mode, lifecycle_status)
 VALUES
-    ('b3000001-0000-4000-8000-000000000004', 'c1111111-1111-1111-1111-111111111111',
-     'manual matrix - final DSA 22 questions',
-     'A manual 22-question final exam matrix covering every learning outcome in Data Structures and Algorithms.');
+    ('ad000033-dfad-46cd-9fe9-0f5c129f4032', 'c1111111-1111-1111-1111-111111111111',
+     'test-image-1-question', NULL, 'MANUAL', 'PUBLISHED');
 
 INSERT INTO exam_matrix_custom_learning_levels (id, matrix_id, name, sort_order)
 VALUES
-    ('b3000011-0000-4000-8000-000000000031', 'b3000001-0000-4000-8000-000000000004', 'Understand', 0),
-    ('b3000011-0000-4000-8000-000000000032', 'b3000001-0000-4000-8000-000000000004', 'Apply', 1),
-    ('b3000011-0000-4000-8000-000000000033', 'b3000001-0000-4000-8000-000000000004', 'Advanced application', 2);
+    ('544f32c2-a0dd-4cbf-8c0b-4cf05de5c64e', 'ad000033-dfad-46cd-9fe9-0f5c129f4032', 'Analyze', 0);
 
 INSERT INTO exam_matrix_custom_learning_level_asset_coverages
     (custom_learning_level_id, asset_type, percentage)
 VALUES
-    ('b3000011-0000-4000-8000-000000000031', 'TEXT', 100),
-    ('b3000011-0000-4000-8000-000000000031', 'IMAGE', 0),
-    ('b3000011-0000-4000-8000-000000000031', 'CODE_MCQ', 0),
-    ('b3000011-0000-4000-8000-000000000031', 'CODE_RUNNER', 0),
-    ('b3000011-0000-4000-8000-000000000032', 'TEXT', 60),
-    ('b3000011-0000-4000-8000-000000000032', 'IMAGE', 40),
-    ('b3000011-0000-4000-8000-000000000032', 'CODE_MCQ', 0),
-    ('b3000011-0000-4000-8000-000000000032', 'CODE_RUNNER', 0),
-    ('b3000011-0000-4000-8000-000000000033', 'TEXT', 60),
-    ('b3000011-0000-4000-8000-000000000033', 'IMAGE', 40),
-    ('b3000011-0000-4000-8000-000000000033', 'CODE_MCQ', 0),
-    ('b3000011-0000-4000-8000-000000000033', 'CODE_RUNNER', 0);
+    ('544f32c2-a0dd-4cbf-8c0b-4cf05de5c64e', 'TEXT', 0),
+    ('544f32c2-a0dd-4cbf-8c0b-4cf05de5c64e', 'IMAGE', 100),
+    ('544f32c2-a0dd-4cbf-8c0b-4cf05de5c64e', 'CODE_MCQ', 0),
+    ('544f32c2-a0dd-4cbf-8c0b-4cf05de5c64e', 'CODE_RUNNER', 0);
 
 INSERT INTO exam_matrix_rows
-    (id, matrix_id, chapter_id, mapped_learning_outcome_id, sort_order)
+    (id, matrix_id, chapter_id, ccct_item_id, mapped_learning_outcome_id, sort_order)
 VALUES
-    -- LO 1: Define Big O.
-    ('b3000021-0000-4000-8000-000000000031', 'b3000001-0000-4000-8000-000000000004',
-     '5e055691-371a-4de5-b61a-f6d06712c36a', '81111111-1111-1111-1111-111111111111', 0),
-    -- LO 2: Determine polynomial-time complexity.
-    ('b3000021-0000-4000-8000-000000000032', 'b3000001-0000-4000-8000-000000000004',
-     '5e055691-371a-4de5-b61a-f6d06712c36a', '82222222-2222-2222-2222-222222222222', 1),
-    -- LO 3: Define and represent fundamental data structures.
-    ('b3000021-0000-4000-8000-000000000033', 'b3000001-0000-4000-8000-000000000004',
-     '8a01575f-a418-4107-b1b1-5eef75c5b72d', '84444444-4444-4444-4444-444444444444', 2),
-    -- LO 4: Implement fundamental data-structure operations.
-    ('b3000021-0000-4000-8000-000000000034', 'b3000001-0000-4000-8000-000000000004',
-     'fe369f65-27f3-4314-9885-2099b0ca2fd8', '85555555-5555-5555-5555-555555555555', 3),
-    -- LO 5: Demonstrate searching algorithms.
-    ('b3000021-0000-4000-8000-000000000035', 'b3000001-0000-4000-8000-000000000004',
-     'd1f07793-cfd2-450f-887a-abfc5b189b4b', '86666666-6666-6666-6666-666666666666', 4),
-    -- LO 6: Demonstrate sorting algorithms.
-    ('b3000021-0000-4000-8000-000000000036', 'b3000001-0000-4000-8000-000000000004',
-     'a8c06712-6aa5-4993-901b-77008af766d3', '87777777-7777-7777-7777-777777777777', 5),
-    -- LO 7: Implement a proposed algorithm for a given data structure.
-    ('b3000021-0000-4000-8000-000000000037', 'b3000001-0000-4000-8000-000000000004',
-     '6967be86-ae45-4e55-8faa-71318f50bbf6', '8854781e-efc8-4130-9451-3b0391a32419', 6);
+    ('7c002fb9-e1c9-4579-af24-967f5556005d', 'ad000033-dfad-46cd-9fe9-0f5c129f4032',
+     'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'e4000001-0000-4000-8000-000000000013',
+     '85555555-5555-5555-5555-555555555555', 0);
 
-INSERT INTO exam_matrix_cells
-    (row_id, custom_learning_level_id, question_count)
+INSERT INTO exam_matrix_cells (row_id, custom_learning_level_id, question_count)
 VALUES
-    -- LO 1 total: 3.
-    ('b3000021-0000-4000-8000-000000000031', 'b3000011-0000-4000-8000-000000000031', 2),
-    ('b3000021-0000-4000-8000-000000000031', 'b3000011-0000-4000-8000-000000000032', 1),
-    -- LO 2 total: 4.
-    ('b3000021-0000-4000-8000-000000000032', 'b3000011-0000-4000-8000-000000000032', 3),
-    ('b3000021-0000-4000-8000-000000000032', 'b3000011-0000-4000-8000-000000000033', 1),
-    -- LO 3 total: 2.
-    ('b3000021-0000-4000-8000-000000000033', 'b3000011-0000-4000-8000-000000000031', 2),
-    -- LO 4 total: 3.
-    ('b3000021-0000-4000-8000-000000000034', 'b3000011-0000-4000-8000-000000000032', 3),
-    -- LO 5 total: 4.
-    ('b3000021-0000-4000-8000-000000000035', 'b3000011-0000-4000-8000-000000000031', 1),
-    ('b3000021-0000-4000-8000-000000000035', 'b3000011-0000-4000-8000-000000000032', 3),
-    -- LO 6 total: 3.
-    ('b3000021-0000-4000-8000-000000000036', 'b3000011-0000-4000-8000-000000000032', 2),
-    ('b3000021-0000-4000-8000-000000000036', 'b3000011-0000-4000-8000-000000000033', 1),
-    -- LO 7 total: 3.
-    ('b3000021-0000-4000-8000-000000000037', 'b3000011-0000-4000-8000-000000000032', 1),
-    ('b3000021-0000-4000-8000-000000000037', 'b3000011-0000-4000-8000-000000000033', 2);
+    ('7c002fb9-e1c9-4579-af24-967f5556005d', '544f32c2-a0dd-4cbf-8c0b-4cf05de5c64e', 1);
+
+INSERT INTO exam_matrix_outcome_learning_levels
+    (matrix_id, learning_outcome_id, custom_learning_level_id)
+VALUES
+    ('ad000033-dfad-46cd-9fe9-0f5c129f4032', '85555555-5555-5555-5555-555555555555',
+     '544f32c2-a0dd-4cbf-8c0b-4cf05de5c64e');
+
+-- This draft covers every CCCT item.  The explicit item IDs retain the
+-- saved content-to-LO assignments rather than deriving them from row order.
+INSERT INTO exam_matrices (id, course_id, title, description, mode, lifecycle_status)
+VALUES
+    ('f0c3cf65-106a-4632-b16f-1a73439e437c', 'c1111111-1111-1111-1111-111111111111',
+     'Demo Matrix-28-quesions', NULL, 'MANUAL', 'DRAFT');
+
+INSERT INTO exam_matrix_custom_learning_levels (id, matrix_id, name, sort_order)
+VALUES
+    ('96f0cf80-f330-4893-bf4b-bf0a71be8562', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'Understand', 0),
+    ('2d616434-bc25-4bfc-8d01-95c6adf856f2', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'Apply', 1),
+    ('bc474c33-fe53-4a7e-9450-4c8dc8a3c947', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'Analyze', 2),
+    ('721a02b0-b3ea-4eb4-a0ea-db17e4babea2', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'Evaluate', 3);
+
+INSERT INTO exam_matrix_custom_learning_level_asset_coverages
+    (custom_learning_level_id, asset_type, percentage)
+VALUES
+    ('96f0cf80-f330-4893-bf4b-bf0a71be8562', 'TEXT', 100),
+    ('96f0cf80-f330-4893-bf4b-bf0a71be8562', 'IMAGE', 0),
+    ('96f0cf80-f330-4893-bf4b-bf0a71be8562', 'CODE_MCQ', 0),
+    ('96f0cf80-f330-4893-bf4b-bf0a71be8562', 'CODE_RUNNER', 0),
+    ('2d616434-bc25-4bfc-8d01-95c6adf856f2', 'TEXT', 50),
+    ('2d616434-bc25-4bfc-8d01-95c6adf856f2', 'IMAGE', 50),
+    ('2d616434-bc25-4bfc-8d01-95c6adf856f2', 'CODE_MCQ', 0),
+    ('2d616434-bc25-4bfc-8d01-95c6adf856f2', 'CODE_RUNNER', 0),
+    ('bc474c33-fe53-4a7e-9450-4c8dc8a3c947', 'TEXT', 20),
+    ('bc474c33-fe53-4a7e-9450-4c8dc8a3c947', 'IMAGE', 30),
+    ('bc474c33-fe53-4a7e-9450-4c8dc8a3c947', 'CODE_MCQ', 0),
+    ('bc474c33-fe53-4a7e-9450-4c8dc8a3c947', 'CODE_RUNNER', 50),
+    ('721a02b0-b3ea-4eb4-a0ea-db17e4babea2', 'TEXT', 60),
+    ('721a02b0-b3ea-4eb4-a0ea-db17e4babea2', 'IMAGE', 40),
+    ('721a02b0-b3ea-4eb4-a0ea-db17e4babea2', 'CODE_MCQ', 0),
+    ('721a02b0-b3ea-4eb4-a0ea-db17e4babea2', 'CODE_RUNNER', 0);
+
+INSERT INTO exam_matrix_rows
+    (id, matrix_id, chapter_id, ccct_item_id, mapped_learning_outcome_id, sort_order)
+VALUES
+    ('5627cc20-b136-4582-9913-8af6a546051c', 'f0c3cf65-106a-4632-b16f-1a73439e437c', '8a01575f-a418-4107-b1b1-5eef75c5b72d', 'e4000001-0000-4000-8000-000000000009', '81111111-1111-1111-1111-111111111111', 0),
+    ('dbd027db-683d-4e57-81a2-219ee1fdd20a', 'f0c3cf65-106a-4632-b16f-1a73439e437c', '8a01575f-a418-4107-b1b1-5eef75c5b72d', 'e4000001-0000-4000-8000-000000000010', '82222222-2222-2222-2222-222222222222', 1),
+    ('889371c9-9ba9-41cd-bb23-1ba25fdd9ee2', 'f0c3cf65-106a-4632-b16f-1a73439e437c', '5e055691-371a-4de5-b61a-f6d06712c36a', 'e4000001-0000-4000-8000-000000000003', '81111111-1111-1111-1111-111111111111', 2),
+    ('dc70433a-7631-42f3-ac98-044fc783bcd8', 'f0c3cf65-106a-4632-b16f-1a73439e437c', '5e055691-371a-4de5-b61a-f6d06712c36a', 'e4000001-0000-4000-8000-000000000004', '82222222-2222-2222-2222-222222222222', 3),
+    ('a09f8e10-ff72-4193-8796-415466ff6168', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'e4000001-0000-4000-8000-000000000019', '85555555-5555-5555-5555-555555555555', 4),
+    ('49f57093-36ee-47ba-b3d3-5ff2ab9d4583', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'fe369f65-27f3-4314-9885-2099b0ca2fd8', 'e4000001-0000-4000-8000-000000000020', '85555555-5555-5555-5555-555555555555', 5),
+    ('aa1752ac-62fd-4332-9579-b49090d7e7b1', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'e4000001-0000-4000-8000-000000000013', '84444444-4444-4444-4444-444444444444', 6),
+    ('ed80c514-64a2-4738-b543-2a71f633cf39', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'c5d67446-27f5-4fcf-97cd-a6de6109114e', 'e4000001-0000-4000-8000-000000000014', '85555555-5555-5555-5555-555555555555', 7),
+    ('725ef498-2a7d-4737-8651-5b4ad3e755bc', 'f0c3cf65-106a-4632-b16f-1a73439e437c', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'e4000001-0000-4000-8000-000000000001', '84444444-4444-4444-4444-444444444444', 8),
+    ('7a2ce3cc-3a3a-46b5-ba6f-c0ceb8b1c456', 'f0c3cf65-106a-4632-b16f-1a73439e437c', '069331da-fc65-45f3-bb7f-e23f8f9a3a50', 'e4000001-0000-4000-8000-000000000002', '85555555-5555-5555-5555-555555555555', 9),
+    ('6d1a5022-b3d6-4508-a1f0-19a96d2d5559', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'e4000001-0000-4000-8000-000000000017', '85555555-5555-5555-5555-555555555555', 10),
+    ('e9df8127-766d-4a44-86e3-8875ae9b060b', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'd8d35922-4538-4613-9fe8-5dcef719b520', 'e4000001-0000-4000-8000-000000000018', '8854781e-efc8-4130-9451-3b0391a32419', 11),
+    ('ed8de881-f3a3-4691-9b95-1c3fc4307af5', 'f0c3cf65-106a-4632-b16f-1a73439e437c', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'e4000001-0000-4000-8000-000000000007', '87777777-7777-7777-7777-777777777777', 12),
+    ('54b87df6-7ed4-4742-916f-79cb2c5fd3d3', 'f0c3cf65-106a-4632-b16f-1a73439e437c', '69c3255e-fbd2-4eb7-9a78-a5147b0da42d', 'e4000001-0000-4000-8000-000000000008', '87777777-7777-7777-7777-777777777777', 13),
+    ('71dc85db-16bd-45c5-8738-9fff674f208d', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'a8c06712-6aa5-4993-901b-77008af766d3', 'e4000001-0000-4000-8000-000000000011', '84444444-4444-4444-4444-444444444444', 14),
+    ('35afb6ba-bb53-4914-96f0-ae738cc7a798', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'a8c06712-6aa5-4993-901b-77008af766d3', 'e4000001-0000-4000-8000-000000000012', '85555555-5555-5555-5555-555555555555', 15),
+    ('c2376a4a-e489-4d21-bb33-e2e704fca080', 'f0c3cf65-106a-4632-b16f-1a73439e437c', '6967be86-ae45-4e55-8faa-71318f50bbf6', 'e4000001-0000-4000-8000-000000000005', '87777777-7777-7777-7777-777777777777', 16),
+    ('a6f5d65c-48df-42ee-b584-f69ba4232045', 'f0c3cf65-106a-4632-b16f-1a73439e437c', '6967be86-ae45-4e55-8faa-71318f50bbf6', 'e4000001-0000-4000-8000-000000000006', '8854781e-efc8-4130-9451-3b0391a32419', 17),
+    ('a9f05e27-4bdd-476b-b570-c05ddb1b181f', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'e4000001-0000-4000-8000-000000000015', '82222222-2222-2222-2222-222222222222', 18),
+    ('70f5689e-4928-4c41-ac3b-0a5e8ed26492', 'f0c3cf65-106a-4632-b16f-1a73439e437c', 'd1f07793-cfd2-450f-887a-abfc5b189b4b', 'e4000001-0000-4000-8000-000000000016', '82222222-2222-2222-2222-222222222222', 19);
+
+INSERT INTO exam_matrix_cells (row_id, custom_learning_level_id, question_count)
+VALUES
+    ('5627cc20-b136-4582-9913-8af6a546051c', '96f0cf80-f330-4893-bf4b-bf0a71be8562', 1),
+    ('dbd027db-683d-4e57-81a2-219ee1fdd20a', '96f0cf80-f330-4893-bf4b-bf0a71be8562', 1),
+    ('889371c9-9ba9-41cd-bb23-1ba25fdd9ee2', '96f0cf80-f330-4893-bf4b-bf0a71be8562', 1),
+    ('dc70433a-7631-42f3-ac98-044fc783bcd8', '96f0cf80-f330-4893-bf4b-bf0a71be8562', 1),
+    ('a09f8e10-ff72-4193-8796-415466ff6168', '2d616434-bc25-4bfc-8d01-95c6adf856f2', 2),
+    ('49f57093-36ee-47ba-b3d3-5ff2ab9d4583', '2d616434-bc25-4bfc-8d01-95c6adf856f2', 1),
+    ('aa1752ac-62fd-4332-9579-b49090d7e7b1', '96f0cf80-f330-4893-bf4b-bf0a71be8562', 1),
+    ('ed80c514-64a2-4738-b543-2a71f633cf39', '2d616434-bc25-4bfc-8d01-95c6adf856f2', 2),
+    ('725ef498-2a7d-4737-8651-5b4ad3e755bc', '96f0cf80-f330-4893-bf4b-bf0a71be8562', 1),
+    ('7a2ce3cc-3a3a-46b5-ba6f-c0ceb8b1c456', '2d616434-bc25-4bfc-8d01-95c6adf856f2', 2),
+    ('6d1a5022-b3d6-4508-a1f0-19a96d2d5559', '2d616434-bc25-4bfc-8d01-95c6adf856f2', 2),
+    ('e9df8127-766d-4a44-86e3-8875ae9b060b', '721a02b0-b3ea-4eb4-a0ea-db17e4babea2', 2),
+    ('ed8de881-f3a3-4691-9b95-1c3fc4307af5', 'bc474c33-fe53-4a7e-9450-4c8dc8a3c947', 1),
+    ('54b87df6-7ed4-4742-916f-79cb2c5fd3d3', 'bc474c33-fe53-4a7e-9450-4c8dc8a3c947', 1),
+    ('71dc85db-16bd-45c5-8738-9fff674f208d', '96f0cf80-f330-4893-bf4b-bf0a71be8562', 1),
+    ('35afb6ba-bb53-4914-96f0-ae738cc7a798', '2d616434-bc25-4bfc-8d01-95c6adf856f2', 2),
+    ('c2376a4a-e489-4d21-bb33-e2e704fca080', 'bc474c33-fe53-4a7e-9450-4c8dc8a3c947', 1),
+    ('a6f5d65c-48df-42ee-b584-f69ba4232045', '721a02b0-b3ea-4eb4-a0ea-db17e4babea2', 2),
+    ('a9f05e27-4bdd-476b-b570-c05ddb1b181f', '96f0cf80-f330-4893-bf4b-bf0a71be8562', 1),
+    ('70f5689e-4928-4c41-ac3b-0a5e8ed26492', '96f0cf80-f330-4893-bf4b-bf0a71be8562', 2);
+
+INSERT INTO exam_matrix_outcome_learning_levels
+    (matrix_id, learning_outcome_id, custom_learning_level_id)
+VALUES
+    ('f0c3cf65-106a-4632-b16f-1a73439e437c', '81111111-1111-1111-1111-111111111111', '96f0cf80-f330-4893-bf4b-bf0a71be8562'),
+    ('f0c3cf65-106a-4632-b16f-1a73439e437c', '82222222-2222-2222-2222-222222222222', '96f0cf80-f330-4893-bf4b-bf0a71be8562'),
+    ('f0c3cf65-106a-4632-b16f-1a73439e437c', '84444444-4444-4444-4444-444444444444', '96f0cf80-f330-4893-bf4b-bf0a71be8562'),
+    ('f0c3cf65-106a-4632-b16f-1a73439e437c', '85555555-5555-5555-5555-555555555555', '2d616434-bc25-4bfc-8d01-95c6adf856f2'),
+    ('f0c3cf65-106a-4632-b16f-1a73439e437c', '86666666-6666-6666-6666-666666666666', '2d616434-bc25-4bfc-8d01-95c6adf856f2'),
+    ('f0c3cf65-106a-4632-b16f-1a73439e437c', '87777777-7777-7777-7777-777777777777', 'bc474c33-fe53-4a7e-9450-4c8dc8a3c947'),
+    ('f0c3cf65-106a-4632-b16f-1a73439e437c', '8854781e-efc8-4130-9451-3b0391a32419', '721a02b0-b3ea-4eb4-a0ea-db17e4babea2');
 
 -- 12. Insert Quizzes
 INSERT INTO quizzes (id, quiz_title, unlimited, time_limit_minutes, pass_score, start_time, due_time, attempt_limited, course_id, teacher_id, display)
@@ -1030,8 +1068,9 @@ VALUES
     ('f9100001-0000-4000-8000-000000000021', 'f9100001-0000-4000-8000-000000000012',
      'f9100001-0000-4000-8000-000000000022');
 
--- Matrix fixtures now bind the one seeded CCCT and use one CLL relation per
--- selected content-detail row. Existing fixture row IDs are retained.
+-- Matrix fixtures bind the one seeded CCCT and follow the active Matrix rule:
+-- each content-detail row has one CLL cell, and each LO has one saved CLL.
+-- Existing fixture row IDs are retained.
 UPDATE exam_matrices
 SET ccct_profile_id = 'e1000001-0000-4000-8000-000000000001',
     ccct_snapshot_at = NULL
@@ -1075,17 +1114,67 @@ SET ccct_item_id = (
 WHERE r.matrix_id IN (
     SELECT id FROM exam_matrices
     WHERE course_id = 'c1111111-1111-1111-1111-111111111111'
-);
+)
+  AND r.ccct_item_id IS NULL;
+
+-- Legacy fixtures may have several CLL cells for one row.  Keep the dominant
+-- allocation, breaking ties in favour of the later (more advanced) CLL.  For
+-- Manual mode, first combine every row quota into that retained CLL so the
+-- fixture's total question count is unchanged.  Automatic cells are null and
+-- therefore retain only their selected relation.
+WITH ranked AS (
+    SELECT cell.row_id,
+           cell.custom_learning_level_id,
+           cell.question_count,
+           row_number() OVER (
+               PARTITION BY cell.row_id
+               ORDER BY cell.question_count DESC NULLS LAST,
+                        level.sort_order DESC,
+                        level.id DESC
+           ) AS relation_order,
+           sum(cell.question_count) OVER (PARTITION BY cell.row_id) AS combined_question_count
+    FROM exam_matrix_cells cell
+    JOIN exam_matrix_custom_learning_levels level
+      ON level.id = cell.custom_learning_level_id
+)
+UPDATE exam_matrix_cells cell
+SET question_count = ranked.combined_question_count
+FROM ranked
+WHERE cell.row_id = ranked.row_id
+  AND cell.custom_learning_level_id = ranked.custom_learning_level_id
+  AND ranked.relation_order = 1
+  AND ranked.question_count IS NOT NULL;
 
 DELETE FROM exam_matrix_cells cell
 USING (
-    SELECT row_id, custom_learning_level_id,
-           row_number() OVER (PARTITION BY row_id ORDER BY question_count DESC NULLS LAST, custom_learning_level_id) AS relation_order
-    FROM exam_matrix_cells
+    SELECT cell.row_id,
+           cell.custom_learning_level_id,
+           row_number() OVER (
+               PARTITION BY cell.row_id
+               ORDER BY cell.question_count DESC NULLS LAST,
+                        level.sort_order DESC,
+                        level.id DESC
+           ) AS relation_order
+    FROM exam_matrix_cells cell
+    JOIN exam_matrix_custom_learning_levels level
+      ON level.id = cell.custom_learning_level_id
 ) ranked
 WHERE cell.row_id = ranked.row_id
   AND cell.custom_learning_level_id = ranked.custom_learning_level_id
   AND ranked.relation_order > 1;
+
+-- Persist the single CLL selected for every mapped LO.  DISTINCT permits an
+-- LO to appear in multiple content rows when all of them share that CLL; the
+-- table's primary key will reject any fixture that violates the one-LO rule.
+INSERT INTO exam_matrix_outcome_learning_levels
+    (matrix_id, learning_outcome_id, custom_learning_level_id)
+SELECT DISTINCT row.matrix_id,
+                row.mapped_learning_outcome_id,
+                cell.custom_learning_level_id
+FROM exam_matrix_rows row
+JOIN exam_matrix_cells cell ON cell.row_id = row.id
+WHERE row.mapped_learning_outcome_id IS NOT NULL
+ON CONFLICT (matrix_id, learning_outcome_id) DO NOTHING;
 
 UPDATE ccct_profiles
 SET markdown_content = '# CCCT – Data Structures and Algorithms
@@ -1130,5 +1219,28 @@ SET markdown_content = '# CCCT – Data Structures and Algorithms
 - Tìm kiếm tuần tự và tìm kiếm nhị phân [searching.item1]
 - Điều kiện áp dụng và độ phức tạp tìm kiếm [searching.item2]'
 WHERE id = 'e1000001-0000-4000-8000-000000000001';
+
+-- test-image-1-question was published from the current CCCT and therefore
+-- needs the same immutable snapshot that the service would create on publish.
+INSERT INTO matrix_ccct_snapshots (matrix_id, profile_id, snapshot_at, name, template_title, markdown_content)
+SELECT 'ad000033-dfad-46cd-9fe9-0f5c129f4032', id,
+       TIMESTAMP '2026-10-04 17:59:11.553745', name, template_title, markdown_content
+FROM ccct_profiles WHERE id = 'e1000001-0000-4000-8000-000000000001';
+
+INSERT INTO matrix_ccct_snapshot_chapters (matrix_id, id, course_chapter_id, chapter_code, title, order_index)
+SELECT 'ad000033-dfad-46cd-9fe9-0f5c129f4032', id, course_chapter_id, chapter_code, title, order_index
+FROM ccct_chapters WHERE profile_id = 'e1000001-0000-4000-8000-000000000001';
+
+INSERT INTO matrix_ccct_snapshot_items (matrix_id, id, chapter_id, content_code, content, order_index)
+SELECT 'ad000033-dfad-46cd-9fe9-0f5c129f4032', i.id, i.chapter_id, i.content_code, i.content, i.order_index
+FROM ccct_items i JOIN ccct_chapters c ON c.id = i.chapter_id
+WHERE c.profile_id = 'e1000001-0000-4000-8000-000000000001';
+
+UPDATE exam_matrices
+SET lifecycle_status = 'PUBLISHED',
+    ccct_snapshot_at = TIMESTAMP '2026-10-04 17:59:11.553745',
+    published_by = '11111111-1111-1111-1111-111111111111',
+    published_at = TIMESTAMP '2026-10-04 17:59:11.544454'
+WHERE id = 'ad000033-dfad-46cd-9fe9-0f5c129f4032';
 
 COMMIT;

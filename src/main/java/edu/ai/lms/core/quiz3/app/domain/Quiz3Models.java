@@ -25,7 +25,6 @@ public final class Quiz3Models {
     public record ContextView(AssessmentView assessment, List<SourceOption> matrices) { }
     public record SourceSelection(SourceMode mode, UUID sourceId, String draftName, MatrixMode matrixMode) { }
     public record ContextSelection(SourceSelection ccct, SourceSelection matrix) { }
-    public record SourceVersion(long version) { }
     public record VersionedConfiguration(long version, Configuration configuration) { }
     public record GenerationView(UUID jobId, String status, String phase, int attemptCount,
             UUID quizId, String errorCode, String errorMessage, int generatedQuestionCount,
@@ -45,7 +44,7 @@ public final class Quiz3Models {
     }
     public record ImageAssetSelection(String token, UUID assetId) { }
     public record AnswerView(long number, String content, String contentFormat, boolean correct) { }
-    public record QuestionMetadata(UUID matrixRowId, String chapter, UUID learningOutcomeId,
+    public record QuestionMetadata(UUID matrixRowId, String chapter, String contentDetail, UUID learningOutcomeId,
             String learningOutcome, UUID customLearningLevelId, String customLearningLevelName,
             String requestedAssetType, String effectiveAssetType, String qbank2SelectionMode,
             List<String> contentGroupIds, List<UUID> exampleIds, VisualMetadata visual) { }
