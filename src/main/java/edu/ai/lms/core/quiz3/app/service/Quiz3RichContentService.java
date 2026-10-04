@@ -12,8 +12,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import edu.ai.lms.core.asset.app.domain.Asset;
+import edu.ai.lms.core.asset.app.domain.ImageAsset;
+import edu.ai.lms.core.asset.app.port.out.AssetRepository;
+import edu.ai.lms.core.course.app.service.CourseTeacherAccess;
+import edu.ai.lms.core.material.api.CourseAssetStorageApi;
 import edu.ai.lms.core.quiz3.app.domain.richcontent.RichContentFormat;
 import edu.ai.lms.core.quiz3.app.domain.richcontent.RichTextValue;
+import edu.ai.lms.core.quiz3.app.exception.RichContentValidationException;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -23,12 +29,17 @@ public class Quiz3RichContentService {
     private final Quiz3RichContentAssetRepository assets;
     private final Quiz3RichContentUploadService uploads;
     private final Quiz3RichContentNormalizer normalizer;
+    private final AssetRepository courseAssets;
+    private final CourseAssetStorageApi courseAssetStorage;
+    private final CourseTeacherAccess courseAccess;
 
     @Transactional
     public List<Quiz3Models.VariantView> update(UUID courseId, UUID assessmentId, UUID variantId,
             UUID questionId, Quiz3Models.QuestionUpdate request, List<MultipartFile> images) {
+        courseAccess.requireCourseTeacher(courseId);
         var existing = assets.findByQuestionId(questionId);
-        var prepared = uploads.prepare(values(request), images, existing);
+        var prepared = uploads.prepare(values(request), images, existing, request.imageAssetSelections(),
+                assetId -> courseAssetSource(courseId, assetId));
         uploads.cleanupAfterRollback(prepared.uploadedAssets());
         var allowedImageUrls = uploads.publicUrls(existing, prepared.uploadedAssets());
         var normalizedValues = prepared.values().stream()
@@ -53,6 +64,24 @@ public class Quiz3RichContentService {
         assets.retainForQuestion(questionId, uploads.referencedStorageKeys(
                 normalizedValues, existing, prepared.uploadedAssets()));
         return result;
+    }
+
+    private Quiz3RichContentUploadService.CourseAssetSource courseAssetSource(UUID courseId, UUID assetId) {
+        ImageAsset image = courseAssets.findImage(courseId, assetId)
+                .orElseThrow(() -> new RichContentValidationException("Selected course image is unavailable"));
+        Asset asset = image.asset();
+        if (asset.publicationStatus() != Asset.PublicationStatus.PUBLISHED
+                || asset.uploadStatus() != Asset.UploadStatus.UPLOADED) {
+            throw new RichContentValidationException("Selected course image must be published and uploaded");
+        }
+        try {
+            return new Quiz3RichContentUploadService.CourseAssetSource(assetId,
+                    courseAssetStorage.read(image.storageKey()), image.contentType());
+        } catch (RichContentValidationException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            throw new RichContentValidationException("Selected course image could not be read");
+        }
     }
 
     private List<RichTextValue> values(Quiz3Models.QuestionUpdate request) {

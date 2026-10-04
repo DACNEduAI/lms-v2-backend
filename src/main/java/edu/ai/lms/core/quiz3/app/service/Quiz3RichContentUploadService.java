@@ -12,12 +12,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -39,6 +41,7 @@ public class Quiz3RichContentUploadService {
     private static final String PREFIX = "quiz3/rich-content/";
     private static final long MAX_IMAGE_BYTES = 10L * 1024 * 1024;
     private static final Pattern PENDING_SOURCE = Pattern.compile("pending-image://([0-9a-fA-F-]{8,})");
+    private static final Pattern COURSE_ASSET_SOURCE = Pattern.compile("course-asset-image://([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})");
     private static final Pattern IMAGE_SOURCE = Pattern.compile("<img\\b[^>]*\\bsrc\\s*=\\s*(['\\\"])(.*?)\\1", Pattern.CASE_INSENSITIVE);
     private static final Set<String> EXTENSIONS = Set.of("png", "jpg", "jpeg", "webp", "gif", "svg");
 
@@ -46,25 +49,57 @@ public class Quiz3RichContentUploadService {
 
     public PreparedRichContent prepare(List<RichTextValue> values, List<MultipartFile> files,
             Collection<Quiz3RichContentAsset> existingAssets) {
+        return prepare(values, files, existingAssets, List.of(), assetId -> {
+            throw new RichContentValidationException("Course image selection cannot be resolved");
+        });
+    }
+
+    public PreparedRichContent prepare(List<RichTextValue> values, List<MultipartFile> files,
+            Collection<Quiz3RichContentAsset> existingAssets,
+            List<Quiz3Models.ImageAssetSelection> selections,
+            Function<UUID, CourseAssetSource> courseAssetResolver) {
         List<RichTextValue> safeValues = values == null ? List.of() : values;
         Set<String> pendingIds = pendingIds(safeValues);
         Map<String, MultipartFile> byPendingId = filesByPendingId(files == null ? List.of() : files);
         if (!byPendingId.keySet().equals(pendingIds)) {
             throw new RichContentValidationException("Every uploaded image must be referenced exactly once in rich content");
         }
+        Map<String, UUID> selectedAssetIds = selectedAssetIds(selections);
+        if (!selectedAssetIds.keySet().equals(courseAssetTokens(safeValues))) {
+            throw new RichContentValidationException("Every selected course image must be referenced exactly once in rich content");
+        }
         Set<String> knownUrls = new LinkedHashSet<>();
         if (existingAssets != null) existingAssets.forEach(asset -> knownUrls.add(storage.publicUrl(asset.storageKey())));
-        Map<String, UploadedAsset> uploaded = new HashMap<>();
+        Map<String, UploadedAsset> uploadedFiles = new LinkedHashMap<>();
+        Map<String, UploadedAsset> selectedAssets = new LinkedHashMap<>();
+        Map<UUID, UploadedAsset> snapshotsByAssetId = new LinkedHashMap<>();
         try {
+            for (Map.Entry<String, UUID> selection : selectedAssetIds.entrySet()) {
+                UUID assetId = selection.getValue();
+                UploadedAsset snapshot = snapshotsByAssetId.get(assetId);
+                if (snapshot == null) {
+                    CourseAssetSource source = courseAssetResolver.apply(assetId);
+                    if (source == null || !assetId.equals(source.assetId())) {
+                        throw new RichContentValidationException("Selected course image is unavailable");
+                    }
+                    snapshot = snapshotCourseAsset(source.bytes(), source.mediaType(), source.assetId());
+                    snapshotsByAssetId.put(assetId, snapshot);
+                }
+                selectedAssets.put(selection.getKey(), snapshot);
+                knownUrls.add(snapshot.publicUrl());
+            }
             for (String pendingId : pendingIds) {
                 UploadedAsset asset = upload(byPendingId.get(pendingId));
-                uploaded.put(pendingId, asset);
+                uploadedFiles.put(pendingId, asset);
                 knownUrls.add(asset.publicUrl());
             }
-            return new PreparedRichContent(safeValues.stream().map(value -> rewrite(value, uploaded, knownUrls)).toList(),
-                    List.copyOf(uploaded.values()));
+            List<UploadedAsset> created = new java.util.ArrayList<>(snapshotsByAssetId.values());
+            created.addAll(uploadedFiles.values());
+            return new PreparedRichContent(safeValues.stream()
+                    .map(value -> rewrite(value, uploadedFiles, selectedAssets, knownUrls)).toList(), List.copyOf(created));
         } catch (RuntimeException ex) {
-            cleanup(uploaded.values());
+            cleanup(snapshotsByAssetId.values());
+            cleanup(uploadedFiles.values());
             throw ex;
         }
     }
@@ -74,15 +109,19 @@ public class Quiz3RichContentUploadService {
         if (bytes.length == 0 || bytes.length > MAX_IMAGE_BYTES || detect(bytes) != ImageType.SVG) {
             throw new RichContentValidationException("AI SVG is empty, too large, or invalid");
         }
-        return store(bytes, ImageType.SVG);
+        return store(bytes, ImageType.SVG, null);
     }
 
     /** Copies authorized course-asset bytes into question-owned public storage. */
     public UploadedAsset snapshotCourseAsset(byte[] bytes, String mediaType) {
+        return snapshotCourseAsset(bytes, mediaType, null);
+    }
+
+    public UploadedAsset snapshotCourseAsset(byte[] bytes, String mediaType, UUID sourceAssetId) {
         if (bytes == null || bytes.length == 0 || bytes.length > MAX_IMAGE_BYTES) throw new RichContentValidationException("Course image snapshot is empty or too large");
         ImageType type = detect(bytes);
         if (!type.mediaType().equalsIgnoreCase(mediaType)) throw new RichContentValidationException("Course image MIME type does not match its signature");
-        return store(bytes, type);
+        return store(bytes, type, sourceAssetId);
     }
 
     public void cleanup(Collection<UploadedAsset> assets) {
@@ -101,7 +140,7 @@ public class Quiz3RichContentUploadService {
 
     public List<Quiz3RichContentAsset> assetsForQuestion(UUID questionId, Collection<UploadedAsset> assets) {
         return assets == null ? List.of() : assets.stream().map(asset -> new Quiz3RichContentAsset(UUID.randomUUID(),
-                questionId, asset.storageKey(), asset.mediaType(), asset.byteSize(), asset.sha256(), null, null, null, null)).toList();
+                questionId, asset.storageKey(), asset.mediaType(), asset.byteSize(), asset.sha256(), asset.sourceAssetId(), null, null, null)).toList();
     }
 
     public Set<String> referencedStorageKeys(List<RichTextValue> values,
@@ -139,6 +178,36 @@ public class Quiz3RichContentUploadService {
         return result;
     }
 
+    private Set<String> courseAssetTokens(List<RichTextValue> values) {
+        Set<String> result = new LinkedHashSet<>();
+        values.stream().filter(value -> value.contentFormat() == RichContentFormat.TIPTAP_HTML).forEach(value -> {
+            Matcher matcher = COURSE_ASSET_SOURCE.matcher(value.content());
+            while (matcher.find()) if (!result.add(normalizeToken(matcher.group(1)))) {
+                throw new RichContentValidationException("Duplicate course image selection reference");
+            }
+        });
+        return result;
+    }
+
+    private Map<String, UUID> selectedAssetIds(List<Quiz3Models.ImageAssetSelection> selections) {
+        Map<String, UUID> result = new LinkedHashMap<>();
+        for (Quiz3Models.ImageAssetSelection selection : selections == null ? List.<Quiz3Models.ImageAssetSelection>of() : selections) {
+            if (selection == null || selection.token() == null || selection.assetId() == null) {
+                throw new RichContentValidationException("Course image selection is incomplete");
+            }
+            String token = normalizeToken(selection.token());
+            if (result.putIfAbsent(token, selection.assetId()) != null) {
+                throw new RichContentValidationException("Duplicate course image selection token");
+            }
+        }
+        return result;
+    }
+
+    private String normalizeToken(String token) {
+        try { return UUID.fromString(token).toString(); }
+        catch (IllegalArgumentException ex) { throw new RichContentValidationException("Course image selection token must be a UUID"); }
+    }
+
     private Map<String, MultipartFile> filesByPendingId(List<MultipartFile> files) {
         Map<String, MultipartFile> result = new HashMap<>();
         for (MultipartFile file : files) {
@@ -155,7 +224,8 @@ public class Quiz3RichContentUploadService {
         return result;
     }
 
-    private RichTextValue rewrite(RichTextValue value, Map<String, UploadedAsset> uploaded, Set<String> knownUrls) {
+    private RichTextValue rewrite(RichTextValue value, Map<String, UploadedAsset> uploaded,
+            Map<String, UploadedAsset> selectedAssets, Set<String> knownUrls) {
         if (value.contentFormat() == RichContentFormat.PLAIN_TEXT) return value;
         Matcher pending = PENDING_SOURCE.matcher(value.content());
         StringBuffer rendered = new StringBuffer();
@@ -165,11 +235,19 @@ public class Quiz3RichContentUploadService {
             pending.appendReplacement(rendered, Matcher.quoteReplacement(asset.publicUrl()));
         }
         pending.appendTail(rendered);
-        Matcher image = IMAGE_SOURCE.matcher(rendered.toString());
+        Matcher selected = COURSE_ASSET_SOURCE.matcher(rendered.toString());
+        StringBuffer selectedRendered = new StringBuffer();
+        while (selected.find()) {
+            UploadedAsset asset = selectedAssets.get(normalizeToken(selected.group(1)));
+            if (asset == null) throw new RichContentValidationException("Rich content refers to an unresolved course image");
+            selected.appendReplacement(selectedRendered, Matcher.quoteReplacement(asset.publicUrl()));
+        }
+        selected.appendTail(selectedRendered);
+        Matcher image = IMAGE_SOURCE.matcher(selectedRendered.toString());
         while (image.find()) if (!knownUrls.contains(image.group(2))) {
             throw new RichContentValidationException("External or unowned image URLs are not permitted");
         }
-        return new RichTextValue(rendered.toString(), RichContentFormat.TIPTAP_HTML);
+        return new RichTextValue(selectedRendered.toString(), RichContentFormat.TIPTAP_HTML);
     }
 
     private UploadedAsset upload(MultipartFile file) {
@@ -184,16 +262,16 @@ public class Quiz3RichContentUploadService {
             String filename = file.getOriginalFilename();
             String extension = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
             if (!type.acceptsExtension(extension)) throw new RichContentValidationException("Image extension does not match its file signature");
-            return store(bytes, type);
+            return store(bytes, type, null);
         } catch (IOException ex) {
             throw new RichContentValidationException("Could not read uploaded image");
         }
     }
 
-    private UploadedAsset store(byte[] bytes, ImageType type) {
+    private UploadedAsset store(byte[] bytes, ImageType type, UUID sourceAssetId) {
         String key = PREFIX + UUID.randomUUID() + "." + type.extension();
         storage.upload(key, bytes, type.mediaType());
-        return new UploadedAsset(key, storage.publicUrl(key), type.mediaType(), bytes.length, sha256(bytes));
+        return new UploadedAsset(key, storage.publicUrl(key), type.mediaType(), bytes.length, sha256(bytes), sourceAssetId);
     }
 
     private ImageType detect(byte[] bytes) {
@@ -223,7 +301,9 @@ public class Quiz3RichContentUploadService {
     }
 
     public record PreparedRichContent(List<RichTextValue> values, List<UploadedAsset> uploadedAssets) { }
-    public record UploadedAsset(String storageKey, String publicUrl, String mediaType, long byteSize, String sha256) { }
+    public record UploadedAsset(String storageKey, String publicUrl, String mediaType, long byteSize, String sha256,
+            UUID sourceAssetId) { }
+    public record CourseAssetSource(UUID assetId, byte[] bytes, String mediaType) { }
     private enum ImageType {
         PNG("image/png", "png", Set.of("png")), JPEG("image/jpeg", "jpg", Set.of("jpg", "jpeg")),
         WEBP("image/webp", "webp", Set.of("webp")), GIF("image/gif", "gif", Set.of("gif")), SVG("image/svg+xml", "svg", Set.of("svg"));
